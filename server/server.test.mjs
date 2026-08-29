@@ -128,7 +128,15 @@ test("ødelagt datafil gir 503", async t => {
   assert.equal(r.status, 503);
   const k = await r.json();
   assert.equal(k.feil, "ødelagt");
-  assert.ok(k.sti.includes("ødelagt"));
+
+  /* Filen skal ligge urørt, og en vanlig PUT skal fortsatt nektes —
+     ellers ville neste lagring blitt godtatt mot en tom katalog. */
+  assert.equal(await fs.readFile(path.join(katalog, "jobber.json"), "utf8"), "ikke json");
+  const p2 = await fetch(`${base}/api/jobber`, {
+    method: "PUT", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ versjon: 0, jobber: [] })
+  });
+  assert.equal(p2.status, 503);
 });
 
 test("ukjent sti gir 404 og feil metode gir 405", async t => {

@@ -36,6 +36,11 @@ let angre = null, angreTid = null;
 const $  = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* Innholdet i data-tips dekodes to ganger: først av HTML-parseren når
+   attributtet leses, så av innerHTML når tipset tegnes. Derfor må tekst
+   som kommer fra dataene escapes to ganger for å bli stående som tekst. */
+const esc2 = s => esc(esc(s));
 const nyId = () => "s" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
 
 function fraStart(){
@@ -167,7 +172,7 @@ function tegnFristlinje(){
   bunker.forEach((liste, iso) => {
     const d = dagerTil(iso);
     const hoyde = 14 + Math.round((liste.length / maks) * 48);
-    const navn = liste.slice(0, 5).map(p => "<li>" + esc(p.selskap) + " — " + esc(p.stilling) + "</li>").join("");
+    const navn = liste.slice(0, 5).map(p => "<li>" + esc2(p.selskap) + " — " + esc2(p.stilling) + "</li>").join("");
     const mer  = liste.length > 5 ? "<li>+ " + (liste.length - 5) + " til</li>" : "";
     h += '<button class="fl__stolpe" type="button" data-hast="' + hast(iso) + '" data-iso="' + iso + '"'
        + ' style="left:' + pos(d) + '%;height:' + hoyde + 'px"'
@@ -379,7 +384,8 @@ function nokkel(merke, verdi, under, varsel){
 
 function visTall(){
   const alle    = data.filter(passererFilter);
-  const sendt   = alle.filter(p => ER_SENDT(p.status) || p.status === "accepted" || p.status === "rejected");
+  const sendt   = alle.filter(p => ER_SENDT(p.status) || p.status === "accepted"
+                                 || p.status === "rejected" || p.status === "trukket");
   const svar    = alle.filter(p => p.status === "interview" || p.status === "accepted" || p.status === "rejected");
   const videre  = alle.filter(p => p.status === "interview" || p.status === "accepted");
   const aSoke   = alle.filter(p => p.status === "todo");
@@ -395,7 +401,7 @@ function visTall(){
     + nokkel("Sendt", sendt.length,
         sendt.length ? Math.round((svar.length / sendt.length) * 100) + " % har svart" : "Ingen sendt ennå", false)
     + nokkel("Frister denne uka", denneUka.length,
-        denneUka.length ? kortListe(denneUka.map(p => p.selskap).filter((v, i, a) => a.indexOf(v) === i)) : "Pusterom",
+        denneUka.length ? esc(kortListe(denneUka.map(p => p.selskap).filter((v, i, a) => a.indexOf(v) === i))) : "Pusterom",
         denneUka.length > 0)
     + '</div>';
 
@@ -586,7 +592,9 @@ function apneSkuff(hva, id){
   else if(hva === "ny")   skuffModus = (skuffModus === "lim" ? "lim" : "skjema");
   else                    skuffModus = hva;
 
-  $("#skuffTittel").textContent = redigerer ? "Rediger søknad" : (SKUFFTITTEL[skuffModus] || "Legg til søknad");
+  $("#skuffTittel").textContent = redigerer ? "Rediger søknad"
+    : skuffModus === "gjenopprett" ? (filErOdelagt ? "Datafilen kan ikke leses" : "Datafilen mangler")
+    : (SKUFFTITTEL[skuffModus] || "Legg til søknad");
   tegnSkuff();
 
   if(!$("#skuff").classList.contains("er-apen")) fokusFor = document.activeElement;
@@ -607,6 +615,9 @@ function apneSkuff(hva, id){
 function lukkSkuff(){
   if(!$("#skuff").classList.contains("er-apen")) return;
   clearTimeout(fokusTid);
+  /* Lukkes et valg uten at det ble tatt, står lagringen fortsatt sperret.
+     Da må det stå noe på skjermen — ellers ser en tom app helt normal ut. */
+  if(skuffModus === "flytt" || skuffModus === "gjenopprett") minnOmValg();
   $("#skuff").classList.remove("er-apen");
   $("#skuff").setAttribute("aria-hidden", "true");
   $("#slor").classList.remove("er-apen");
@@ -674,9 +685,12 @@ function tegnSkuff(){
       + '<p class="felt__hjelp" style="margin:0 0 18px">'
       + (n === 1 ? 'søknad.' : 'søknader.') + '</p>'
       + '<p style="margin:0 0 14px;color:var(--blekk-2);font-size:14px;line-height:1.5">'
-      + '<code>data/jobber.json</code> finnes ikke lenger, men <code>jobber.forrige.json</code> '
-      + 'ligger igjen' + (sisteKopi.oppdatert ? ' fra ' + esc(kortTid(sisteKopi.oppdatert)) : '') + '.</p>'
-      + '<p class="felt__hjelp">Ingenting skrives før du velger.</p>';
+      + (filErOdelagt
+          ? '<code>data/jobber.json</code> kan ikke leses. Den blir flyttet til side — ikke slettet — '
+            + 'og <code>jobber.forrige.json</code> skrives inn i stedet.'
+          : '<code>data/jobber.json</code> finnes ikke lenger, men <code>jobber.forrige.json</code> ligger igjen')
+      + (sisteKopi.oppdatert ? ' Kopien er fra ' + esc(kortTid(sisteKopi.oppdatert)) + '.' : '.')
+      + '</p><p class="felt__hjelp">Ingenting skrives før du velger.</p>';
     b.innerHTML = '<button class="knapp" data-gjor="brukStartliste">Bruk startlisten</button>'
       + '<button class="knapp knapp--primar" data-gjor="gjenopprettKopi">Gjenopprett</button>';
     return;
@@ -828,6 +842,7 @@ function tilMarkdown(){
   L.push("# Jobbsøknader 2027", "", "> [!abstract] Status");
   L.push("> **" + data.filter(p => ER_SENDT(p.status)).length + "** sendt · **" + todo.length + "** igjen · **"
     + data.filter(p => p.status === "rejected").length + "** avslag · **"
+    + data.filter(p => p.status === "trukket").length + "** trukket · **"
     + data.filter(p => p.status === "expired").length + "** utløpt", "", "---", "", "## Å søke på", "");
 
   if(uka.length){ L.push("> [!danger]+ Denne uka · " + uka.length, ">"); uka.forEach(p => L.push(rad(p))); L.push(""); }
@@ -962,7 +977,7 @@ function lagreSkjema(){
     data.push(verdi);
     varsle("La til " + verdi.selskap + " · " + verdi.stilling);
   }
-  lagre(); lukkSkuff(); tegn();
+  lagre(); tegn(); lukkSkuff();
 }
 function lagreLim(){
   const funn = tolkTekst($("#limInn").value);
@@ -1017,11 +1032,11 @@ document.addEventListener("click", e => {
   else if(g === "importerJson") importerJson();
   else if(g === "flyttHit") flyttHit();
   else if(g === "gjenopprettKopi") gjenopprettKopi();
-  else if(g === "brukStartliste"){ data = fraStart(); lagre(); lukkSkuff(); tegn(); varsle("Startet med startlisten"); }
+  else if(g === "brukStartliste"){ data = silt(fraStart().concat(data)); taValget(); lagre(); tegn(); lukkSkuff(); varsle("Startet med startlisten"); }
+  else if(g === "apneValget") apneSkuff(venterValg || "flytt");
   else if(g === "bekreftJa"){ const bk = bekreftelse; lukkSkuff(); if(bk) bk.gjor(); }
   else if(g === "prøvLagring") Lagring.prøvIgjen();
   else if(g === "hentPåNytt") start();
-  else if(g === "apneGjenopprett") apneSkuff("gjenopprett");
   else if(g && STATUSER[g]) settStatus(id, g);
 });
 
@@ -1053,6 +1068,7 @@ document.addEventListener("keydown", e => {
     return;
   }
   if(e.metaKey || e.ctrlKey || e.altKey) return;
+  if($("#skuff").classList.contains("er-apen")) return;   /* dialogen eier tastaturet */
   if(e.key === "n"){ e.preventDefault(); skuffModus = "skjema"; apneSkuff("ny"); }
   if(e.key === "/"){ e.preventDefault(); $("#sok").focus(); }
 });
@@ -1098,6 +1114,7 @@ const LAGRETEKST = {
   lagret:    t => (t.tid ? "Lagret " + klokke(t.tid) : "Lagret"),
   lagrer:    () => "Lagrer…",
   ulagret:   () => "Ikke lagret",
+  blokkert:  () => "Ikke lagret",
   frakoblet: () => "Ikke lagret",
   konflikt:  () => "Endret et annet sted"
 };
@@ -1112,7 +1129,15 @@ Lagring.påTilstand(t => {
   else if(t.navn === "ulagret")
     visStripe(t.melding || "Lagringen avviste endringen.", "Prøv igjen", "prøvLagring");
   else if(t.navn === "konflikt")
-    visStripe("Dataene ble endret et annet sted — antakelig i en annen fane.", "Hent på nytt", "hentPåNytt");
+    visStripe("Dataene ble endret et annet sted — antakelig i en annen fane. "
+      + "Endringen din er ikke skrevet, og blir det ikke før du henter på nytt.",
+      "Hent på nytt", "hentPåNytt");
+  else if(t.navn === "blokkert")
+    visStripe(t.melding || "Ingenting lagres før du har valgt hva som skal skje med dataene.",
+      venterValg === "gjenopprett" ? "Gjenopprett sikkerhetskopien"
+        : venterValg === "flytt"   ? "Velg nå"
+        : "Prøv igjen",
+      venterValg ? "apneValget" : "hentPåNytt");
   else
     skjulStripe();
 });
@@ -1141,6 +1166,24 @@ function silt(rader){
 }
 
 let sisteKopi = null;
+let venterValg = null;        /* "flytt" | "gjenopprett" | null */
+let filErOdelagt = false;
+
+/* Brukeren har tatt valget: sperren løftes, og en ødelagt fil ryddes
+   til side i samme skriving — aldri overskrives. */
+function taValget(){
+  venterValg = null;
+  Lagring.settVersjon(0);
+  Lagring.frigi(filErOdelagt);
+  filErOdelagt = false;
+}
+
+function minnOmValg(){
+  if(!venterValg) return;
+  Lagring.blokker(venterValg === "gjenopprett"
+    ? "Sikkerhetskopien er ikke hentet inn ennå. Ingenting lagres før du har valgt."
+    : "Søknadene i nettleseren er ikke flyttet ennå. Ingenting lagres før du har valgt.");
+}
 
 const kortTid = iso => {
   const d = new Date(iso);
@@ -1149,18 +1192,22 @@ const kortTid = iso => {
 
 function gjenopprettKopi(){
   if(!sisteKopi) return;
-  data = silt(sisteKopi.jobber);
-  Lagring.settVersjon(0);
-  lagre(); lukkSkuff(); tegn();
+  /* Har brukeren rukket å legge inn noe mens valget sto åpent, blir det
+     med videre i stedet for å forsvinne. */
+  data = silt(sisteKopi.jobber.concat(data));
+  taValget();
+  lagre(); tegn(); lukkSkuff();
   varsle("Gjenopprettet " + antall(data.length, "søknad", "søknader") + " fra sikkerhetskopien");
 }
 
 function flyttHit(){
   const gamle = fraNettleser() || [];
-  const gyldige = silt(gamle);
-  const tapt = gamle.length - gyldige.length;
+  const lagtTilImens = data;
+  const gyldige = silt(gamle.concat(lagtTilImens));
+  const tapt = gamle.length + lagtTilImens.length - gyldige.length;
   data = gyldige;
-  lagre(); lukkSkuff(); tegn();
+  taValget();
+  lagre(); tegn(); lukkSkuff();
   varsle("Flyttet " + antall(gyldige.length, "søknad", "søknader") + " til datafilen"
     + (tapt > 0 ? " · " + tapt + " kunne ikke leses" : ""));
 }
@@ -1212,12 +1259,18 @@ async function start(){
          startlisten: den er det siste vi vet var riktig. */
       if(svar.sikkerhetskopi && svar.sikkerhetskopi.jobber.length){
         sisteKopi = svar.sikkerhetskopi;
+        venterValg = "gjenopprett";
+        Lagring.blokker();
         data = []; tegn(); apneSkuff("gjenopprett"); return;
       }
       /* Ingen datafil ennå. Har nettleseren data fra før, skal brukeren
          få velge — vi flytter ikke noe uten å spørre. */
       const gamle = fraNettleser();
-      if(gamle && gamle.length){ data = []; tegn(); apneSkuff("flytt"); return; }
+      if(gamle && gamle.length){
+        venterValg = "flytt";
+        Lagring.blokker();
+        data = []; tegn(); apneSkuff("flytt"); return;
+      }
       data = fraStart();
       lagre();
     }else{
@@ -1226,16 +1279,20 @@ async function start(){
     }
   }catch(e){
     data = [];
+    /* I begge tilfellene vet vi ikke hva som ligger på disk. Da skal
+       ingenting skrives — ellers kunne en tom liste blitt lagret oppå
+       ekte data. Sperren løftes av et bevisst valg eller en ny henting. */
     if(e.ødelagt){
       sisteKopi = e.sikkerhetskopi || null;
+      filErOdelagt = true;
       const harKopi = !!(sisteKopi && sisteKopi.jobber.length);
-      visStripe("Datafilen kunne ikke leses og er lagt til side som " + (e.sti || "en kopi")
-        + ". Ingenting er overskrevet.",
-        harKopi ? "Gjenopprett sikkerhetskopien" : "Prøv igjen",
-        harKopi ? "apneGjenopprett" : "hentPåNytt");
+      venterValg = harKopi ? "gjenopprett" : null;
+      Lagring.blokker("Datafilen kan ikke leses. Den ligger urørt som "
+        + (e.sti || "data/jobber.json") + ", og ingenting lagres før du har valgt hva som skal skje."
+        + (harKopi ? "" : " Rett opp filen, og hent så på nytt."));
     }else{
-      visStripe("Ingen kontakt med lagringen. Kjører serveren? Start den med «npm start».",
-                "Prøv igjen", "hentPåNytt");
+      venterValg = null;
+      Lagring.blokker("Ingen kontakt med lagringen. Kjører serveren? Start den med «npm start».");
     }
   }
   tegn();

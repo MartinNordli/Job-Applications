@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hent gamle søknader</title>
+<style>
+/* Samme palett som appen, men bare det denne siden trenger. */
+:root{--bunn:#EDEBE5;--kort:#FFF;--innfelt:#F2F1EC;--blekk:#17181A;--blekk-2:#4B4F55;
+      --blekk-3:#64696E;--linje:#E6E4DD;--ild-t:#BE382C;--mose-t:#2B7652;--r:14px;--r-s:9px;
+      --sans:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
+      --mono:ui-monospace,"SF Mono",Menlo,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bunn);color:var(--blekk);font-family:var(--sans);
+     font-size:15px;line-height:1.5;padding:48px 20px}
+main{max-width:640px;margin:0 auto;background:var(--kort);border-radius:var(--r);
+     padding:32px;box-shadow:0 1px 2px rgba(24,26,30,.05),0 4px 14px rgba(24,26,30,.07)}
+h1{margin:0 0 6px;font-size:21px;letter-spacing:-.02em}
+.und{margin:0 0 24px;color:var(--blekk-3);font-size:13.5px}
+.tall{font-family:var(--mono);font-size:38px;font-weight:500;letter-spacing:-.05em;margin:0}
+.merke{font-family:var(--mono);font-size:11px;color:var(--blekk-3);margin:0 0 20px}
+textarea{width:100%;height:180px;font-family:var(--mono);font-size:11.5px;line-height:1.6;
+         background:var(--innfelt);border:0;border-radius:var(--r-s);padding:12px;resize:vertical;color:var(--blekk)}
+button{margin-top:12px;padding:11px 15px;background:var(--blekk);color:var(--kort);border:0;
+       border-radius:var(--r-s);font:inherit;font-weight:600;font-size:14px;cursor:pointer}
+button:hover{background:#2E3238}
+ol{margin:22px 0 0;padding-left:20px;color:var(--blekk-2);font-size:14px}
+li{margin-bottom:7px}
+code{font-family:var(--mono);font-size:.88em;background:var(--innfelt);padding:1px 5px;border-radius:6px}
+.tom{color:var(--ild-t)}
+.ok{color:var(--mose-t);font-weight:600}
+:focus-visible{outline:2px solid #3D52D5;outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Hent gamle søknader</h1>
+  <p class="und">Den gamle appen lagret i nettleseren. Denne siden henter det ut, så du kan
+     lime det inn i den nye.</p>
+  <div id="ut"></div>
+</main>
+<script>
+/* Åpnes denne som fil, leser den samme nettleserlageret som den gamle
+   appen skrev til. Serverversjonen på 127.0.0.1 har sitt eget lager og
+   ser ikke disse dataene — derfor kopier og lim. */
+var ut = document.getElementById("ut");
+var rå = null;
+try{ rå = localStorage.getItem("jobbsoknader-2027"); }catch(e){}
+
+var liste = null;
+try{ var p = JSON.parse(rå); if(Array.isArray(p) && p.length) liste = p; }catch(e){}
+
+if(!liste){
+  ut.innerHTML = '<p class="tom">Fant ingen gamle søknader i denne nettleseren.</p>'
+    + '<p style="color:var(--blekk-2);font-size:14px">Prøv å åpne denne filen på samme måte som du '
+    + 'pleide å åpne den gamle <code>index.html</code> — samme nettleser, og som fil, ikke gjennom en server. '
+    + 'Er de ikke der heller, start appen med <code>npm start</code>; den begynner med startlisten.</p>';
+}else{
+  ut.innerHTML = '<p class="tall">' + liste.length + '</p>'
+    + '<p class="merke">' + (liste.length === 1 ? 'SØKNAD FUNNET' : 'SØKNADER FUNNET') + '</p>'
+    + '<label for="json" style="display:block;font-size:12px;font-weight:600;margin-bottom:7px">JSON</label>'
+    + '<textarea id="json" readonly spellcheck="false"></textarea>'
+    + '<button id="kopi" type="button">Kopier</button>'
+    + '<ol><li>Kopier teksten over.</li>'
+    + '<li>Start appen: <code>npm start</code>, og åpne <code>http://127.0.0.1:4173</code>.</li>'
+    + '<li>Velg <b>Dataene dine</b> nederst til venstre.</li>'
+    + '<li>Lim inn i <b>Lim inn JSON</b> og trykk <b>Erstatt listen med dette</b>.</li></ol>';
+  document.getElementById("json").value = JSON.stringify(liste, null, 2);
+  document.getElementById("kopi").addEventListener("click", function(){
+    var f = document.getElementById("json");
+    f.select();
+    var k = this;
+    function klart(){ k.textContent = "Kopiert"; k.classList.add("ok"); }
+    if(navigator.clipboard) navigator.clipboard.writeText(f.value).then(klart, function(){
+      try{ document.execCommand("copy"); klart(); }catch(e){}
+    });
+    else { try{ document.execCommand("copy"); klart(); }catch(e){} }
+  });
+}
+</script>
+</body>
+</html>

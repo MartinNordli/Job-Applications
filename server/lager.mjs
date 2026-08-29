@@ -33,13 +33,19 @@ export function lagLager(valg = {}){
 
   let kø = Promise.resolve();      /* all skriving serialiseres her */
 
-  /* Uforståelig fil flyttes til side i stedet for å bli lest som tom.
-     Å starte tomt og så lagre den tomheten ville slettet alt. */
-  async function settIKarantene(grunn){
+  /* En uforståelig fil blir liggende. Å flytte den bort under lesing
+     ville etterlatt katalogen tom, og da ville neste lagring blitt
+     godtatt og skrevet over sikkerhetskopien. Filen ryddes først når
+     brukeren har valgt hva som skal skje — se gjenopprett(). */
+  async function meldOdelagt(grunn){
+    return { ødelagt: true, sti, grunn, ...(await sikkerhetskopi()) };
+  }
+
+  async function settIKarantene(){
     const merke = new Date().toISOString().replaceAll(":", "-");
     const mål   = path.join(katalog, `jobber.ødelagt-${merke}.json`);
     await fs.rename(sti, mål);
-    return { ødelagt: true, sti: mål, grunn, ...(await sikkerhetskopi()) };
+    return mål;
   }
 
   /* Er hovedfilen borte, men sikkerhetskopien der, skal den tilbys før
@@ -68,7 +74,7 @@ export function lagLager(valg = {}){
 
     let dok;
     try{ dok = JSON.parse(rå); }
-    catch{ return settIKarantene("Filen er ikke gyldig JSON."); }
+    catch{ return meldOdelagt("Filen er ikke gyldig JSON."); }
 
     let versjon = 0, liste;
     if(Array.isArray(dok)){
@@ -77,13 +83,16 @@ export function lagLager(valg = {}){
       liste   = dok.jobber;
       versjon = Number.isInteger(dok.versjon) && dok.versjon >= 0 ? dok.versjon : 0;
     }else{
-      return settIKarantene("Filen har ikke forventet form.");
+      return meldOdelagt("Filen har ikke forventet form.");
     }
 
     const { gyldige, forkastet } = validerSamling(liste, { lagId });
     const svar = { versjon, jobber: gyldige };
     if(forkastet.length){
       svar.forkastet = forkastet;
+      /* Rådataene tas vare på og skrives tilbake urørt, ellers ville
+         første lagring slettet en rad brukeren selv har skrevet inn. */
+      svar.ugyldige = forkastet.map(f => liste[f.indeks]).filter(r => r !== undefined);
       svar.advarsel  = forkastet.length === 1
         ? "Én rad i datafilen var ugyldig og ble hoppet over."
         : `${forkastet.length} rader i datafilen var ugyldige og ble hoppet over.`;
@@ -107,6 +116,10 @@ export function lagLager(valg = {}){
       await fh.close();
       fh = null;
       await fs.rename(tmpSti, sti);
+      /* Innholdet er synket, men selve navnebyttet ligger i katalogen. */
+      const kh = await fs.open(katalog, "r");
+      await kh.sync().catch(() => {});     /* ikke støttet overalt */
+      await kh.close();
     }catch(e){
       if(fh) await fh.close().catch(() => {});
       await fs.rm(tmpSti, { force: true });
@@ -114,9 +127,17 @@ export function lagLager(valg = {}){
     }
   }
 
-  async function utfør(jobber, forventetVersjon){
-    const nå = await les();
-    if(nå.ødelagt) return { ok: false, feil: "ødelagt", sti: nå.sti };
+  async function utfør(jobber, forventetVersjon, valg2 = {}){
+    let nå = await les();
+
+    if(nå.ødelagt){
+      /* Bare et bevisst valg fra brukeren får rydde bort en fil vi ikke
+         forstår — og da flyttes den til side, aldri over. */
+      if(!valg2.overstyrOdelagt) return { ok: false, feil: "ødelagt", sti: nå.sti };
+      const karantene = await settIKarantene();
+      nå = { versjon: 0, jobber: [], karantene };
+      forventetVersjon = undefined;
+    }
 
     const versjon = nå.versjon;
     if(typeof forventetVersjon === "number" && forventetVersjon !== versjon)
@@ -137,12 +158,18 @@ export function lagLager(valg = {}){
     });
 
     const dok = { versjon: versjon + 1, oppdatert: tid, jobber: rader };
+    /* Rader vi ikke forsto ved lesing skrives tilbake urørt. De vises
+       ikke i appen, men de skal heller ikke forsvinne fordi noen
+       lagret noe annet. */
+    if(nå.ugyldige && nå.ugyldige.length) dok.ugyldige = nå.ugyldige;
+
     await lagreAtomisk(dok);
-    return { ok: true, versjon: dok.versjon, jobber: rader };
+    return { ok: true, versjon: dok.versjon, jobber: rader,
+             ...(nå.karantene ? { karantene: nå.karantene } : {}) };
   }
 
-  function skriv(jobber, forventetVersjon){
-    const oppgave = kø.then(() => utfør(jobber, forventetVersjon));
+  function skriv(jobber, forventetVersjon, valg2){
+    const oppgave = kø.then(() => utfør(jobber, forventetVersjon, valg2));
     kø = oppgave.then(() => {}, () => {});   /* en feilet skriving skal ikke låse køen */
     return oppgave;
   }

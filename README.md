@@ -16,6 +16,18 @@ Første gang: har du data liggende i nettleseren fra før, spør appen om de ska
 flyttes til datafilen. Kopien i nettleseren blir liggende urørt. Har du ingen
 data noe sted, starter appen med startlisten.
 
+### Har du brukt den gamle appen?
+
+Den gamle `index.html` ble åpnet som en fil, og nettleseren holder det lageret
+adskilt fra `http://127.0.0.1:4173`. Appen finner altså ikke de gamle søknadene
+av seg selv. Slik henter du dem:
+
+1. Åpne `hent-gamle-data.html` **på samme måte som du pleide å åpne den gamle
+   appen** — dobbeltklikk filen, i samme nettleser.
+2. Kopier JSON-en den viser.
+3. Start appen, velg **Dataene dine**, lim inn under **Lim inn JSON** og trykk
+   **Erstatt listen med dette**. Du kan angre.
+
 ## Hvor dataene ligger
 
 `data/jobber.json` — vanlig JSON, lesbar og redigerbar for hånd:
@@ -74,6 +86,7 @@ npm test
 
 ```
 index.html          markup
+hent-gamle-data.html  henter søknader ut av den gamle nettleserlagringen
 src/stiler.css      «Lin» — designsystemet
 src/app.js          appen
 src/felles.mjs      validering, delt av nettleser og server

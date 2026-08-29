@@ -18,6 +18,15 @@ let ventende = null;          /* siste tilstand som skal skrives */
 let sender = false;
 let timer = null, forsok = null;
 
+/* Sperre. Så lenge den står, skrives ingenting til disk.
+   Settes når vi ikke vet hva som ligger der fra før — ødelagt fil,
+   konflikt med en annen fane, eller et valg brukeren ikke har tatt
+   ennå. Uten den ville neste lagring blitt godtatt mot en tom
+   katalog og skrevet over sikkerhetskopien. */
+let blokkert = false;
+let overstyrOdelagt = false;
+let vilPrøveIgjen = false;
+
 const lyttere = new Set();
 let tilstand = { navn: "lagret", tid: null, melding: null };
 
@@ -29,6 +38,17 @@ function meld(navn, melding){
 }
 
 export const harUlagret = () => ventende !== null || sender;
+export const erBlokkert   = () => blokkert;
+
+/* Ingenting skrives før brukeren har bestemt seg. */
+export function blokker(grunn){ blokkert = true; if(grunn) meld("blokkert", grunn); }
+
+/* Brukeren har valgt. `overstyr` betyr «rydd bort den ødelagte filen». */
+export function frigi(overstyr){
+  blokkert = false;
+  overstyrOdelagt = !!overstyr;
+  if(ventende !== null) kjør();
+}
 export const gjeldendeVersjon = () => versjon;
 
 /* ---------- hente ---------- */
@@ -42,6 +62,7 @@ export async function hent(){
   try{ kropp = await svar.json(); }catch{ /* håndteres under */ }
 
   if(svar.status === 503 && kropp && kropp.feil){
+    blokkert = true;            /* filen er uleselig — ikke rør den */
     const e = new Error(kropp.feil); e.ødelagt = true; e.sti = kropp.sti;
     e.sikkerhetskopi = kropp.sikkerhetskopi || null; throw e;
   }
@@ -54,6 +75,8 @@ export async function hent(){
      avvist endring er nå bevisst forkastet av brukeren. */
   versjon  = kropp.versjon || 0;
   ventende = null;
+  blokkert = false;
+  overstyrOdelagt = false;
   avbrytNyttForsok();
   meld("lagret");
   return kropp;                 /* { versjon, jobber, tom?, advarsel?, forkastet? } */
@@ -62,40 +85,53 @@ export async function hent(){
 /* ---------- lagre ---------- */
 
 export function lagre(jobber){
-  ventende = jobber;
+  ventende = jobber;                  /* holdes uansett, så ingenting går tapt */
+  if(blokkert) return;                /* tilstanden er allerede forklart i stripa */
   meld("lagrer");
   if(!timer) timer = setTimeout(() => { timer = null; kjør(); }, FORSINKELSE);
 }
 
 /* Skriver det som ligger og venter. Kalles på nytt av seg selv hvis
    det kom inn en ny endring mens forrige skriving var underveis. */
-async function kjør(){
-  if(sender || ventende === null) return;
+async function kjør(flukt){
+  if(sender || blokkert || ventende === null) return;
   sender = true;
   const nå = ventende;
   ventende = null;
   meld("lagrer");
 
   try{
+    /* keepalive lar skrivingen overleve at fanen lukkes, men fetch
+       begrenser slike kropper til 64 KiB. Derfor bare når vi faktisk
+       er på vei ut — ellers ville lista sluttet å lagre rundt 140
+       søknader, uten annen forklaring enn «ingen kontakt». */
     const svar = await fetch(API, {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ versjon, jobber: nå }),
-      keepalive: true                       /* overlever at fanen lukkes */
+      body: JSON.stringify({ versjon, jobber: nå,
+                             ...(overstyrOdelagt ? { overstyrOdelagt: true } : {}) }),
+      ...(flukt ? { keepalive: true } : {})
     });
     let kropp = null;
     try{ kropp = await svar.json(); }catch{ /* håndteres under */ }
 
     if(svar.ok && kropp){
       versjon = kropp.versjon;
+      overstyrOdelagt = false;
       avbrytNyttForsok();
       if(ventende === null) meld("lagret");
     }else if(svar.status === 409 && kropp){
-      /* En annen fane har skrevet. Vi kaster ikke noe — appen får
-         beskjed og bestemmer selv hva som skal skje. */
-      versjon = kropp.versjon;
+      /* En annen fane har skrevet. Vi overtar bevisst IKKE versjonen
+         herfra — da ville neste tastetrykk blitt godtatt og skrevet
+         over den andre fanen. Sperren står til brukeren henter på nytt. */
+      behold(nå);
+      blokkert = true;
       meld("konflikt", "Dataene ble endret et annet sted.");
       lyttere.forEach(fn => fn(tilstand, kropp));
+    }else if(svar.status === 503){
+      behold(nå);
+      blokkert = true;
+      meld("ulagret", (kropp && kropp.melding) || "Datafilen kan ikke leses.");
     }else{
       const detalj = kropp && kropp.detaljer ? kropp.detaljer : null;
       behold(nå);
@@ -110,7 +146,9 @@ async function kjør(){
     sender = false;
   }
 
-  if(ventende !== null && tilstand.navn !== "ulagret" && tilstand.navn !== "frakoblet") kjør();
+  if(vilPrøveIgjen){ vilPrøveIgjen = false; avbrytNyttForsok(); kjør(); return; }
+  if(ventende !== null && !blokkert
+     && tilstand.navn !== "ulagret" && tilstand.navn !== "frakoblet") kjør();
 }
 
 /* Legger tilbake det som ikke kom fram — men aldri oppå noe nyere. */
@@ -123,20 +161,27 @@ function planleggNyttForsok(){
 function avbrytNyttForsok(){ if(forsok){ clearTimeout(forsok); forsok = null; } }
 
 /* Manuelt «prøv igjen» fra stripa eller varselet. */
-export function prøvIgjen(){ avbrytNyttForsok(); if(timer){ clearTimeout(timer); timer = null; } kjør(); }
+export function prøvIgjen(){
+  /* Er en skriving allerede i lufta, skal vi vente på den i stedet for
+     å slukke timerne og gå tomhendt ut. */
+  if(sender){ vilPrøveIgjen = true; return; }
+  avbrytNyttForsok();
+  if(timer){ clearTimeout(timer); timer = null; }
+  kjør();
+}
 
 /* Tømmer køen nå i stedet for å vente på debouncen. */
-export function nåMedEnGang(){ if(timer){ clearTimeout(timer); timer = null; } return kjør(); }
+export function nåMedEnGang(flukt){ if(timer){ clearTimeout(timer); timer = null; } return kjør(flukt); }
 
 /* Første skriving etter migrering: setter versjonen fra svaret. */
 export function settVersjon(v){ versjon = v || 0; }
 
 /* Fanen lukkes eller skjules — få ut det som ligger og venter.
    keepalive på fetchen gjør at skrivingen overlever unload. */
-addEventListener("visibilitychange", () => { if(document.visibilityState === "hidden") nåMedEnGang(); });
-addEventListener("pagehide", () => { nåMedEnGang(); });
-addEventListener("beforeunload", e => {
-  if(!harUlagret()) return;
-  e.preventDefault();
-  e.returnValue = "";
-});
+addEventListener("visibilitychange", () => { if(document.visibilityState === "hidden") nåMedEnGang(true); });
+addEventListener("pagehide", () => { nåMedEnGang(true); });
+/* Ingen «vil du forlate siden?»-dialog her. Den kan bare stille et
+   spørsmål brukeren ikke kan svare på, den dukker opp igjen ved hver
+   eneste navigering så lenge noe står ulagret, og stripa sier allerede
+   det samme uten å blokkere siden. pagehide-flushen over er det som
+   faktisk redder skrivingen. */

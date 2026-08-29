@@ -4,6 +4,9 @@
   "type": "module",
   "scripts": {
     "start": "node server/server.mjs",
-    "test": "node --test 'server/*.test.mjs'"
+    "test": "node --test server/lager.test.mjs server/server.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

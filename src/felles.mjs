@@ -81,9 +81,12 @@ export function validerSoknad(inn, valg = {}){
     return { ok: false, feil: [{ felt: null, melding: "Søknaden må være et objekt." }], verdi: null };
   }
 
+  /* Id-en havner rett inn i data-id="…" i en mengde maler. Å begrense
+     tegnsettet her er sikrere enn å escape den ti steder. */
   const id = tekst(o.id);
   if(!id && !valg.lagId) feil.push({ felt: "id", melding: "Mangler id." });
-  else if(id.length > MAKS.id) feil.push({ felt: "id", melding: "Id-en er for lang." });
+  else if(id && !/^[A-Za-z0-9_-]{1,64}$/.test(id))
+    feil.push({ felt: "id", melding: "Id-en kan bare inneholde bokstaver, tall, bindestrek og understrek." });
 
   const selskap = tekst(o.selskap);
   if(!selskap) feil.push({ felt: "selskap", melding: "Skriv inn selskapet." });

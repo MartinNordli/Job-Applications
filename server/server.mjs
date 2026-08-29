@@ -66,7 +66,8 @@ async function apiJobber(req, res, lager){
       return svar(res, 503, { feil: "ødelagt", sti: r.sti, sikkerhetskopi: r.sikkerhetskopi,
         melding: "Datafilen kunne ikke leses og ble satt i karantene. Rett den opp før du fortsetter." });
     if(r.tom) return svar(res, 200, { versjon: 0, jobber: null, tom: true, sikkerhetskopi: r.sikkerhetskopi });
-    return svar(res, 200, r);
+    return svar(res, 200, { versjon: r.versjon, jobber: r.jobber,
+                            ...(r.advarsel ? { advarsel: r.advarsel, forkastet: r.forkastet } : {}) });
   }
 
   if(req.method === "PUT"){
@@ -82,8 +83,10 @@ async function apiJobber(req, res, lager){
         { indeks: null, feil: [{ felt: null, melding: "Forventet {versjon, jobber}." }] }] });
 
     const r = await lager.skriv(inn.jobber,
-                                typeof inn.versjon === "number" ? inn.versjon : undefined);
-    if(r.ok)                  return svar(res, 200, { versjon: r.versjon, jobber: r.jobber });
+                                typeof inn.versjon === "number" ? inn.versjon : undefined,
+                                { overstyrOdelagt: inn.overstyrOdelagt === true });
+    if(r.ok)                  return svar(res, 200, { versjon: r.versjon, jobber: r.jobber,
+                                                      ...(r.karantene ? { karantene: r.karantene } : {}) });
     if(r.feil === "konflikt") return svar(res, 409, { feil: "konflikt", versjon: r.versjon, jobber: r.jobber });
     if(r.feil === "ugyldig")  return svar(res, 400, { feil: "ugyldig", detaljer: r.detaljer });
     return svar(res, 503, { feil: r.feil, sti: r.sti });
@@ -96,6 +99,7 @@ async function apiJobber(req, res, lager){
    den oppløste stien, så «/src/../..» ikke kan skjule seg bak prefikset. */
 function lovligFil(full){
   return full === path.join(ROT, "index.html")
+      || full === path.join(ROT, "hent-gamle-data.html")
       || full.startsWith(path.join(ROT, "src") + path.sep)
       || full.startsWith(path.join(ROT, "temaer") + path.sep);
 }
@@ -109,7 +113,7 @@ async function statisk(req, res, bane){
   if(full !== ROT && !full.startsWith(ROT + path.sep))
     return svar(res, 403, { feil: "stien peker utenfor prosjektet" });
 
-  if(!lovligFil(full)) return svar(res, 404, { feil: "ikke funnet" });
+  if(!lovligFil(full) || full.includes("\0")) return svar(res, 404, { feil: "ikke funnet" });
 
   let innhold;
   try{ innhold = await fs.readFile(full); }

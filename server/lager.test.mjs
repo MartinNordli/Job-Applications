@@ -81,7 +81,7 @@ test("rundtur: skriv og les gir samme rader", async () => {
   assert.deepEqual(lest.jobber.map(j => j.id), ["a1", "b2"]);
 });
 
-test("ødelagt fil settes i karantene med innholdet i behold", async () => {
+test("ødelagt fil blir liggende urørt ved lesing", async () => {
   const { katalog, lager } = await nyttLager();
   const sti = path.join(katalog, "jobber.json");
   const rå  = '{ dette er ikke json';
@@ -89,13 +89,70 @@ test("ødelagt fil settes i karantene med innholdet i behold", async () => {
 
   const r = await lager.les();
   assert.equal(r.ødelagt, true);
-  assert.equal(await fs.readFile(r.sti, "utf8"), rå);      /* bytene overlevde */
-  assert.equal(await finnes(sti), false);                  /* originalen ble ikke overskrevet */
-  assert.match(path.basename(r.sti), /^jobber\.ødelagt-.*\.json$/);
-  assert.equal(path.basename(r.sti).includes(":"), false);
+  /* Filen skal ikke flyttes under lesing: gjorde den det, ville
+     katalogen stått tom og neste skriving blitt godtatt. */
+  assert.equal(await fs.readFile(sti, "utf8"), rå);
+  assert.equal(r.sti, sti);
 });
 
-test("feil toppnivåform settes i karantene", async () => {
+test("ødelagt fil sperrer alle senere skrivinger, ikke bare den første", async () => {
+  const { katalog, lager } = await nyttLager();
+  const sti = path.join(katalog, "jobber.json");
+  await lager.skriv([rad({ id: "e1", selskap: "EKTE1" })], undefined);
+  /* Andre skriving, så jobber.forrige.json faktisk finnes. */
+  await lager.skriv([rad({ id: "e1", selskap: "EKTE1" }), rad({ id: "e2", selskap: "EKTE2" })], 1);
+  await fs.writeFile(sti, '{ ødelagt');
+
+  await lager.les();                                    /* som ved sidelasting */
+  const a = await lager.skriv([rad({ id: "n1", selskap: "NY" })], 0);
+  const b = await lager.skriv([rad({ id: "n2", selskap: "NY2" })], 0);
+  assert.equal(a.ok, false); assert.equal(a.feil, "ødelagt");
+  assert.equal(b.ok, false); assert.equal(b.feil, "ødelagt");
+
+  /* Sikkerhetskopien må fortsatt holde de ekte radene. */
+  const kopi = JSON.parse(await fs.readFile(path.join(katalog, "jobber.forrige.json"), "utf8"));
+  assert.deepEqual(kopi.jobber.map(r => r.selskap), ["EKTE1"]);
+});
+
+test("bevisst gjenoppretting setter den ødelagte filen i karantene og skriver", async () => {
+  const { katalog, lager } = await nyttLager();
+  const sti = path.join(katalog, "jobber.json");
+  const rå  = '{ ødelagt';
+  await fs.writeFile(sti, rå);
+  await lager.les();
+
+  const r = await lager.skriv([rad({ id: "g1", selskap: "GJENOPPRETTET" })], undefined, { overstyrOdelagt: true });
+  assert.equal(r.ok, true);
+  assert.match(path.basename(r.karantene), /^jobber\.ødelagt-.*\.json$/);
+  assert.equal(path.basename(r.karantene).includes(":"), false);
+  assert.equal(await fs.readFile(r.karantene, "utf8"), rå);   /* bytene overlevde */
+
+  const dok = JSON.parse(await fs.readFile(sti, "utf8"));
+  assert.deepEqual(dok.jobber.map(x => x.selskap), ["GJENOPPRETTET"]);
+});
+
+test("en rad validatoren ikke forstår overlever senere skrivinger", async () => {
+  const { katalog, lager } = await nyttLager();
+  const sti = path.join(katalog, "jobber.json");
+  /* Håndredigert fil: én rad med umulig dato. */
+  await fs.writeFile(sti, JSON.stringify({ versjon: 1, jobber: [
+    rad({ id: "a1", selskap: "Equinor" }),
+    rad({ id: "a2", selskap: "Håndredigert", frist: "2026-02-31" })
+  ]}, null, 2));
+
+  const lest = await lager.les();
+  assert.equal(lest.jobber.length, 1);
+  assert.ok(lest.advarsel);
+
+  await lager.skriv(lest.jobber, lest.versjon);
+  const dok = JSON.parse(await fs.readFile(sti, "utf8"));
+  assert.equal(dok.jobber.length, 1);
+  /* Raden er ikke slettet — den er tatt vare på ved siden av. */
+  assert.equal(dok.ugyldige.length, 1);
+  assert.equal(dok.ugyldige[0].selskap, "Håndredigert");
+});
+
+test("feil toppnivåform meldes som ødelagt", async () => {
   const { katalog, lager } = await nyttLager();
   await fs.writeFile(path.join(katalog, "jobber.json"), '{"noe":"helt annet"}');
   assert.equal((await lager.les()).ødelagt, true);
