@@ -6,6 +6,7 @@ import { START } from "./startliste.js";
 import * as Lagring from "./lagring.js";
 
 const NOKKEL = "jobbsoknader-2027";
+window.__jobbsoknaderKjorer = true;   /* se fallback-skriptet i index.html */
 
 /* Midnatt i dag. Ikke const: en fane som blir stående over midnatt
    må få ny dato, ellers viser den «i dag» om gårsdagen. Se seksjon 16. */
@@ -208,7 +209,7 @@ function flisHtml(p){
 
 function radHtml(p, ankerId){
   const stilling = p.lenke
-    ? '<a class="rad__stilling" href="' + esc(p.lenke) + '" target="_blank" rel="noopener">' + esc(p.stilling) + '<span class="rad__pil">↗</span></a>'
+    ? '<a class="rad__stilling" href="' + esc(p.lenke) + '" target="_blank" rel="noopener noreferrer">' + esc(p.stilling) + '<span class="rad__pil">↗</span></a>'
     : '<span class="rad__stilling">' + esc(p.stilling) + '</span>';
 
   const meta = [];
