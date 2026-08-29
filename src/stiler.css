@@ -1,0 +1,380 @@
+/* ============================================================
+   Jobbsøknader 2027 — Lin
+   Tre flatenivåer: linbunn under alt, hvite kort løftet over den,
+   innfelte spor inni kortene. Kort avgrenses av nivå og skygge,
+   aldri av ramme. Kulør betyr hastegrad, ingenting annet.
+   ============================================================ */
+:root{
+  --bunn:#EDEBE5; --kort:#FFFFFF; --innfelt:#F2F1EC; --innfelt-2:#E9E7E0;
+  --blekk:#17181A; --blekk-2:#4B4F55; --blekk-3:#64696E;
+  --linje:#E6E4DD; --linje-2:#D6D3CA;
+
+  --ild:#C63A2E;  --ild-t:#BE382C;  --ild-vask:#FAE7E4;
+  --rav:#B0790F;  --rav-t:#8B600C;  --rav-vask:#F7EEDA;
+  --hav:#3D52D5;  --hav-t:#3D52D5;  --hav-vask:#E6E9FB;
+  --mose:#2E7D57; --mose-t:#2B7652; --mose-vask:#E1F0E8;
+
+  --loft:0 1px 2px rgba(24,26,30,.05), 0 4px 14px rgba(24,26,30,.07);
+  --loft-2:0 2px 4px rgba(24,26,30,.06), 0 10px 28px rgba(24,26,30,.10);
+  --loft-3:0 8px 16px rgba(24,26,30,.08), 0 24px 60px rgba(24,26,30,.16);
+
+  --r:14px; --r-s:9px; --r-xs:7px;
+  --sans:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
+  --mono:"Martian Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --side:236px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bunn);color:var(--blekk);font-family:var(--sans);
+     font-size:15px;line-height:1.45;overflow-x:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--hav);outline-offset:2px;border-radius:5px}
+.skjult{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- skallet ---------- */
+.skall{display:grid;grid-template-columns:var(--side) 1fr;min-height:100vh;align-items:start}
+
+/* ---------- sidepanelet ---------- */
+.side{position:sticky;top:0;height:100vh;background:var(--kort);
+      padding:24px 16px 20px;display:flex;flex-direction:column;gap:22px;
+      box-shadow:1px 0 0 var(--linje)}
+.merke{display:block;padding:0 8px}
+.merke__navn{margin:0;font-size:17px;font-weight:700;letter-spacing:-.022em;line-height:1.15}
+.merke__ar{display:block;font-family:var(--mono);font-size:11px;font-weight:400;color:var(--blekk-3);margin-top:3px;letter-spacing:-.01em}
+
+.nyknapp{width:100%;padding:11px 14px;background:var(--blekk);color:var(--kort);
+         border:0;border-radius:var(--r-s);font-weight:600;font-size:14px;cursor:pointer;
+         display:flex;align-items:center;justify-content:center;gap:8px;
+         transition:background .12s ease}
+.nyknapp:hover{background:#2E3238}
+
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav__merke{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+            color:var(--blekk-3);padding:0 8px;margin:0 0 8px}
+.nav__post{display:flex;align-items:center;gap:11px;width:100%;padding:9px 10px;
+           background:none;border:0;border-radius:var(--r-s);cursor:pointer;
+           font-size:14.5px;font-weight:500;color:var(--blekk-2);text-align:left;
+           transition:background .12s ease,color .12s ease}
+.nav__post:hover{background:var(--innfelt);color:var(--blekk)}
+.nav__post[aria-selected="true"]{background:var(--hav-vask);color:var(--hav-t);font-weight:600}
+.nav__post svg{flex:none;opacity:.9}
+.nav__tall{margin-left:auto;font-family:var(--mono);font-size:11px;font-weight:400;color:var(--blekk-3)}
+.nav__post[aria-selected="true"] .nav__tall{color:var(--hav-t);opacity:.75}
+
+.sidefot{margin-top:auto;display:flex;flex-direction:column;gap:10px}
+.neste{background:var(--innfelt);border-radius:var(--r);padding:14px 15px}
+.neste__merke{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--blekk-3);margin:0 0 8px}
+.neste__tall{margin:0;font-size:23px;font-weight:600;letter-spacing:-.03em;line-height:1;color:var(--ild-t)}
+.neste__hvem{margin:7px 0 0;font-size:12.5px;color:var(--blekk-2);line-height:1.4}
+.neste__hvem b{font-weight:600;color:var(--blekk);display:block}
+.neste--rolig .neste__tall{color:var(--blekk)}
+.sidelenke{background:none;border:0;padding:8px 10px;border-radius:var(--r-s);cursor:pointer;
+           font-size:13.5px;font-weight:500;color:var(--blekk-3);text-align:left}
+.sidelenke:hover{background:var(--innfelt);color:var(--blekk)}
+
+/* Lagringstilstand. Mono, som alle andre tall og etiketter i appen.
+   Bare «ikke lagret» og «frakoblet» får kulør — de er de eneste
+   tilstandene som faktisk haster. */
+.lagret{margin:0;padding:0 10px;min-height:15px;display:flex;align-items:center;gap:7px;
+        font-family:var(--mono);font-size:10.5px;letter-spacing:-.01em;color:var(--blekk-3)}
+.lagret:empty{display:none}
+.lagret::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;flex:none;opacity:.5}
+.lagret[data-t="ulagret"],.lagret[data-t="frakoblet"],.lagret[data-t="konflikt"]{color:var(--ild-t)}
+.lagret[data-t="ulagret"]::before,.lagret[data-t="frakoblet"]::before,
+.lagret[data-t="konflikt"]::before{opacity:1}
+
+/* ---------- innholdsflaten ---------- */
+.hoved{min-width:0;padding:26px 30px 96px;max-width:1000px}
+.tittelrad{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
+.tittel{margin:0;font-size:26px;font-weight:700;letter-spacing:-.026em;line-height:1.1}
+.tittel__und{margin:7px 0 0;font-size:13.5px;color:var(--blekk-2)}
+.tittel__und b{font-family:var(--mono);font-weight:500;font-size:.94em;color:var(--blekk)}
+
+.sok{position:relative;flex:none}
+.sok__felt{width:250px;min-width:0;padding:10px 34px 10px 36px;background:var(--kort);
+           border:0;border-radius:var(--r-s);box-shadow:var(--loft)}
+.sok__felt::placeholder{color:var(--blekk-3)}
+.sok__felt::-webkit-search-cancel-button{display:none}
+.sok__ikon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--blekk-3);pointer-events:none;display:flex}
+.sok__hint{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-family:var(--mono);
+           font-size:10px;color:var(--blekk-3);pointer-events:none;transition:opacity .12s ease}
+.sok__felt:focus ~ .sok__hint,.sok__felt:not(:placeholder-shown) ~ .sok__hint{opacity:0}
+
+.filtre{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:20px}
+.velg{padding:9px 32px 9px 13px;background:var(--kort);border:0;border-radius:var(--r-s);
+      box-shadow:var(--loft);font-size:13.5px;font-weight:500;cursor:pointer;appearance:none;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%2364696E' stroke-width='1.5'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;background-position:right 12px center}
+.velg:hover{box-shadow:var(--loft-2)}
+.nullstill{padding:9px 13px;background:none;border:0;border-radius:var(--r-s);cursor:pointer;
+           font-size:13.5px;font-weight:500;color:var(--blekk-3)}
+.nullstill:hover{background:var(--innfelt);color:var(--blekk)}
+
+/* ---------- fristlinjen ---------- */
+.fl{display:grid;grid-template-columns:1fr auto;background:var(--kort);border-radius:var(--r);
+    box-shadow:var(--loft);margin-bottom:26px}
+.fl__plot{padding:18px 24px 0;min-width:0}
+.fl__flate{position:relative;height:104px}
+.fl__akse{position:absolute;left:0;right:0;bottom:26px;height:1px;background:var(--linje)}
+.fl__idag{position:absolute;bottom:26px;top:2px;width:1px;left:0;background:var(--linje-2)}
+.fl__idagEtikett{position:absolute;top:-4px;left:0;font-family:var(--mono);font-size:9.5px;
+                 font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--blekk-3);white-space:nowrap}
+.fl__mnd{position:absolute;bottom:4px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+         text-transform:uppercase;color:var(--blekk-3);white-space:nowrap}
+.fl__mndStrek{position:absolute;bottom:22px;height:8px;width:1px;background:var(--linje)}
+.fl__stolpe{position:absolute;bottom:26px;width:10px;margin-left:-5px;padding:0;border:0;
+            border-radius:5px 5px 0 0;cursor:pointer;background:var(--hav);
+            transition:filter .12s ease,transform .12s ease;transform-origin:bottom center}
+.fl__stolpe:hover,.fl__stolpe:focus-visible{filter:brightness(1.12);transform:scaleX(1.3)}
+.fl__stolpe[data-hast="naa"]{background:var(--ild)}
+.fl__stolpe[data-hast="snart"]{background:var(--rav)}
+.fl__stolpe[data-hast="senere"]{background:var(--hav)}
+.fl__lopende{border-left:1px solid var(--linje);padding:20px 24px;background:none;border-top:0;
+             border-right:0;border-bottom:0;border-radius:0;cursor:pointer;text-align:left;
+             display:flex;flex-direction:column;justify-content:center;gap:3px}
+.fl__lopende:hover{background:var(--innfelt);border-radius:0 var(--r) var(--r) 0}
+.fl__lopendeTall{font-size:29px;font-weight:600;letter-spacing:-.03em;line-height:1}
+.fl__lopendeEtikett{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;
+                    color:var(--blekk-3);line-height:1.5;max-width:86px}
+.fl__tom{padding:30px 24px;color:var(--blekk-2);font-size:14px;margin:0}
+
+/* ---------- bånd ---------- */
+.baand{margin:26px 0 11px;display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:0 4px}
+.baandblokk:first-child .baand{margin-top:0}
+.baand__navn{margin:0;font-size:14px;font-weight:600;letter-spacing:-.008em}
+.baand__tall{font-family:var(--mono);font-size:11px;color:var(--blekk-3);white-space:nowrap}
+
+/* ---------- jobbkortet ---------- */
+.stabel{display:flex;flex-direction:column;gap:9px}
+.rad{display:flex;gap:15px;align-items:center;background:var(--kort);border-radius:var(--r);
+     box-shadow:var(--loft);padding:12px 16px 12px 12px;transition:box-shadow .13s ease,transform .13s ease}
+.rad:hover{box-shadow:var(--loft-2);transform:translateY(-1px)}
+.rad.er-truffet{animation:treff 1.6s ease}
+@keyframes treff{0%,50%{box-shadow:0 0 0 2px var(--hav)}100%{box-shadow:var(--loft)}}
+
+/* kalenderflisen er ankeret hver rad starter med */
+.flis{width:58px;height:58px;flex:none;border-radius:11px;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;font-family:var(--mono);background:var(--innfelt);color:var(--blekk-2)}
+.flis[data-hast="naa"]{background:var(--ild-vask);color:var(--ild-t)}
+.flis[data-hast="snart"]{background:var(--rav-vask);color:var(--rav-t)}
+.flis[data-hast="senere"]{background:var(--hav-vask);color:var(--hav-t)}
+.flis[data-hast="forbi"]{background:var(--ild-vask);color:var(--ild-t)}
+.flis__ukedag{font-size:9px;letter-spacing:.04em;text-transform:uppercase;opacity:.8;line-height:1}
+.flis__dag{font-size:21px;font-weight:600;letter-spacing:-.05em;line-height:1.15}
+.flis__mnd{font-size:9px;letter-spacing:.04em;text-transform:uppercase;opacity:.8;line-height:1}
+.flis--lopende .flis__dag{font-size:17px;font-weight:400}
+.flis--merke{background:var(--innfelt);color:var(--blekk-2)}
+.flis--merke[data-s="interview"]{background:var(--hav-vask);color:var(--hav-t)}
+.flis--merke[data-s="rejected"]{background:var(--ild-vask);color:var(--ild-t)}
+.flis--merke[data-s="accepted"]{background:var(--mose-vask);color:var(--mose-t)}
+.flis__monogram{font-family:var(--sans);font-size:17px;font-weight:700;letter-spacing:.005em}
+
+.rad__hoved{min-width:0;flex:1}
+.rad__selskap{font-weight:600;letter-spacing:-.012em;font-size:15px;line-height:1.3}
+.rad__stilling{display:block;margin-top:1px;color:var(--blekk-2);font-size:14px;text-decoration:none;line-height:1.35}
+a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underline-offset:2px}
+.rad__pil{display:inline-block;font-family:var(--mono);font-size:9.5px;margin-left:5px;color:var(--blekk-3);vertical-align:1px}
+.rad__meta{margin-top:5px;display:flex;flex-wrap:wrap;gap:0 7px;align-items:center;font-size:12.5px;color:var(--blekk-3)}
+.rad__meta span:not(:last-child)::after{content:"·";margin-left:7px;color:var(--linje-2)}
+.rad__notat{font-style:italic}
+
+.rad__hoyre{display:flex;align-items:center;gap:8px;flex:none}
+.rad__om{font-family:var(--mono);font-size:11px;white-space:nowrap;color:var(--blekk-3)}
+.rad__om[data-hast="naa"],.rad__om[data-hast="forbi"]{color:var(--ild-t);font-weight:500}
+.rad__om[data-hast="snart"]{color:var(--rav-t)}
+.rad__verktoy{display:flex;gap:4px;align-items:center}
+.rad__mer{opacity:0;display:flex;gap:4px;transition:opacity .12s ease}
+.rad:hover .rad__mer,.rad:focus-within .rad__mer{opacity:1}
+@media (hover:none){.rad__mer{opacity:1}}
+
+.handling{padding:8px 13px;background:var(--innfelt);border:0;border-radius:var(--r-s);
+          font-size:13px;font-weight:600;cursor:pointer;color:var(--blekk-2);white-space:nowrap;
+          transition:background .12s ease,color .12s ease}
+.handling:hover{background:var(--innfelt-2);color:var(--blekk)}
+.handling--stille{background:none;color:var(--blekk-3);font-weight:500;padding:8px 10px}
+.handling--stille:hover{background:var(--innfelt);color:var(--blekk)}
+.handling--fare:hover{background:var(--ild-vask);color:var(--ild-t)}
+
+.merkelapp{display:inline-flex;align-items:center;gap:6px;padding:5px 11px 5px 9px;border-radius:100px;
+           font-size:11.5px;font-weight:600;white-space:nowrap;background:var(--innfelt);color:var(--blekk-2)}
+.merkelapp::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+.merkelapp[data-s="sent"],.merkelapp[data-s="accepted"]{background:var(--mose-vask);color:var(--mose-t)}
+.merkelapp[data-s="interview"]{background:var(--hav-vask);color:var(--hav-t)}
+.merkelapp[data-s="rejected"],.merkelapp[data-s="expired"]{background:var(--ild-vask);color:var(--ild-t)}
+/* «trukket» får ingen regel med vilje: et bevisst tilbaketrekk
+   haster ikke, og kulør betyr hastegrad. Den faller til nøytral. */
+
+/* ---------- stripe: noe er galt med lagringen ---------- */
+.stripe{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 18px;
+        padding:11px 13px;border-radius:var(--r-s);font-size:13.5px;
+        background:var(--ild-vask);color:var(--ild-t)}
+.stripe__tekst{flex:1;min-width:220px}
+.stripe__knapp{flex:none;padding:7px 13px;border:0;border-radius:var(--r-xs);cursor:pointer;
+               background:var(--ild-t);color:var(--kort);font-size:12.5px;font-weight:600}
+.stripe__knapp:hover{background:#9E2C22}
+
+/* ---------- tomtilstand ---------- */
+.tomt{background:var(--kort);border-radius:var(--r);box-shadow:var(--loft);padding:56px 28px;text-align:center}
+.tomt__tittel{font-size:18px;font-weight:600;letter-spacing:-.015em;margin:0 0 7px}
+.tomt__tekst{color:var(--blekk-2);margin:0 auto 20px;font-size:14px;max-width:44ch;line-height:1.5}
+
+/* ---------- TALL ---------- */
+.fliser{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.nokkel{background:var(--kort);border-radius:var(--r);box-shadow:var(--loft);padding:18px 20px 20px}
+.nokkel__merke{margin:0 0 11px;font-size:12.5px;color:var(--blekk-3)}
+.nokkel__verdi{margin:0;font-size:31px;font-weight:600;letter-spacing:-.035em;line-height:1}
+.nokkel__under{margin:9px 0 0;font-size:12.5px;color:var(--blekk-2);line-height:1.45}
+.nokkel__under b{font-weight:600;color:var(--blekk)}
+.nokkel--varsel .nokkel__verdi{color:var(--ild-t)}
+
+.kort{background:var(--kort);border-radius:var(--r);box-shadow:var(--loft);padding:20px 22px 22px;margin-bottom:16px}
+.kort__tittel{margin:0;font-size:15.5px;font-weight:600;letter-spacing:-.012em}
+.kort__und{margin:4px 0 22px;font-size:12.5px;color:var(--blekk-3);line-height:1.5}
+.rutenett{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.rutenett > .kort{margin-bottom:0}
+.tegn{display:flex;gap:16px;margin:-10px 0 18px;font-size:12px;color:var(--blekk-2)}
+.tegn__post{display:flex;align-items:center;gap:6px}
+.tegn__pryd{width:11px;height:11px;border-radius:3px;flex:none}
+
+.stolper{display:flex;flex-direction:column;gap:10px}
+.stolpe{display:grid;grid-template-columns:128px 1fr;gap:12px;align-items:center}
+.stolpe__navn{font-size:13px;color:var(--blekk-2);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stolpe__spor{position:relative;height:18px;display:flex;align-items:center;gap:2px;
+              background:var(--innfelt);border-radius:6px;padding-right:2px}
+.stolpe__fyll{height:18px;border-radius:6px;background:var(--hav);min-width:3px}
+.stolpe__fyll--mykt{background:#A9B3EE}
+.stolpe__spor--delt{background:none;padding-right:0}
+.stolpe__verdi{font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;
+               color:var(--blekk-2);padding-left:9px;white-space:nowrap}
+
+.trakt{display:flex;flex-direction:column;gap:10px}
+.trakt__trinn{display:grid;grid-template-columns:96px 1fr;gap:14px;align-items:center}
+.trakt__navn{font-size:13px;color:var(--blekk-2);text-align:right}
+.trakt__spor{display:flex;align-items:center}
+.trakt__fyll{height:28px;border-radius:8px;min-width:4px}
+.trakt__verdi{font-family:var(--mono);font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;padding-left:10px;white-space:nowrap}
+.trakt__andel{font-family:var(--mono);font-size:10.5px;color:var(--blekk-3);padding-left:8px}
+
+.soyler{display:flex;align-items:flex-end;gap:8px;height:150px;padding-top:22px}
+.soyle{flex:1;position:relative;height:100%;display:flex;align-items:flex-end;justify-content:center;min-width:0;
+       background:var(--innfelt);border-radius:7px}
+.soyle__fyll{position:relative;width:100%;max-width:24px;border-radius:7px;background:var(--hav);min-height:3px;transition:filter .12s}
+.soyle:hover .soyle__fyll{filter:brightness(1.1)}
+.soyle__topp{position:absolute;left:0;right:0;text-align:center;font-family:var(--mono);font-size:10.5px;
+             font-variant-numeric:tabular-nums;color:var(--blekk-2)}
+.akse{display:flex;gap:8px;padding-top:9px}
+.akse__hakk{flex:1;text-align:center;font-family:var(--mono);font-size:9.5px;color:var(--blekk-3);min-width:0;overflow:hidden}
+.notis{margin:16px 0 0;padding:13px 15px;background:var(--innfelt);border-radius:var(--r-s);
+       font-size:13px;color:var(--blekk-2);line-height:1.5}
+
+/* ---------- skuffen ---------- */
+.slor{position:fixed;inset:0;background:rgba(24,26,30,.28);opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:40}
+.slor.er-apen{opacity:1;pointer-events:auto}
+.skuff{position:fixed;top:12px;right:12px;bottom:12px;width:min(444px,calc(100vw - 24px));z-index:50;
+       background:var(--kort);border-radius:var(--r);box-shadow:var(--loft-3);
+       transform:translateX(calc(100% + 20px));transition:transform .26s cubic-bezier(.4,0,.2,1);
+       display:flex;flex-direction:column;overflow:hidden}
+.skuff.er-apen{transform:none}
+.skuff__topp{display:flex;align-items:center;justify-content:space-between;padding:20px 22px 16px}
+.skuff__tittel{margin:0;font-size:18px;font-weight:700;letter-spacing:-.022em}
+.skuff__kropp{overflow-y:auto;padding:0 22px 22px;flex:1}
+.skuff__bunn{padding:14px 22px;background:var(--innfelt);display:flex;gap:9px;justify-content:flex-end}
+
+.modus{display:flex;gap:3px;background:var(--innfelt);padding:3px;border-radius:var(--r-s);margin-bottom:20px}
+.modus__knapp{flex:1;padding:8px;background:none;border:0;border-radius:7px;cursor:pointer;font-size:13px;font-weight:500;color:var(--blekk-3)}
+.modus__knapp[aria-selected="true"]{background:var(--kort);color:var(--blekk);font-weight:600;box-shadow:var(--loft)}
+
+.felt{margin-bottom:15px}
+.felt__merke{display:block;font-size:12.5px;font-weight:600;color:var(--blekk-2);margin-bottom:6px}
+.felt__inn,.felt__omr{width:100%;padding:10px 12px;background:var(--innfelt);border:1px solid transparent;border-radius:var(--r-s)}
+.felt__inn:focus,.felt__omr:focus{border-color:var(--hav);background:var(--kort)}
+.felt__omr{min-height:186px;resize:vertical;font-family:var(--mono);font-size:12px;line-height:1.7}
+.felt__hjelp{margin:7px 0 0;font-size:12px;color:var(--blekk-3);line-height:1.5}
+.felt__rad{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.avkrys{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--blekk-2);margin-top:9px;cursor:pointer}
+.avkrys input{width:16px;height:16px;accent-color:var(--hav)}
+.feil{color:var(--ild-t);font-size:12.5px;margin:0 0 12px;font-weight:500}
+.feil__felt{display:block;font-weight:400;color:var(--blekk-2);margin-top:3px}
+
+/* Tallet i flytteskuffen. Samme mono-tyngde som datoflisen ellers i appen. */
+.flytt__tall{margin:0;font-family:var(--mono);font-size:38px;font-weight:500;
+             letter-spacing:-.05em;line-height:1;color:var(--blekk)}
+
+/* Filstier og feltnavn i hjelpetekst. */
+code{font-family:var(--mono);font-size:.88em;background:var(--innfelt);
+     padding:1px 5px;border-radius:var(--r-xs)}
+
+.forhaand{border-radius:var(--r-s);background:var(--innfelt);margin-top:14px;overflow:hidden}
+.forhaand__topp{padding:10px 13px;font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--blekk-3)}
+.forhaand__post{padding:10px 13px;background:var(--kort);margin:0 6px 6px;border-radius:var(--r-xs);font-size:13px}
+.forhaand__post b{font-weight:600}
+.forhaand__post em{font-style:normal;color:var(--blekk-3);font-family:var(--mono);font-size:11px}
+.forhaand__ingen{padding:16px 13px;font-size:13px;color:var(--blekk-3);margin:0}
+
+.knapp{padding:10px 15px;background:var(--kort);border:0;border-radius:var(--r-s);cursor:pointer;
+       font-weight:600;font-size:14px;box-shadow:var(--loft)}
+.knapp:hover{box-shadow:var(--loft-2)}
+.knapp--primar{background:var(--blekk);color:var(--kort)}
+.knapp--primar:hover{background:#2E3238}
+.knapp--stille{background:none;box-shadow:none;color:var(--blekk-2);font-weight:500}
+.knapp--stille:hover{background:var(--innfelt);box-shadow:none}
+.knapp--fare{color:var(--ild-t)}
+.knapp--bred{width:100%;justify-content:center}
+
+/* ---------- verktøytips og varsel ---------- */
+.tips{position:fixed;z-index:60;background:var(--blekk);color:#F4F3F0;padding:10px 12px;border-radius:var(--r-s);
+      font-size:12.5px;line-height:1.5;pointer-events:none;opacity:0;transition:opacity .1s ease;max-width:280px;box-shadow:var(--loft-3)}
+.tips.er-apen{opacity:1}
+.tips b{font-family:var(--mono);font-size:11px;font-weight:500;display:block;margin-bottom:5px;color:#A7AEB8;letter-spacing:.03em}
+.tips ul{margin:0;padding-left:15px}
+.varsel{position:fixed;left:calc(50% + var(--side)/2);bottom:26px;transform:translate(-50%,14px);z-index:70;
+        background:var(--blekk);color:#F4F3F0;border-radius:var(--r-s);padding:12px 12px 12px 17px;
+        display:flex;align-items:center;gap:14px;font-size:13.5px;box-shadow:var(--loft-3);
+        opacity:0;pointer-events:none;transition:opacity .16s ease,transform .16s ease}
+.varsel.er-apen{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.varsel__angre{background:none;border:0;color:#A9B7F5;font-weight:600;cursor:pointer;padding:5px 9px;border-radius:6px}
+.varsel__angre:hover{background:rgba(255,255,255,.12)}
+
+/* ---------- responsiv ---------- */
+@media (max-width:1100px){
+  .fliser{grid-template-columns:1fr 1fr}
+  .rutenett{grid-template-columns:1fr}
+}
+@media (max-width:900px){
+  :root{--side:0px}
+  .skall{grid-template-columns:1fr}
+  .side{position:sticky;top:0;height:auto;flex-direction:row;align-items:center;gap:12px;
+        padding:12px 16px;box-shadow:0 1px 0 var(--linje);z-index:30;overflow-x:auto}
+  .merke__ar{display:none}
+  .nav{flex-direction:row;gap:4px;flex:1}
+  .nav__merke,.nav__tall{display:none}
+  /* Sidefoten faller bort, men lagringstilstanden følger med opp i
+     toppstripa — den må kunne leses uansett skjermbredde. */
+  .sidefot{margin:0;order:2;flex-direction:row;align-items:center;gap:0}
+  .sidefot .neste,.sidefot .sidelenke{display:none}
+  .lagret{padding:0;white-space:nowrap}
+  .nav__post{width:auto;white-space:nowrap;padding:8px 12px}
+  .nyknapp{width:auto;order:3;padding:9px 13px;white-space:nowrap}
+  .hoved{padding:20px 16px 80px}
+  .varsel{left:50%}
+}
+@media (max-width:640px){
+  /* toppraden er trang; ikonet bærer knappen alene */
+  .nyknapp{font-size:0;padding:10px 12px;gap:0}
+  .tittelrad{gap:12px}
+  .sok{flex:1}
+  .sok__felt{width:100%}
+  .fl{grid-template-columns:1fr}
+  .fl__lopende{border-left:0;border-top:1px solid var(--linje);flex-direction:row;align-items:center;gap:12px;padding:14px 20px}
+  .fl__lopendeEtikett{max-width:none}
+  .rad{flex-wrap:wrap;padding:14px}
+  .rad__hoyre{width:100%;justify-content:space-between;padding-left:73px;margin-top:-4px}
+  .fliser{grid-template-columns:1fr}
+  .stolpe{grid-template-columns:92px 1fr}
+  .trakt__trinn{grid-template-columns:76px 1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
+}

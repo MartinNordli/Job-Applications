@@ -1,0 +1,9 @@
+{
+  "name": "jobbsoknader",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.mjs",
+    "test": "node --test 'server/*.test.mjs'"
+  }
+}

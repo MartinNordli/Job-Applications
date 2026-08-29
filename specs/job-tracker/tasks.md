@@ -1,0 +1,31 @@
+# Oppgaver
+
+- [x] Git-baseline før noe røres
+- [x] Del `index.html` i `index.html` + `src/stiler.css` + `src/app.js` (verifisert byte-likt)
+- [x] `src/felles.mjs` — statuser, sektorer, validering
+- [x] `server/lager.mjs` — atomisk lesing/skriving, karantene, sikkerhetskopi
+- [x] `server/server.mjs` — statiske filer + `/api/jobber`
+- [x] `server/*.test.mjs` — 32 tester
+- [x] `package.json`
+- [x] `src/startliste.js` — startlisten ut av app.js
+- [x] `src/lagring.js` — hent, lagre med debounce, versjonssporing, tilstandsvarsler
+- [x] Koble `lagre()` og oppstart til serveren
+- [x] Migrering fra `localStorage` med bekreftelse
+- [x] Gjenoppretting fra `jobber.forrige.json` når datafilen mangler
+- [x] Lagringsindikator i sidepanelet (også på smale skjermer)
+- [x] Frakoblet-stripe med «Prøv igjen» og automatisk nytt forsøk
+- [x] Fiks: `I_DAG` fryser ved sidelasting
+- [x] Fiks: `expired` mangler farge
+- [x] Fiks: skuffen er ikke en ekte dialog (fokusfelle, fokus tilbake)
+- [x] Fiks: fokus hoppet ut til angreknappen i varselet
+- [x] Fiks: utsatt fokus kunne lande i en lukket skuff
+- [x] Fiks: utgåtte frister ble talt som «løpende»
+- [x] Fiks: usikre lenker fjernes i stedet for å forkaste hele raden
+- [x] Fiks: skjemavalidering mot `validerSoknad`
+- [x] `sendtDato` redigerbar i skjemaet
+- [x] Status `trukket`
+- [x] «Marker som utløpt» i Gikk ut-båndet
+- [x] JSON-import i eksportskuffen
+- [x] `confirm()` byttet ut med appens egen bekreftelse
+- [x] Tester (32/32), manuell gjennomgang i nettleseren
+- [ ] Uavhengig gjennomgang av diffen
