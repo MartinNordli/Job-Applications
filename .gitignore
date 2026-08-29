@@ -1,3 +1,8 @@
 node_modules/
 .DS_Store
-data/.*.tmp
+
+# Avledede filer fra lagringen. jobber.json er dine ekte data og kan
+# gjerne versjoneres — disse er kopier og rusk.
+data/.jobber.json.tmp
+data/jobber.forrige.json
+data/jobber.ødelagt-*.json
