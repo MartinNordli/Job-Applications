@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="no"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sandstein — lyst fargetema</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Martian+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* tre flatenivåer: bunn under alt, kort løftet over den, innfelt inni kortet */
+  --bunn:#EBE4D8; --kort:#FDFCFA; --innfelt:#F4F0E8;
+  --blekk:#211E19; --blekk-2:#55504A; --blekk-3:#69645C;
+  --linje:#E4DDD0; --linje-2:#D2C9B9;
+  --ild:#A63A2A; --rav:#8F6A16; --hav:#3C5470; --mose:#33684B;
+  --ild-t:#A63A2A; --rav-t:#815F14; --hav-t:#3C5470; --mose-t:#33684B;
+  --ild-vask:#F6E4DF; --rav-vask:#F3EBD8; --hav-vask:#E4E9EF; --mose-vask:#E2EDE6;
+  --loft:0 1px 2px rgba(45,38,26,.05), 0 4px 14px rgba(45,38,26,.07);
+  --loft-2:0 2px 4px rgba(45,38,26,.06), 0 10px 28px rgba(45,38,26,.10);
+  --r:12px; --r-s:8px;
+  --sans:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
+  --mono:"Martian Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bunn);color:var(--blekk);font-family:var(--sans);font-size:15px;line-height:1.45}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--hav);outline-offset:2px;border-radius:4px}
+
+/* styrestripe */
+.styre{padding:18px 24px;display:flex;flex-wrap:wrap;gap:16px 24px;align-items:center;justify-content:space-between}
+.styre__id{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.styre__nr{font-family:var(--mono);font-size:11px;color:var(--blekk-3);letter-spacing:.08em}
+.styre__navn{margin:0;font-size:21px;font-weight:700;letter-spacing:-.02em}
+.styre__hvorfor{margin:6px 0 0;font-size:13.5px;color:var(--blekk-2);max-width:64ch;line-height:1.5}
+.styre__nav{display:flex;gap:6px}
+.lenke{padding:8px 13px;background:var(--kort);border-radius:var(--r-s);text-decoration:none;font-size:13px;font-weight:500;white-space:nowrap;box-shadow:var(--loft)}
+.lenke:hover{box-shadow:var(--loft-2)}
+.lenke--av{opacity:.4;pointer-events:none;box-shadow:none;background:none}
+.pryd{display:flex;margin-top:14px;border-radius:var(--r-s);overflow:hidden;width:max-content;box-shadow:var(--loft)}
+.pryd i{width:46px;height:24px;display:block}
+
+/* apputsnittet */
+.ark{max-width:1010px;margin:0 auto;padding:26px 24px 80px}
+.topp{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;margin-bottom:20px}
+.merke{margin:0;font-size:28px;font-weight:700;letter-spacing:-.024em;line-height:1}
+.merke span{font-family:var(--mono);font-weight:400;font-size:.62em;color:var(--blekk-3);margin-left:.3em;vertical-align:.16em}
+.sum{margin:9px 0 0;font-size:13.5px;color:var(--blekk-2)}
+.sum b{font-family:var(--mono);font-weight:500;font-size:.94em;color:var(--blekk)}
+.knapper{display:flex;gap:10px;align-items:center}
+.felt{padding:9px 13px;background:var(--kort);border-radius:var(--r-s);color:var(--blekk-3);font-size:14px;width:200px;box-shadow:var(--loft)}
+.knapp{padding:10px 15px;background:var(--blekk);color:var(--kort);border-radius:var(--r-s);font-weight:600;font-size:14px;white-space:nowrap}
+
+/* kort: løftet flate, ingen ramme */
+.boks{background:var(--kort);border-radius:var(--r);box-shadow:var(--loft)}
+
+.fl{display:grid;grid-template-columns:1fr auto;margin-bottom:22px}
+.flate{position:relative;height:96px;margin:18px 22px 0}
+.akse{position:absolute;left:0;right:0;bottom:26px;height:1px;background:var(--linje)}
+.idag{position:absolute;bottom:26px;top:2px;width:1px;left:0;background:var(--blekk-3)}
+.idagm{position:absolute;top:-4px;left:0;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--blekk-3)}
+.mnd{position:absolute;bottom:4px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--blekk-3)}
+.stolpe{position:absolute;bottom:26px;width:10px;margin-left:-5px;border-radius:5px 5px 0 0}
+.stolpe[data-h=naa]{background:var(--ild)}
+.stolpe[data-h=snart]{background:var(--rav)}
+.stolpe[data-h=senere]{background:var(--hav)}
+.lop{border-left:1px solid var(--linje);padding:20px 24px;display:flex;flex-direction:column;justify-content:center}
+.lop b{font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1}
+.lop span{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--blekk-3);line-height:1.5;max-width:88px}
+
+.faner{display:flex;gap:4px;margin-bottom:16px}
+.fane{padding:8px 14px;border-radius:100px;color:var(--blekk-2);font-weight:500;font-size:14px}
+.fane[data-p]{background:var(--kort);color:var(--blekk);font-weight:600;box-shadow:var(--loft)}
+.fane i{font-family:var(--mono);font-size:11px;font-style:normal;margin-left:6px;opacity:.7}
+
+.bolk{font-size:13px;font-weight:600;color:var(--blekk-2);margin:0 0 10px;padding:0 4px;display:flex;justify-content:space-between}
+.bolk span{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--blekk-3)}
+
+/* listen ligger i ett kort; radene skilles av lys strek, gruppene av skinnen */
+.liste{overflow:hidden;margin-bottom:22px}
+.gr{display:grid;grid-template-columns:118px 1fr}
+.gutter{padding:20px 18px 20px 22px;text-align:right}
+.gutter em{font-family:var(--mono);font-size:10px;font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--blekk-3);display:block}
+.gutter b{font-family:var(--mono);font-size:20px;font-weight:500;letter-spacing:-.045em;display:block;margin-top:2px}
+.gutter i{font-family:var(--mono);font-size:10px;font-style:normal;display:block;margin-top:5px}
+.rader{position:relative;padding-left:14px}
+.rader::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:3px;background:var(--linje-2)}
+.gr[data-h=naa] .rader::before{background:var(--ild)}
+.gr[data-h=snart] .rader::before{background:var(--rav)}
+.gr[data-h=senere] .rader::before{background:var(--hav)}
+.gr[data-h=naa] .gutter i{color:var(--ild-t)}
+.gr[data-h=snart] .gutter i{color:var(--rav-t)}
+.gr[data-h=senere] .gutter i,.gr[data-h=ingen] .gutter i{color:var(--blekk-3)}
+.gr[data-h=ingen] .gutter b{font-size:13px;letter-spacing:0;color:var(--blekk-2)}
+.rad{display:flex;gap:16px;justify-content:space-between;align-items:flex-start;padding:15px 20px 15px 14px;border-bottom:1px solid var(--linje)}
+.gr:last-child .rad:last-child{border-bottom:0}
+.rad strong{font-weight:600;letter-spacing:-.012em;font-size:15px;display:block}
+.rad a{color:var(--blekk-2);text-decoration:none;font-size:14.5px}
+.rad a:hover{color:var(--blekk);text-decoration:underline}
+.meta{margin-top:6px;font-size:12.5px;color:var(--blekk-3)}
+.meta s{text-decoration:none;color:var(--linje-2);margin:0 6px}
+.lapp{display:inline-flex;align-items:center;gap:6px;padding:4px 11px 4px 8px;border-radius:100px;font-size:11.5px;font-weight:600;white-space:nowrap;background:var(--innfelt);color:var(--blekk-2)}
+.lapp::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.lapp[data-s=sendt]{background:var(--mose-vask);color:var(--mose-t)}
+.lapp[data-s=avslag]{background:var(--ild-vask);color:var(--ild-t)}
+.lapp[data-s=intervju]{background:var(--hav-vask);color:var(--hav-t)}
+.mini{padding:7px 12px;border-radius:var(--r-s);font-size:13px;font-weight:500;color:var(--blekk-2);background:var(--innfelt)}
+
+/* tall: hvert nøkkeltall er sitt eget kort */
+.fliser{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.flis{padding:18px 20px 20px}
+.flis em{font-style:normal;font-size:12.5px;color:var(--blekk-3);display:block;margin-bottom:10px}
+.flis b{font-size:32px;font-weight:600;letter-spacing:-.035em;line-height:1;display:block}
+.flis u{text-decoration:none;font-size:12.5px;color:var(--blekk-2);display:block;margin-top:8px}
+.flis[data-v] b{color:var(--ild-t)}
+.kort-h{padding:20px 22px 22px}
+.kort-h h3{margin:0;font-size:15.5px;font-weight:600;letter-spacing:-.012em}
+.kort-h p{margin:3px 0 22px;font-size:12.5px;color:var(--blekk-3)}
+/* søylene har et lyst spor bak seg, som i referansen */
+.soyler{display:flex;align-items:flex-end;gap:8px;height:132px;padding-top:20px}
+.soyle{flex:1;height:100%;position:relative;display:flex;align-items:flex-end;justify-content:center}
+.soyle::before{content:"";position:absolute;inset:0;background:var(--innfelt);border-radius:6px}
+.soyle div{position:relative;width:100%;max-width:22px;border-radius:6px;background:var(--hav)}
+.soyle span{position:absolute;font-family:var(--mono);font-size:10.5px;color:var(--blekk-2)}
+.hakk{display:flex;gap:8px;padding-top:9px}
+.hakk span{flex:1;text-align:center;font-family:var(--mono);font-size:9.5px;color:var(--blekk-3)}
+
+@media (max-width:760px){
+  .ark{padding:20px 16px 60px} .fl{grid-template-columns:1fr}
+  .lop{border-left:0;border-top:1px solid var(--linje);flex-direction:row;align-items:center;gap:12px}
+  .lop span{max-width:none}
+  .gr{grid-template-columns:1fr}
+  .gutter{text-align:left;padding:18px 20px 6px;display:flex;align-items:baseline;gap:9px}
+  .gutter b,.gutter i{margin-top:0}
+  .fliser{grid-template-columns:1fr 1fr}
+}
+</style></head><body>
+
+<div class="styre">
+  <div>
+    <div class="styre__id"><span class="styre__nr">LYST TEMA 2 AV 4</span><h1 class="styre__navn">Sandstein</h1></div>
+    <p class="styre__hvorfor">Varm sandbunn med kort i benhvitt. Jordnære aksenter — oksblod, bronse, skifer — så flaten aldri konkurrerer med innholdet.</p>
+    <div class="pryd"><i style="background:#EBE4D8"></i><i style="background:#FDFCFA"></i><i style="background:#A63A2A"></i><i style="background:#8F6A16"></i><i style="background:#3C5470"></i><i style="background:#33684B"></i><i style="background:#211E19"></i></div>
+  </div>
+  <div class="styre__nav">
+    <a class="lenke " href="lin.html">← Forrige</a>
+    <a class="lenke" href="index.html">Alle temaer</a>
+    <a class="lenke " href="kalk.html">Neste →</a>
+  </div>
+</div>
+
+<div class="ark">
+  <div class="topp">
+    <div>
+      <h2 class="merke">Jobbsøknader <span>2027</span></h2>
+      <p class="sum"><b>30</b> å søke på · <b>20</b> sendt · <b>5</b> arkivert · neste frist <b>28.08</b> Aker BP</p>
+    </div>
+    <div class="knapper"><span class="felt">Søk selskap eller stilling</span><span class="knapp">Legg til søknad</span></div>
+  </div>
+
+  <div class="fl boks">
+    <div><div class="flate">
+      <div class="akse"></div><div class="idag"></div><span class="idagm">i dag</span>
+      <span class="mnd" style="left:0">aug</span>
+      <span class="mnd" style="left:14.5%;padding-left:5px">sep</span>
+      <span class="mnd" style="left:69%;padding-left:5px">okt</span>
+      <div class="stolpe" data-h="naa"    style="left:7.3%;height:27px"></div>
+      <div class="stolpe" data-h="naa"    style="left:10.9%;height:20px"></div>
+      <div class="stolpe" data-h="naa"    style="left:12.7%;height:20px"></div>
+      <div class="stolpe" data-h="snart"  style="left:36.4%;height:47px"></div>
+      <div class="stolpe" data-h="snart"  style="left:38.2%;height:20px"></div>
+      <div class="stolpe" data-h="senere" style="left:56.4%;height:20px"></div>
+      <div class="stolpe" data-h="senere" style="left:67.3%;height:60px"></div>
+      <div class="stolpe" data-h="senere" style="left:69.1%;height:34px"></div>
+      <div class="stolpe" data-h="senere" style="left:94.5%;height:20px"></div>
+    </div></div>
+    <div class="lop"><b>8</b><span>løpende<br>ingen frist</span></div>
+  </div>
+
+  <div class="faner">
+    <span class="fane" data-p>Frister <i>30</i></span><span class="fane">Sendt <i>20</i></span>
+    <span class="fane">Arkiv <i>5</i></span><span class="fane">Tall</span>
+  </div>
+
+  <p class="bolk">Etter frist <span>22 med frist</span></p>
+
+  <div class="liste boks">
+    <div class="gr" data-h="naa">
+      <div class="gutter"><em>fre.</em><b>28.08</b><i>om 4 dager</i></div>
+      <div class="rader">
+        <div class="rad"><div><strong>Aker BP</strong><a href="#">Graduate: Life Cycle Data Services ↗</a>
+          <div class="meta">Oslo / Trondheim<s>·</s>Energi og industri</div></div><span class="mini">Merk sendt</span></div>
+        <div class="rad"><div><strong>Cogito NTNU</strong><a href="#">Opptak høst 2026</a>
+          <div class="meta">Trondheim<s>·</s>Verv og studentorg</div></div><span class="mini">Merk sendt</span></div>
+      </div>
+    </div>
+    <div class="gr" data-h="snart">
+      <div class="gutter"><em>søn.</em><b>13.09</b><i>om 20 dager</i></div>
+      <div class="rader">
+        <div class="rad"><div><strong>Visma</strong><a href="#">Summer internship 2027 ↗</a>
+          <div class="meta">Oslo<s>·</s>Teknologi<s>·</s><em style="font-style:italic">frist kl. 12:00</em></div></div><span class="mini">Merk sendt</span></div>
+      </div>
+    </div>
+    <div class="gr" data-h="senere">
+      <div class="gutter"><em>ons.</em><b>30.09</b><i>om 37 dager</i></div>
+      <div class="rader">
+        <div class="rad"><div><strong>Bekk</strong><a href="#">Nyutdannede, data og analyse ↗</a>
+          <div class="meta">Oslo<s>·</s>Konsulent</div></div><span class="mini">Merk sendt</span></div>
+      </div>
+    </div>
+    <div class="gr" data-h="ingen">
+      <div class="gutter"><em>frist</em><b>ingen</b><i>når du vil</i></div>
+      <div class="rader">
+        <div class="rad"><div><strong>Cognite</strong><a href="#">Data Scientist ↗</a>
+          <div class="meta">Oslo<s>·</s>Teknologi</div></div><span class="lapp" data-s="intervju">Intervju</span></div>
+        <div class="rad"><div><strong>Sopra Steria</strong><a href="#">AI Engineer ↗</a>
+          <div class="meta">Oslo<s>·</s>Konsulent</div></div><span class="lapp" data-s="avslag">Avslag</span></div>
+        <div class="rad"><div><strong>Statnett</strong><a href="#">Data Scientist ↗</a>
+          <div class="meta">Oslo<s>·</s>Energi og industri</div></div><span class="lapp" data-s="sendt">Sendt</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fliser">
+    <div class="flis boks" data-v><em>Neste frist</em><b>4 dager</b><u>Aker BP · 28. august</u></div>
+    <div class="flis boks"><em>Å søke på</em><b>30</b><u>22 med frist · 8 løpende</u></div>
+    <div class="flis boks"><em>Sendt</em><b>22</b><u>9 % har svart</u></div>
+    <div class="flis boks" data-v><em>Frister denne uka</em><b>4</b><u>Aker BP, Cogito NTNU og 2 til</u></div>
+  </div>
+
+  <div class="kort-h boks">
+    <h3>Fristtrykk de neste ti ukene</h3>
+    <p>Antall frister per uke. Toppene er ukene du må planlegge rundt.</p>
+    <div class="soyler">
+      <div class="soyle"><span style="bottom:calc(30% + 6px)">3</span><div style="height:30%"></div></div>
+      <div class="soyle"><span style="bottom:calc(10% + 6px)">1</span><div style="height:10%"></div></div>
+      <div class="soyle"><span style="bottom:calc(50% + 6px)">5</span><div style="height:50%"></div></div>
+      <div class="soyle"><span style="bottom:calc(10% + 6px)">1</span><div style="height:10%"></div></div>
+      <div class="soyle"><span style="bottom:calc(10% + 6px)">1</span><div style="height:10%"></div></div>
+      <div class="soyle"><span style="bottom:calc(100% + 6px)">10</span><div style="height:100%"></div></div>
+      <div class="soyle"></div>
+      <div class="soyle"><span style="bottom:calc(10% + 6px)">1</span><div style="height:10%"></div></div>
+      <div class="soyle"></div>
+      <div class="soyle"></div>
+    </div>
+    <div class="hakk"><span>35</span><span>36</span><span>37</span><span>38</span><span>39</span><span>40</span><span>41</span><span>42</span><span>43</span><span>44</span></div>
+  </div>
+</div>
+</body></html>

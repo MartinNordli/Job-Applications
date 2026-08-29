@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="no"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fargetemaer — Jobbsøknader 2027</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Martian+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bunn:#ECEBE7;--kort:#FFFFFF;--innfelt:#F4F3F0;--blekk:#1A1B1D;--blekk-2:#4E5257;--blekk-3:#787D83;--linje:#E5E4E0;
+      --loft:0 1px 2px rgba(26,27,29,.05),0 4px 14px rgba(26,27,29,.07);--loft-2:0 2px 4px rgba(26,27,29,.06),0 10px 28px rgba(26,27,29,.10)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bunn);color:var(--blekk);font-family:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.45}
+:focus-visible{outline:2px solid var(--blekk);outline-offset:3px;border-radius:4px}
+.ark{max-width:960px;margin:0 auto;padding:56px 24px 90px}
+h1{margin:0;font-size:32px;font-weight:700;letter-spacing:-.028em}
+.ingress{margin:12px 0 0;max-width:66ch;color:var(--blekk-2);font-size:15.5px;line-height:1.55}
+.ingress b{font-weight:600;color:var(--blekk)}
+h2.avsnitt{margin:48px 0 4px;font-size:19px;font-weight:700;letter-spacing:-.02em}
+.avsnitt__und{margin:0 0 20px;font-size:13.5px;color:var(--blekk-2);max-width:66ch;line-height:1.5}
+.rist{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.kort{display:block;background:var(--kort);border-radius:12px;box-shadow:var(--loft);padding:20px 22px 18px;text-decoration:none;color:inherit;transition:box-shadow .14s ease,transform .14s ease}
+.kort:hover{box-shadow:var(--loft-2);transform:translateY(-2px)}
+.kort--gml{background:none;box-shadow:none;border:1px dashed #CFCEC9}
+.kort__topp{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.kort__nr{font-family:"Martian Mono",monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--blekk-3)}
+.kort__navn{margin:0;font-size:20px;font-weight:700;letter-spacing:-.02em}
+.merke{font-family:"Martian Mono",monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--blekk-3);border:1px solid var(--linje);border-radius:100px;padding:2px 8px}
+.kort__hvorfor{margin:8px 0 0;font-size:13.5px;color:var(--blekk-2);line-height:1.5;min-height:62px}
+.pryd{display:flex;border-radius:6px;overflow:hidden;margin:14px 0 0}
+.pryd i{flex:1;display:block;height:26px}
+.kort__kort{margin:12px 0 0;font-size:12.5px;color:var(--blekk-3)}
+.kort__aa{display:inline-block;margin-top:14px;font-size:13px;font-weight:600}
+.fot{margin-top:48px;padding-top:22px;border-top:1px solid var(--linje);font-size:13.5px;color:var(--blekk-2);line-height:1.6;max-width:72ch}
+.fot code{font-family:"Martian Mono",monospace;font-size:11.5px;background:var(--innfelt);border-radius:4px;padding:2px 6px}
+@media (max-width:720px){.rist{grid-template-columns:1fr}.ark{padding:34px 16px 60px}.kort__hvorfor{min-height:0}}
+</style></head><body>
+<div class="ark">
+  <h1>Fargetemaer</h1>
+  <p class="ingress">Samme utsnitt av appen i alle, med samme typografi og layout — <b>bare fargen og flatesystemet varierer</b>. Hver palett er regnet gjennom: brødtekst, dempet tekst og alle statusmerker klarer WCAG AA mot sin egen flate.</p>
+
+  <h2 class="avsnitt">Lyse</h2>
+  <p class="avsnitt__und">Bygget som Tesla-eksempelet du sendte: <b>tre flatenivåer</b> i stedet for én. Varm bunn, nesten hvite kort som løftes med myk skygge, og innfelte spor til søkefelt og søylediagram. Kortene har ingen ramme — det er nivåforskjellen og skyggen som skiller dem fra bunnen, så ingenting blender inn. Kortflaten ligger 0,17–0,20 i relativ luminans over bunnen i alle fire.</p>
+  <div class="rist">
+    <a class="kort" href="lin.html">
+      <div class="kort__topp"><span class="kort__nr">01</span><h3 class="kort__navn">Lin</h3></div>
+      <p class="kort__hvorfor">Nærmest referansen. Kjølig lin-bunn, kritthvite kort, og indigo som eneste datafarge — rødt, gult og grønt er reservert for status.</p>
+      <div class="pryd"><i style="background:#EDEBE5"></i><i style="background:#FFFFFF"></i><i style="background:#C63A2E"></i><i style="background:#B0790F"></i><i style="background:#3D52D5"></i><i style="background:#2E7D57"></i><i style="background:#17181A"></i></div>
+      <p class="kort__kort">Ryddigst av de fire. Blått betyr data, ikke hastverk.</p>
+      <span class="kort__aa">Se hele oppslaget →</span>
+    </a>
+    <a class="kort" href="sandstein.html">
+      <div class="kort__topp"><span class="kort__nr">02</span><h3 class="kort__navn">Sandstein</h3></div>
+      <p class="kort__hvorfor">Varm sandbunn med kort i benhvitt. Jordnære aksenter — oksblod, bronse, skifer — så flaten aldri konkurrerer med innholdet.</p>
+      <div class="pryd"><i style="background:#EBE4D8"></i><i style="background:#FDFCFA"></i><i style="background:#A63A2A"></i><i style="background:#8F6A16"></i><i style="background:#3C5470"></i><i style="background:#33684B"></i><i style="background:#211E19"></i></div>
+      <p class="kort__kort">Mest papirfølelse. Rolig uten å bli kjedelig.</p>
+      <span class="kort__aa">Se hele oppslaget →</span>
+    </a>
+    <a class="kort" href="kalk.html">
+      <div class="kort__topp"><span class="kort__nr">03</span><h3 class="kort__navn">Kalk</h3></div>
+      <p class="kort__hvorfor">Kalket grågrønn bunn og hvite kort, ellers gråtoner. Bare frister innen tre uker får farge — alt lenger fram er nøytralt.</p>
+      <div class="pryd"><i style="background:#E8EAE4"></i><i style="background:#FFFFFF"></i><i style="background:#BE3B33"></i><i style="background:#9A7412"></i><i style="background:#7C837A"></i><i style="background:#3B7355"></i><i style="background:#191B18"></i></div>
+      <p class="kort__kort">Strengest fargebruk. Fjerne frister holder kjeft.</p>
+      <span class="kort__aa">Se hele oppslaget →</span>
+    </a>
+    <a class="kort" href="leire.html">
+      <div class="kort__topp"><span class="kort__nr">04</span><h3 class="kort__navn">Leire</h3></div>
+      <p class="kort__hvorfor">Lun rosabeige bunn med rene hvite kort. Plomme og gull i stedet for den vanlige terrakottaen, med stålblått for det som ligger langt fram.</p>
+      <div class="pryd"><i style="background:#EFE6E1"></i><i style="background:#FFFFFF"></i><i style="background:#A6304C"></i><i style="background:#96701C"></i><i style="background:#41627E"></i><i style="background:#3B6E52"></i><i style="background:#231C1A"></i></div>
+      <p class="kort__kort">Varmest. Mest personlighet av de lyse.</p>
+      <span class="kort__aa">Se hele oppslaget →</span>
+    </a>
+  </div>
+
+  <h2 class="avsnitt">Mørke</h2>
+  <p class="avsnitt__und">Forrige runde, uendret. Flat oppbygging med hårstrek som skille, og kulør bare der den betyr noe.</p>
+  <div class="rist">
+    <a class="kort" href="grafitt.html">
+      <div class="kort__topp"><span class="kort__nr">01</span><h3 class="kort__navn">Grafitt</h3></div>
+      <p class="kort__hvorfor">Termisk, strammet opp. Dypere flate, roligere gråtoner, og en varm-til-kald rampe som er det eneste kulørte på siden.</p>
+      <div class="pryd"><i style="background:#16181A"></i><i style="background:#1E2124"></i><i style="background:#FF6B3D"></i><i style="background:#F0A63C"></i><i style="background:#5B93E0"></i><i style="background:#46A98C"></i><i style="background:#F0F1F2"></i></div>
+      <p class="kort__kort">Nærmest det du likte. Nøytral flate, fire klare signaler.</p>
+      <span class="kort__aa">Se hele oppslaget →</span>
+    </a>
+    <a class="kort" href="graaskala.html">
+      <div class="kort__topp"><span class="kort__nr">02</span><h3 class="kort__navn">Gråskala</h3></div>
+      <p class="kort__hvorfor">Ingen kulør noe sted. Hastegrad er ren lysstyrke — jo nærmere fristen, jo hvitere skinnen. Det reneste alternativet.</p>
+      <div class="pryd"><i style="background:#121212"></i><i style="background:#1A1A1A"></i><i style="background:#FFFFFF"></i><i style="background:#BDBDBD"></i><i style="background:#7E7E7E"></i><i style="background:#6A6A6A"></i><i style="background:#F5F5F5"></i></div>
+      <p class="kort__kort">Statusmerker skilles av ord, ikke farge. Strengest av alle.</p>
+      <span class="kort__aa">Se hele oppslaget →</span>
+    </a>
+    <a class="kort" href="nattblaa.html">
+      <div class="kort__topp"><span class="kort__nr">03</span><h3 class="kort__navn">Nattblå</h3></div>
+      <p class="kort__hvorfor">Kald blåsvart flate der bare det haster får glød. Alt lenger enn tre uker fram er nøytralt og stille.</p>
+      <div class="pryd"><i style="background:#101722"></i><i style="background:#16202D"></i><i style="background:#FFA85E"></i><i style="background:#D08B45"></i><i style="background:#6E7C8C"></i><i style="background:#6E8C82"></i><i style="background:#E9EEF4"></i></div>
+      <p class="kort__kort">Én varm signalfarge mot kaldt. Rolig til langt fram er stille.</p>
+      <span class="kort__aa">Se hele oppslaget →</span>
+    </a>
+    <a class="kort" href="sot.html">
+      <div class="kort__topp"><span class="kort__nr">04</span><h3 class="kort__navn">Sot</h3></div>
+      <p class="kort__hvorfor">Varm brunsvart flate, som sot og glo. Fristen brenner oransje, det som ligger langt fram kjøler ned mot askeblått.</p>
+      <div class="pryd"><i style="background:#16130F"></i><i style="background:#1E1A15"></i><i style="background:#FF7A45"></i><i style="background:#CE8B3A"></i><i style="background:#7391A8"></i><i style="background:#7D9E7A"></i><i style="background:#F2EEE8"></i></div>
+      <p class="kort__kort">Den eneste med varm grunntone. Papir- og blekkfølelse i mørket.</p>
+      <span class="kort__aa">Se hele oppslaget →</span>
+    </a>
+    <a class="kort" href="dempet.html">
+      <div class="kort__topp"><span class="kort__nr">05</span><h3 class="kort__navn">Dempet</h3></div>
+      <p class="kort__hvorfor">Myk koksgrå uten svarte hull, og aksenter med lav metning. Bygget for å stå åpen hele dagen uten å slite på øynene.</p>
+      <div class="pryd"><i style="background:#202225"></i><i style="background:#292C30"></i><i style="background:#D9705C"></i><i style="background:#C2955A"></i><i style="background:#6E96AD"></i><i style="background:#6E9B84"></i><i style="background:#E4E6E8"></i></div>
+      <p class="kort__kort">Lavest kontrast, minst drama. Behagelig over tid.</p>
+      <span class="kort__aa">Se hele oppslaget →</span>
+    </a>
+    <a class="kort kort--gml" href="termisk.html">
+      <div class="kort__topp"><span class="kort__nr">før</span><h3 class="kort__navn">Termisk</h3><span class="merke">Forrige runde</span></div>
+      <p class="kort__hvorfor">Forrige runde, den du pekte på som best. Ligger igjen som referanse.</p>
+      <div class="pryd"><i style="background:#1A1C1F"></i><i style="background:#232629"></i><i style="background:#FF5A2E"></i><i style="background:#FFA51F"></i><i style="background:#4E86E0"></i><i style="background:#3FA88A"></i><i style="background:#EDEEEF"></i></div>
+      <p class="kort__kort">Referanse, ikke et nytt forslag.</p>
+      <span class="kort__aa">Se hele oppslaget →</span>
+    </a>
+  </div>
+
+  <p class="fot">Si hvilket tema du vil ha, så bytter jeg <code>index.html</code> til det. Merk at de lyse også endrer <b>formen</b> — større radius, kort med skygge, piller i stedet for understrekede faner — ikke bare fargen. Vil du ha det flatesystemet på et av de mørke temaene i stedet, er det også mulig.</p>
+</div>
+</body></html>
