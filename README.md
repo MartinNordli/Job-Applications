@@ -5,6 +5,31 @@ sendt, og hvor de står. Én bruker, én maskin, ingen sky.
 
 ## Kom i gang
 
+Appen finnes i to skikkelser, med de samme dataene og den samme koden:
+en Mac-app du starter fra Dock, og en nettleserversjon for rask redigering.
+
+### Som app
+
+```sh
+npm run app:bygg
+```
+
+Legger `Jobbsøknader.app` i `src-tauri/target/release/bundle/macos/`. Kopier
+den til `/Applications`, så ligger den i Spotlight som alt annet. Første gang
+må dataene flyttes inn:
+
+```sh
+mkdir -p ~/Library/Application\ Support/no.nordli.jobbsoknader
+cp data/jobber.json ~/Library/Application\ Support/no.nordli.jobbsoknader/
+```
+
+Bygging krever Rust (`rustup default stable`). Er rustup installert med
+Homebrew, må shimsene på PATH — legg
+`export PATH="/opt/homebrew/opt/rustup/bin:$PATH"` i `~/.zshrc`.
+`npm run app:dev` kjører appen uten å pakke den.
+
+### I nettleseren
+
 ```sh
 npm start
 ```
@@ -30,7 +55,15 @@ av seg selv. Slik henter du dem:
 
 ## Hvor dataene ligger
 
-`data/jobber.json` — vanlig JSON, lesbar og redigerbar for hånd:
+Appen og nettleserversjonen har hver sin fil, så en halvferdig redigering i
+den ene ikke velter den andre:
+
+| | |
+|---|---|
+| Appen | `~/Library/Application Support/no.nordli.jobbsoknader/jobber.json` |
+| `npm start` | `data/jobber.json` i prosjektmappa |
+
+Begge er vanlig JSON, lesbar og redigerbar for hånd:
 
 ```json
 {
@@ -61,8 +94,8 @@ til disk, og byttes inn med `rename`. Forrige versjon tas vare på i
 `jobber.ødelagt-<tid>.json` i stedet for å bli overskrevet — og appen tilbyr å
 gjenopprette fra sikkerhetskopien.
 
-`data/jobber.json` kan gjerne sjekkes inn i git; kopiene og karantenefilene er
-i `.gitignore`.
+Hele `data/` er i `.gitignore` — dette repoet er offentlig, og filen inneholder
+ekte søknader. Vil du versjonere den likevel, fjern linjen og legg den til selv.
 
 ## Statuser
 
@@ -79,23 +112,34 @@ En frist som går ut endrer ikke status av seg selv — søknaden dukker opp i
 ## Tester
 
 ```sh
-npm test
+npm test        # lagerlogikken og serveren
+npm run test:rust   # filoperasjonene appen bruker
 ```
 
 ## Oppbygging
 
 ```
-index.html          markup
+index.html            markup
 hent-gamle-data.html  henter søknader ut av den gamle nettleserlagringen
-src/stiler.css      «Lin» — designsystemet
-src/app.js          appen
-src/felles.mjs      validering, delt av nettleser og server
-src/lagring.js      henting og lagring mot serveren
-src/startliste.js   søknadene appen starter med
-server/server.mjs   statiske filer + /api/jobber
-server/lager.mjs    lesing og skriving av datafilen
-temaer/             fargestudier, ikke i bruk av appen
-specs/job-tracker/  hva som ble bygget og hvorfor
+src/stiler.css        «Lin» — designsystemet
+src/skrifter.css      Familjen Grotesk og Geist Mono, hentet inn lokalt
+src/app.js            appen
+src/felles.mjs        validering, delt av alle tre
+src/lagerlogikk.mjs   reglene for datafilen, uten et filsystem
+src/lagring.js        henting og lagring — velger transport etter modus
+src/tauri-filer.mjs   filsystemet i appmodus, over Rust
+src/startliste.js     søknadene appen starter med
+server/server.mjs     statiske filer + /api/jobber
+server/lager.mjs      filsystemet i nettlesermodus, over Node
+src-tauri/src/lib.rs  de fire filoperasjonene appen bruker
+scripts/bygg-front.mjs  samler frontenden i dist/ for Tauri
+temaer/               fargestudier, ikke i bruk av appen
+specs/job-tracker/    hva som ble bygget og hvorfor
 ```
 
-`PORT` kan settes hvis 4173 er opptatt. `DATA_KATALOG` flytter datafilen.
+Reglene for datafilen står ett sted: `src/lagerlogikk.mjs`. Under den ligger
+to filsystemer — Node i nettlesermodus, Rust i appen — og de gjør nøyaktig det
+samme: kopi av forrige versjon, midlertidig fil, fsync, `rename`.
+
+`PORT` kan settes hvis 4173 er opptatt. `DATA_KATALOG` flytter datafilen for
+`npm start`.

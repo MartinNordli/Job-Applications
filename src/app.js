@@ -37,10 +37,6 @@ const $  = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-/* Innholdet i data-tips dekodes to ganger: først av HTML-parseren når
-   attributtet leses, så av innerHTML når tipset tegnes. Derfor må tekst
-   som kommer fra dataene escapes to ganger for å bli stående som tekst. */
-const esc2 = s => esc(esc(s));
 const nyId = () => "s" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
 
 function fraStart(){
@@ -131,60 +127,7 @@ function sorterFrist(a, b){
 }
 
 /* ============================================================
-   5. Fristlinjen
-   ============================================================ */
-function tegnFristlinje(){
-  const flate = $("#flFlate");
-  const apne  = data.filter(p => p.status === "todo" && passererFilter(p));
-  const medFrist = apne.filter(p => p.frist && dagerTil(p.frist) >= 0).sort(sorterFrist);
-  const lopende  = apne.filter(p => !p.frist);
-
-  $("#flLopendeTall").textContent = lopende.length;
-  $("#flLopende").hidden = lopende.length === 0;
-
-  if(!medFrist.length){
-    flate.innerHTML = '<p class="fl__tom">Ingen frister framover. Legg til en søknad, eller se det som allerede er sendt.</p>';
-    return;
-  }
-
-  const bunker = new Map();
-  medFrist.forEach(p => { if(!bunker.has(p.frist)) bunker.set(p.frist, []); bunker.get(p.frist).push(p); });
-
-  const sisteIso = medFrist[medFrist.length - 1].frist;
-  const spenn = Math.max(dagerTil(sisteIso), 7) + 3;
-  const maks  = Math.max(...Array.from(bunker.values(), a => a.length));
-  const pos   = d => (d / spenn) * 100;
-
-  let h = '<div class="fl__akse"></div>'
-        + '<div class="fl__idag" style="left:0"></div><span class="fl__idagEtikett" style="left:0">i dag</span>';
-
-  const start = new Date(I_DAG);
-  for(let i = 0; i <= spenn; i++){
-    const d = new Date(start); d.setDate(d.getDate() + i);
-    if(d.getDate() === 1 || i === 0){
-      const x = pos(i);
-      if(x > 96) continue;
-      if(i !== 0) h += '<div class="fl__mndStrek" style="left:' + x + '%"></div>';
-      h += '<span class="fl__mnd" style="left:' + x + '%;padding-left:' + (i === 0 ? 0 : 5) + 'px">' + MND_K[d.getMonth()] + '</span>';
-    }
-  }
-
-  bunker.forEach((liste, iso) => {
-    const d = dagerTil(iso);
-    const hoyde = 14 + Math.round((liste.length / maks) * 48);
-    const navn = liste.slice(0, 5).map(p => "<li>" + esc2(p.selskap) + " — " + esc2(p.stilling) + "</li>").join("");
-    const mer  = liste.length > 5 ? "<li>+ " + (liste.length - 5) + " til</li>" : "";
-    h += '<button class="fl__stolpe" type="button" data-hast="' + hast(iso) + '" data-iso="' + iso + '"'
-       + ' style="left:' + pos(d) + '%;height:' + hoyde + 'px"'
-       + ' data-tips="<b>' + esc(langDato(iso)) + ' · ' + esc(omTekst(iso)) + '</b><ul>' + navn + mer + '</ul>"'
-       + ' aria-label="' + liste.length + ' frister ' + esc(langDato(iso)) + ', ' + esc(omTekst(iso)) + '"></button>';
-  });
-
-  flate.innerHTML = h;
-}
-
-/* ============================================================
-   6. Jobbkortet — kalenderflis, innhold, handlinger
+   5. Jobbraden — datokolonne, innhold, handlinger
    ============================================================ */
 function monogram(navn){
   const ord = navn.trim().split(/\s+/);
@@ -192,48 +135,65 @@ function monogram(navn){
   return navn.slice(0, 2).toUpperCase();
 }
 
-/* Flisen er ankeret hver rad starter med, og viser det som faktisk skiller
-   radene i den visningen du står i: fristen under Frister, selskapet under
-   Sendt og Arkiv — der har fristen gjort jobben sin. */
-function flisHtml(p){
+/* Kolonnen hver rad starter med viser det som faktisk skiller radene i
+   visningen du står i: fristen under Frister, selskapet under Sendt og
+   Arkiv — der har fristen gjort jobben sin.
+
+   Datoen står som en smal mono-kolonne, ikke som en fylt pastellflis:
+   samme opplysning, en brøkdel av vekten. Dagen nullpolstres og måneden
+   forkortes til tre tegn, så datoene står rett under hverandre. */
+function datoHtml(p){
   if(visning === "frister"){
-    if(!p.frist){
-      return '<div class="flis flis--lopende"><span class="flis__dag">—</span>'
-           + '<span class="flis__mnd">løpende</span></div>';
-    }
+    if(!p.frist) return '<div class="dato dato--lopende"><span class="dato__dag">—</span></div>';
     const d = tilDato(p.frist);
-    return '<div class="flis" data-hast="' + hast(p.frist) + '">'
-         + '<span class="flis__ukedag">' + ukedag(p.frist).replace(".", "") + '</span>'
-         + '<span class="flis__dag">' + d.getDate() + '</span>'
-         + '<span class="flis__mnd">' + MND_K[d.getMonth()] + '</span></div>';
+    return '<div class="dato">'
+         + '<span class="dato__ukedag">' + ukedag(p.frist).slice(0, 2) + '</span>'
+         + '<span class="dato__dag">' + String(d.getDate()).padStart(2, "0") + " " + MND_K[d.getMonth()] + '</span></div>';
   }
-  const tone = (p.status === "interview" || p.status === "rejected" || p.status === "accepted") ? p.status : "";
-  return '<div class="flis flis--merke"' + (tone ? ' data-s="' + tone + '"' : '')
-       + ' aria-hidden="true"><span class="flis__monogram">' + esc(monogram(p.selskap)) + '</span></div>';
+  /* Monogrammet er ren gjenkjenning. Statusen står i merkelappen til
+     høyre, og trenger ikke også en kulør her. */
+  return '<div class="dato dato--merke" aria-hidden="true"><span class="monogram">'
+       + esc(monogram(p.selskap)) + '</span></div>';
 }
 
-function radHtml(p, ankerId){
+function radHtml(p){
   const stilling = p.lenke
     ? '<a class="rad__stilling" href="' + esc(p.lenke) + '" target="_blank" rel="noopener noreferrer">' + esc(p.stilling) + '<span class="rad__pil">↗</span></a>'
     : '<span class="rad__stilling">' + esc(p.stilling) + '</span>';
 
   const meta = [];
-  if(p.sted) meta.push('<span>' + esc(p.sted) + '</span>');
-  meta.push('<span>' + esc(SEKTORER[p.sektor] || SEKTORER.annet) + '</span>');
-  if(p.status === "sent" && p.sendtDato) meta.push('<span>sendt ' + esc(kortDato(p.sendtDato)) + '</span>');
-  if(p.notat) meta.push('<span class="rad__notat">' + esc(p.notat) + '</span>');
+  if(p.sted) meta.push(esc(p.sted));
+  /* Sektoren er båndoverskriften under Sendt og Arkiv. Å gjenta den i
+     hver rad der sier ingenting nytt; sendtdatoen står alt i kolonnen
+     til høyre. Begge deler er tatt ut. */
+  if(visning === "frister") meta.push(esc(SEKTORER[p.sektor] || SEKTORER.annet));
+  const metaHtml = meta.length || p.notat
+    ? '<span class="rad__meta">' + meta.join(" · ")
+      + (p.notat ? (meta.length ? " · " : "") + '<span class="rad__notat">' + esc(p.notat) + '</span>' : "")
+      + '</span>'
+    : "";
 
   const underforstatt = (visning === "frister" && p.status === "todo") || (visning === "sendt" && p.status === "sent");
   const merke = (p.status !== "todo" && !underforstatt)
     ? '<span class="merkelapp" data-s="' + p.status + '">' + STATUSER[p.status] + '</span>' : "";
 
-  let om = "";
+  /* Hastestripa på radens forkant leses av CSS. Den settes bare under
+     Frister — det er den eneste visningen der en frist ennå haster. */
+  const radHast = (visning === "frister" && p.status === "todo") ? hast(p.frist) : "";
+
+  /* Nedtellingskolonnen tegnes alltid, også når den er tom. Bredden er
+     reservert i CSS, så selskapsnavnet står like langt ut i hver rad og
+     ingenting flytter seg mellom rader som har og ikke har tekst her. */
+  let omTxt = "", omHast = "";
   if(p.status === "todo" && p.frist){
-    om = '<span class="rad__om" data-hast="' + hast(p.frist) + '">' + omTekst(p.frist) + '</span>';
+    omTxt = omTekst(p.frist); omHast = hast(p.frist);
+  }else if(visning === "frister" && p.status === "todo"){
+    omTxt = "løpende";
   }else if(visning === "sendt" && p.sendtDato){
     const d = -dagerTil(p.sendtDato);
-    om = '<span class="rad__om">' + (d === 0 ? "sendt i dag" : "venter " + d + (d === 1 ? " dag" : " dager")) + '</span>';
+    omTxt = d === 0 ? "sendt i dag" : "venter " + d + (d === 1 ? " dag" : " dager");
   }
+  const om = '<span class="rad__om"' + (omHast ? ' data-hast="' + omHast + '"' : "") + '>' + omTxt + '</span>';
 
   let hoved = "";
   if(p.status === "todo")           hoved = '<button class="handling" data-gjor="sent" data-id="' + p.id + '">Merk sendt</button>';
@@ -253,11 +213,12 @@ function radHtml(p, ankerId){
   }
   const avslag = sidevei.join("");
 
-  return '<article class="rad"' + (ankerId ? ' id="' + ankerId + '"' : '') + ' data-id="' + p.id + '">'
-    + flisHtml(p)
+  return '<article class="rad" data-id="' + p.id + '"'
+    + (radHast ? ' data-hast="' + radHast + '"' : '') + '>'
+    + datoHtml(p)
     + '<div class="rad__hoved">'
-      + '<div class="rad__selskap">' + esc(p.selskap) + '</div>' + stilling
-      + '<div class="rad__meta">' + meta.join("") + '</div>'
+      + '<div class="rad__selskap">' + esc(p.selskap) + '</div>'
+      + '<span class="rad__und">' + stilling + metaHtml + '</span>'
     + '</div>'
     + '<div class="rad__hoyre">' + om + merke
       + '<div class="rad__verktoy">' + hoved
@@ -285,39 +246,59 @@ function fristOppdeling(apne){
   return { medFrist, lopende, utgatt, tekst: t };
 }
 
-function baandHtml(navn, tall, rader, sett, id){
+/* Båndoverskriften klistrer seg til toppen mens du blar. Antallet står
+   som et bart tall i tabulære siffer — hva det teller sier navnet
+   allerede — med den lange formen igjen som tilgjengelig navn. */
+function baandHtml(navn, rader, id){
   return '<section class="baandblokk"' + (id ? ' id="' + id + '"' : '') + '>'
-    + '<div class="baand"><h3 class="baand__navn">' + navn + '</h3><span class="baand__tall">' + tall + '</span></div>'
-    + '<div class="stabel">' + rader.map(p => {
-        let anker = null;
-        if(p.frist && sett && !sett.has(p.frist)){ sett.add(p.frist); anker = "d-" + p.frist; }
-        return radHtml(p, anker);
-      }).join("") + '</div></section>';
+    + '<div class="baand"><h3 class="merkelinje baand__navn">' + navn + '</h3>'
+      + '<span class="baand__strek" aria-hidden="true"></span>'
+      + '<span class="baand__tall" aria-label="' + antall(rader.length, "søknad", "søknader") + '">'
+      + rader.length + '</span></div>'
+    + '<div class="stabel">' + rader.map(radHtml).join("") + '</div></section>';
 }
 
 /* ============================================================
-   7. Visningene
+   6. Visningene
    ============================================================ */
-const BAAND = [
-  { id:"forbi",  navn:"Gikk ut",              test:p => p.frist && dagerTil(p.frist) < 0 },
-  { id:"naa",    navn:"Denne uka",            test:p => p.frist && dagerTil(p.frist) >= 0 && dagerTil(p.frist) <= 7 },
-  { id:"snart",  navn:"De neste tre ukene",   test:p => p.frist && dagerTil(p.frist) > 7 && dagerTil(p.frist) <= 21 },
-  { id:"senere", navn:"Senere",               test:p => p.frist && dagerTil(p.frist) > 21 },
-  { id:"lopende",navn:"Løpende opptak",       test:p => !p.frist }
-];
+/* Bånd i den rekkefølgen en person faktisk planlegger i: det som haster
+   denne uka først — utgåtte frister hører hjemme der, de trenger en
+   avgjørelse — så opptakene uten frist, som er de letteste å glemme, og
+   til slutt én bolk per kalendermåned.
+
+   Grensen er med vilje: står det 30. august, holder «Denne uka» ut 6.
+   september, og SEPTEMBER-bolken begynner 7. september. */
+function mndNavn(d){
+  const n = MND[d.getMonth()];
+  return n[0].toUpperCase() + n.slice(1)
+       + (d.getFullYear() === I_DAG.getFullYear() ? "" : " " + d.getFullYear());
+}
+
+function fristBaand(liste){
+  const baand = [];
+  /* liste er allerede sortert med sorterFrist: utgåtte datoer kommer
+     før dagens, så «utgått først» faller ut av sorteringen selv. */
+  const uka     = liste.filter(p => p.frist && dagerTil(p.frist) <= 7);
+  const lopende = liste.filter(p => !p.frist);
+  const senere  = liste.filter(p => p.frist && dagerTil(p.frist) > 7);
+
+  if(uka.length)     baand.push({ id: "naa",     navn: "Denne uka",      rader: uka });
+  if(lopende.length) baand.push({ id: "lopende", navn: "Løpende opptak", rader: lopende });
+
+  const mnd = new Map();
+  senere.forEach(p => {
+    const d = tilDato(p.frist), n = d.getFullYear() * 12 + d.getMonth();
+    if(!mnd.has(n)) mnd.set(n, { id: "m" + n, navn: mndNavn(d), rader: [] });
+    mnd.get(n).rader.push(p);
+  });
+  Array.from(mnd.keys()).sort((a, b) => a - b).forEach(n => baand.push(mnd.get(n)));
+  return baand;
+}
 
 function visFrister(){
   const liste = data.filter(p => p.status === "todo" && passererFilter(p)).sort(sorterFrist);
   if(!liste.length) return tomHtml();
-  const sett = new Set();
-  let h = "";
-  BAAND.forEach(b => {
-    const rader = liste.filter(b.test);
-    if(!rader.length) return;
-    const tall = b.id === "lopende" ? rader.length + " uten frist" : antall(rader.length, "søknad", "søknader");
-    h += baandHtml(b.navn, tall, rader, sett, "baand-" + b.id);
-  });
-  return h;
+  return fristBaand(liste).map(b => baandHtml(b.navn, b.rader, "baand-" + b.id)).join("");
 }
 
 function visEtterSektor(filterFn, tomTekst){
@@ -327,7 +308,7 @@ function visEtterSektor(filterFn, tomTekst){
   liste.forEach(p => { if(!grupper.has(p.sektor)) grupper.set(p.sektor, []); grupper.get(p.sektor).push(p); });
   return Object.keys(SEKTORER).filter(k => grupper.has(k)).map(k => {
     const rader = grupper.get(k).sort((a, b) => a.selskap.localeCompare(b.selskap, "no"));
-    return baandHtml(esc(SEKTORER[k]), antall(rader.length, "søknad", "søknader"), rader, null, null);
+    return baandHtml(esc(SEKTORER[k]), rader, null);
   }).join("");
 }
 
@@ -344,16 +325,15 @@ function tomHtml(tekst){
 }
 
 /* ============================================================
-   8. Tall
+   7. Tall
    ============================================================ */
-const TRAKT_FARGE = ["#A9B3EE", "#7C8AE4", "#3D52D5", "#2A3A9E"];
-
-function liggendeStolper(rader, farge){
+/* Ingen diagramfarge står her. Kulørtrinnene (--graf-1…4) ligger i
+   CSS, så begge temaer får sine egne trinn uten at JS vet om dem. */
+function liggendeStolper(rader){
   const maks = Math.max(1, ...rader.map(r => r.verdi));
   return '<div class="stolper">' + rader.map(r =>
       '<div class="stolpe"><div class="stolpe__navn" title="' + esc(r.navn) + '">' + esc(r.navn) + '</div>'
-    + '<div class="stolpe__spor"><div class="stolpe__fyll" style="width:' + ((r.verdi / maks) * 100) + '%'
-    + (farge ? ';background:' + farge : '') + '"></div>'
+    + '<div class="stolpe__spor"><div class="stolpe__fyll" style="width:' + ((r.verdi / maks) * 100) + '%"></div>'
     + '<span class="stolpe__verdi">' + r.verdi + '</span></div></div>').join("") + '</div>';
 }
 
@@ -377,7 +357,7 @@ function kortListe(navn){
 
 function nokkel(merke, verdi, under, varsel){
   return '<div class="nokkel' + (varsel ? " nokkel--varsel" : "") + '">'
-    + '<p class="nokkel__merke">' + merke + '</p>'
+    + '<p class="merkelinje nokkel__merke">' + merke + '</p>'
     + '<p class="nokkel__verdi">' + verdi + '</p>'
     + '<p class="nokkel__under">' + under + '</p></div>';
 }
@@ -416,7 +396,7 @@ function visTall(){
     + '<p class="kort__und">Hvert trinn er et utvalg av trinnet over. Andelen måles mot antallet du har sendt.</p>'
     + '<div class="trakt">' + trinn.map((t, i) =>
         '<div class="trakt__trinn"><div class="trakt__navn">' + t.navn + '</div>'
-      + '<div class="trakt__spor"><div class="trakt__fyll" style="width:' + ((t.verdi / tMaks) * 100) + '%;background:' + TRAKT_FARGE[i] + '"></div>'
+      + '<div class="trakt__spor"><div class="trakt__fyll" style="width:' + ((t.verdi / tMaks) * 100) + '%"></div>'
       + '<span class="trakt__verdi">' + t.verdi + '</span>'
       + (i > 1 && sendt.length ? '<span class="trakt__andel">' + Math.round((t.verdi / sendt.length) * 100) + ' % av sendt</span>' : "")
       + '</div></div>').join("") + '</div></div>';
@@ -433,12 +413,12 @@ function visTall(){
   h += '<div class="kort"><h3 class="kort__tittel">Fristtrykk de neste ti ukene</h3>'
     + '<p class="kort__und">Antall frister per uke. Toppene er ukene du må planlegge rundt.</p>'
     + '<div class="soyler">' + uker.map(u =>
-        '<div class="soyle">'
-      + (u.verdi ? '<span class="soyle__topp" style="bottom:calc(' + ((u.verdi / uMaks) * 100) + '% + 7px)">' + u.verdi + '</span>' : "")
-      + '<div class="soyle__fyll" style="height:' + (u.verdi ? (u.verdi / uMaks) * 100 : 0) + '%'
-      + (u.verdi ? '' : ';background:transparent') + '"></div></div>').join("") + '</div>'
+        '<div class="soyle" title="Uke ' + u.nr + ': ' + antall(u.verdi, "frist", "frister") + '">'
+      + (u.verdi ? '<span class="soyle__topp" style="bottom:calc(' + ((u.verdi / uMaks) * 100) + '% + 7px)">' + u.verdi + '</span>'
+                 + '<div class="soyle__fyll" style="height:' + ((u.verdi / uMaks) * 100) + '%"></div>' : "")
+      + '</div>').join("") + '</div>'
     + '<div class="akse">' + uker.map(u => '<span class="akse__hakk">' + u.nr + '</span>').join("") + '</div>'
-    + '<p class="kort__und" style="margin:10px 0 0">Ukenummer</p></div>';
+    + '<p class="kort__und" style="margin:9px 0 0">Ukenummer</p></div>';
 
   const perSektor = Object.keys(SEKTORER).map(k => {
     const g = alle.filter(p => p.sektor === k);
@@ -453,8 +433,8 @@ function visTall(){
   h += '<div class="rutenett">'
     + '<div class="kort"><h3 class="kort__tittel">Sektorene du satser på</h3>'
       + '<p class="kort__und">Tallene står i samme rekkefølge som fargene: sendt, så igjen.</p>'
-      + '<div class="tegn"><span class="tegn__post"><span class="tegn__pryd" style="background:#3D52D5"></span>Sendt</span>'
-      + '<span class="tegn__post"><span class="tegn__pryd" style="background:#A9B3EE"></span>Å søke på</span></div>'
+      + '<div class="tegn"><span class="tegn__post"><span class="tegn__pryd"></span>Sendt</span>'
+      + '<span class="tegn__post"><span class="tegn__pryd tegn__pryd--mykt"></span>Å søke på</span></div>'
       + delteStolper(perSektor) + '</div>'
     + '<div class="kort"><h3 class="kort__tittel">Hvor stillingene ligger</h3>'
       + '<p class="kort__und">En søknad med to steder telles begge steder.</p>'
@@ -487,7 +467,7 @@ function visTall(){
 }
 
 /* ============================================================
-   9. Tegn opp
+   8. Tegn opp
    ============================================================ */
 const SIDER = {
   frister: { tittel:"Frister",  ingen:"Ingenting å søke på akkurat nå." },
@@ -508,13 +488,16 @@ function tegn(){
   const medFrist = apne.filter(p => p.frist && dagerTil(p.frist) >= 0).sort(sorterFrist);
   const neste = medFrist[0];
 
-  $("#neste").innerHTML = neste
-    ? '<p class="neste__merke">Neste frist</p>'
-      + '<p class="neste__tall">' + esc(omTekst(neste.frist)) + '</p>'
+  /* Blokken er en knapp: den hopper til raden og blinker den fram.
+     Uten en neste frist har den ingenting å hoppe til, og sperres. */
+  const elNeste = $("#neste");
+  elNeste.innerHTML = '<p class="merkelinje">Neste frist</p>' + (neste
+    ? '<p class="neste__tall">' + esc(omTekst(neste.frist)) + '</p>'
       + '<p class="neste__hvem"><b>' + esc(neste.selskap) + '</b>' + esc(langDato(neste.frist)) + '</p>'
-    : '<p class="neste__merke">Neste frist</p><p class="neste__tall">Ingen</p>'
-      + '<p class="neste__hvem">Alt med frist er avklart.</p>';
-  $("#neste").className = "neste" + (neste && dagerTil(neste.frist) <= 7 ? "" : " neste--rolig");
+    : '<p class="neste__tall">Ingen</p><p class="neste__hvem">Alt med frist er avklart.</p>');
+  elNeste.className = "neste" + (neste && dagerTil(neste.frist) <= 7 ? "" : " neste--rolig");
+  elNeste.disabled = !neste;
+  if(neste) elNeste.dataset.id = neste.id; else delete elNeste.dataset.id;
 
   $("#sidetittel").textContent = SIDER[visning].tittel;
   const und = visning === "frister"
@@ -529,8 +512,6 @@ function tegn(){
     : '<b>' + data.length + '</b> søknader sporet i alt';
   $("#sideUnder").innerHTML = und;
 
-  $("#fristlinje").hidden = visning !== "frister";
-  if(visning === "frister") tegnFristlinje();
   $("#nullstill").hidden = !(sok || filtSektor || filtSted);
 
   $("#innhold").innerHTML =
@@ -555,7 +536,7 @@ function fyllVelg(sel, par, valgt, forste){
 }
 
 /* ============================================================
-   10. Skuffen — skjema, innliming, eksport
+   9. Skuffen — skjema, innliming, eksport
    ============================================================ */
 let skuffModus = "skjema", redigerer = null;
 
@@ -827,7 +808,7 @@ function tegnForhaand(tekst){
 }
 
 /* ============================================================
-   11. Eksport
+   10. Eksport
    ============================================================ */
 function tilMarkdown(){
   const L = [];
@@ -890,7 +871,7 @@ function reserveKopi(tekst, ferdig){
 }
 
 /* ============================================================
-   12. Varsel med angremulighet
+   11. Varsel med angremulighet
    ============================================================ */
 function varsle(tekst, angreFn){
   const v = $("#varsel");
@@ -905,7 +886,7 @@ function varsle(tekst, angreFn){
 }
 
 /* ============================================================
-   13. Handlinger
+   12. Handlinger
    ============================================================ */
 function settStatus(id, ny){
   const p = data.find(x => x.id === id);
@@ -990,10 +971,23 @@ function lagreLim(){
 }
 
 /* ============================================================
-   14. Hendelser
+   13. Hendelser
    ============================================================ */
+
+/* I appen finnes ingen «ny fane»: target="_blank" gjør ingen ting, og
+   utlysningslenkene ville vært døde. Systemets egen nettleser er dit de
+   hører hjemme uansett — appvinduet skal ikke navigere bort fra lista. */
+if(Lagring.I_APP){
+  document.addEventListener("click", e => {
+    const a = e.target.closest && e.target.closest('a[href^="http"]');
+    if(!a) return;
+    e.preventDefault();
+    window.__TAURI__.opener.openUrl(a.href).catch(f => console.warn("Fikk ikke åpnet lenken:", f));
+  });
+}
+
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-gjor],[data-modus],[data-visning],.fl__stolpe,#flLopende,#apneNy,#lukkSkuff,#apneEksport,#nullstill,#lagreSkjema,#lagreLim");
+  const t = e.target.closest("[data-gjor],[data-modus],[data-temavalg],[data-visning],#neste,#apneNy,#lukkSkuff,#apneEksport,#nullstill,#lagreSkjema,#lagreLim");
   if(!t) return;
 
   if(t.id === "apneNy"){ apneSkuff("ny"); return; }
@@ -1002,7 +996,8 @@ document.addEventListener("click", e => {
   if(t.id === "nullstill"){ sok = ""; filtSektor = ""; filtSted = ""; $("#sok").value = ""; tegn(); return; }
   if(t.id === "lagreSkjema"){ lagreSkjema(); return; }
   if(t.id === "lagreLim"){ lagreLim(); return; }
-  if(t.id === "flLopende"){ hoppTil("baand-lopende"); return; }
+  if(t.id === "neste"){ if(t.dataset.id) hoppTilSoknad(t.dataset.id); return; }
+  if(t.dataset.temavalg){ settTema(t.dataset.temavalg); return; }
 
   if(t.dataset.visning){
     visning = t.dataset.visning;
@@ -1011,7 +1006,6 @@ document.addEventListener("click", e => {
     return;
   }
   if(t.dataset.modus){ skuffModus = t.dataset.modus; tegnSkuff(); const f = $("#skuff input,#skuff textarea"); if(f) f.focus(); return; }
-  if(t.classList.contains("fl__stolpe")){ hoppTil("d-" + t.dataset.iso); return; }
 
   const g = t.dataset.gjor, id = t.dataset.id;
   if(g === "lukk") lukkSkuff();
@@ -1044,13 +1038,22 @@ function settNav(){
   $$("#faner .nav__post").forEach(f => f.setAttribute("aria-selected", String(f.dataset.visning === visning)));
 }
 
-function hoppTil(id){
-  if(visning !== "frister"){ visning = "frister"; settNav(); tegn(); }
-  const el = document.getElementById(id);
-  if(!el) return;
-  el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion:reduce)").matches ? "auto" : "smooth", block: "center" });
-  const m = el.classList.contains("rad") ? el : $(".rad", el);
-  if(m){ m.classList.remove("er-truffet"); void m.offsetWidth; m.classList.add("er-truffet"); }
+/* «Neste frist» i sidepanelet regnes ut uten filtre — det er den
+   faktiske neste fristen din, ikke den neste blant det du ser på nå.
+   Ligger raden derfor utenfor det som vises, ryddes veien fram til
+   den før vi hopper. */
+function hoppTilSoknad(id){
+  const finn = () => $('.rad[data-id="' + id + '"]');
+  let mal = finn();
+  if(!mal){
+    if(visning !== "frister"){ visning = "frister"; settNav(); }
+    if(sok || filtSektor || filtSted){ sok = ""; filtSektor = ""; filtSted = ""; $("#sok").value = ""; }
+    tegn();
+    mal = finn();
+  }
+  if(!mal) return;
+  mal.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion:reduce)").matches ? "auto" : "smooth", block: "center" });
+  mal.classList.remove("er-truffet"); void mal.offsetWidth; mal.classList.add("er-truffet");
 }
 
 $("#slor").addEventListener("click", lukkSkuff);
@@ -1073,29 +1076,47 @@ document.addEventListener("keydown", e => {
   if(e.key === "/"){ e.preventDefault(); $("#sok").focus(); }
 });
 
-/* verktøytips på fristlinjen */
-const tips = $("#tips");
-document.addEventListener("pointerover", e => {
-  const s = e.target.closest("[data-tips]");
-  if(!s){ tips.classList.remove("er-apen"); return; }
-  tips.innerHTML = s.dataset.tips;
-  tips.classList.add("er-apen");
-  const r = s.getBoundingClientRect(), tr = tips.getBoundingClientRect();
-  tips.style.left = Math.max(10, Math.min(innerWidth - tr.width - 10, r.left + r.width / 2 - tr.width / 2)) + "px";
-  tips.style.top  = Math.max(10, r.top - tr.height - 9) + "px";
-});
-document.addEventListener("focusin", e => {
-  const s = e.target.closest("[data-tips]");
-  if(!s){ tips.classList.remove("er-apen"); return; }
-  s.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
-});
-addEventListener("resize", () => { if(visning === "frister") tegnFristlinje(); });
+/* ============================================================
+   14. Fargetema
+   ============================================================ */
+/* Temaet er en innstilling for denne nettleseren, ikke data. Det går
+   utenom Lagring og havner aldri i data/jobber.json. Selve
+   påføringen skjer allerede i <head> — se index.html — så det ikke
+   blinker lyst før app.js rekker å kjøre; her holdes bare valget,
+   knappene og nettleserflaten i takt. */
+const TEMA_NOKKEL = "jobbsoknader-tema";
+const morktSystem = matchMedia("(prefers-color-scheme:dark)");
+
+function lestTema(){
+  try{
+    const t = localStorage.getItem(TEMA_NOKKEL);
+    return t === "lys" || t === "mork" ? t : "system";
+  }catch(e){ return "system"; }
+}
+
+function settTema(valg){
+  if(valg === "system") document.documentElement.removeAttribute("data-tema");
+  else document.documentElement.setAttribute("data-tema", valg);
+  try{
+    if(valg === "system") localStorage.removeItem(TEMA_NOKKEL);
+    else localStorage.setItem(TEMA_NOKKEL, valg);
+  }catch(e){}   /* privat vindu eller full lagring: temaet gjelder økta ut */
+  $$("#temavalg .modus__knapp").forEach(b => b.setAttribute("aria-checked", String(b.dataset.temavalg === valg)));
+  følgTemafarge();
+}
+
+/* Nettleserens egen flate rundt siden. Leses av den beregnede
+   bakgrunnen, ikke av tokenet: light-dark() står uoppløst i en
+   egendefinert egenskap. */
+function følgTemafarge(){
+  const f = getComputedStyle(document.body).backgroundColor;
+  if(f) $("#temafarge").setAttribute("content", f);
+}
+morktSystem.addEventListener("change", () => { if(lestTema() === "system") følgTemafarge(); });
+settTema(lestTema());
 
 /* ============================================================
-   15. I gang
-   ============================================================ */
-/* ============================================================
-   16. Oppstart, lagringstilstand og døgnskifte
+   15. Oppstart, lagringstilstand og døgnskifte
    ============================================================ */
 
 const elLagret = $("#lagringstilstand");
@@ -1292,7 +1313,9 @@ async function start(){
         + (harKopi ? "" : " Rett opp filen, og hent så på nytt."));
     }else{
       venterValg = null;
-      Lagring.blokker("Ingen kontakt med lagringen. Kjører serveren? Start den med «npm start».");
+      Lagring.blokker(Lagring.I_APP
+        ? (e.message || "Fikk ikke lest datafilen.") + " Ingenting lagres før den er lest."
+        : "Ingen kontakt med lagringen. Kjører serveren? Start den med «npm start».");
     }
   }
   tegn();

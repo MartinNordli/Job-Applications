@@ -1,8 +1,14 @@
 node_modules/
 .DS_Store
 
-# Avledede filer fra lagringen. jobber.json er dine ekte data og kan
-# gjerne versjoneres — disse er kopier og rusk.
-data/.jobber.json.tmp
-data/jobber.forrige.json
-data/jobber.ødelagt-*.json
+# Dataene dine. Repoet er offentlig, og jobber.json er ekte søknader —
+# selskap, stilling, frist. Den og kopiene/karantenefilene holdes lokale.
+data/
+
+# Frontenden samlet for Tauri, og det Rust bygger.
+dist/
+src-tauri/target/
+src-tauri/gen/
+
+# Lokalt agent-oppsett for Claude Code, ikke en del av appen.
+.claude/

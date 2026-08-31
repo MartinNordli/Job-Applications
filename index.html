@@ -5,11 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Jobbsøknader 2027</title>
 <meta name="description" content="Personlig oversikt over jobbsøknader — frister, sendte søknader og status.">
-<meta name="color-scheme" content="light">
-<meta name="theme-color" content="#EDEBE5">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Martian+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#EBE8E1" id="temafarge">
+<script src="src/tema-tidlig.js"></script>
+<link rel="stylesheet" href="src/skrifter.css">
 <link rel="stylesheet" href="src/stiler.css">
 </head>
 <body>
@@ -27,7 +26,7 @@
     </button>
 
     <nav class="nav" id="faner" role="tablist" aria-label="Visninger">
-      <p class="nav__merke">Oversikt</p>
+      <p class="merkelinje nav__merke">Oversikt</p>
       <button class="nav__post" role="tab" data-visning="frister" aria-selected="true">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.2" y="3.2" width="11.6" height="10.6" rx="2.2" stroke="currentColor" stroke-width="1.4"/><path d="M2.2 6.6h11.6M5.6 1.8v2.4M10.4 1.8v2.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
         Frister <span class="nav__tall" id="tallFrister"></span>
@@ -47,7 +46,26 @@
     </nav>
 
     <div class="sidefot">
-      <div class="neste" id="neste"></div>
+      <button class="neste" id="neste" type="button"></button>
+
+      <!-- Samme segmenterte kontroll som skuffen bruker. Ordene er den
+           tilgjengelige teksten i begge bredder; på smal skjerm er de
+           skjult for øyet og ikonet står igjen. -->
+      <div class="modus modus--tema" id="temavalg" role="radiogroup" aria-label="Fargetema">
+        <button class="modus__knapp" type="button" role="radio" data-temavalg="system" aria-checked="true">
+          <svg class="modus__ikon" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.6" stroke="currentColor" stroke-width="1.4"/><path d="M8 2.4A5.6 5.6 0 0 1 8 13.6z" fill="currentColor"/></svg>
+          <span class="modus__ord">System</span>
+        </button>
+        <button class="modus__knapp" type="button" role="radio" data-temavalg="lys" aria-checked="false">
+          <svg class="modus__ikon" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="3.1" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.4v1.6M8 13v1.6M14.6 8H13M3 8H1.4M12.7 3.3l-1.2 1.2M4.5 11.5l-1.2 1.2M12.7 12.7l-1.2-1.2M4.5 4.5 3.3 3.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <span class="modus__ord">Lys</span>
+        </button>
+        <button class="modus__knapp" type="button" role="radio" data-temavalg="mork" aria-checked="false">
+          <svg class="modus__ikon" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13.4 9.9A5.9 5.9 0 0 1 6.1 2.6a5.9 5.9 0 1 0 7.3 7.3Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+          <span class="modus__ord">Mørk</span>
+        </button>
+      </div>
+
       <p class="lagret" id="lagringstilstand" role="status" aria-live="polite"></p>
       <button class="sidelenke" id="apneEksport" type="button">Dataene dine</button>
     </div>
@@ -56,7 +74,7 @@
   <main class="hoved">
     <div class="stripe" id="stripe" role="alert" hidden></div>
     <div class="tittelrad">
-      <div>
+      <div class="tittelrad__tekst">
         <h2 class="tittel" id="sidetittel">Frister</h2>
         <p class="tittel__und" id="sideUnder"></p>
       </div>
@@ -76,14 +94,6 @@
       <button class="nullstill" id="nullstill" type="button" hidden>Nullstill filtre</button>
     </div>
 
-    <section class="fl" id="fristlinje" aria-label="Frister framover">
-      <div class="fl__plot"><div class="fl__flate" id="flFlate"></div></div>
-      <button class="fl__lopende" id="flLopende" type="button">
-        <span class="fl__lopendeTall" id="flLopendeTall">0</span>
-        <span class="fl__lopendeEtikett">løpende<br>ingen frist</span>
-      </button>
-    </section>
-
     <div id="innhold"></div>
   </main>
 </div>
@@ -99,22 +109,9 @@
   <div class="skuff__bunn" id="skuffBunn"></div>
 </aside>
 
-<div class="tips" id="tips" role="status"></div>
 <div class="varsel" id="varsel" role="status" inert></div>
 
-<script>
-/* Åpnes filen rett fra disk i stedet for gjennom serveren, blokkerer
-   nettleseren ES-moduler, og siden blir stående tom uten å si hvorfor. */
-addEventListener("DOMContentLoaded", () => setTimeout(() => {
-  if(window.__jobbsoknaderKjorer) return;
-  const el = document.getElementById("innhold");
-  if(!el) return;
-  el.innerHTML = '<div class="tomt"><p class="tomt__tittel">Appen trenger serveren</p>'
-    + '<p class="tomt__tekst">Kjør <code>npm start</code> i prosjektmappa og åpne '
-    + '<a href="http://127.0.0.1:4173">127.0.0.1:4173</a>. Søknadene ligger i '
-    + '<code>data/jobber.json</code>, og siden når dem bare gjennom serveren.</p></div>';
-}, 1500));
-</script>
+<script src="src/uten-server.js"></script>
 <script type="module" src="src/app.js"></script>
 </body>
 </html>

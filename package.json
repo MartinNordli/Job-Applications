@@ -4,9 +4,17 @@
   "type": "module",
   "scripts": {
     "start": "node server/server.mjs",
-    "test": "node --test server/lager.test.mjs server/server.test.mjs"
+    "test": "node --test server/lager.test.mjs server/server.test.mjs",
+    "bygg:front": "node scripts/bygg-front.mjs",
+    "tauri": "tauri",
+    "app:dev": "tauri dev",
+    "app:bygg": "tauri build",
+    "test:rust": "cd src-tauri && cargo test"
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4"
   }
 }

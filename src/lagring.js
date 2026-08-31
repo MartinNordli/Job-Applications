@@ -2,16 +2,45 @@
    Lagring — klientsiden av datafilen.
 
    Appen kaller lagre() etter hver endring, akkurat som den gjorde
-   mot localStorage. Forskjellen er at skrivingene samles opp et
-   lite øyeblikk og sendes som ett PUT av hele dokumentet.
+   mot localStorage. Forskjellen er at hele dokumentet skrives om
+   igjen hver gang — som ett PUT i nettleseren, som ett filbytte i
+   Mac-appen.
 
    Ingenting forsvinner stille: mislykkes en skriving, blir dataene
    liggende og tilstanden sier «ikke lagret» til den går gjennom.
    ============================================================ */
 
 const API = "/api/jobber";
-const FORSINKELSE = 250;      /* samler raske endringer i én skriving */
 const NYTT_FORSOK = 4000;     /* prøver igjen selv når serveren er borte */
+
+/* To transportlag, samme regler. I nettleseren går alt gjennom serveren;
+   i appen kalles lagerlogikken rett, med Rust som filsystem. Alt annet i
+   denne filen er felles: sperren, nye forsøk og tilstanden i stripa. */
+export const I_APP = typeof window !== "undefined" && !!window.__TAURI__;
+
+/* Ventetiden finnes for å slippe å sende hele lista over nettet for hvert
+   tastetrykk. I appen er skrivingen et lokalt filbytte, og hver lagring
+   kommer uansett fra en bevisst handling — da er det bedre å ha det på
+   disk med én gang, i tilfelle appen lukkes i samme øyeblikk. */
+const FORSINKELSE = I_APP ? 0 : 250;
+
+let appLager = null;
+async function lokaltLager(){
+  if(!appLager){
+    const [{ lagLager }, { lagTauriFiler }] = await Promise.all([
+      import("./lagerlogikk.mjs"),
+      import("./tauri-filer.mjs")
+    ]);
+    appLager = lagLager({ filer: await lagTauriFiler(), lagId: () => crypto.randomUUID() });
+  }
+  return appLager;
+}
+
+/* Hvor datafilen ligger — bare til det appen sier på skjermen. */
+export async function datakatalog(){
+  if(!I_APP) return null;
+  try{ return (await lokaltLager()).katalog; }catch{ return null; }
+}
 
 let versjon = 0;
 let ventende = null;          /* siste tilstand som skal skrives */
@@ -53,7 +82,7 @@ export const gjeldendeVersjon = () => versjon;
 
 /* ---------- hente ---------- */
 
-export async function hent(){
+async function hentOverHttp(){
   let svar;
   try{ svar = await fetch(API, { headers: { accept: "application/json" } }); }
   catch{ const e = new Error("Ingen kontakt med lagringen."); e.frakoblet = true; throw e; }
@@ -62,12 +91,35 @@ export async function hent(){
   try{ kropp = await svar.json(); }catch{ /* håndteres under */ }
 
   if(svar.status === 503 && kropp && kropp.feil){
-    blokkert = true;            /* filen er uleselig — ikke rør den */
     const e = new Error(kropp.feil); e.ødelagt = true; e.sti = kropp.sti;
     e.sikkerhetskopi = kropp.sikkerhetskopi || null; throw e;
   }
   if(!svar.ok || !kropp){
     const e = new Error("Lagringen svarte uventet (" + svar.status + ")."); e.frakoblet = true; throw e;
+  }
+  return kropp;
+}
+
+async function hentLokalt(){
+  let r;
+  try{ r = await (await lokaltLager()).les(); }
+  catch(årsak){
+    const e = new Error("Fikk ikke lest datafilen. " + (årsak && årsak.message || årsak));
+    e.frakoblet = true; throw e;
+  }
+  if(r.ødelagt){
+    const e = new Error(r.grunn || "ødelagt"); e.ødelagt = true; e.sti = r.sti;
+    e.sikkerhetskopi = r.sikkerhetskopi || null; throw e;
+  }
+  return r;
+}
+
+export async function hent(){
+  let kropp;
+  try{ kropp = I_APP ? await hentLokalt() : await hentOverHttp(); }
+  catch(e){
+    if(e.ødelagt) blokkert = true;     /* filen er uleselig — ikke rør den */
+    throw e;
   }
 
   /* Etter en vellykket henting er skjermen lik filen. Eventuell
@@ -91,6 +143,43 @@ export function lagre(jobber){
   if(!timer) timer = setTimeout(() => { timer = null; kjør(); }, FORSINKELSE);
 }
 
+/* De to transportlagene svarer med samme fire utfall, så kjør() slipper
+   å vite om den snakker med en server eller med filsystemet. */
+
+async function skrivOverHttp(jobber, flukt){
+  /* keepalive lar skrivingen overleve at fanen lukkes, men fetch
+     begrenser slike kropper til 64 KiB. Derfor bare når vi faktisk
+     er på vei ut — ellers ville lista sluttet å lagre rundt 140
+     søknader, uten annen forklaring enn «ingen kontakt». */
+  const svar = await fetch(API, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ versjon, jobber,
+                           ...(overstyrOdelagt ? { overstyrOdelagt: true } : {}) }),
+    ...(flukt ? { keepalive: true } : {})
+  });
+  let kropp = null;
+  try{ kropp = await svar.json(); }catch{ /* håndteres under */ }
+
+  if(svar.ok && kropp)              return { utfall: "ok", kropp };
+  if(svar.status === 409 && kropp)  return { utfall: "konflikt", kropp };
+  if(svar.status === 503)           return { utfall: "ødelagt",
+                                             melding: (kropp && kropp.melding) || null };
+  return { utfall: "avvist",
+           melding:  kropp && kropp.feil ? kropp.feil : null,
+           detaljer: kropp && kropp.detaljer ? kropp.detaljer : null };
+}
+
+async function skrivLokalt(jobber){
+  const r = await (await lokaltLager()).skriv(jobber, versjon, { overstyrOdelagt });
+  if(r.ok)                   return { utfall: "ok", kropp: r };
+  if(r.feil === "konflikt")  return { utfall: "konflikt", kropp: r };
+  if(r.feil === "ødelagt")   return { utfall: "ødelagt",
+                                      melding: "Datafilen kan ikke leses. Den ligger urørt som "
+                                               + r.sti + "." };
+  return { utfall: "avvist", melding: r.feil, detaljer: r.detaljer || null };
+}
+
 /* Skriver det som ligger og venter. Kalles på nytt av seg selv hvis
    det kom inn en ny endring mens forrige skriving var underveis. */
 async function kjør(flukt){
@@ -101,46 +190,34 @@ async function kjør(flukt){
   meld("lagrer");
 
   try{
-    /* keepalive lar skrivingen overleve at fanen lukkes, men fetch
-       begrenser slike kropper til 64 KiB. Derfor bare når vi faktisk
-       er på vei ut — ellers ville lista sluttet å lagre rundt 140
-       søknader, uten annen forklaring enn «ingen kontakt». */
-    const svar = await fetch(API, {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ versjon, jobber: nå,
-                             ...(overstyrOdelagt ? { overstyrOdelagt: true } : {}) }),
-      ...(flukt ? { keepalive: true } : {})
-    });
-    let kropp = null;
-    try{ kropp = await svar.json(); }catch{ /* håndteres under */ }
+    const r = I_APP ? await skrivLokalt(nå) : await skrivOverHttp(nå, flukt);
 
-    if(svar.ok && kropp){
-      versjon = kropp.versjon;
+    if(r.utfall === "ok"){
+      versjon = r.kropp.versjon;
       overstyrOdelagt = false;
       avbrytNyttForsok();
       if(ventende === null) meld("lagret");
-    }else if(svar.status === 409 && kropp){
-      /* En annen fane har skrevet. Vi overtar bevisst IKKE versjonen
+    }else if(r.utfall === "konflikt"){
+      /* Noen andre har skrevet. Vi overtar bevisst IKKE versjonen
          herfra — da ville neste tastetrykk blitt godtatt og skrevet
-         over den andre fanen. Sperren står til brukeren henter på nytt. */
+         over den andre. Sperren står til brukeren henter på nytt. */
       behold(nå);
       blokkert = true;
       meld("konflikt", "Dataene ble endret et annet sted.");
-      lyttere.forEach(fn => fn(tilstand, kropp));
-    }else if(svar.status === 503){
+      lyttere.forEach(fn => fn(tilstand, r.kropp));
+    }else if(r.utfall === "ødelagt"){
       behold(nå);
       blokkert = true;
-      meld("ulagret", (kropp && kropp.melding) || "Datafilen kan ikke leses.");
+      meld("ulagret", r.melding || "Datafilen kan ikke leses.");
     }else{
-      const detalj = kropp && kropp.detaljer ? kropp.detaljer : null;
       behold(nå);
-      meld("ulagret", kropp && kropp.feil ? kropp.feil : "Lagringen avviste endringen.");
-      if(detalj) console.warn("Avvist av serveren:", detalj);
+      meld("ulagret", r.melding || "Lagringen avviste endringen.");
+      if(r.detaljer) console.warn("Avvist av lagringen:", r.detaljer);
     }
   }catch{
     behold(nå);
-    meld("frakoblet", "Ingen kontakt med lagringen.");
+    meld("frakoblet", I_APP ? "Fikk ikke skrevet til datafilen."
+                            : "Ingen kontakt med lagringen.");
     planleggNyttForsok();
   }finally{
     sender = false;
