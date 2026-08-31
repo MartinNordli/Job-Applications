@@ -17,6 +17,13 @@ use std::path::{Path, PathBuf};
 
 use tauri::{AppHandle, Manager};
 
+mod nett;
+
+/// Filen API-nøkkelen ligger i, ved siden av datafilen. Den leses av
+/// Rust og sendes aldri til webviewet — der ville den ligget i minnet
+/// til en side vi ikke kontrollerer innholdet på.
+const NOKKELFIL: &str = "nokkel.txt";
+
 /// Bare enkle filnavn. Ingen skilletegn, ingen «..», ingen tomme navn.
 fn trygt_navn(navn: &str) -> Result<&str, String> {
     let gyldig = !navn.is_empty()
@@ -118,6 +125,22 @@ fn skriv_atomisk(
     skriv_i(&katalog(&app)?, &navn, &tekst, kopi_til.as_deref())
 }
 
+#[tauri::command]
+async fn hent_side(url: String) -> Result<nett::Side, String> {
+    nett::hent_side(url).await
+}
+
+#[tauri::command]
+async fn spor_modell(app: AppHandle, kropp: String) -> Result<String, String> {
+    let nokkel = les_i(&katalog(&app)?, NOKKELFIL)?
+        .map(|s| s.trim().to_owned())
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| {
+            format!("Ingen API-nøkkel. Legg den i {NOKKELFIL} i datakatalogen — se README.")
+        })?;
+    nett::spor_modell(nokkel, kropp).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -126,7 +149,9 @@ pub fn run() {
             data_katalog,
             les_tekst,
             flytt_fil,
-            skriv_atomisk
+            skriv_atomisk,
+            hent_side,
+            spor_modell
         ])
         .run(tauri::generate_context!())
         .expect("appen klarte ikke å starte");
