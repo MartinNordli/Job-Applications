@@ -5,6 +5,9 @@ node_modules/
 # selskap, stilling, frist. Den og kopiene/karantenefilene holdes lokale.
 data/
 
+# API-nøkkelen for import fra lenke, i nettlesermodus.
+nokkel.txt
+
 # Frontenden samlet for Tauri, og det Rust bygger.
 dist/
 src-tauri/target/

@@ -53,6 +53,44 @@ av seg selv. Slik henter du dem:
 3. Start appen, velg **Dataene dine**, lim inn under **Lim inn JSON** og trykk
    **Erstatt listen med dette**. Du kan angre.
 
+## Import fra lenke
+
+Lim inn adressen til en utlysning under **Fra lenke** i skjemaet, så henter
+appen siden, leser ut det den finner, og fyller feltene. Ingenting lagres av
+seg selv — utkastet havner i det vanlige skjemaet, og du trykker **Legg til
+søknad** selv.
+
+Det meste leses rett ut av siden: de fleste utlysninger bærer
+`schema.org/JobPosting` som strukturerte data, og da er stilling, selskap,
+frist og sted eksakte. Bare det som mangler går videre til en språkmodell
+(Claude Haiku), og et selskap som allerede står i listen får sektoren sin
+derfra i stedet for å bli klassifisert på nytt.
+
+Det krever en API-nøkkel fra <https://console.anthropic.com>:
+
+```sh
+export ANTHROPIC_API_KEY="sk-ant-…"
+npm start
+```
+
+Appen har ingen terminal å arve miljøvariabler fra, så der legges nøkkelen i
+en fil ved siden av datafilen:
+
+```sh
+echo "sk-ant-…" > ~/Library/Application\ Support/no.nordli.jobbsoknader/nokkel.txt
+```
+
+Nøkkelen leses av serveren i nettlesermodus og av Rust i appen. Den sendes
+aldri til nettleseren, og `nokkel.txt` er i `.gitignore`.
+
+Uten nøkkel virker resten fortsatt: sider med strukturerte data fylles ut i
+sin helhet uten at modellen blir spurt. Sider som bygges av JavaScript etter
+at de er lastet, gir lite eller ingenting — da blir lenken stående i
+skjemaet, og resten fylles ut for hånd.
+
+Adresser inne på egen maskin eller eget nett hentes ikke: `localhost`,
+private nett og `169.254.169.254` avvises, også via videresending.
+
 ## Hvor dataene ligger
 
 Appen og nettleserversjonen har hver sin fil, så en halvferdig redigering i
@@ -79,6 +117,7 @@ Begge er vanlig JSON, lesbar og redigerbar for hånd:
       "frist": "2026-08-28",
       "status": "todo",
       "sektor": "energi",
+      "jobbtype": "graduate",
       "notat": "",
       "sendtDato": null,
       "opprettet": "…",
@@ -125,12 +164,17 @@ src/stiler.css        «Lin» — designsystemet
 src/skrifter.css      Familjen Grotesk og Geist Mono, hentet inn lokalt
 src/app.js            appen
 src/felles.mjs        validering, delt av alle tre
+src/importlogikk.mjs  reglene for å lese en utlysning, uten I/O
+src/import.js         importflyten i nettleseren — velger transport
+src/tauri-nett.mjs    henting i appmodus, over Rust
 src/lagerlogikk.mjs   reglene for datafilen, uten et filsystem
 src/lagring.js        henting og lagring — velger transport etter modus
 src/tauri-filer.mjs   filsystemet i appmodus, over Rust
 src/startliste.js     søknadene appen starter med
 server/server.mjs     statiske filer + /api/jobber
 server/lager.mjs      filsystemet i nettlesermodus, over Node
+server/nett.mjs       henting og modellkall i nettlesermodus
+src-tauri/src/nett.rs de samme to operasjonene i appen
 src-tauri/src/lib.rs  de fire filoperasjonene appen bruker
 scripts/bygg-front.mjs  samler frontenden i dist/ for Tauri
 temaer/               fargestudier, ikke i bruk av appen
