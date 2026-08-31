@@ -1,7 +1,7 @@
 /* ============================================================
    1. Data
    ============================================================ */
-import { STATUSER, SEKTORER, ER_SENDT, ER_ARKIV, validerSoknad, sjekkLenke } from "./felles.mjs";
+import { STATUSER, SEKTORER, JOBBTYPER, SEKTOR_FOR, ER_SENDT, ER_ARKIV, validerSoknad, sjekkLenke } from "./felles.mjs";
 import { START } from "./startliste.js";
 import * as Lagring from "./lagring.js";
 
@@ -12,17 +12,6 @@ window.__jobbsoknaderKjorer = true;   /* se fallback-skriptet i index.html */
    må få ny dato, ellers viser den «i dag» om gårsdagen. Se seksjon 16. */
 let I_DAG = new Date(new Date().toDateString());
 
-const SEKTOR_FOR = {
-  "aker bp":"energi","equinor":"energi","statnett":"energi","dnv":"energi",
-  "kongsberg":"energi","norconsult":"energi",
-  "cognite":"teknologi","autodesk":"teknologi","visma":"teknologi","intility":"teknologi",
-  "nbim":"finans","dnb":"finans",
-  "mckinsey":"konsulent","bain":"konsulent","accenture":"konsulent","deloitte":"konsulent",
-  "kpmg":"konsulent","bearingpoint":"konsulent","capgemini":"konsulent","sopra steria":"konsulent",
-  "bouvet":"konsulent","bekk":"konsulent","implement consulting":"konsulent","sprint":"konsulent",
-  "pwc":"konsulent","jr consulting":"studentorg",
-  "ntnui tennis":"studentorg","cogito ntnu":"studentorg","revolve ntnu":"studentorg","njord ntnu":"studentorg"
-};
 
 
 /* ============================================================

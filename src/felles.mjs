@@ -35,6 +35,22 @@ export const JOBBTYPER = {
   deltid:     "Deltid"
 };
 
+/* Selskaper vi allerede vet sektoren for. Limemodus har brukt denne
+   siden appen var én fil; importen fra lenke bruker den til å slippe
+   å be modellen klassifisere et selskap brukeren kjenner fra før.
+   Nøklene er små bokstaver — oppslaget er eksakt, ikke uklart. */
+export const SEKTOR_FOR = {
+  "aker bp":"energi","equinor":"energi","statnett":"energi","dnv":"energi",
+  "kongsberg":"energi","norconsult":"energi",
+  "cognite":"teknologi","autodesk":"teknologi","visma":"teknologi","intility":"teknologi",
+  "nbim":"finans","dnb":"finans",
+  "mckinsey":"konsulent","bain":"konsulent","accenture":"konsulent","deloitte":"konsulent",
+  "kpmg":"konsulent","bearingpoint":"konsulent","capgemini":"konsulent","sopra steria":"konsulent",
+  "bouvet":"konsulent","bekk":"konsulent","implement consulting":"konsulent","sprint":"konsulent",
+  "pwc":"konsulent","jr consulting":"studentorg",
+  "ntnui tennis":"studentorg","cogito ntnu":"studentorg","revolve ntnu":"studentorg","njord ntnu":"studentorg"
+};
+
 export const ER_SENDT = s => s === "sent" || s === "interview";
 export const ER_ARKIV = s => s === "rejected" || s === "expired"
                           || s === "accepted" || s === "trukket";
