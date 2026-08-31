@@ -27,7 +27,7 @@ export const FORRIGE = "jobber.forrige.json";
 /* Feltene som avgjør om en rad faktisk er endret. Tidsstemplene
    teller ikke med — ellers ville hver lagring sett ut som en endring. */
 const INNHOLD = ["id", "selskap", "stilling", "lenke", "sted",
-                 "frist", "status", "sektor", "notat", "sendtDato"];
+                 "frist", "status", "sektor", "jobbtype", "notat", "sendtDato"];
 
 const likeRader = (a, b) => !!a && !!b && INNHOLD.every(f => a[f] === b[f]);
 

@@ -47,7 +47,7 @@ test("ukjente felt faller bort", () => {
   assert.equal(r.ok, true);
   assert.equal("hemmelig" in r.verdi, false);
   assert.deepEqual(Object.keys(r.verdi).sort(), [
-    "frist","id","lenke","notat","opprettet","oppdatert","sektor",
+    "frist","id","jobbtype","lenke","notat","opprettet","oppdatert","sektor",
     "selskap","sendtDato","sted","stilling","status"
   ].sort());
 });
