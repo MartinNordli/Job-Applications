@@ -208,16 +208,19 @@ export function byggForespørsel(tekst, manglende){
   const felt = manglende.filter(f => FELT.includes(f));
   if(!felt.length) return null;                 /* ingenting å spørre om */
 
-  const be = felt.includes("frist")
-    ? `Fyll ut: ${felt.join(", ")}.`
-    : `Fyll ut: ${felt.join(", ")}. Fristen er allerede kjent — ikke oppgi den.`;
+  const skjema = feltSkjema(felt);
+  /* Be om feltene ved navnene de faktisk har i skjemaet, ikke de
+     norske vi bruker internt — ellers ber vi om «stilling» og
+     forventer «title». */
+  const be = `Fyll ut disse feltene: ${Object.keys(skjema.properties).join(", ")}.`
+    + (felt.includes("frist") ? "" : " Fristen er allerede kjent — ikke oppgi den.");
 
   return {
     model: MODELL,
     max_tokens: 1024,
     system: LEDETEKST,
     messages: [{ role: "user", content: `${be}\n\n--- annonsetekst ---\n${tekst}` }],
-    output_config: { format: { type: "json_schema", schema: feltSkjema(felt) } }
+    output_config: { format: { type: "json_schema", schema: skjema } }
   };
 }
 
