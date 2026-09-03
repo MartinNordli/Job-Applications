@@ -299,6 +299,47 @@ mod tester {
         assert!(feil.contains("internt nett"), "uventet melding: {feil}");
     }
 
+    /* De to under går ut på nettet og koster penger. De kjøres ikke av
+       `npm run test:rust` — bare med `cargo test -- --ignored`, når man
+       vil se at appmodus faktisk snakker med omverdenen. */
+    #[tokio::test]
+    #[ignore = "går ut på nettet"]
+    async fn henter_en_ekte_side() {
+        let side = hent_side("https://job-boards.greenhouse.io/anthropic".into())
+            .await
+            .expect("skulle hentet siden");
+        assert_eq!(side.status, 200);
+        assert!(side.html.len() > 1000, "fikk {} tegn", side.html.len());
+    }
+
+    #[tokio::test]
+    #[ignore = "går ut på nettet og koster penger"]
+    async fn spor_modellen_pa_ekte() {
+        let sti = dirs_datakatalog().join("nokkel.txt");
+        let nokkel = match std::fs::read_to_string(&sti) {
+            Ok(t) if !t.trim().is_empty() => t.trim().to_owned(),
+            _ => {
+                eprintln!("hopper over: ingen nokkel.txt i {}", sti.display());
+                return;
+            }
+        };
+        let kropp = serde_json::json!({
+            "model": "claude-haiku-4-5",
+            "max_tokens": 64,
+            "messages": [{ "role": "user", "content": "Svar med ordet: hei" }]
+        })
+        .to_string();
+
+        let svar = spor_modell(nokkel, kropp).await.expect("modellen skulle svart");
+        assert!(svar.contains("\"content\""), "uventet svar: {}", &svar[..svar.len().min(200)]);
+    }
+
+    /* Samme katalog som appen bruker, uten en AppHandle å spørre. */
+    fn dirs_datakatalog() -> std::path::PathBuf {
+        std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default())
+            .join("Library/Application Support/no.nordli.jobbsoknader")
+    }
+
     #[tokio::test]
     async fn bare_http_og_https() {
         for url in ["file:///etc/passwd", "javascript:alert(1)", "ftp://example.com/"] {
