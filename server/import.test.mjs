@@ -94,6 +94,41 @@ test("uten JSON-LD faller stillingen tilbake på og:title", () => {
   assert.equal(tolkStrukturert(html).stilling, "Sommerjobb i Bekk");
 });
 
+test("sidetittelen merkes som svak — den er ikke stillingens navn", () => {
+  const s = tolkStrukturert(`<meta property="og:title" content="Graduate Logistikk - arbeidsplassen.no">`
+                          + `<meta property="og:site_name" content="arbeidsplassen.no">`);
+  assert.equal(s.stilling, "Graduate Logistikk - arbeidsplassen.no");
+  assert.equal(s.svak.stilling, true);
+  assert.equal(s.svak.selskap, true);
+});
+
+test("JSON-LD er aldri svak", () => {
+  assert.deepEqual(tolkStrukturert(ldJson(stilling())).svak, {});
+});
+
+test("modellen slår en svak verdi, men ikke en sterk", () => {
+  const svak = { stilling: "Graduate Logistikk - arbeidsplassen.no", svak: { stilling: true } };
+  assert.equal(slåSammen(svak, { stilling: "Graduate Logistikk" }, "https://a.no/1").utkast.stilling,
+               "Graduate Logistikk");
+
+  const sterk = { stilling: "Graduate: Data Engineer", svak: {} };
+  assert.equal(slåSammen(sterk, { stilling: "Noe annet" }, "https://a.no/1").utkast.stilling,
+               "Graduate: Data Engineer");
+});
+
+test("en svak verdi taper ikke mot ingenting", () => {
+  const svak = { stilling: "Sidetittel", svak: { stilling: true } };
+  assert.equal(slåSammen(svak, {}, "https://a.no/1").utkast.stilling, "Sidetittel");
+});
+
+test("modellen får vite hvilken dag det er", () => {
+  /* Norske annonser skriver «søk senest 13. september» uten år. Uten
+     dagens dato gjettet modellen året, og to like annonser fikk hvert
+     sitt svar. */
+  const be = byggForespørsel("tekst", ["frist"], new Date("2026-09-03T10:00:00Z"));
+  assert.match(be.messages[0].content, /^I dag er 2026-09-03\./);
+});
+
 test("tekstrensingen fjerner skript og entiteter", () => {
   const t = renskTekst(`<nav>meny</nav><script>alert(1)</script><p>Vi s&oslash;ker deg &amp; deg.</p>`);
   assert.equal(t.includes("alert"), false);

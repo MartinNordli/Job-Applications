@@ -74,7 +74,7 @@ async function iApp(url, valg, si){
   const kjent  = navn => sektorForSelskap(navn, SEKTOR_FOR, jobber);
   strukturert.sektor = kjent(strukturert.selskap);
 
-  const manglende = FELT.filter(f => !strukturert[f]);
+  const manglende = FELT.filter(f => !strukturert[f] || strukturert.svak?.[f]);
 
   let modell = null;
   if(manglende.length && tekst.length > 40){

@@ -104,7 +104,9 @@ async function apiImporter(req, res, nett, lager){
   const kjent = navn => sektorForSelskap(navn, SEKTOR_FOR, jobber);
   strukturert.sektor = kjent(strukturert.selskap);
 
-  const manglende = FELT.filter(f => !strukturert[f]);
+  /* Et svakt felt teller som manglende: vi spør modellen, og lar den
+     vinne hvis den har noe bedre enn det sidetittelen ga oss. */
+  const manglende = FELT.filter(f => !strukturert[f] || strukturert.svak?.[f]);
 
   let modell = null;
   if(manglende.length && tekst.length > 40){

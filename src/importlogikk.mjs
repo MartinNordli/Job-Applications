@@ -100,7 +100,11 @@ function finnJobPosting(node, dybde = 0){
 }
 
 export function tolkStrukturert(html){
-  const ut = { stilling: null, selskap: null, frist: null, sted: null, jobbtype: null };
+  /* `svak` merker verdier som er gjettet ut av sidetittelen. En <title>
+     er sidens tittel, ikke stillingens — «Graduate Logistikk -
+     arbeidsplassen.no» er ikke et stillingsnavn. Slike verdier brukes
+     bare hvis modellen ikke har noe bedre. */
+  const ut = { stilling: null, selskap: null, frist: null, sted: null, jobbtype: null, svak: {} };
   const kilde = String(html || "");
 
   /* --- JSON-LD --- */
@@ -140,11 +144,17 @@ export function tolkStrukturert(html){
   if(!ut.stilling){
     const og = kilde.match(/<meta\b[^>]*property\s*=\s*["']og:title["'][^>]*content\s*=\s*["']([^"']*)["']/i)
             || kilde.match(/<title[^>]*>([\s\S]{0,300}?)<\/title\s*>/i);
-    if(og) ut.stilling = avkod(str(og[1])).slice(0, MAKS.stilling) || null;
+    if(og){
+      ut.stilling = avkod(str(og[1])).slice(0, MAKS.stilling) || null;
+      if(ut.stilling) ut.svak.stilling = true;
+    }
   }
   if(!ut.selskap){
     const sn = kilde.match(/<meta\b[^>]*property\s*=\s*["']og:site_name["'][^>]*content\s*=\s*["']([^"']*)["']/i);
-    if(sn) ut.selskap = avkod(str(sn[1])) || null;
+    if(sn){
+      ut.selskap = avkod(str(sn[1])) || null;
+      if(ut.selskap) ut.svak.selskap = true;
+    }
   }
 
   for(const f of ["stilling", "selskap", "sted"])
@@ -186,7 +196,11 @@ Regler:
   Gjett aldri "rolling" av at fristen mangler.
 - deadline er en dato på formen ÅÅÅÅ-MM-DD, og bare når deadline_type
   er "fixed".
-- location er stedet stillingen utføres, kort: «Oslo», «Oslo / Trondheim».
+- Norske annonser skriver ofte fristen uten år («søk senest 13. september»).
+  Velg da den første gangen den datoen inntreffer fra og med i dag — ikke
+  neste år. Dagens dato står i meldingen.
+- location er stedet stillingen utføres, så kort som mulig: «Oslo»,
+  «Oslo / Trondheim». Land og bydel utelates. Maks tre steder.
 - job_type: "graduate" for graduateprogram og traineestillinger, "internship"
   for sommerjobb og praktikantstillinger, ellers "fulltid" eller "deltid".`;
 
@@ -200,11 +214,15 @@ function feltSkjema(felt){
   }
   if(felt.includes("sted"))     p.location = { type: ["string", "null"], maxLength: MAKS.sted };
   if(felt.includes("sektor"))   p.sector   = { type: "string", enum: Object.keys(SEKTORER) };
-  if(felt.includes("jobbtype")) p.job_type = { type: ["string", "null"], enum: [...Object.keys(JOBBTYPER), null] };
+  /* Tom streng, ikke null, som «vet ikke»: API-et avviser et enum satt
+     sammen med en type-union — «Enum value 'graduate' does not match
+     declared type ['string','null']» — og tomt er dessuten det samme
+     hvilestedet jobbtype har i datamodellen. */
+  if(felt.includes("jobbtype")) p.job_type = { type: "string", enum: [...Object.keys(JOBBTYPER), ""] };
   return { type: "object", properties: p, required: Object.keys(p), additionalProperties: false };
 }
 
-export function byggForespørsel(tekst, manglende){
+export function byggForespørsel(tekst, manglende, iDag = new Date()){
   const felt = manglende.filter(f => FELT.includes(f));
   if(!felt.length) return null;                 /* ingenting å spørre om */
 
@@ -219,7 +237,10 @@ export function byggForespørsel(tekst, manglende){
     model: MODELL,
     max_tokens: 1024,
     system: LEDETEKST,
-    messages: [{ role: "user", content: `${be}\n\n--- annonsetekst ---\n${tekst}` }],
+    /* Modellen vet ikke hvilken dag det er, og en frist uten år kan
+       ikke tolkes uten å vite det. */
+    messages: [{ role: "user", content:
+      `I dag er ${iDag.toISOString().slice(0, 10)}.\n${be}\n\n--- annonsetekst ---\n${tekst}` }],
     output_config: { format: { type: "json_schema", schema: skjema } }
   };
 }
@@ -285,6 +306,10 @@ export function slåSammen(strukturert, modell, url){
     const s = strukturert?.[f] ?? null;
     const m = modell?.[f] ?? null;
     if(f === "jobbtype" && s === "fulltid" && m === "graduate"){
+      utkast[f] = m; kilder[f] = "modell"; continue;
+    }
+    /* Gjettet ut av sidetittelen taper mot noe modellen faktisk leste. */
+    if(strukturert?.svak?.[f] && m != null && m !== ""){
       utkast[f] = m; kilder[f] = "modell"; continue;
     }
     if(s != null && s !== ""){ utkast[f] = s; kilder[f] = "strukturert"; }
