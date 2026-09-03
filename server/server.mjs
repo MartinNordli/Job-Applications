@@ -14,7 +14,7 @@ import { lagLager } from "./lager.mjs";
 import { lagNett, ManglerNokkel } from "./nett.mjs";
 import { SEKTOR_FOR } from "../src/felles.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel,
-         tolkModellsvar, slåSammen, sektorForSelskap, manglendeFelt } from "../src/importlogikk.mjs";
+         tolkModellsvar, slåSammen, sektorForSelskap, manglendeFelt, finnesFraFor } from "../src/importlogikk.mjs";
 
 const HER = path.dirname(fileURLToPath(import.meta.url));
 const ROT = path.resolve(HER, "..");
@@ -86,6 +86,18 @@ async function apiImporter(req, res, nett, lager){
   const url = typeof inn?.url === "string" ? inn.url.trim() : "";
   if(!url) return svar(res, 400, { feil: "mangler url", melding: "Lim inn adressen til utlysningen." });
 
+  /* Listen leses først, ikke sist: står annonsen der fra før, er det
+     ingenting å hente og ingenting å spørre modellen om. Det er den
+     billigste importen som finnes. */
+  let jobber = [];
+  try{ const r = await lager.les(); if(Array.isArray(r?.jobber)) jobber = r.jobber; }
+  catch{ /* listen er en bekvemmelighet her, ikke et krav */ }
+
+  const fra_for = finnesFraFor(url, jobber);
+  if(fra_for) return svar(res, 409, { feil: "finnes",
+    id: fra_for.id, selskap: fra_for.selskap, stilling: fra_for.stilling,
+    melding: `Du har allerede «${fra_for.stilling}» hos ${fra_for.selskap} i listen.` });
+
   let side;
   try{ side = await nett.hentSide(url); }
   catch(e){ return svar(res, 502, { feil: "henting", melding: String(e?.message || e) }); }
@@ -98,9 +110,6 @@ async function apiImporter(req, res, nett, lager){
      nå, for å slippe å spørre modellen i det hele tatt når selskapet
      står i de strukturerte dataene — og etterpå, når vi vet navnet.
      På sider uten JSON-LD er det først da selskapet finnes. */
-  let jobber = [];
-  try{ const r = await lager.les(); if(Array.isArray(r?.jobber)) jobber = r.jobber; }
-  catch{ /* listen er en bekvemmelighet her, ikke et krav */ }
   const kjent = navn => sektorForSelskap(navn, SEKTOR_FOR, jobber);
   strukturert.sektor = kjent(strukturert.selskap);
 

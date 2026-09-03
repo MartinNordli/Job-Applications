@@ -60,11 +60,20 @@ appen siden, leser ut det den finner, og fyller feltene. Ingenting lagres av
 seg selv — utkastet havner i det vanlige skjemaet, og du trykker **Legg til
 søknad** selv.
 
-Det meste leses rett ut av siden: de fleste utlysninger bærer
-`schema.org/JobPosting` som strukturerte data, og da er stilling, selskap,
-frist og sted eksakte. Bare det som mangler går videre til en språkmodell
-(Claude Haiku), og et selskap som allerede står i listen får sektoren sin
-derfra i stedet for å bli klassifisert på nytt.
+Det meste leses rett ut av siden, uten modell: `schema.org/JobPosting` når
+den finnes, ellers etiketterte verdier i vanlig markup — `<dt>Stillingstittel</dt>`,
+`<th>Søknadsfrist</th> — og fristen i brødteksten, «Søk senest søndag 13.
+september». Jobbtypen følger av ansettelsesform og stillingsnavn.
+
+Bare det som fortsatt mangler går videre til en språkmodell (Claude Haiku),
+og et selskap som allerede står i listen får sektoren sin derfra i stedet
+for å bli klassifisert på nytt. Hvor mye annonsetekst som sendes følger av
+hva som gjenstår: selskap og sted står i toppen, mens en frist kan stå hvor
+som helst. På en typisk norsk annonse er det tre felt og ~500 tokens — under
+ett øre.
+
+Limer du inn en lenke du allerede har i listen, sier appen fra før den
+henter noe som helst.
 
 Det krever en API-nøkkel fra <https://console.anthropic.com>. Den legges i
 `nokkel.txt` i den datakatalogen versjonen bruker — samme sted som

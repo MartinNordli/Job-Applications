@@ -1017,7 +1017,8 @@ const VENTETEKST = {
    er våre egne — det eneste som kommer utenfra er `.message`, og den blir
    escapet. */
 const IMPORTHJELP = {
-  "mangler-nokkel": 'Importen trenger <code>ANTHROPIC_API_KEY</code> i miljøet før serveren startes. README-en viser hvordan.',
+  "finnes":         'Åpne den fra listen hvis du vil endre noe. Vil du legge den inn på nytt likevel, velg «For hånd».',
+  "mangler-nokkel": 'Importen trenger en API-nøkkel i <code>nokkel.txt</code> i datakatalogen. README-en viser hvordan.',
   "frakoblet":      'Sjekk at serveren kjører, og prøv igjen.',
   "ellers":         'Lenken står igjen. Velg «For hånd» hvis du heller vil fylle inn resten selv.'
 };

@@ -169,21 +169,36 @@ export function lagNett({ katalog } = {}){
   return { hentSide, spørModell: kropp => spørModell(kropp, katalog) };
 }
 
+/* Verdt ett nytt forsøk: køen er full, eller noe er nede et øyeblikk.
+   Uten dette må brukeren trykke selv — og da betales hentingen på nytt. */
+const PRØV_IGJEN = new Set([408, 409, 429, 500, 502, 503, 504, 529]);
+const PAUSE = 1_500;
+
+const sov = ms => new Promise(r => setTimeout(r, ms));
+
 export async function spørModell(kropp, katalog){
   const nokkel = await lesNokkel(katalog);
 
+  const send = () => fetch(MODELL_URL, {
+    method: "POST",
+    signal: AbortSignal.timeout(30_000),
+    headers: {
+      "x-api-key": nokkel,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json"
+    },
+    body: JSON.stringify(kropp)
+  });
+
   let r;
   try{
-    r = await fetch(MODELL_URL, {
-      method: "POST",
-      signal: AbortSignal.timeout(30_000),
-      headers: {
-        "x-api-key": nokkel,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json"
-      },
-      body: JSON.stringify(kropp)
-    });
+    r = await send();
+    if(PRØV_IGJEN.has(r.status)){
+      /* Retry-After er serverens eget råd; den vet bedre enn vi gjør. */
+      const raad = Number(r.headers.get("retry-after"));
+      await sov(Number.isFinite(raad) && raad > 0 ? Math.min(raad * 1000, 10_000) : PAUSE);
+      r = await send();
+    }
   }catch(e){
     throw new Error(e?.name === "TimeoutError"
       ? "Modellen svarte ikke i tide."

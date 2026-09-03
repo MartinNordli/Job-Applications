@@ -539,7 +539,37 @@ export function slåSammen(strukturert, modell, url){
 }
 
 /* ============================================================
-   6 · Sektor på selskapsnivå
+   6 · Er annonsen allerede i listen?
+   ============================================================ */
+
+/* Samme annonse kommer i mange drakter: med og uten sporingsparametre,
+   med og uten skråstrek til slutt, med og uten fragment. Sammenlikningen
+   må se forbi det — ellers lager vi rad nummer to av en lenke brukeren
+   kopierte fra et nyhetsbrev i stedet for fra søkeresultatet. */
+export function normaliserLenke(url){
+  try{
+    const u = new URL(String(url || "").trim());
+    if(u.protocol !== "http:" && u.protocol !== "https:") return null;
+    u.hash = "";
+    u.username = u.password = "";
+    for(const n of [...u.searchParams.keys()])
+      if(/^(utm_|gclid|fbclid|mc_cid|mc_eid|ref$|source$)/i.test(n)) u.searchParams.delete(n);
+    u.hostname = u.hostname.replace(/^www\./i, "").toLowerCase();
+    u.pathname = u.pathname.replace(/\/+$/, "") || "/";
+    return u.protocol + "//" + u.host.replace(/^www\./i, "") + u.pathname + u.search;
+  }catch{ return null; }
+}
+
+/* Sjekken gjøres før hentingen: den sparer både et nettkall og et
+   modellkall, og er derfor det billigste vi gjør. */
+export function finnesFraFor(url, jobber = []){
+  const n = normaliserLenke(url);
+  if(!n) return null;
+  return jobber.find(j => j?.lenke && normaliserLenke(j.lenke) === n) || null;
+}
+
+/* ============================================================
+   7 · Sektor på selskapsnivå
    ============================================================ */
 
 /* Kravet er at sektoren huskes per selskap og bare klassifiseres for

@@ -18,6 +18,8 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "charset"] }
+# Allerede i treet via Tauri; vi trenger bare sleep til det nye forsøket.
+tokio = { version = "1", features = ["time"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

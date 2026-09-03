@@ -173,6 +173,10 @@ async fn les_med_tak(mut svar: reqwest::Response) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&biter).into_owned())
 }
 
+fn prøv_igjen(kode: u16) -> bool {
+    matches!(kode, 408 | 409 | 429 | 500 | 502 | 503 | 504 | 529)
+}
+
 /// Kroppen kommer som tekst fra JavaScript; adressen og nøkkelen gjør
 /// ikke det. Nøkkelen returneres aldri, heller ikke i en feilmelding.
 pub async fn spor_modell(nokkel: String, kropp: String) -> Result<String, String> {
@@ -182,21 +186,39 @@ pub async fn spor_modell(nokkel: String, kropp: String) -> Result<String, String
         .build()
         .map_err(|e| format!("Fikk ikke satt opp forespørselen: {e}"))?;
 
-    let svar = klient
-        .post(MODELL_URL)
-        .header("x-api-key", nokkel)
-        .header("anthropic-version", "2023-06-01")
-        .header("content-type", "application/json")
-        .body(kropp)
-        .send()
-        .await
-        .map_err(|e| {
-            if e.is_timeout() {
-                "Modellen svarte ikke i tide.".to_string()
-            } else {
-                "Fikk ikke kontakt med modellen.".to_string()
-            }
-        })?;
+    let send = || {
+        klient
+            .post(MODELL_URL)
+            .header("x-api-key", &nokkel)
+            .header("anthropic-version", "2023-06-01")
+            .header("content-type", "application/json")
+            .body(kropp.clone())
+            .send()
+    };
+
+    let feilmelding = |e: reqwest::Error| {
+        if e.is_timeout() {
+            "Modellen svarte ikke i tide.".to_string()
+        } else {
+            "Fikk ikke kontakt med modellen.".to_string()
+        }
+    };
+
+    let mut svar = send().await.map_err(feilmelding)?;
+
+    /* Ett nytt forsøk når køen er full eller noe er nede et øyeblikk.
+       Uten det må brukeren trykke selv, og betaler hentingen på nytt. */
+    if prøv_igjen(svar.status().as_u16()) {
+        let pause = svar
+            .headers()
+            .get(reqwest::header::RETRY_AFTER)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse::<u64>().ok())
+            .map(|s| Duration::from_secs(s.min(10)))
+            .unwrap_or(Duration::from_millis(1500));
+        tokio::time::sleep(pause).await;
+        svar = send().await.map_err(feilmelding)?;
+    }
 
     let kode = svar.status();
     let tekst = svar
@@ -256,6 +278,16 @@ mod tester {
             "2606:2800:220:1:248:1893:25c8:1946",
         ] {
             assert!(!er_intern(&ip(a)), "{a} skulle sluppet gjennom");
+        }
+    }
+
+    #[test]
+    fn bare_forbigående_feil_gir_nytt_forsøk() {
+        for k in [408, 429, 500, 502, 503, 529] {
+            assert!(prøv_igjen(k), "{k} skulle gitt nytt forsøk");
+        }
+        for k in [200, 400, 401, 403, 404, 422] {
+            assert!(!prøv_igjen(k), "{k} skal ikke prøves på nytt");
         }
     }
 

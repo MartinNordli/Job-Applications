@@ -13,7 +13,7 @@
 import * as Lagring from "./lagring.js";
 import { SEKTOR_FOR } from "./felles.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel,
-         tolkModellsvar, slåSammen, sektorForSelskap, manglendeFelt } from "./importlogikk.mjs";
+         tolkModellsvar, slåSammen, sektorForSelskap, manglendeFelt, finnesFraFor } from "./importlogikk.mjs";
 
 /* Feilene flaten skiller på. `navn` er til kode, `message` til folk. */
 export class Importfeil extends Error {
@@ -61,6 +61,10 @@ async function overHttp(url, si){
 
 async function iApp(url, valg, si){
   const { tauriNett } = await import("./tauri-nett.mjs");
+
+  const fraFor = finnesFraFor(url, valg.jobber || []);
+  if(fraFor) throw new Importfeil("finnes",
+    `Du har allerede «${fraFor.stilling}» hos ${fraFor.selskap} i listen.`);
 
   si(TRINN.HENTER);
   let side;

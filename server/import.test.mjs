@@ -8,7 +8,8 @@ import { lagServer } from "./server.mjs";
 import { erIntern, lesNokkel, ManglerNokkel } from "./nett.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel, tolkModellsvar,
          slåSammen, sektorForSelskap, avkod, tolkEtiketter, fristFraTekst,
-         erLopende, jobbtypeFraTekst, tekstbehov, TEKSTBUDSJETT } from "../src/importlogikk.mjs";
+         erLopende, jobbtypeFraTekst, tekstbehov, TEKSTBUDSJETT,
+         normaliserLenke, finnesFraFor, manglendeFelt } from "../src/importlogikk.mjs";
 import { validerSoknad, normaliserIsoDato } from "../src/felles.mjs";
 
 /* ============================================================
@@ -434,6 +435,67 @@ test("endepunktet tar bare POST, og krever en url", async t => {
   const u = await fetch(`${base}/api/importer`, { method: "POST", body: "{}" });
   assert.equal(u.status, 400);
   assert.equal((await u.json()).feil, "mangler url");
+});
+
+/* ---------- duplikat ---------- */
+
+test("lenker sammenliknes forbi sporing og skråstrek", () => {
+  const a = normaliserLenke("https://www.finn.no/job/123/?utm_source=nyhetsbrev&fbclid=x#topp");
+  assert.equal(a, normaliserLenke("https://finn.no/job/123"));
+  assert.notEqual(a, normaliserLenke("https://finn.no/job/124"));
+  assert.equal(normaliserLenke("javascript:alert(1)"), null);
+  /* Ekte parametre er en del av adressen og skal bli stående. */
+  assert.notEqual(normaliserLenke("https://a.no/j?id=1"), normaliserLenke("https://a.no/j?id=2"));
+});
+
+test("finnesFraFor kjenner igjen en rad du allerede har", () => {
+  const jobber = [{ id: "a1", selskap: "Equinor", stilling: "Sommerjobb",
+                    lenke: "https://equinor.com/jobb/9" }];
+  assert.equal(finnesFraFor("https://www.equinor.com/jobb/9/?utm_medium=e", jobber)?.id, "a1");
+  assert.equal(finnesFraFor("https://equinor.com/jobb/10", jobber), null);
+  assert.equal(finnesFraFor("https://a.no/1", [{ id: "b", lenke: "" }]), null);
+});
+
+test("en annonse du har fra før hentes ikke i det hele tatt", async t => {
+  let hentet = 0, spurt = 0;
+  const { base, stopp } = await start({
+    hentSide: async url => { hentet++; return { status: 200, sluttUrl: url, html: "<p>x</p>" }; },
+    spørModell: async () => { spurt++; return { content: [] }; }
+  }, [{ id: "a1", selskap: "Equinor", stilling: "Sommerjobb",
+        lenke: "https://equinor.com/jobb/9", sted: "", frist: null,
+        status: "todo", sektor: "energi", notat: "", sendtDato: null }]);
+  t.after(stopp);
+
+  const r = await importer(base, "https://www.equinor.com/jobb/9?utm_source=x");
+  assert.equal(r.status, 409);
+  const j = await r.json();
+  assert.equal(j.feil, "finnes");
+  assert.equal(j.id, "a1");
+  assert.match(j.melding, /Sommerjobb.*Equinor/);
+
+  /* Poenget: sjekken skjer før hentingen, så den koster ingenting. */
+  assert.equal(hentet, 0, "siden skulle ikke vært hentet");
+  assert.equal(spurt, 0, "modellen skulle ikke vært spurt");
+});
+
+/* ---------- hva vi spør om ---------- */
+
+test("fastslått løpende opptak fjerner fristen fra spørsmålet", () => {
+  /* Ellers ville vi sendt hele annonsen for å lete etter en dato vi
+     allerede vet ikke finnes. */
+  assert.equal(manglendeFelt({ lopende: true }).includes("frist"), false);
+  assert.equal(manglendeFelt({ lopende: false }).includes("frist"), true);
+  assert.equal(manglendeFelt({ frist: "2026-09-13" }).includes("frist"), false);
+});
+
+test("ledeteksten bærer bare reglene for feltene vi spør om", () => {
+  const utenFrist = byggForespørsel("t", ["selskap"]).system;
+  const medFrist  = byggForespørsel("t", ["frist"]).system;
+  assert.equal(/deadline_type/.test(utenFrist), false);
+  assert.equal(/deadline_type/.test(medFrist), true);
+  assert.ok(medFrist.length > utenFrist.length);
+  /* Dagens dato hører til fristen og skal ikke sendes ellers. */
+  assert.equal(/I dag er/.test(byggForespørsel("t", ["selskap"]).messages[0].content), false);
 });
 
 /* ---------- vernet ---------- */
