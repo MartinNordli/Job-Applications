@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { lagServer } from "./server.mjs";
-import { erIntern } from "./nett.mjs";
+import { erIntern, lesNokkel, ManglerNokkel } from "./nett.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel, tolkModellsvar,
          slåSammen, sektorForSelskap, avkod } from "../src/importlogikk.mjs";
 import { validerSoknad, normaliserIsoDato } from "../src/felles.mjs";
@@ -288,6 +288,48 @@ test("utvendige adresser slipper gjennom", () => {
   for(const ip of ["93.184.216.34", "8.8.8.8", "172.32.0.1",
                    "2606:2800:220:1:248:1893:25c8:1946"])
     assert.equal(erIntern(ip), false, `${ip} skulle sluppet gjennom`);
+});
+
+/* ---------- nøkkelen ---------- */
+
+/* Nøkkelen leses for seg, uten at noe kall går ut på nettet. */
+async function medMiljø(verdi, fn){
+  const før = process.env.ANTHROPIC_API_KEY;
+  if(verdi === undefined) delete process.env.ANTHROPIC_API_KEY;
+  else process.env.ANTHROPIC_API_KEY = verdi;
+  try{ return await fn(); }
+  finally{
+    if(før === undefined) delete process.env.ANTHROPIC_API_KEY;
+    else process.env.ANTHROPIC_API_KEY = før;
+  }
+}
+
+const tomKatalog = () => fs.mkdtemp(path.join(os.tmpdir(), "jobber-nokkel-"));
+
+test("uten nøkkel noe sted er det en egen feil", async () => {
+  const katalog = await tomKatalog();
+  const e = await medMiljø(undefined, () => lesNokkel(katalog).then(() => null, x => x));
+  assert.ok(e instanceof ManglerNokkel);
+  assert.equal(e.navn, "mangler-nokkel");
+  assert.match(e.message, /nokkel\.txt/);
+});
+
+test("nokkel.txt leses, og trimmes", async () => {
+  const katalog = await tomKatalog();
+  await fs.writeFile(path.join(katalog, "nokkel.txt"), "  sk-ant-fra-fil\n");
+  assert.equal(await medMiljø(undefined, () => lesNokkel(katalog)), "sk-ant-fra-fil");
+});
+
+test("miljøvariabelen går foran filen", async () => {
+  const katalog = await tomKatalog();
+  await fs.writeFile(path.join(katalog, "nokkel.txt"), "sk-ant-fra-fil");
+  assert.equal(await medMiljø("sk-ant-fra-miljo", () => lesNokkel(katalog)), "sk-ant-fra-miljo");
+});
+
+test("tomme verdier teller som ingen nøkkel", async () => {
+  const katalog = await tomKatalog();
+  await fs.writeFile(path.join(katalog, "nokkel.txt"), "   \n");
+  await assert.rejects(() => medMiljø("   ", () => lesNokkel(katalog)), ManglerNokkel);
 });
 
 /* ---------- feltet overlever lagringen ---------- */

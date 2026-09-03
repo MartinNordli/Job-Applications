@@ -11,7 +11,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { lagLager } from "./lager.mjs";
-import { hentSide, spørModell, ManglerNokkel } from "./nett.mjs";
+import { lagNett, ManglerNokkel } from "./nett.mjs";
 import { SEKTOR_FOR } from "../src/felles.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel,
          tolkModellsvar, slåSammen, sektorForSelskap, FELT } from "../src/importlogikk.mjs";
@@ -113,7 +113,7 @@ async function apiImporter(req, res, nett, lager){
     catch(e){
       if(e instanceof ManglerNokkel || e?.navn === "mangler-nokkel")
         return svar(res, 503, { feil: "mangler-nokkel",
-          melding: "Ingen API-nøkkel. Sett ANTHROPIC_API_KEY og start serveren på nytt." });
+          melding: String(e?.message || e) });
       return svar(res, 502, { feil: "modell", melding: String(e?.message || e) });
     }
   }
@@ -205,10 +205,9 @@ async function statisk(req, res, bane){
 }
 
 export function lagServer(valg = {}){
-  const nett  = valg.nett ?? { hentSide, spørModell };
-  const lager = valg.lager ?? lagLager({
-    katalog: valg.katalog ?? process.env.DATA_KATALOG ?? path.join(ROT, "data")
-  });
+  const katalog = valg.katalog ?? process.env.DATA_KATALOG ?? path.join(ROT, "data");
+  const nett    = valg.nett  ?? lagNett({ katalog });
+  const lager   = valg.lager ?? lagLager({ katalog });
 
   return http.createServer(async (req, res) => {
     try{

@@ -7,12 +7,15 @@
    ============================================================ */
 
 import dns from "node:dns/promises";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { sjekkLenke } from "../src/felles.mjs";
 
 const MAKS_SIDE   = 2 * 1024 * 1024;
 const MAKS_HOPP   = 3;
 const TIDSGRENSE  = 10_000;
 const MODELL_URL  = "https://api.anthropic.com/v1/messages";
+const NOKKELFIL   = "nokkel.txt";
 
 const AGENT = "Jobbsoknader/1.0 (personlig soknadsoversikt)";
 
@@ -135,12 +138,39 @@ async function lesMedTak(r){
 /* ---------- spør modellen ---------- */
 
 export class ManglerNokkel extends Error {
-  constructor(){ super("Ingen API-nøkkel."); this.navn = "mangler-nokkel"; }
+  constructor(melding){ super(melding); this.navn = "mangler-nokkel"; }
 }
 
-export async function spørModell(kropp){
-  const nokkel = process.env.ANTHROPIC_API_KEY;
-  if(!nokkel) throw new ManglerNokkel();
+/* Nøkkelen ligger helst i en fil ved siden av datafilen: den kan settes
+   chmod 600, den er allerede i .gitignore, og den slipper å stå i klartekst
+   i ~/.zshrc der hvert eneste program på maskinen ser den. Miljøvariabelen
+   virker fortsatt og går foran, for den som vil ha den.
+
+   Filen leses ved hvert kall. Det er én liten lesing per import, og til
+   gjengjeld virker en ny nøkkel uten at serveren må startes på nytt. */
+export async function lesNokkel(katalog){
+  const fra = process.env.ANTHROPIC_API_KEY?.trim();
+  if(fra) return fra;
+
+  if(katalog){
+    try{
+      const t = (await fs.readFile(path.join(katalog, NOKKELFIL), "utf8")).trim();
+      if(t) return t;
+    }catch{ /* finnes ikke, eller kan ikke leses — samme svar som ingen nøkkel */ }
+  }
+
+  throw new ManglerNokkel(
+    `Ingen API-nøkkel. Legg den i ${NOKKELFIL} i datakatalogen, eller sett ANTHROPIC_API_KEY.`);
+}
+
+/* Samler de to operasjonene slik lagLager samler filoperasjonene, og
+   av samme grunn: katalogen er noe serveren vet, ikke noe modulen gjør. */
+export function lagNett({ katalog } = {}){
+  return { hentSide, spørModell: kropp => spørModell(kropp, katalog) };
+}
+
+export async function spørModell(kropp, katalog){
+  const nokkel = await lesNokkel(katalog);
 
   let r;
   try{

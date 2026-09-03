@@ -66,22 +66,24 @@ frist og sted eksakte. Bare det som mangler går videre til en språkmodell
 (Claude Haiku), og et selskap som allerede står i listen får sektoren sin
 derfra i stedet for å bli klassifisert på nytt.
 
-Det krever en API-nøkkel fra <https://console.anthropic.com>:
+Det krever en API-nøkkel fra <https://console.anthropic.com>. Den legges i
+`nokkel.txt` i den datakatalogen versjonen bruker — samme sted som
+`jobber.json`, så filen kan settes `chmod 600` og allerede er i
+`.gitignore`. `read -rs` holder den utenfor shell-historikken:
 
 ```sh
-export ANTHROPIC_API_KEY="sk-ant-…"
-npm start
+# nettleserversjonen
+read -rs "?Nøkkel: " K && printf '%s\n' "$K" > data/nokkel.txt && chmod 600 data/nokkel.txt && unset K
+
+# appen
+read -rs "?Nøkkel: " K && printf '%s\n' "$K" > ~/Library/Application\ Support/no.nordli.jobbsoknader/nokkel.txt && unset K
 ```
 
-Appen har ingen terminal å arve miljøvariabler fra, så der legges nøkkelen i
-en fil ved siden av datafilen:
-
-```sh
-echo "sk-ant-…" > ~/Library/Application\ Support/no.nordli.jobbsoknader/nokkel.txt
-```
+Filen leses ved hvert kall, så en ny nøkkel virker uten omstart. Serveren
+tar `ANTHROPIC_API_KEY` i stedet hvis den er satt.
 
 Nøkkelen leses av serveren i nettlesermodus og av Rust i appen. Den sendes
-aldri til nettleseren, og `nokkel.txt` er i `.gitignore`.
+aldri til nettleseren, og havner aldri i en feilmelding.
 
 Uten nøkkel virker resten fortsatt: sider med strukturerte data fylles ut i
 sin helhet uten at modellen blir spurt. Sider som bygges av JavaScript etter
