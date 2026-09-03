@@ -11,6 +11,8 @@ import { tolkStrukturert, renskTekst, byggForespørsel, tolkModellsvar,
          erLopende, jobbtypeFraTekst, tekstbehov, TEKSTBUDSJETT,
          normaliserLenke, finnesFraFor, manglendeFelt } from "../src/importlogikk.mjs";
 import { validerSoknad, normaliserIsoDato } from "../src/felles.mjs";
+import { lagLinje, leggTil, tolkLogg, sammendrag, kroner,
+         MAKS_LINJER } from "../src/importlogg.mjs";
 
 /* ============================================================
    Nettet stubbes overalt. Ingen test her rører en ekte adresse —
@@ -26,6 +28,7 @@ async function start(nett, jobber = []){
   }
   await new Promise(r => tjener.listen(0, "127.0.0.1", r));
   return {
+    katalog,
     base: `http://127.0.0.1:${tjener.address().port}`,
     stopp: () => new Promise(r => tjener.close(r))
   };
@@ -496,6 +499,84 @@ test("ledeteksten bærer bare reglene for feltene vi spør om", () => {
   assert.ok(medFrist.length > utenFrist.length);
   /* Dagens dato hører til fristen og skal ikke sendes ellers. */
   assert.equal(/I dag er/.test(byggForespørsel("t", ["selskap"]).messages[0].content), false);
+});
+
+/* ---------- importloggen ---------- */
+
+const linje = (o = {}) => lagLinje({
+  url: "https://www.arbeidsplassen.nav.no/stillinger/x",
+  felt: ["selskap", "sted"], bruk: { input_tokens: 500, output_tokens: 50 }, ...o });
+
+test("linjen bærer vertsnavn, ikke hele adressen", () => {
+  const l = linje();
+  assert.equal(l.vert, "arbeidsplassen.nav.no");
+  assert.equal("url" in l, false);
+  assert.equal(l.modell, true);
+  assert.equal(l.inn, 500);
+});
+
+test("en import uten modellkall koster ingenting", () => {
+  const l = linje({ felt: [], bruk: null });
+  assert.equal(l.modell, false);
+  assert.equal(l.inn, 0);
+  assert.equal(l.ut, 0);
+});
+
+test("en ødelagt linje koster bare den ene raden", () => {
+  const t = leggTil(leggTil("", linje()), linje()) + "{halvskrevet\n";
+  assert.equal(tolkLogg(t).length, 2);
+});
+
+test("loggen vokser ikke forbi taket", () => {
+  let t = "";
+  for(let i = 0; i < MAKS_LINJER + 25; i++) t = leggTil(t, linje());
+  assert.equal(tolkLogg(t).length, MAKS_LINJER);
+});
+
+test("sammendraget teller de tre tallene", () => {
+  let t = "";
+  t = leggTil(t, linje({ felt: ["selskap", "sted"] }));
+  t = leggTil(t, linje({ felt: ["selskap"], bruk: { input_tokens: 300, output_tokens: 40 } }));
+  t = leggTil(t, linje({ felt: [], bruk: null }));
+
+  const s = sammendrag(t);
+  assert.equal(s.antall, 3);
+  assert.equal(s.utenModell, 1);
+  assert.equal(s.inn, 800);
+  assert.deepEqual(s.felt[0], ["selskap", 2]);
+  /* Snittet regnes over alle importer, også de gratis. */
+  assert.ok(Math.abs(s.snittKroner - s.kroner / 3) < 1e-12);
+  assert.equal(sammendrag(""), null);
+});
+
+test("prisen regnes av de ekte tokentallene", () => {
+  /* 1 000 000 inn og 0 ut = $1 = kr 11 med kursen i modulen. */
+  assert.ok(Math.abs(kroner({ inn: 1e6, ut: 0 }) - 11) < 1e-9);
+  assert.ok(Math.abs(kroner({ inn: 0, ut: 1e6 }) - 55) < 1e-9);
+});
+
+test("en vellykket import skriver én linje, og endepunktet leser den", async t => {
+  const { base, stopp, katalog } = await start(nettMed(
+    "<h1>Analytiker</h1><p>" + "tekst ".repeat(30) + "</p>",
+    { title: "Analytiker", company: "Ukjent AS" }));
+  t.after(stopp);
+
+  assert.equal((await (await fetch(`${base}/api/importlogg`)).json()).sammendrag, null);
+
+  await importer(base, "https://ukjent.no/jobb/1");
+  await new Promise(r => setTimeout(r, 50));       /* loggen skrives uten å blokkere svaret */
+
+  const s = (await (await fetch(`${base}/api/importlogg`)).json()).sammendrag;
+  assert.equal(s.antall, 1);
+  assert.equal(s.vert, undefined);                  /* sammendraget bærer ingen adresser */
+  assert.ok(await fs.readFile(path.join(katalog, "importlogg.jsonl"), "utf8"));
+});
+
+test("importloggen tar bare GET", async t => {
+  const { base, stopp } = await start(nettMed("<p>x</p>"));
+  t.after(stopp);
+  const r = await fetch(`${base}/api/importlogg`, { method: "POST" });
+  assert.equal(r.status, 405);
 });
 
 /* ---------- vernet ---------- */

@@ -10,11 +10,12 @@ import http from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { lagLager } from "./lager.mjs";
+import { lagLager, lagFiler } from "./lager.mjs";
 import { lagNett, ManglerNokkel } from "./nett.mjs";
 import { SEKTOR_FOR } from "../src/felles.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel,
          tolkModellsvar, slåSammen, sektorForSelskap, manglendeFelt, finnesFraFor } from "../src/importlogikk.mjs";
+import { LOGGFIL, lagLinje, leggTil, sammendrag } from "../src/importlogg.mjs";
 
 const HER = path.dirname(fileURLToPath(import.meta.url));
 const ROT = path.resolve(HER, "..");
@@ -73,7 +74,7 @@ function lesKropp(req){
    felt hvor verdien kom fra, både til nytte i flaten og til
    feilsøking den dagen en side leses feil.
    ------------------------------------------------------------ */
-async function apiImporter(req, res, nett, lager){
+async function apiImporter(req, res, nett, lager, filer){
   if(req.method !== "POST") return ikkeTillatt(res, "POST");
 
   const kropp = await lesKropp(req);
@@ -115,10 +116,14 @@ async function apiImporter(req, res, nett, lager){
 
   const manglende = manglendeFelt(strukturert);
 
-  let modell = null;
+  let modell = null, bruk = null;
   if(manglende.length && tekst.length > 40){
     const be = byggForespørsel(tekst, manglende);
-    try{ modell = tolkModellsvar(await nett.spørModell(be)); }
+    try{
+      const raa = await nett.spørModell(be);
+      bruk   = raa?.usage ?? null;      /* de ekte tokentallene, ikke et anslag */
+      modell = tolkModellsvar(raa);
+    }
     catch(e){
       if(e instanceof ManglerNokkel || e?.navn === "mangler-nokkel")
         return svar(res, 503, { feil: "mangler-nokkel",
@@ -138,7 +143,25 @@ async function apiImporter(req, res, nett, lager){
     return svar(res, 422, { feil: "tomt", utkast, kilder,
       melding: "Fant ingenting å lese på den siden. Den er kanskje bygget med JavaScript." });
 
+  /* Loggen er en bekvemmelighet: en import som lyktes skal ikke feile
+     fordi en linje ikke lot seg skrive. */
+  skrivLogg(filer, lagLinje({ url, felt: bruk ? manglende : [], bruk }))
+    .catch(() => {});
+
   return svar(res, 200, { ok: true, utkast, kilder, sluttUrl: side.sluttUrl });
+}
+
+async function skrivLogg(filer, linje){
+  let fra = "";
+  try{ fra = (await filer.lesTekst(LOGGFIL)) ?? ""; }catch{ /* første gang */ }
+  await filer.skrivAtomisk(LOGGFIL, leggTil(fra, linje));
+}
+
+async function apiImportlogg(req, res, filer){
+  if(req.method !== "GET") return ikkeTillatt(res, "GET");
+  let tekst = "";
+  try{ tekst = (await filer.lesTekst(LOGGFIL)) ?? ""; }catch{ /* ingen logg ennå */ }
+  return svar(res, 200, { sammendrag: sammendrag(tekst) });
 }
 
 async function apiJobber(req, res, lager){
@@ -217,6 +240,7 @@ export function lagServer(valg = {}){
   const katalog = valg.katalog ?? process.env.DATA_KATALOG ?? path.join(ROT, "data");
   const nett    = valg.nett  ?? lagNett({ katalog });
   const lager   = valg.lager ?? lagLager({ katalog });
+  const filer   = valg.filer ?? lagFiler(katalog);
 
   return http.createServer(async (req, res) => {
     try{
@@ -227,7 +251,8 @@ export function lagServer(valg = {}){
       catch{ return svar(res, 400, { feil: "ugyldig sti" }); }
 
       if(bane === "/api/jobber")   return await apiJobber(req, res, lager);
-      if(bane === "/api/importer") return await apiImporter(req, res, nett, lager);
+      if(bane === "/api/importer")  return await apiImporter(req, res, nett, lager, filer);
+      if(bane === "/api/importlogg") return await apiImportlogg(req, res, filer);
       if(bane.startsWith("/api/")) return svar(res, 404, { feil: "ukjent endepunkt" });
       await statisk(req, res, bane);
     }catch(e){

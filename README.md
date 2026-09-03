@@ -75,6 +75,14 @@ ett øre.
 Limer du inn en lenke du allerede har i listen, sier appen fra før den
 henter noe som helst.
 
+Under **Dataene dine** står tre tall om importen: hva den har kostet til
+sammen, hvor ofte modellen slapp å kjøre, og hvilke felt modellen måtte
+fylle. Det siste er det nyttigste — står ett felt øverst lenge, er et
+uttrekk for nettopp det neste ting å skrive. Tallene kommer fra
+`importlogg.jsonl` ved siden av datafilen, én linje per import med
+vertsnavn og de ekte tokentallene fra API-et. Prisen står i
+`src/importlogg.mjs`; endrer den seg, er det den linjen som skal rettes.
+
 Det krever en API-nøkkel fra <https://console.anthropic.com>. Den legges i
 `nokkel.txt` i den datakatalogen versjonen bruker — samme sted som
 `jobber.json`, så filen kan settes `chmod 600` og allerede er i

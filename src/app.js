@@ -4,7 +4,7 @@
 import { STATUSER, SEKTORER, JOBBTYPER, SEKTOR_FOR, ER_SENDT, ER_ARKIV, validerSoknad, sjekkLenke } from "./felles.mjs";
 import { START } from "./startliste.js";
 import * as Lagring from "./lagring.js";
-import { importerFraLenke, TRINN } from "./import.js";
+import { importerFraLenke, importtall, TRINN } from "./import.js";
 
 const NOKKEL = "jobbsoknader-2027";
 window.__jobbsoknaderKjorer = true;   /* se fallback-skriptet i index.html */
@@ -643,8 +643,10 @@ function tegnSkuff(){
       + '<p class="felt__hjelp">Bytter ut hele listen med det du limer inn. Du kan angre etterpå.</p></div>'
       + '<div class="felt" style="margin-top:26px;padding-top:20px;border-top:1px solid var(--linje)">'
       + '<button class="knapp knapp--bred knapp--fare" data-gjor="tilbakestill">Tilbakestill til startlisten</button>'
-      + '<p class="felt__hjelp">Erstatter alt du har lagt inn med de 55 søknadene appen startet med.</p></div>';
+      + '<p class="felt__hjelp">Erstatter alt du har lagt inn med de 55 søknadene appen startet med.</p></div>'
+      + '<div class="felt" id="importtall" style="margin-top:26px;padding-top:20px;border-top:1px solid var(--linje)"></div>';
     b.innerHTML = '<button class="knapp" data-gjor="lukk">Lukk</button>';
+    visImporttall();
     return;
   }
 
@@ -1084,6 +1086,47 @@ async function hentFraLenke(){
     }
     if(knapp.isConnected) knapp.disabled = false;
   }
+}
+
+/* ---- hva importen har kostet ---- */
+
+/* Tre tall, og ikke flere: hva den har kostet, hvor ofte modellen slapp
+   å kjøre, og hvilke felt modellen måtte fylle. Det siste er det eneste
+   som er handlingsrettet — står «selskap» øverst lenge, er et
+   selskapsuttrekk neste ting å skrive. */
+
+const kr  = n => "kr " + n.toFixed(2).replace(".", ",");
+const ore = n => (n * 100).toFixed(1).replace(".", ",") + " øre";
+
+function siden(iso){
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.getDate() + ". " + MND[d.getMonth()];
+}
+
+async function visImporttall(){
+  const t = await importtall();
+  const el = $("#importtall");
+  /* Skuffen kan ha blitt lukket eller byttet modus mens vi ventet. */
+  if(!el || skuffModus !== "eksport") return;
+
+  if(!t || !t.antall){
+    el.innerHTML = '<p class="merkelinje">Import fra lenke</p>'
+      + '<p class="felt__hjelp">Ingen importer ennå. Tallene dukker opp her når du har hentet en utlysning.</p>';
+    return;
+  }
+
+  const felt = t.felt.slice(0, 4)
+    .map(([f, n]) => esc(f) + " " + n).join(" · ");
+
+  el.innerHTML = '<p class="merkelinje">Import fra lenke</p>'
+    + '<p class="lagret" style="margin:0 0 3px">' + t.antall
+      + (t.antall === 1 ? " import" : " importer") + " siden " + esc(siden(t.fra)) + '</p>'
+    + '<p class="lagret" style="margin:0 0 3px">' + kr(t.kroner) + " til sammen · "
+      + ore(t.snittKroner) + ' i snitt</p>'
+    + '<p class="lagret" style="margin:0">' + t.utenModell + " av " + t.antall
+      + ' gikk uten modell</p>'
+    + (felt ? '<p class="felt__hjelp" style="margin-top:9px">Modellen måtte fylle: '
+              + felt + '.</p>' : "");
 }
 
 /* ============================================================

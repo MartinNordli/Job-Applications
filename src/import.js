@@ -12,6 +12,7 @@
 
 import * as Lagring from "./lagring.js";
 import { SEKTOR_FOR } from "./felles.mjs";
+import { LOGGFIL, lagLinje, leggTil, sammendrag } from "./importlogg.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel,
          tolkModellsvar, slåSammen, sektorForSelskap, manglendeFelt, finnesFraFor } from "./importlogikk.mjs";
 
@@ -80,10 +81,14 @@ async function iApp(url, valg, si){
 
   const manglende = manglendeFelt(strukturert);
 
-  let modell = null;
+  let modell = null, bruk = null;
   if(manglende.length && tekst.length > 40){
     si(TRINN.LESER);
-    try{ modell = tolkModellsvar(await tauriNett.spørModell(byggForespørsel(tekst, manglende))); }
+    try{
+      const raa = await tauriNett.spørModell(byggForespørsel(tekst, manglende));
+      bruk   = raa?.usage ?? null;
+      modell = tolkModellsvar(raa);
+    }
     catch(e){
       const m = tekstFra(e, "Fikk ikke kontakt med modellen.");
       throw new Importfeil(/nøkkel/i.test(m) ? "mangler-nokkel" : "modell", m);
@@ -100,7 +105,42 @@ async function iApp(url, valg, si){
     throw new Importfeil("tomt",
       "Fant ingenting å lese på den siden. Den er kanskje bygget med JavaScript.", utkast);
 
+  /* Loggen er en bekvemmelighet — en import som lyktes skal ikke feile
+     fordi en linje ikke lot seg skrive. */
+  skrivLogg(lagLinje({ url, felt: bruk ? manglende : [], bruk })).catch(() => {});
+
   return { utkast, kilder };
+}
+
+/* ---------- importloggen ---------- */
+
+/* Samme fire filoperasjoner som lagringen bruker. Loggen er liten nok
+   til at les-endre-skriv er greit; alternativet er en ny Rust-kommando
+   for én linje tekst. */
+async function filer(){
+  const { lagTauriFiler } = await import("./tauri-filer.mjs");
+  return lagTauriFiler();
+}
+
+async function skrivLogg(linje){
+  const f = await filer();
+  let fra = "";
+  try{ fra = (await f.lesTekst(LOGGFIL)) ?? ""; }catch{ /* første gang */ }
+  await f.skrivAtomisk(LOGGFIL, leggTil(fra, linje));
+}
+
+/* Tre tall om hva importen har kostet. `null` når ingenting er importert. */
+export async function importtall(){
+  if(!Lagring.I_APP){
+    try{
+      const r = await fetch("/api/importlogg");
+      return r.ok ? (await r.json()).sammendrag : null;
+    }catch{ return null; }
+  }
+  try{
+    const f = await filer();
+    return sammendrag((await f.lesTekst(LOGGFIL)) ?? "");
+  }catch{ return null; }
 }
 
 /* Rust sender feil som strenger over invoke. */

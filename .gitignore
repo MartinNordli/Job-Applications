@@ -8,6 +8,9 @@ data/
 # API-nøkkelen for import fra lenke, i nettlesermodus.
 nokkel.txt
 
+# Hva importen har kostet. Ligger i data/, men også her for appkatalogen.
+importlogg.jsonl
+
 # Frontenden samlet for Tauri, og det Rust bygger.
 dist/
 src-tauri/target/
