@@ -13,7 +13,7 @@
 import * as Lagring from "./lagring.js";
 import { SEKTOR_FOR } from "./felles.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel,
-         tolkModellsvar, slåSammen, sektorForSelskap, FELT } from "./importlogikk.mjs";
+         tolkModellsvar, slåSammen, sektorForSelskap, manglendeFelt } from "./importlogikk.mjs";
 
 /* Feilene flaten skiller på. `navn` er til kode, `message` til folk. */
 export class Importfeil extends Error {
@@ -74,7 +74,7 @@ async function iApp(url, valg, si){
   const kjent  = navn => sektorForSelskap(navn, SEKTOR_FOR, jobber);
   strukturert.sektor = kjent(strukturert.selskap);
 
-  const manglende = FELT.filter(f => !strukturert[f] || strukturert.svak?.[f]);
+  const manglende = manglendeFelt(strukturert);
 
   let modell = null;
   if(manglende.length && tekst.length > 40){

@@ -14,7 +14,7 @@ import { lagLager } from "./lager.mjs";
 import { lagNett, ManglerNokkel } from "./nett.mjs";
 import { SEKTOR_FOR } from "../src/felles.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel,
-         tolkModellsvar, slåSammen, sektorForSelskap, FELT } from "../src/importlogikk.mjs";
+         tolkModellsvar, slåSammen, sektorForSelskap, manglendeFelt } from "../src/importlogikk.mjs";
 
 const HER = path.dirname(fileURLToPath(import.meta.url));
 const ROT = path.resolve(HER, "..");
@@ -104,9 +104,7 @@ async function apiImporter(req, res, nett, lager){
   const kjent = navn => sektorForSelskap(navn, SEKTOR_FOR, jobber);
   strukturert.sektor = kjent(strukturert.selskap);
 
-  /* Et svakt felt teller som manglende: vi spør modellen, og lar den
-     vinne hvis den har noe bedre enn det sidetittelen ga oss. */
-  const manglende = FELT.filter(f => !strukturert[f] || strukturert.svak?.[f]);
+  const manglende = manglendeFelt(strukturert);
 
   let modell = null;
   if(manglende.length && tekst.length > 40){

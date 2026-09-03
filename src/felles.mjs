@@ -18,10 +18,12 @@ export const STATUSER = {
 };
 
 export const SEKTORER = {
-  energi:     "Energi og industri",
+  energi:     "Energi",
+  industri:   "Industri og produksjon",
   konsulent:  "Konsulent",
   finans:     "Finans",
   teknologi:  "Teknologi",
+  offentlig:  "Offentlig sektor",
   studentorg: "Verv og studentorg",
   annet:      "Annet"
 };

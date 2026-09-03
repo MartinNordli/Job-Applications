@@ -7,7 +7,8 @@ import path from "node:path";
 import { lagServer } from "./server.mjs";
 import { erIntern, lesNokkel, ManglerNokkel } from "./nett.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel, tolkModellsvar,
-         slåSammen, sektorForSelskap, avkod } from "../src/importlogikk.mjs";
+         slåSammen, sektorForSelskap, avkod, tolkEtiketter, fristFraTekst,
+         erLopende, jobbtypeFraTekst, tekstbehov, TEKSTBUDSJETT } from "../src/importlogikk.mjs";
 import { validerSoknad, normaliserIsoDato } from "../src/felles.mjs";
 
 /* ============================================================
@@ -77,10 +78,17 @@ test("flere jobLocation blir til ett lesbart sted", () => {
   assert.equal(tolkStrukturert(html).sted, "Oslo / Trondheim");
 });
 
-test("employmentType oversettes; graduate finnes ikke i schema.org", () => {
-  assert.equal(tolkStrukturert(ldJson(stilling({ employmentType: "INTERN" }))).jobbtype, "internship");
-  assert.equal(tolkStrukturert(ldJson(stilling({ employmentType: ["FULL_TIME"] }))).jobbtype, "fulltid");
-  assert.equal(tolkStrukturert(ldJson(stilling())).jobbtype, null);
+test("employmentType oversettes fra schema.org", () => {
+  const rolig = o => stilling({ title: "Analytiker", ...o });   /* tittel uten «graduate» */
+  assert.equal(tolkStrukturert(ldJson(rolig({ employmentType: "INTERN" }))).jobbtype, "internship");
+  assert.equal(tolkStrukturert(ldJson(rolig({ employmentType: ["FULL_TIME"] }))).jobbtype, "fulltid");
+  assert.equal(tolkStrukturert(ldJson(rolig())).jobbtype, null);
+});
+
+test("«graduate» i tittelen presiserer fulltid fra schema.org", () => {
+  /* Et graduateprogram står i schema.org som FULL_TIME. Tittelen er
+     den eneste kilden til at det er et graduateløp. */
+  assert.equal(tolkStrukturert(ldJson(stilling({ employmentType: "FULL_TIME" }))).jobbtype, "graduate");
 });
 
 test("én ødelagt ld+json-blokk velter ikke de andre", () => {
@@ -138,6 +146,124 @@ test("tekstrensingen fjerner skript og entiteter", () => {
 
 test("avkod tåller tallreferanser og lar ukjente stå", () => {
   assert.equal(avkod("&#65;&#x42;&ukjent;"), "AB&ukjent;");
+});
+
+/* ---------- etiketterte verdier ---------- */
+
+const dl = par => "<dl>" + par.map(([d, v]) => `<dt>${d}</dt><dd>${v}</dd>`).join("") + "</dl>";
+
+test("dt/dd med norske etiketter leses ut", () => {
+  const e = tolkEtiketter(dl([
+    ["Stillingstittel", "Graduate Skyplattform"],
+    ["Type ansettelse", "Fast, heltid 100%"],
+    ["Arbeidsgiver", "TINE SA"],
+    ["Arbeidssted", "0187 Oslo"]
+  ]));
+  assert.equal(e.stilling, "Graduate Skyplattform");
+  assert.equal(e.selskap, "TINE SA");
+  assert.equal(e.jobbtype, "fulltid");    /* «Fast, heltid 100%» */
+  assert.equal(e.sted, "Oslo");           /* postnummeret ryddes bort */
+});
+
+test("tittelen presiserer ansettelsesformen i tolkStrukturert", () => {
+  /* tolkEtiketter leser bare etiketten; presiseringen hører hjemme
+     der alle kildene ses under ett. */
+  const s = tolkStrukturert(dl([["Stillingstittel", "Graduate Skyplattform"],
+                                ["Type ansettelse", "Fast, heltid 100%"]]));
+  assert.equal(s.jobbtype, "graduate");
+});
+
+test("th/td og engelske etiketter virker like godt", () => {
+  const e = tolkEtiketter("<table><tr><th>Company</th><td>Bekk</td></tr>"
+                        + "<tr><th>Deadline</th><td>2026-11-01</td></tr></table>");
+  assert.equal(e.selskap, "Bekk");
+  assert.equal(e.frist, "2026-11-01");
+});
+
+test("«Sektor» leses ikke — det er en annen akse enn appens", () => {
+  /* arbeidsplassen.no mener eierskap («Privat»), ikke bransje. */
+  const e = tolkEtiketter(dl([["Sektor", "Privat"], ["Stillingstittel", "Analytiker"]]));
+  assert.equal("sektor" in e, false);
+  assert.equal(e.stilling, "Analytiker");
+});
+
+test("et helt avsnitt er ikke en verdi", () => {
+  assert.equal("selskap" in tolkEtiketter(dl([["Arbeidsgiver", "x".repeat(400)]])), false);
+});
+
+test("etiketterte verdier er sterke, ikke svake", () => {
+  const s = tolkStrukturert(dl([["Stillingstittel", "Graduate Logistikk"]])
+                          + `<title>Graduate Logistikk - arbeidsplassen.no</title>`);
+  assert.equal(s.stilling, "Graduate Logistikk");
+  assert.equal(s.svak.stilling, undefined);
+});
+
+test("h1 brukes når ingenting bedre finnes, men er svak", () => {
+  const s = tolkStrukturert("<h1>Graduate Junior IT-utvikler</h1>");
+  assert.equal(s.stilling, "Graduate Junior IT-utvikler");
+  assert.equal(s.svak.stilling, true);
+});
+
+/* ---------- frist i fritekst ---------- */
+
+const iDag = new Date("2026-09-03");
+
+test("«Søk senest søndag 13. september» blir en dato", () => {
+  assert.equal(fristFraTekst("Søk senest søndag 13. september", iDag), "2026-09-13");
+  assert.equal(fristFraTekst("Søknadsfristen er 18. oktober", iDag), "2026-10-18");
+  assert.equal(fristFraTekst("Søknadsfrist: 01.11.2026", iDag), "2026-11-01");
+  assert.equal(fristFraTekst("Application deadline 2026-12-01", iDag), "2026-12-01");
+});
+
+test("året rulles til neste gang datoen inntreffer", () => {
+  assert.equal(fristFraTekst("Frist 1. februar", iDag), "2027-02-01");
+  assert.equal(fristFraTekst("Frist 30. september", iDag), "2026-09-30");
+  /* Står året der, gjettes det ikke. */
+  assert.equal(fristFraTekst("Søknadsfrist 13. september 2028", iDag), "2028-09-13");
+});
+
+test("en dato uten nøkkelord foran er ikke en frist", () => {
+  assert.equal(fristFraTekst("Programmet starter 1. september 2027", iDag), null);
+  assert.equal(fristFraTekst("Vi har holdt på siden 12. mai 1998", iDag), null);
+  assert.equal(fristFraTekst("snarest", iDag), null);
+});
+
+test("løpende opptak kjennes igjen, men taper mot en frist", () => {
+  assert.equal(erLopende("Vi vurderer søknader fortløpende"), true);
+  assert.equal(erLopende("accepting applications on a rolling basis"), true);
+  assert.equal(erLopende("Søk senest 13. september"), false);
+
+  /* Annonser sier ofte begge deler. Fristen er den harde opplysningen. */
+  const s = tolkStrukturert("<p>Søknadsfrist 13. september 2026. Vi intervjuer underveis.</p>");
+  assert.equal(s.frist, "2026-09-13");
+  assert.equal(s.lopende, false, "en frist slår løpende");
+  assert.equal(slåSammen(s, null, "https://a.no/1").utkast.lopende, false);
+});
+
+test("uten frist noe sted er løpende et gyldig svar", () => {
+  const s = tolkStrukturert("<p>Vi tar imot søknader fortløpende gjennom hele året.</p>");
+  assert.equal(s.frist, null);
+  assert.equal(s.lopende, true);
+  assert.equal(slåSammen(s, null, "https://a.no/1").utkast.lopende, true);
+});
+
+/* ---------- tekstbudsjettet ---------- */
+
+test("budsjettet følger av hva som gjenstår", () => {
+  assert.equal(tekstbehov(["selskap", "sektor"]), TEKSTBUDSJETT.topp);
+  assert.equal(tekstbehov(["frist", "selskap"]), TEKSTBUDSJETT.helt);
+});
+
+test("forespørselen skjæres til budsjettet", () => {
+  const lang = "x".repeat(20_000);
+  assert.ok(byggForespørsel(lang, ["selskap"]).messages[0].content.length < TEKSTBUDSJETT.topp + 400);
+  assert.ok(byggForespørsel(lang, ["frist"]).messages[0].content.length > TEKSTBUDSJETT.topp);
+});
+
+test("sidekrom kastes ut av teksten", () => {
+  const t = renskTekst("<p>Hopp til innhold</p><p>Del annonsen</p><p>Vi søker en analytiker.</p>");
+  assert.equal(/Hopp til innhold|Del annonsen/.test(t), false);
+  assert.match(t, /Vi søker en analytiker\./);
 });
 
 /* ---------- modellsvaret ---------- */
