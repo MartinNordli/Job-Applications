@@ -18,12 +18,39 @@ export const STATUSER = {
 };
 
 export const SEKTORER = {
-  energi:     "Energi og industri",
+  energi:     "Energi",
+  industri:   "Industri og produksjon",
   konsulent:  "Konsulent",
   finans:     "Finans",
   teknologi:  "Teknologi",
+  offentlig:  "Offentlig sektor",
   studentorg: "Verv og studentorg",
   annet:      "Annet"
+};
+
+/* Hva slags stilling utlysningen gjelder. Myk som sektor, og valgfri:
+   de fleste radene i listen har den ikke, og skal ikke tvinges til å få den. */
+export const JOBBTYPER = {
+  graduate:   "Graduate",
+  internship: "Internship",
+  fulltid:    "Fast stilling",
+  deltid:     "Deltid"
+};
+
+/* Selskaper vi allerede vet sektoren for. Limemodus har brukt denne
+   siden appen var én fil; importen fra lenke bruker den til å slippe
+   å be modellen klassifisere et selskap brukeren kjenner fra før.
+   Nøklene er små bokstaver — oppslaget er eksakt, ikke uklart. */
+export const SEKTOR_FOR = {
+  "aker bp":"energi","equinor":"energi","statnett":"energi","dnv":"energi",
+  "kongsberg":"energi","norconsult":"energi",
+  "cognite":"teknologi","autodesk":"teknologi","visma":"teknologi","intility":"teknologi",
+  "nbim":"finans","dnb":"finans",
+  "mckinsey":"konsulent","bain":"konsulent","accenture":"konsulent","deloitte":"konsulent",
+  "kpmg":"konsulent","bearingpoint":"konsulent","capgemini":"konsulent","sopra steria":"konsulent",
+  "bouvet":"konsulent","bekk":"konsulent","implement consulting":"konsulent","sprint":"konsulent",
+  "pwc":"konsulent","jr consulting":"studentorg",
+  "ntnui tennis":"studentorg","cogito ntnu":"studentorg","revolve ntnu":"studentorg","njord ntnu":"studentorg"
 };
 
 export const ER_SENDT = s => s === "sent" || s === "interview";
@@ -45,6 +72,44 @@ export function erIsoDato(v){
 
 export function erIsoTid(v){
   return typeof v === "string" && v !== "" && !Number.isNaN(Date.parse(v));
+}
+
+/* Datoer kommer i tre former utenfra, og skal ut i én.
+
+   schema.org sender `validThrough` som fullt tidsstempel
+   («2026-09-13T23:59:00+02:00»), som erIsoDato forkaster. Norske
+   annonser skriver «13.09.2026», og notatlinjer bare «13.09». Alt
+   annet — «snarest», «løpende» — er ikke en dato og blir null.
+
+   Året gjettes bare når det mangler: en dag som ligger mer enn 60
+   dager bak oss hører til neste år. Samme regel som limemodus. */
+export function normaliserIsoDato(v, iDag = new Date()){
+  const s = tekst(v);
+  if(!s) return null;
+
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s]|$)/);
+  if(iso){
+    const d = `${iso[1]}-${iso[2]}-${iso[3]}`;
+    return erIsoDato(d) ? d : null;
+  }
+
+  const norsk = s.match(/^(\d{1,2})[.\/](\d{1,2})(?:[.\/](\d{2,4}))?\.?$/);
+  if(norsk){
+    const dag = Number(norsk[1]), mnd = Number(norsk[2]);
+    let aar;
+    if(norsk[3]){
+      aar = Number(norsk[3]);
+      if(aar < 100) aar += 2000;
+    }else{
+      aar = iDag.getFullYear();
+      const kandidat = new Date(aar, mnd - 1, dag);
+      if((iDag - kandidat) / 86400000 > 60) aar += 1;
+    }
+    const d = `${aar}-${String(mnd).padStart(2, "0")}-${String(dag).padStart(2, "0")}`;
+    return erIsoDato(d) ? d : null;
+  }
+
+  return null;
 }
 
 /* Lenker havner rett i href. Bare http og https slipper gjennom —
@@ -123,6 +188,10 @@ export function validerSoknad(inn, valg = {}){
      ukjente verdier havner i «annet» i stedet for å avvise raden. */
   const sektor = Object.hasOwn(SEKTORER, tekst(o.sektor)) ? tekst(o.sektor) : "annet";
 
+  /* Samme mildhet, men med tomt som gyldig hvilested: en søknad uten
+     kjent jobbtype er helt vanlig, og «annet» ville løyet. */
+  const jobbtype = Object.hasOwn(JOBBTYPER, tekst(o.jobbtype)) ? tekst(o.jobbtype) : "";
+
   if(feil.length) return { ok: false, feil, verdi: null };
 
   return {
@@ -132,7 +201,7 @@ export function validerSoknad(inn, valg = {}){
       id: id || valg.lagId(),
       selskap, stilling,
       lenke: l.verdi,
-      sted, frist, status, sektor, notat, sendtDato,
+      sted, frist, status, sektor, jobbtype, notat, sendtDato,
       opprettet: erIsoTid(o.opprettet) ? o.opprettet : null,
       oppdatert: erIsoTid(o.oppdatert) ? o.oppdatert : null
     }

@@ -6,14 +6,34 @@ import os from "node:os";
 import path from "node:path";
 
 import { lagServer } from "./server.mjs";
+import { lagBrukere, BRUKERKATALOG } from "./brukere.mjs";
 
-/* Egen katalog og port 0 per test — ingenting deles mellom testene. */
+/* Egen katalog og port 0 per test — ingenting deles mellom testene.
+
+   Alt under /api krever nå en økt. Testene her handler om lageret og
+   om de statiske filene, ikke om innloggingen — den har sin egen fil —
+   så vi oppretter én bruker og lar cookien følge med hvert kall.
+   `minKatalog` er brukerens egen mappe, som er der datafilen faktisk
+   ligger etter at flerbruker kom til. */
 async function start(){
   const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "jobber-http-"));
-  const tjener  = lagServer({ katalog });
+  const brukere = lagBrukere({ katalog, iterasjoner: 1 });
+  const tjener  = lagServer({ katalog, brukere });
   await new Promise(r => tjener.listen(0, "127.0.0.1", r));
   const base = `http://127.0.0.1:${tjener.address().port}`;
-  return { katalog, tjener, base, stopp: () => new Promise(r => tjener.close(r)) };
+
+  const r = await fetch(`${base}/api/registrer`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ epost: "ola@example.no", passord: "et-godt-nok-passord" })
+  });
+  const { bruker } = await r.json();
+  const cookie = r.headers.getSetCookie()[0].split(";")[0];
+  const api = (sti, valg = {}) => fetch(base + sti,
+    { ...valg, headers: { cookie, ...(valg.headers || {}) } });
+
+  return { katalog, minKatalog: path.join(katalog, BRUKERKATALOG, bruker.id),
+           tjener, base, api, cookie,
+           stopp: () => new Promise(x => tjener.close(x)) };
 }
 
 const rad = (o = {}) => ({
@@ -23,7 +43,7 @@ const rad = (o = {}) => ({
   notat: "", sendtDato: null, ...o
 });
 
-const put = (base, kropp) => fetch(`${base}/api/jobber`, {
+const put = (api, kropp) => api("/api/jobber", {
   method: "PUT",
   headers: { "Content-Type": "application/json" },
   body: typeof kropp === "string" ? kropp : JSON.stringify(kropp)
@@ -44,37 +64,38 @@ function råForespørsel(port, mål){
 }
 
 test("GET på tom katalog gir tom:true", async t => {
-  const { base, stopp, katalog } = await start();
+  const { api, stopp, minKatalog } = await start();
   t.after(stopp);
 
-  const r = await fetch(`${base}/api/jobber`);
+  const r = await api("/api/jobber");
   assert.equal(r.status, 200);
   assert.equal(r.headers.get("content-type"), "application/json; charset=utf-8");
   assert.deepEqual(await r.json(), { versjon: 0, jobber: null, tom: true });
-  assert.deepEqual(await fs.readdir(katalog), []);
+  /* En lesing skriver ingenting — brukerkatalogen finnes ikke engang. */
+  assert.equal(await fs.stat(minKatalog).then(() => true, () => false), false);
 });
 
 test("PUT lagrer og GET henter det tilbake", async t => {
-  const { base, stopp } = await start();
+  const { api, stopp } = await start();
   t.after(stopp);
 
-  const s = await put(base, { versjon: 0, jobber: [rad()] });
+  const s = await put(api, { versjon: 0, jobber: [rad()] });
   assert.equal(s.status, 200);
   const lagret = await s.json();
   assert.equal(lagret.versjon, 1);
   assert.equal(lagret.jobber[0].selskap, "Equinor");
   assert.ok(lagret.jobber[0].opprettet, "serveren setter opprettet");
 
-  const h = await fetch(`${base}/api/jobber`);
+  const h = await api("/api/jobber");
   assert.deepEqual(await h.json(), { versjon: 1, jobber: lagret.jobber });
 });
 
 test("utdatert versjon gir 409 med gjeldende tilstand", async t => {
-  const { base, stopp } = await start();
+  const { api, stopp } = await start();
   t.after(stopp);
 
-  await put(base, { versjon: 0, jobber: [rad()] });
-  const r = await put(base, { versjon: 0, jobber: [rad({ selskap: "Kaprer" })] });
+  await put(api, { versjon: 0, jobber: [rad()] });
+  const r = await put(api, { versjon: 0, jobber: [rad({ selskap: "Kaprer" })] });
   assert.equal(r.status, 409);
 
   const k = await r.json();
@@ -84,10 +105,10 @@ test("utdatert versjon gir 409 med gjeldende tilstand", async t => {
 });
 
 test("javascript:-lenke gir 400 med detaljer", async t => {
-  const { base, stopp } = await start();
+  const { api, stopp } = await start();
   t.after(stopp);
 
-  const r = await put(base, { versjon: 0, jobber: [rad({ lenke: "javascript:alert(1)" })] });
+  const r = await put(api, { versjon: 0, jobber: [rad({ lenke: "javascript:alert(1)" })] });
   assert.equal(r.status, 400);
   const k = await r.json();
   assert.equal(k.feil, "ugyldig");
@@ -96,43 +117,44 @@ test("javascript:-lenke gir 400 med detaljer", async t => {
 });
 
 test("ødelagt json i kroppen gir 400", async t => {
-  const { base, stopp } = await start();
+  const { api, stopp } = await start();
   t.after(stopp);
 
-  const r = await put(base, "{ikke json");
+  const r = await put(api, "{ikke json");
   assert.equal(r.status, 400);
   assert.equal((await r.json()).feil, "ugyldig json");
 });
 
 test("feil form på kroppen gir 400", async t => {
-  const { base, stopp } = await start();
+  const { api, stopp } = await start();
   t.after(stopp);
-  assert.equal((await put(base, { versjon: 0 })).status, 400);
+  assert.equal((await put(api, { versjon: 0 })).status, 400);
 });
 
 test("for stor kropp gir 413", async t => {
-  const { base, stopp } = await start();
+  const { api, stopp } = await start();
   t.after(stopp);
 
   const stor = "x".repeat(6 * 1024 * 1024);
-  const r = await put(base, { versjon: 0, jobber: [rad({ notat: stor })] });
+  const r = await put(api, { versjon: 0, jobber: [rad({ notat: stor })] });
   assert.equal(r.status, 413);
 });
 
 test("ødelagt datafil gir 503", async t => {
-  const { base, katalog, stopp } = await start();
+  const { api, minKatalog, stopp } = await start();
   t.after(stopp);
 
-  await fs.writeFile(path.join(katalog, "jobber.json"), "ikke json");
-  const r = await fetch(`${base}/api/jobber`);
+  await fs.mkdir(minKatalog, { recursive: true });
+  await fs.writeFile(path.join(minKatalog, "jobber.json"), "ikke json");
+  const r = await api("/api/jobber");
   assert.equal(r.status, 503);
   const k = await r.json();
   assert.equal(k.feil, "ødelagt");
 
   /* Filen skal ligge urørt, og en vanlig PUT skal fortsatt nektes —
      ellers ville neste lagring blitt godtatt mot en tom katalog. */
-  assert.equal(await fs.readFile(path.join(katalog, "jobber.json"), "utf8"), "ikke json");
-  const p2 = await fetch(`${base}/api/jobber`, {
+  assert.equal(await fs.readFile(path.join(minKatalog, "jobber.json"), "utf8"), "ikke json");
+  const p2 = await api("/api/jobber", {
     method: "PUT", headers: { "content-type": "application/json" },
     body: JSON.stringify({ versjon: 0, jobber: [] })
   });
@@ -140,13 +162,15 @@ test("ødelagt datafil gir 503", async t => {
 });
 
 test("ukjent sti gir 404 og feil metode gir 405", async t => {
-  const { base, stopp } = await start();
+  const { api, base, stopp } = await start();
   t.after(stopp);
 
-  assert.equal((await fetch(`${base}/finnes-ikke`)).status, 404);
-  assert.equal((await fetch(`${base}/api/annet`)).status, 404);
+  assert.equal((await api("/finnes-ikke")).status, 404);
+  assert.equal((await api("/api/annet")).status, 404);
+  /* Uten økt røper ikke en ukjent api-sti om den finnes. */
+  assert.equal((await fetch(`${base}/api/annet`)).status, 401);
 
-  const m = await fetch(`${base}/api/jobber`, { method: "DELETE" });
+  const m = await api("/api/jobber", { method: "DELETE" });
   assert.equal(m.status, 405);
   assert.equal(m.headers.get("allow"), "GET, PUT");
 });

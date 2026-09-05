@@ -68,6 +68,21 @@
 
       <p class="lagret" id="lagringstilstand" role="status" aria-live="polite"></p>
       <button class="sidelenke" id="apneEksport" type="button">Dataene dine</button>
+
+      <!-- Hvem er logget inn, og veien ut. To ting, to mål: identiteten
+           ser man på ofte, utlogging gjør man sjelden og med vilje. Slås
+           de sammen, blir den sjeldne handlingen standardutfallet av det
+           vanlige klikket. Navnet er derfor ikke lenger en knapp.
+           Tomt til økten er kjent, så sidefoten ikke hopper når navnet
+           kommer. På smal skjerm faller navnet bort og monogrammet blir
+           stående som merke ved siden av utlogging. -->
+      <div class="bruker" id="bruker" hidden>
+        <span class="bruker__tegn" id="brukerTegn" aria-hidden="true"></span>
+        <span class="bruker__navn" id="brukerNavn"></span>
+        <button class="bruker__ut" id="loggUt" type="button" aria-label="Logg ut">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.6 2.4H3.9A1.5 1.5 0 0 0 2.4 3.9v8.2a1.5 1.5 0 0 0 1.5 1.5h2.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="m10.8 5.3 2.8 2.7-2.8 2.7M13.2 8H6.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
     </div>
   </aside>
 
@@ -99,6 +114,9 @@
 </div>
 
 <div class="slor" id="slor"></div>
+
+<!-- Porten. Fylles av src/innlogging.js; står tom til den trengs. -->
+<div class="port" id="port" role="dialog" aria-modal="true" aria-labelledby="portTittel" hidden></div>
 
 <aside class="skuff" id="skuff" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="skuffTittel" tabindex="-1">
   <div class="skuff__topp">

@@ -9,6 +9,13 @@
    Alt skjer inne i appens datakatalog. Navnene kommer fra vår egen
    kode, men de sjekkes likevel: en sti som slipper ut av katalogen
    er ikke en feil vi vil oppdage den dagen den skjer.
+
+   Med flere profiler har hver operasjon en valgfri `bruker`. Uten
+   den gjelder datakatalogen selv — der registeret og den gamle
+   enbrukerfilen ligger. Med den gjelder <datakatalog>/brukere/<id>.
+   Id-en er JavaScript sin, men den går gjennom trygt_navn() før den
+   settes sammen med noe: sammensetting av stier skjer bare her, og
+   den som setter sammen er den som må sjekke.
    ============================================================ */
 
 use std::fs::{self, File};
@@ -16,6 +23,22 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use tauri::{AppHandle, Manager};
+
+mod nett;
+
+/// Filen API-nøkkelen ligger i, ved siden av datafilen — i profilens
+/// katalog, ikke i rota. Rust leser den selv når modellen skal spørres,
+/// så adressen til modellen og nøkkelen møtes utenfor webviewet.
+///
+/// Merk at dette er disiplin, ikke en grense: webviewet har `les_tekst`
+/// og kan lese den samme filen selv. I nettlesermodus er «nøkkelen går
+/// aldri tilbake til klienten» en ekte grense, håndhevet av serveren.
+/// I appmodus ER webviewet klienten. Se kommentaren i src/tauri-filer.mjs.
+const NOKKELFIL: &str = "nokkel.txt";
+
+/// Katalogen profilene ligger under. Samme form som i nettlesermodus,
+/// så en datakatalog ser lik ut uansett hvilken skinn som lagde den.
+const BRUKERKATALOG: &str = "brukere";
 
 /// Bare enkle filnavn. Ingen skilletegn, ingen «..», ingen tomme navn.
 fn trygt_navn(navn: &str) -> Result<&str, String> {
@@ -38,9 +61,29 @@ fn katalog(app: &AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| format!("fant ikke datakatalogen: {e}"))
 }
 
+/// `None` → rota selv. `Some(id)` → <rot>/brukere/<id>.
+///
+/// Id-en er 16 heksadesimale tegn og dermed allerede lovlig i
+/// trygt_navn(); den sjekkes likevel her, fordi det er her stien
+/// settes sammen. Formatet i seg selv er JavaScript sin regel og
+/// står i src/brukerlogikk.mjs — det som må stå her, er at ingenting
+/// slipper ut av datakatalogen. Feiler sjekken, blir det ingen sti.
+fn bruker_katalog_i(rot: &Path, bruker: Option<&str>) -> Result<PathBuf, String> {
+    match bruker {
+        None => Ok(rot.to_path_buf()),
+        Some(id) => Ok(rot.join(BRUKERKATALOG).join(trygt_navn(id)?)),
+    }
+}
+
+fn bruker_katalog(app: &AppHandle, bruker: Option<&str>) -> Result<PathBuf, String> {
+    bruker_katalog_i(&katalog(app)?, bruker)
+}
+
 #[tauri::command]
-fn data_katalog(app: AppHandle) -> Result<String, String> {
-    Ok(katalog(&app)?.to_string_lossy().into_owned())
+fn data_katalog(app: AppHandle, bruker: Option<String>) -> Result<String, String> {
+    Ok(bruker_katalog(&app, bruker.as_deref())?
+        .to_string_lossy()
+        .into_owned())
 }
 
 /// Innholdet i filen, eller `None` hvis den ikke finnes. Andre feil
@@ -61,13 +104,18 @@ fn flytt_i(dir: &Path, fra: &str, til: &str) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn les_tekst(app: AppHandle, navn: String) -> Result<Option<String>, String> {
-    les_i(&katalog(&app)?, &navn)
+fn les_tekst(app: AppHandle, navn: String, bruker: Option<String>) -> Result<Option<String>, String> {
+    les_i(&bruker_katalog(&app, bruker.as_deref())?, &navn)
 }
 
 #[tauri::command]
-fn flytt_fil(app: AppHandle, fra: String, til: String) -> Result<(), String> {
-    flytt_i(&katalog(&app)?, &fra, &til)
+fn flytt_fil(
+    app: AppHandle,
+    fra: String,
+    til: String,
+    bruker: Option<String>,
+) -> Result<(), String> {
+    flytt_i(&bruker_katalog(&app, bruker.as_deref())?, &fra, &til)
 }
 
 /// Skriver hele filen på nytt uten at den noen gang står halvferdig:
@@ -114,8 +162,45 @@ fn skriv_atomisk(
     navn: String,
     tekst: String,
     kopi_til: Option<String>,
+    bruker: Option<String>,
 ) -> Result<(), String> {
-    skriv_i(&katalog(&app)?, &navn, &tekst, kopi_til.as_deref())
+    /* skriv_i gjør create_dir_all, så profilkatalogen blir til av seg
+       selv ved første skriving. Derfor ingen egen kommando for å lage
+       kataloger — én operasjon mindre å ta feil av. */
+    skriv_i(
+        &bruker_katalog(&app, bruker.as_deref())?,
+        &navn,
+        &tekst,
+        kopi_til.as_deref(),
+    )
+}
+
+#[tauri::command]
+async fn hent_side(url: String) -> Result<nett::Side, String> {
+    nett::hent_side(url).await
+}
+
+/// Nøkkelen til profilen som spør. Ingen fallback til rota og ingen
+/// miljøvariabel: appen startes fra Dock uten miljø, og en nøkkel som
+/// stilltiende kunne komme fra en annen profil ville vært den ene
+/// profilen som betaler for den andre.
+fn les_nokkel(dir: &Path) -> Result<String, String> {
+    les_i(dir, NOKKELFIL)?
+        .map(|s| s.trim().to_owned())
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| {
+            format!("Ingen API-nøkkel. Legg den inn under «Dataene dine», eller i {NOKKELFIL} i profilkatalogen — se README.")
+        })
+}
+
+#[tauri::command]
+async fn spor_modell(
+    app: AppHandle,
+    kropp: String,
+    bruker: Option<String>,
+) -> Result<String, String> {
+    let nokkel = les_nokkel(&bruker_katalog(&app, bruker.as_deref())?)?;
+    nett::spor_modell(nokkel, kropp).await
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -126,7 +211,9 @@ pub fn run() {
             data_katalog,
             les_tekst,
             flytt_fil,
-            skriv_atomisk
+            skriv_atomisk,
+            hent_side,
+            spor_modell
         ])
         .run(tauri::generate_context!())
         .expect("appen klarte ikke å starte");
@@ -181,6 +268,111 @@ mod tester {
         skriv_i(&dir, "jobber.json", "så", Some("jobber.forrige.json")).unwrap();
         assert_eq!(les_i(&dir, "jobber.json").unwrap().as_deref(), Some("så"));
         assert_eq!(les_i(&dir, "jobber.forrige.json").unwrap().as_deref(), Some("først"));
+    }
+
+    /* ---------- profilkatalogene ---------- */
+
+    #[test]
+    fn bruker_som_slipper_ut_av_katalogen_avvises() {
+        let rot = Path::new("/tmp/rot");
+        for ond in ["../", "a/b", "..", "", ".", "/etc", "..%2f", "a\\b"] {
+            assert!(
+                bruker_katalog_i(rot, Some(ond)).is_err(),
+                "id-en {ond:?} skulle vært avvist"
+            );
+        }
+        assert!(bruker_katalog_i(rot, Some("0123456789abcdef")).is_ok());
+    }
+
+    #[test]
+    fn ingen_bruker_gir_rotkatalogen() {
+        /* Bakoverkompatibilitet: registeret og den gamle enbrukerfilen
+           ligger i rota, og de leses uten `bruker`. */
+        let rot = Path::new("/tmp/rot");
+        assert_eq!(bruker_katalog_i(rot, None).unwrap(), rot.to_path_buf());
+        assert_eq!(
+            bruker_katalog_i(rot, Some("0123456789abcdef")).unwrap(),
+            rot.join("brukere").join("0123456789abcdef")
+        );
+    }
+
+    #[test]
+    fn skriving_for_en_bruker_havner_i_profilkatalogen_og_ikke_i_rota() {
+        let rot = ny_katalog("profil");
+        let dir = bruker_katalog_i(&rot, Some("00112233445566aa")).unwrap();
+
+        skriv_i(&dir, "jobber.json", "mine", None).unwrap();
+
+        assert_eq!(les_i(&dir, "jobber.json").unwrap().as_deref(), Some("mine"));
+        assert_eq!(les_i(&rot, "jobber.json").unwrap(), None, "rota ble rørt");
+        assert!(rot.join("brukere").join("00112233445566aa").is_dir());
+    }
+
+    #[test]
+    fn to_brukere_kolliderer_ikke() {
+        let rot = ny_katalog("to-brukere");
+        let a = bruker_katalog_i(&rot, Some("aaaaaaaaaaaaaaaa")).unwrap();
+        let b = bruker_katalog_i(&rot, Some("bbbbbbbbbbbbbbbb")).unwrap();
+
+        skriv_i(&a, "jobber.json", "til a", Some("jobber.forrige.json")).unwrap();
+        skriv_i(&b, "jobber.json", "til b", Some("jobber.forrige.json")).unwrap();
+
+        assert_eq!(les_i(&a, "jobber.json").unwrap().as_deref(), Some("til a"));
+        assert_eq!(les_i(&b, "jobber.json").unwrap().as_deref(), Some("til b"));
+        /* Sikkerhetskopien hører også til én profil. */
+        skriv_i(&a, "jobber.json", "til a igjen", Some("jobber.forrige.json")).unwrap();
+        assert_eq!(les_i(&a, "jobber.forrige.json").unwrap().as_deref(), Some("til a"));
+        assert_eq!(les_i(&b, "jobber.forrige.json").unwrap(), None);
+    }
+
+    #[test]
+    fn karantene_treffer_profilens_katalog() {
+        let rot = ny_katalog("profil-karantene");
+        let dir = bruker_katalog_i(&rot, Some("ccccccccccccccc1")).unwrap();
+        skriv_i(&rot, "jobber.json", "rotas fil", None).unwrap();
+        skriv_i(&dir, "jobber.json", "ødelagt", None).unwrap();
+
+        flytt_i(&dir, "jobber.json", "jobber.ødelagt-2026-09-05.json").unwrap();
+
+        assert_eq!(les_i(&dir, "jobber.json").unwrap(), None);
+        assert_eq!(
+            les_i(&dir, "jobber.ødelagt-2026-09-05.json").unwrap().as_deref(),
+            Some("ødelagt")
+        );
+        /* Rotas fil er migreringskilden. Den skal ikke ha flyttet seg. */
+        assert_eq!(les_i(&rot, "jobber.json").unwrap().as_deref(), Some("rotas fil"));
+        assert_eq!(les_i(&rot, "jobber.ødelagt-2026-09-05.json").unwrap(), None);
+    }
+
+    #[test]
+    fn nøkkelen_leses_fra_profilen_og_ikke_fra_rota() {
+        let rot = ny_katalog("profil-nøkkel");
+        let dir = bruker_katalog_i(&rot, Some("dddddddddddddddd")).unwrap();
+        skriv_i(&rot, NOKKELFIL, "rotas-nøkkel-som-ikke-skal-brukes", None).unwrap();
+
+        /* Uten egen nøkkel er svaret en feil — ikke rotas nøkkel. */
+        let feil = les_nokkel(&dir).unwrap_err();
+        assert!(feil.contains("API-nøkkel"), "uventet melding: {feil}");
+        assert!(!feil.contains("rotas-nøkkel"), "feilmeldingen røper en nøkkel");
+
+        skriv_i(&dir, NOKKELFIL, "  profilens-nøkkel\n", None).unwrap();
+        assert_eq!(les_nokkel(&dir).unwrap(), "profilens-nøkkel");
+        /* Rotas nøkkel er urørt — den er fortsatt migreringskilden. */
+        assert_eq!(
+            les_i(&rot, NOKKELFIL).unwrap().as_deref(),
+            Some("rotas-nøkkel-som-ikke-skal-brukes")
+        );
+    }
+
+    #[test]
+    fn tom_nøkkelfil_er_ingen_nøkkel() {
+        /* Slik «fjern nøkkelen» ser ut i appmodus: webviewet skriver en
+           tom fil, fordi Rust ikke har en slette-operasjon. Da skal
+           spørringen mot modellen nekte, ikke sende et tomt hode. */
+        let rot = ny_katalog("tom-nøkkel");
+        let dir = bruker_katalog_i(&rot, Some("eeeeeeeeeeeeeeee")).unwrap();
+        skriv_i(&dir, NOKKELFIL, "", None).unwrap();
+        assert!(les_nokkel(&dir).is_err());
     }
 
     #[test]

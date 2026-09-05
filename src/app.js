@@ -1,9 +1,12 @@
 /* ============================================================
    1. Data
    ============================================================ */
-import { STATUSER, SEKTORER, ER_SENDT, ER_ARKIV, validerSoknad, sjekkLenke } from "./felles.mjs";
+import { STATUSER, SEKTORER, JOBBTYPER, SEKTOR_FOR, ER_SENDT, ER_ARKIV, validerSoknad, sjekkLenke } from "./felles.mjs";
 import { START } from "./startliste.js";
 import * as Lagring from "./lagring.js";
+import { importerFraLenke, importtall, TRINN } from "./import.js";
+import * as Økt from "./okt.js";
+import { krevØkt, krevØktIgjen, portenStår } from "./innlogging.js";
 
 const NOKKEL = "jobbsoknader-2027";
 window.__jobbsoknaderKjorer = true;   /* se fallback-skriptet i index.html */
@@ -12,23 +15,16 @@ window.__jobbsoknaderKjorer = true;   /* se fallback-skriptet i index.html */
    må få ny dato, ellers viser den «i dag» om gårsdagen. Se seksjon 16. */
 let I_DAG = new Date(new Date().toDateString());
 
-const SEKTOR_FOR = {
-  "aker bp":"energi","equinor":"energi","statnett":"energi","dnv":"energi",
-  "kongsberg":"energi","norconsult":"energi",
-  "cognite":"teknologi","autodesk":"teknologi","visma":"teknologi","intility":"teknologi",
-  "nbim":"finans","dnb":"finans",
-  "mckinsey":"konsulent","bain":"konsulent","accenture":"konsulent","deloitte":"konsulent",
-  "kpmg":"konsulent","bearingpoint":"konsulent","capgemini":"konsulent","sopra steria":"konsulent",
-  "bouvet":"konsulent","bekk":"konsulent","implement consulting":"konsulent","sprint":"konsulent",
-  "pwc":"konsulent","jr consulting":"studentorg",
-  "ntnui tennis":"studentorg","cogito ntnu":"studentorg","revolve ntnu":"studentorg","njord ntnu":"studentorg"
-};
 
 
 /* ============================================================
    2. Tilstand og lagring
    ============================================================ */
 let data = [];
+/* Hvem listen tilhører. Settes av porten før noe hentes, og trengs to
+   steder etterpå: sidefoten skal vise navnet, og en gjeninnlogging må
+   kunne se om det er samme person som kom tilbake. */
+let brukeren = null, erFørste = false;
 let visning = "frister";
 let sok = "", filtSektor = "", filtSted = "";
 let angre = null, angreTid = null;
@@ -539,10 +535,20 @@ function fyllVelg(sel, par, valgt, forste){
    9. Skuffen — skjema, innliming, eksport
    ============================================================ */
 let skuffModus = "skjema", redigerer = null;
+/* Det importen leste ut av en utlysning. Det er ikke `redigerer`:
+   en rad som redigeres finnes allerede i listen, mens et utkast bare
+   er forslag til et tomt skjema. Ingenting herfra lagres før brukeren
+   trykker «Legg til søknad» selv. */
+let utkast = null;
+/* Teller, ikke et flagg: lukkes skuffen eller byttes modus mens et
+   importsvar er underveis, skal svaret falle på gulvet i stedet for å
+   fylle et skjema brukeren har gått bort fra. */
+let hentenr = 0;
 
 const SKUFFTITTEL = {
   skjema:  "Legg til søknad",
   lim:     "Legg til søknad",
+  lenke:   "Legg til søknad",
   eksport: "Dataene dine",
   flytt:   "Flytt dataene hit",
   gjenopprett: "Datafilen mangler",
@@ -553,6 +559,10 @@ const SKUFFTITTEL = {
 let bekreftelse = null, fokusFor = null, fokusTid = null;
 
 const FOKUSERBARE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+/* Listen er kommaseparert, og «#skuff » foran hele strengen ville bare
+   bundet seg til det første leddet — resten hadde plukket opp knapper
+   ute i appen. Hvert ledd må få prefikset for seg. */
+const I_SKUFF = FOKUSERBARE.split(",").map(v => "#skuff " + v).join(",");
 
 /* Alt utenom dialogen og sløret settes inert mens skuffen står åpen.
    Det holder ikke å bare ta skallet: varselet ligger utenfor det, og
@@ -570,7 +580,7 @@ function baksideInert(pa){
 function apneSkuff(hva, id){
   redigerer = id ? data.find(p => p.id === id) : null;
   if(hva === "rediger")   skuffModus = "skjema";
-  else if(hva === "ny")   skuffModus = (skuffModus === "lim" ? "lim" : "skjema");
+  else if(hva === "ny")   skuffModus = (skuffModus === "lim" || skuffModus === "lenke") ? skuffModus : "skjema";
   else                    skuffModus = hva;
 
   $("#skuffTittel").textContent = redigerer ? "Rediger søknad"
@@ -588,7 +598,7 @@ function apneSkuff(hva, id){
   clearTimeout(fokusTid);
   fokusTid = setTimeout(() => {
     if(!$("#skuff").classList.contains("er-apen")) return;
-    const f = $("#skuff input, #skuff textarea") || $("#skuff " + FOKUSERBARE) || $("#skuff");
+    const f = $("#skuff input, #skuff textarea") || $(I_SKUFF) || $("#skuff");
     if(f) f.focus();
   }, 60);
 }
@@ -604,6 +614,9 @@ function lukkSkuff(){
   $("#slor").classList.remove("er-apen");
   baksideInert(false);
   redigerer = null;
+  utkast = null;
+  /* Et importsvar som kommer etter dette skal ikke fylle en lukket skuff. */
+  hentenr++;
   bekreftelse = null;
   /* Fokus tilbake dit brukeren kom fra. */
   if(fokusFor && document.contains(fokusFor)) fokusFor.focus();
@@ -613,7 +626,7 @@ function lukkSkuff(){
 /* Tab skal gå rundt inni dialogen, ikke ut av den. */
 function fokusfelle(e){
   if(e.key !== "Tab" || !$("#skuff").classList.contains("er-apen")) return;
-  const f = $$("#skuff " + FOKUSERBARE).filter(el => el.offsetParent !== null || el === document.activeElement);
+  const f = $$(I_SKUFF).filter(el => el.offsetParent !== null || el === document.activeElement);
   if(!f.length) return;
   const forst = f[0], siste = f[f.length - 1];
   if(e.shiftKey && document.activeElement === forst){ e.preventDefault(); siste.focus(); }
@@ -636,8 +649,12 @@ function tegnSkuff(){
       + '<p class="felt__hjelp">Bytter ut hele listen med det du limer inn. Du kan angre etterpå.</p></div>'
       + '<div class="felt" style="margin-top:26px;padding-top:20px;border-top:1px solid var(--linje)">'
       + '<button class="knapp knapp--bred knapp--fare" data-gjor="tilbakestill">Tilbakestill til startlisten</button>'
-      + '<p class="felt__hjelp">Erstatter alt du har lagt inn med de 55 søknadene appen startet med.</p></div>';
+      + '<p class="felt__hjelp">Erstatter alt du har lagt inn med de 55 søknadene appen startet med.</p></div>'
+      + '<div class="felt" id="importtall" style="margin-top:26px;padding-top:20px;border-top:1px solid var(--linje)"></div>'
+      + '<div class="felt" id="apiNokkel" style="margin-top:26px;padding-top:20px;border-top:1px solid var(--linje)"></div>';
     b.innerHTML = '<button class="knapp" data-gjor="lukk">Lukk</button>';
+    visImporttall();
+    visNokkel();
     return;
   }
 
@@ -691,10 +708,13 @@ function tegnSkuff(){
         ? '<button class="knapp knapp--primar" id="lagreLim">Legg til</button>'
         : '<button class="knapp knapp--primar" id="lagreSkjema">' + (redigerer ? "Lagre endringer" : "Legg til søknad") + '</button>');
 
+  /* Tre veier inn i det samme skjemaet — for hånd, fra et notat, fra en
+     lenke. Navnene er bygget likt, så bryteren leses som ett sett. */
   const bytter = redigerer ? "" :
       '<div class="modus" role="tablist">'
-    + '<button class="modus__knapp" role="tab" data-modus="skjema" aria-selected="' + (skuffModus === "skjema") + '">Ett felt om gangen</button>'
-    + '<button class="modus__knapp" role="tab" data-modus="lim" aria-selected="' + (skuffModus === "lim") + '">Lim inn fra notat</button></div>';
+    + '<button class="modus__knapp" role="tab" data-modus="skjema" aria-selected="' + (skuffModus === "skjema") + '">For hånd</button>'
+    + '<button class="modus__knapp" role="tab" data-modus="lim" aria-selected="' + (skuffModus === "lim") + '">Fra notat</button>'
+    + '<button class="modus__knapp" role="tab" data-modus="lenke" aria-selected="' + (skuffModus === "lenke") + '">Fra lenke</button></div>';
 
   if(skuffModus === "lim"){
     k.innerHTML = bytter
@@ -706,20 +726,43 @@ function tegnSkuff(){
     return;
   }
 
-  const p = redigerer || {};
+  /* Lenkeimporten. Foten har ingen «Legg til søknad» her: det finnes
+     ingenting å legge til før annonsen er lest. */
+  if(skuffModus === "lenke"){
+    b.innerHTML = '<button class="knapp" data-gjor="lukk">Avbryt</button>';
+    k.innerHTML = bytter
+      + '<div class="felt"><label class="felt__merke" for="importLenke">Lenke til utlysningen</label>'
+      + '<input class="felt__inn" id="importLenke" type="url" inputmode="url" spellcheck="false" autocomplete="off"'
+      + ' value="' + esc((utkast && utkast.lenke) || "") + '" placeholder="https://…">'
+      + '<p class="felt__hjelp">Ingenting lagres nå. Skjemaet fylles ut med det som står i annonsen, og du legger til søknaden selv.</p></div>'
+      + '<button class="knapp knapp--primar knapp--bred" type="button" id="hentLenke">Hent utlysningen</button>'
+      + '<p class="henter" id="importTilstand" role="status" aria-live="polite"></p>'
+      + '<p class="feil" id="skjemaFeil" hidden></p>';
+    return;
+  }
+
+  const p = redigerer || utkast || {};
+  /* Løpende opptak: enten en lagret rad uten frist, eller en annonse
+     som selv sier at opptaket er løpende. */
+  const utenFrist = redigerer ? !p.frist : !!(utkast && utkast.lopende);
   k.innerHTML = bytter
     + '<p class="feil" id="skjemaFeil" hidden></p>'
     + felt("selskap", "Selskap", p.selskap, "text", "Aker BP")
     + felt("stilling", "Stilling", p.stilling, "text", "Graduate: Data Engineer")
     + felt("lenke", "Lenke til utlysningen", p.lenke, "url", "https://…")
     + '<div class="felt__rad">' + felt("frist", "Søknadsfrist", p.frist, "date", "") + felt("sted", "Sted", p.sted, "text", "Oslo") + '</div>'
-    + '<label class="avkrys"><input type="checkbox" id="ingenFrist"' + (redigerer && !p.frist ? " checked" : "") + '> Løpende opptak — ingen frist</label>'
+    + '<label class="avkrys"><input type="checkbox" id="ingenFrist"' + (utenFrist ? " checked" : "") + '> Løpende opptak — ingen frist</label>'
+    /* Sektor og jobbtype hører sammen — begge sier hva slags stilling
+       dette er. Status er brukerens egen, og står derfor for seg selv. */
     + '<div class="felt__rad" style="margin-top:15px">'
       + '<div class="felt"><label class="felt__merke" for="fSektor">Sektor</label><select class="felt__inn" id="fSektor">'
         + Object.entries(SEKTORER).map(([k2,v]) => '<option value="' + k2 + '"' + (p.sektor === k2 ? " selected" : "") + '>' + v + '</option>').join("") + '</select></div>'
-      + '<div class="felt"><label class="felt__merke" for="fStatus">Status</label><select class="felt__inn" id="fStatus">'
-        + Object.entries(STATUSER).map(([k2,v]) => '<option value="' + k2 + '"' + ((p.status || "todo") === k2 ? " selected" : "") + '>' + v + '</option>').join("") + '</select></div>'
+      + '<div class="felt"><label class="felt__merke" for="fjobbtype">Jobbtype</label><select class="felt__inn" id="fjobbtype">'
+        + '<option value="">Ikke oppgitt</option>'
+        + Object.entries(JOBBTYPER).map(([k2,v]) => '<option value="' + k2 + '"' + (p.jobbtype === k2 ? " selected" : "") + '>' + v + '</option>').join("") + '</select></div>'
     + '</div>'
+    + '<div class="felt"><label class="felt__merke" for="fStatus">Status</label><select class="felt__inn" id="fStatus">'
+        + Object.entries(STATUSER).map(([k2,v]) => '<option value="' + k2 + '"' + ((p.status || "todo") === k2 ? " selected" : "") + '>' + v + '</option>').join("") + '</select></div>'
     + (redigerer
         ? '<div class="felt__rad" style="margin-top:15px">'
           + felt("sendtDato", "Sendt", p.sendtDato, "date", "")
@@ -910,7 +953,7 @@ function slett(id){
 /* Hvilket felt en feilmelding hører til, så fokus havner riktig sted. */
 const FELT_TIL_INN = {
   selskap: "#fselskap", stilling: "#fstilling", lenke: "#flenke", sted: "#fsted",
-  frist: "#ffrist", sendtDato: "#fsendtDato", notat: "#fnotat",
+  frist: "#ffrist", sendtDato: "#fsendtDato", notat: "#fnotat", jobbtype: "#fjobbtype",
   status: "#fStatus", sektor: "#fSektor"
 };
 
@@ -928,6 +971,7 @@ function lagreSkjema(){
     notat:     v("notat"),
     frist:     ingen ? null : (v("frist") || null),
     sektor:    $("#fSektor").value,
+    jobbtype:  v("jobbtype"),
     status:    $("#fStatus").value,
     sendtDato: redigerer ? (v("sendtDato") || null) : null,
     opprettet: redigerer ? redigerer.opprettet : null,
@@ -970,6 +1014,219 @@ function lagreLim(){
     () => { data = data.slice(0, fra); lagre(); tegn(); });
 }
 
+/* ---- import fra lenke ---- */
+
+/* Husets språk for «noe skjer»: mono mikrotekst, to trinn, ingen
+   spinner. Teksten sier hvor i kjeden vi er, ikke hvor lenge det tar. */
+const VENTETEKST = {
+  [TRINN.HENTER]: "Henter utlysningen…",
+  [TRINN.LESER]:  "Leser annonsen…"
+};
+
+/* Andre linje under en feilmelding: hva brukeren kan gjøre nå. Strengene
+   er våre egne — det eneste som kommer utenfra er `.message`, og den blir
+   escapet. */
+const IMPORTHJELP = {
+  "finnes":         'Åpne den fra listen hvis du vil endre noe. Vil du legge den inn på nytt likevel, velg «For hånd».',
+  "mangler-nokkel": 'Importen trenger en API-nøkkel i <code>nokkel.txt</code> i datakatalogen. README-en viser hvordan.',
+  "frakoblet":      'Sjekk at serveren kjører, og prøv igjen.',
+  "ellers":         'Lenken står igjen. Velg «For hånd» hvis du heller vil fylle inn resten selv.'
+};
+
+function visImportfeil(melding, hjelp){
+  const el = $("#skjemaFeil");
+  if(!el) return;
+  el.hidden = false;
+  el.innerHTML = esc(melding) + (hjelp ? '<span class="feil__felt">' + hjelp + '</span>' : "");
+}
+
+async function hentFraLenke(){
+  const inn = $("#importLenke"), knapp = $("#hentLenke");
+  if(!inn || !knapp) return;
+  const url = inn.value.trim();
+
+  if(!url){ visImportfeil("Lim inn lenken til utlysningen først."); inn.focus(); return; }
+  /* Samme lenkeregel som resten av appen — ingen grunn til å gå til
+     serveren med noe vi vet blir avvist. */
+  const sl = sjekkLenke(url);
+  if(!sl.ok){ visImportfeil(sl.melding); inn.focus(); return; }
+
+  const mitt = ++hentenr;
+  const feilEl = $("#skjemaFeil");
+  if(feilEl){ feilEl.hidden = true; feilEl.textContent = ""; }
+  knapp.disabled = true;
+
+  try{
+    const svar = await importerFraLenke(url, {
+      jobber: data,
+      påTrinn: t => {
+        const st = $("#importTilstand");
+        if(mitt === hentenr && st) st.textContent = VENTETEKST[t] || "";
+      }
+    });
+    if(mitt !== hentenr) return;
+
+    utkast = Object.assign({}, svar.utkast, { lenke: svar.utkast.lenke || url });
+    skuffModus = "skjema";
+    tegnSkuff();
+    const f = $("#skuff input, #skuff textarea");
+    if(f) f.focus();
+
+    const antall = Object.values(svar.kilder || {}).filter(kk => kk && kk !== "bruker").length;
+    varsle(antall
+      ? "Leste " + antall + (antall === 1 ? " felt" : " felter") + " fra annonsen — se over dem før du legger til"
+      : "Fant lite i annonsen — fyll inn resten selv");
+  }catch(e){
+    if(mitt !== hentenr) return;
+    /* Lenken skal aldri gå tapt. Den blir stående i feltet, og den følger
+       med over i skjemaet sammen med det importen rakk å lese. */
+    utkast = Object.assign({}, (e && e.utkast) || null, { lenke: (e && e.utkast && e.utkast.lenke) || url });
+    /* Importfeil har en ferdig formulert norsk melding. Alt annet er en
+       feil i koden, og da er en rå JS-melding ikke til hjelp for noen. */
+    const kjent = e && typeof e.navn === "string";
+    if(!kjent) console.error("Uventet feil under import:", e);
+    visImportfeil(kjent ? e.message : "Importen stoppet uventet.",
+                  (kjent && IMPORTHJELP[e.navn]) || IMPORTHJELP.ellers);
+  }finally{
+    if(mitt === hentenr){
+      const st = $("#importTilstand");
+      if(st) st.textContent = "";
+    }
+    if(knapp.isConnected) knapp.disabled = false;
+  }
+}
+
+/* ---- hva importen har kostet ---- */
+
+/* Tre tall, og ikke flere: hva den har kostet, hvor ofte modellen slapp
+   å kjøre, og hvilke felt modellen måtte fylle. Det siste er det eneste
+   som er handlingsrettet — står «selskap» øverst lenge, er et
+   selskapsuttrekk neste ting å skrive. */
+
+const kr  = n => "kr " + n.toFixed(2).replace(".", ",");
+const ore = n => (n * 100).toFixed(1).replace(".", ",") + " øre";
+
+function siden(iso){
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.getDate() + ". " + MND[d.getMonth()];
+}
+
+async function visImporttall(){
+  const t = await importtall();
+  const el = $("#importtall");
+  /* Skuffen kan ha blitt lukket eller byttet modus mens vi ventet. */
+  if(!el || skuffModus !== "eksport") return;
+
+  if(!t || !t.antall){
+    el.innerHTML = '<p class="merkelinje">Import fra lenke</p>'
+      + '<p class="felt__hjelp">Ingen importer ennå. Tallene dukker opp her når du har hentet en utlysning.</p>';
+    return;
+  }
+
+  const felt = t.felt.slice(0, 4)
+    .map(([f, n]) => esc(f) + " " + n).join(" · ");
+
+  el.innerHTML = '<p class="merkelinje">Import fra lenke</p>'
+    + '<p class="lagret" style="margin:0 0 3px">' + t.antall
+      + (t.antall === 1 ? " import" : " importer") + " siden " + esc(siden(t.fra)) + '</p>'
+    + '<p class="lagret" style="margin:0 0 3px">' + kr(t.kroner) + " til sammen · "
+      + ore(t.snittKroner) + ' i snitt</p>'
+    + '<p class="lagret" style="margin:0">' + t.utenModell + " av " + t.antall
+      + ' gikk uten modell</p>'
+    + (felt ? '<p class="felt__hjelp" style="margin-top:9px">Modellen måtte fylle: '
+              + felt + '.</p>' : "");
+}
+
+/* ---- nøkkelen importen bruker ---- */
+
+/* Nøkkelen går inn og aldri ut. Feltet er tomt hver gang, står utenfor
+   noe <form> — nettleserens passordbehandler skal ikke tilby å huske en
+   API-nøkkel — og statuslinjen sier bare hvilken nøkkel som gjelder, i
+   samme mono-mikrotekst som lagringstilstanden.
+
+   Hele blokken tegnes med én gang og fylles etterpå, så ingenting
+   flytter seg når svaret kommer. */
+async function visNokkel(){
+  const el = $("#apiNokkel");
+  if(!el) return;
+  el.innerHTML = '<p class="merkelinje">Nøkkel til importen</p>'
+    + '<p class="lagret" id="nokkelTilstand" style="margin:9px 0 13px" role="status" aria-live="polite"></p>'
+    + '<p class="feil" id="nokkelFeil" hidden></p>'
+    + '<label class="felt__merke" for="apiNokkelInn">Ny nøkkel</label>'
+    + '<input class="felt__inn" id="apiNokkelInn" type="password" autocomplete="off"'
+    + ' spellcheck="false" placeholder="sk-ant-…" aria-describedby="nokkelFeil nokkelHjelp">'
+    + '<p class="felt__hjelp" id="nokkelHjelp" style="margin-bottom:11px">Lagres i din egen katalog '
+    + 'og vises aldri igjen. Erstatter den som ligger der nå.</p>'
+    + '<div class="nokkelrad">'
+    + '<button class="knapp" data-gjor="lagreNokkel" id="lagreNokkel">Lagre nøkkel</button>'
+    + '<button class="knapp knapp--fare" data-gjor="fjernNokkel" id="fjernNokkel" hidden>Fjern nøkkel</button>'
+    + '</div>';
+
+  const r = await Økt.hentNokkel();
+  const t = $("#nokkelTilstand");
+  if(!t || skuffModus !== "eksport") return;
+
+  if(!r.ok){
+    t.textContent = "Fikk ikke lest nøkkeltilstanden";
+    t.dataset.t = "ulagret";
+    return;
+  }
+  delete t.dataset.t;
+  t.textContent =
+      r.kilde === "egen"  ? "Nøkkel satt" + (r.hale ? " · ····" + r.hale : "")
+                            + (r.satt ? " · " + siden(r.satt) : "")
+    : r.kilde === "miljø" ? "Serverens nøkkel brukes"
+    :                       "Ingen nøkkel — importen er slått av";
+  /* Bare en nøkkel du har satt selv kan fjernes. Serverens egen tilhører
+     den som startet serveren. */
+  const fjern = $("#fjernNokkel");
+  if(fjern) fjern.hidden = r.kilde !== "egen";
+}
+
+function visNokkelfeil(melding){
+  const el = $("#nokkelFeil");
+  if(!el) return;
+  el.textContent = melding;
+  el.hidden = false;
+}
+
+async function lagreNokkel(){
+  const inn = $("#apiNokkelInn"), knapp = $("#lagreNokkel");
+  if(!inn) return;
+  const verdi = inn.value.trim();
+  if(!verdi){ visNokkelfeil("Lim inn API-nøkkelen først."); inn.focus(); return; }
+
+  const feilEl = $("#nokkelFeil");
+  if(feilEl) feilEl.hidden = true;
+  if(knapp) knapp.disabled = true;
+  const r = await Økt.settNokkel(verdi);
+  if(knapp && knapp.isConnected) knapp.disabled = false;
+
+  if(!r.ok){
+    if(r.feil === "utlogget") return;        /* porten tar over */
+    visNokkelfeil(r.melding || "Nøkkelen ble ikke lagret.");
+    inn.focus();
+    return;
+  }
+  inn.value = "";
+  visNokkel();
+  varsle("Nøkkelen er lagret");
+}
+
+function fjernNokkel(){
+  spor("Nøkkelen slettes fra katalogen din. Importen slutter å virke med mindre "
+     + "serveren har sin egen.", "Fjern nøkkel", true, async () => {
+    const r = await Økt.fjernNokkel();
+    if(!r.ok){
+      if(r.feil !== "utlogget") varsle(r.melding || "Nøkkelen ble ikke fjernet");
+      return;
+    }
+    /* Resultatet er bare synlig i skuffen, så den åpnes igjen. */
+    apneSkuff("eksport");
+    varsle("Nøkkelen er fjernet");
+  });
+}
+
 /* ============================================================
    13. Hendelser
    ============================================================ */
@@ -987,8 +1244,10 @@ if(Lagring.I_APP){
 }
 
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-gjor],[data-modus],[data-temavalg],[data-visning],#neste,#apneNy,#lukkSkuff,#apneEksport,#nullstill,#lagreSkjema,#lagreLim");
+  const t = e.target.closest("[data-gjor],[data-modus],[data-temavalg],[data-visning],#neste,#apneNy,#lukkSkuff,#apneEksport,#nullstill,#lagreSkjema,#lagreLim,#hentLenke,#loggUt");
   if(!t) return;
+
+  if(t.id === "loggUt"){ loggUt(); return; }
 
   if(t.id === "apneNy"){ apneSkuff("ny"); return; }
   if(t.id === "apneEksport"){ apneSkuff("eksport"); return; }
@@ -996,6 +1255,7 @@ document.addEventListener("click", e => {
   if(t.id === "nullstill"){ sok = ""; filtSektor = ""; filtSted = ""; $("#sok").value = ""; tegn(); return; }
   if(t.id === "lagreSkjema"){ lagreSkjema(); return; }
   if(t.id === "lagreLim"){ lagreLim(); return; }
+  if(t.id === "hentLenke"){ hentFraLenke(); return; }
   if(t.id === "neste"){ if(t.dataset.id) hoppTilSoknad(t.dataset.id); return; }
   if(t.dataset.temavalg){ settTema(t.dataset.temavalg); return; }
 
@@ -1005,7 +1265,7 @@ document.addEventListener("click", e => {
     window.scrollTo({ top: 0, behavior: "auto" });
     return;
   }
-  if(t.dataset.modus){ skuffModus = t.dataset.modus; tegnSkuff(); const f = $("#skuff input,#skuff textarea"); if(f) f.focus(); return; }
+  if(t.dataset.modus){ skuffModus = t.dataset.modus; hentenr++; tegnSkuff(); const f = $("#skuff input,#skuff textarea"); if(f) f.focus(); return; }
 
   const g = t.dataset.gjor, id = t.dataset.id;
   if(g === "lukk") lukkSkuff();
@@ -1024,13 +1284,15 @@ document.addEventListener("click", e => {
          });
   }
   else if(g === "importerJson") importerJson();
+  else if(g === "lagreNokkel") lagreNokkel();
+  else if(g === "fjernNokkel") fjernNokkel();
   else if(g === "flyttHit") flyttHit();
   else if(g === "gjenopprettKopi") gjenopprettKopi();
   else if(g === "brukStartliste"){ data = silt(fraStart().concat(data)); taValget(); lagre(); tegn(); lukkSkuff(); varsle("Startet med startlisten"); }
   else if(g === "apneValget") apneSkuff(venterValg || "flytt");
   else if(g === "bekreftJa"){ const bk = bekreftelse; lukkSkuff(); if(bk) bk.gjor(); }
   else if(g === "prøvLagring") Lagring.prøvIgjen();
-  else if(g === "hentPåNytt") start();
+  else if(g === "hentPåNytt") hentData();
   else if(g && STATUSER[g]) settStatus(id, g);
 });
 
@@ -1064,10 +1326,20 @@ document.addEventListener("input", e => { if(e.target.id === "limInn") tegnForha
 
 document.addEventListener("keydown", fokusfelle);
 document.addEventListener("keydown", e => {
+  /* Porten eier tastaturet mens den står. Uten dette ville «n» åpnet
+     skuffen og «/» flyttet fokus ut i en app brukeren ikke er inne i. */
+  if(portenStår()) return;
   if(e.key === "Escape"){ lukkSkuff(); return; }
   const iFelt = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
   if(iFelt){
-    if(e.key === "Enter" && e.target.closest("#skuff") && e.target.tagName !== "TEXTAREA"){ e.preventDefault(); lagreSkjema(); }
+    /* Enter gjør det modusen handler om. Uten dette ville Enter i
+       lenkefeltet forsøkt å lagre et tomt skjema. */
+    if(e.key === "Enter" && e.target.closest("#skuff") && e.target.tagName !== "TEXTAREA"){
+      e.preventDefault();
+      if(skuffModus === "lenke") hentFraLenke();
+      else if(skuffModus === "lim") lagreLim();
+      else lagreSkjema();
+    }
     return;
   }
   if(e.metaKey || e.ctrlKey || e.altKey) return;
@@ -1136,6 +1408,7 @@ const LAGRETEKST = {
   lagrer:    () => "Lagrer…",
   ulagret:   () => "Ikke lagret",
   blokkert:  () => "Ikke lagret",
+  utlogget:  () => "Ikke lagret",
   frakoblet: () => "Ikke lagret",
   konflikt:  () => "Endret et annet sted"
 };
@@ -1149,6 +1422,10 @@ Lagring.påTilstand(t => {
               "Prøv igjen", "prøvLagring");
   else if(t.navn === "ulagret")
     visStripe(t.melding || "Lagringen avviste endringen.", "Prøv igjen", "prøvLagring");
+  /* Ingen «Prøv igjen» her: et nytt forsøk ville feilet like sikkert.
+     Veien tilbake går gjennom porten, og den står allerede. */
+  else if(t.navn === "utlogget")
+    visStripe(t.melding || "Du er logget ut. Endringen ligger her til du er inne igjen.");
   else if(t.navn === "konflikt")
     visStripe("Dataene ble endret et annet sted — antakelig i en annen fane. "
       + "Endringen din er ikke skrevet, og blir det ikke før du henter på nytt.",
@@ -1270,7 +1547,96 @@ addEventListener("visibilitychange", () => { if(document.visibilityState === "vi
 addEventListener("focus", sjekkDøgn);
 setInterval(sjekkDøgn, 60000);
 
+/* ============================================================
+   17. Porten, brukeren og økten
+   ============================================================ */
+
+/* Porten avgjøres før noe hentes. Uten det ville en 401 kommet
+   forkledd som «Ingen kontakt med lagringen. Kjører serveren?» —
+   riktig stripe, feil forklaring, og ingen vei videre. */
 async function start(){
+  skjulStripe();
+  const økt = await krevØkt();
+  brukeren = økt.bruker;
+  erFørste = !!økt.erFørste;
+  visBruker();
+  if(økt.migreringsfeil)
+    varsle("Fikk ikke flyttet inn det som lå i datakatalogen fra før");
+  await hentData();
+  if(økt.migrert && økt.migrert.includes("jobber.json") && data.length)
+    varsle("Tok med " + antall(data.length, "søknad", "søknader") + " som lå her fra før");
+}
+
+function visBruker(){
+  const el = $("#bruker");
+  if(!el) return;
+  if(!brukeren){ el.hidden = true; return; }
+  const navn = brukeren.navn || brukeren.epost;
+  $("#brukerTegn").textContent = monogram(navn);
+  $("#brukerNavn").textContent = navn;
+  /* Knappen bærer bare et ikon. Navnet på handlingen — og hvem den
+     gjelder — må da stå i det tilgjengelige navnet. */
+  $("#loggUt").setAttribute("aria-label", "Logg ut " + navn);
+  el.title = brukeren.epost;
+  el.hidden = false;
+}
+
+function loggUt(){
+  const gjør = async () => {
+    await Økt.loggUt();
+    /* app.js har modultilstand overalt. Å nullstille den for hånd er
+       en feilkilde uten gevinst — siden lastes i stedet. */
+    location.reload();
+  };
+  if(!Lagring.harUlagret()) return gjør();
+  spor("Endringen din er ikke lagret ennå. Logger du ut nå, blir den borte.",
+       "Logg ut likevel", true, gjør);
+}
+
+/* Serveren har svart 401 på noe som krevde en økt. Kalles én gang per
+   bortfall, ikke én gang per kall — det er okt.js som passer på det. */
+Økt.påUtlogget(async melding => {
+  if(portenStår()) return;
+  lukkSkuff();
+  /* Et varsel med «Angre» skal ikke bli stående bak låsen: knappen er
+     inert, og en handling du ikke kan ta er verre enn ingen. */
+  clearTimeout(angreTid);
+  $("#varsel").classList.remove("er-apen");
+  $("#varsel").setAttribute("inert", "");
+  const før = brukeren;
+  const økt = await krevØktIgjen({ melding, forrigeBruker: før,
+                                   ulagret: Lagring.harUlagret() });
+  /* En annen bruker er en annen liste. Da er det ingenting å ta med
+     videre, og en omlasting er både enklere og sikrere. */
+  if(!før || økt.bruker.id !== før.id){ location.reload(); return; }
+  brukeren = økt.bruker;
+  erFørste = !!økt.erFørste;
+  visBruker();
+  await gjenoppta();
+});
+
+/* Samme bruker er tilbake. Lå det noe ulagret, skal det overleve
+   hentingen og skrives mot den ferske versjonen. */
+async function gjenoppta(){
+  /* Sto et engangsvalg — flytt hit, eller gjenopprett sikkerhetskopien —
+     ubesvart da økten røk, er tilstanden for sammensatt til å plukkes
+     opp midt i. Da lastes siden på nytt og valget stilles forfra. */
+  if(venterValg || filErOdelagt){ location.reload(); return; }
+  const ulagret = Lagring.harUlagret();
+  try{
+    const svar = await Lagring.hent({ beholdVentende: ulagret });
+    if(!ulagret) data = svar.jobber || [];
+    Lagring.frigi();
+    if(ulagret) Lagring.prøvIgjen();
+    else skjulStripe();
+    tegn();
+  }catch(e){
+    if(e.utlogget) return;          /* porten kommer opp igjen av seg selv */
+    await hentData();
+  }
+}
+
+async function hentData(){
   skjulStripe();
   try{
     const svar = await Lagring.hent();
@@ -1286,14 +1652,18 @@ async function start(){
       }
       /* Ingen datafil ennå. Har nettleseren data fra før, skal brukeren
          få velge — vi flytter ikke noe uten å spørre. */
-      const gamle = fraNettleser();
+      const gamle = erFørste ? fraNettleser() : null;
       if(gamle && gamle.length){
         venterValg = "flytt";
         Lagring.blokker();
         data = []; tegn(); apneSkuff("flytt"); return;
       }
-      data = fraStart();
-      lagre();
+      /* Bare den første brukeren arver det som lå i datakatalogen fra
+         før. Alle andre starter tomt — en ny bruker skal ikke få en
+         annens jobbsøknader som «sine». Startlisten ligger fortsatt
+         under «Dataene dine» for den som vil ha den. */
+      if(erFørste){ data = fraStart(); lagre(); }
+      else data = [];
     }else{
       data = svar.jobber || [];
       if(svar.advarsel) varsle(svar.advarsel);

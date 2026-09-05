@@ -5,6 +5,12 @@ node_modules/
 # selskap, stilling, frist. Den og kopiene/karantenefilene holdes lokale.
 data/
 
+# API-nøkkelen for import fra lenke, i nettlesermodus.
+nokkel.txt
+
+# Hva importen har kostet. Ligger i data/, men også her for appkatalogen.
+importlogg.jsonl
+
 # Frontenden samlet for Tauri, og det Rust bygger.
 dist/
 src-tauri/target/
@@ -12,3 +18,4 @@ src-tauri/gen/
 
 # Lokalt agent-oppsett for Claude Code, ikke en del av appen.
 .claude/
+data.sikkerhetskopi-*/
