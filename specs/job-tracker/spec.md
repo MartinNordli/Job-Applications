@@ -60,3 +60,8 @@ omlasting av siden og omstart av appen. Alt annet i appen skal fungere som før.
 
 Mørkt tema · brukere og innlogging · database · rammeverk · inkrementell
 opptegning · endringer i `temaer/`.
+
+«Brukere og innlogging» ble senere tatt inn med vitende og vilje. Linjen over
+står som den står — den er et riktig referat av avgrensningen som gjaldt da
+filbasert lagring ble bygget. Det som kom etterpå, står i
+[`specs/flerbruker/spec.md`](../flerbruker/spec.md).
