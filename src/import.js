@@ -11,6 +11,7 @@
    ============================================================ */
 
 import * as Lagring from "./lagring.js";
+import * as Økt from "./okt.js";
 import { SEKTOR_FOR } from "./felles.mjs";
 import { LOGGFIL, lagLinje, leggTil, sammendrag } from "./importlogg.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel,
@@ -53,6 +54,14 @@ async function overHttp(url, si){
   try{ j = await r.json(); }catch{ /* faller gjennom til feilen under */ }
 
   if(r.ok && j?.ok) return { utkast: j.utkast, kilder: j.kilder };
+
+  /* Økten er borte. Flaten skal vise porten, ikke «importen feilet» —
+     og adressen brukeren limte inn står fortsatt i feltet. */
+  if(r.status === 401){
+    Økt.meldUtlogget(j?.melding);
+    throw new Importfeil("utlogget", "Du er logget ut. Logg inn på nytt og prøv igjen.");
+  }
+
   throw new Importfeil(j?.feil || "ukjent",
                        j?.melding || `Importen feilet (${r.status}).`,
                        j?.utkast || null);
@@ -85,7 +94,11 @@ async function iApp(url, valg, si){
   if(manglende.length && tekst.length > 40){
     si(TRINN.LESER);
     try{
-      const raa = await tauriNett.spørModell(byggForespørsel(tekst, manglende));
+      /* Nøkkelen hentes av Rust fra profilens egen katalog. Uten
+         `bruker` ville den blitt lett etter i rota, som ingen
+         profil eier. */
+      const raa = await tauriNett.spørModell(byggForespørsel(tekst, manglende),
+                                             { bruker: minId() });
       bruk   = raa?.usage ?? null;
       modell = tolkModellsvar(raa);
     }
@@ -114,12 +127,20 @@ async function iApp(url, valg, si){
 
 /* ---------- importloggen ---------- */
 
-/* Samme fire filoperasjoner som lagringen bruker. Loggen er liten nok
-   til at les-endre-skriv er greit; alternativet er en ny Rust-kommando
-   for én linje tekst. */
+/* Samme fire filoperasjoner som lagringen bruker, i profilens katalog.
+   Loggen er liten nok til at les-endre-skriv er greit; alternativet er
+   en ny Rust-kommando for én linje tekst.
+
+   Uten en innlogget profil skrives ingen logg. Loggen sier hva
+   importen har kostet, og det er et spørsmål som bare gir mening per
+   profil — rotas katalog er ingens. */
+const minId = () => Økt.nåværendeBruker()?.id ?? null;
+
 async function filer(){
+  const bruker = minId();
+  if(!bruker) throw new Error("Ingen profil er valgt.");
   const { lagTauriFiler } = await import("./tauri-filer.mjs");
-  return lagTauriFiler();
+  return lagTauriFiler({ bruker });
 }
 
 async function skrivLogg(linje){
@@ -134,6 +155,9 @@ export async function importtall(){
   if(!Lagring.I_APP){
     try{
       const r = await fetch("/api/importlogg");
+      /* En 401 her sier ingenting brukeren har bedt om å få vite —
+         tallene er en opplysning i skuffen, ikke en handling. Porten
+         kommer opp av det neste kallet som faktisk betyr noe. */
       return r.ok ? (await r.json()).sammendrag : null;
     }catch{ return null; }
   }

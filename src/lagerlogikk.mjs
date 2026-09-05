@@ -101,6 +101,29 @@ export function lagLager({ filer, lagId }){
     return svar;
   }
 
+  /* Versjonssjekken under er hele vernet mot at to skrivinger tar
+     livet av hverandre — og siden appen og npm start nå deler
+     datakatalog, er de to ikke lenger bare to faner, men to
+     prosesser mot samme fil.
+
+     Det den er: filen leses på nytt her inne, i køen, rett før den
+     skrives. Sammenlikningen går derfor mot versjonen på disk, ikke
+     mot noe vi husker fra sist. Har en annen prosess skrevet i
+     mellomtiden, har disken et høyere tall, og skrivingen avvises
+     med «konflikt» — som blir 409, konfliktsperre og «Hent på nytt».
+     Ingen tilstand i minnet kan bli foreldet, fordi ingen holdes.
+
+     Det den ikke er: en lås. Mellom les() og skrivAtomisk her er det
+     et vindu på noen millisekunder der en annen prosess kan rekke
+     hele sin egen les-og-skriv, og da vinner den som byttet filen
+     sist. Én bruker med to vinduer treffer ikke det vinduet, og
+     taperen ligger uansett i jobber.forrige.json.
+
+     En fillås (O_EXCL eller flock rundt les-og-skriv) ville lukket
+     det. Vurdert og valgt bort: den koster en opprydding av låser
+     etter en krasj, den må virke likt i Node og i Rust, og den løser
+     et kappløp på millisekunder for en app med én bruker. Står det
+     her fordi det er et bevisst valg, ikke noe ingen tenkte på. */
   async function utfør(jobber, forventetVersjon, valg2 = {}){
     let nå = await les();
 

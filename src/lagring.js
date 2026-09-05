@@ -10,6 +10,8 @@
    liggende og tilstanden sier «ikke lagret» til den går gjennom.
    ============================================================ */
 
+import * as Økt from "./okt.js";
+
 const API = "/api/jobber";
 const NYTT_FORSOK = 4000;     /* prøver igjen selv når serveren er borte */
 
@@ -24,14 +26,27 @@ export const I_APP = typeof window !== "undefined" && !!window.__TAURI__;
    disk med én gang, i tilfelle appen lukkes i samme øyeblikk. */
 const FORSINKELSE = I_APP ? 0 : 250;
 
-let appLager = null;
+/* Ett lager per profil, og aldri to for samme profil: skrivekøen
+   ligger i closuren i lagerlogikk.mjs, så to instanser ville gitt to
+   køer og dermed en tapt skriving. Cachen nullstilles av seg selv når
+   den innloggede skifter — det er nok å sammenlikne id-en her, i
+   stedet for at hver innlogging må huske å rydde etter seg.
+
+   Uten en innlogget profil skrives ingenting. Rota er migreringskilden
+   og skal ikke få nye rader stille lagt i seg. */
+let appLager = null, appLagerFor = null;
 async function lokaltLager(){
-  if(!appLager){
+  const id = Økt.nåværendeBruker()?.id ?? null;
+  if(!id) throw new Error("Ingen profil er valgt.");
+
+  if(!appLager || appLagerFor !== id){
     const [{ lagLager }, { lagTauriFiler }] = await Promise.all([
       import("./lagerlogikk.mjs"),
       import("./tauri-filer.mjs")
     ]);
-    appLager = lagLager({ filer: await lagTauriFiler(), lagId: () => crypto.randomUUID() });
+    appLager = lagLager({ filer: await lagTauriFiler({ bruker: id }),
+                          lagId: () => crypto.randomUUID() });
+    appLagerFor = id;
   }
   return appLager;
 }
@@ -90,6 +105,12 @@ async function hentOverHttp(){
   let kropp = null;
   try{ kropp = await svar.json(); }catch{ /* håndteres under */ }
 
+  /* Økten er borte. Det er ikke «ingen kontakt» og ikke «ødelagt fil»
+     — det er en tredje ting, og flaten må vise porten, ikke stripa. */
+  if(svar.status === 401){
+    Økt.meldUtlogget(kropp && kropp.melding);
+    const e = new Error("Du er logget ut."); e.utlogget = true; throw e;
+  }
   if(svar.status === 503 && kropp && kropp.feil){
     const e = new Error(kropp.feil); e.ødelagt = true; e.sti = kropp.sti;
     e.sikkerhetskopi = kropp.sikkerhetskopi || null; throw e;
@@ -114,23 +135,36 @@ async function hentLokalt(){
   return r;
 }
 
-export async function hent(){
+/* `valg.beholdVentende` finnes for ett tilfelle: brukeren ble logget
+   ut med noe ulagret, og logger inn igjen som SAMME bruker. Da skal de
+   ulagrede endringene overleve hentingen. Den som henter slik må selv
+   kalle frigi() og deretter prøvIgjen(); da skrives de mot den ferske
+   versjonen. Har en annen fane skrevet i mellomtiden, gir det 409 —
+   nøyaktig riktig, og den veien finnes allerede.
+
+   Ved bytte til en ANNEN bruker skal ingenting beholdes. Da er
+   location.reload() svaret, ikke dette flagget. */
+export async function hent(valg = {}){
   let kropp;
   try{ kropp = I_APP ? await hentLokalt() : await hentOverHttp(); }
   catch(e){
     if(e.ødelagt) blokkert = true;     /* filen er uleselig — ikke rør den */
+    if(e.utlogget) blokkert = true;    /* vi vet ikke lenger hvem lista tilhører */
     throw e;
   }
 
   /* Etter en vellykket henting er skjermen lik filen. Eventuell
      konflikt- eller frakoblet-tilstand hører fortiden til, og en
      avvist endring er nå bevisst forkastet av brukeren. */
-  versjon  = kropp.versjon || 0;
-  ventende = null;
+  /* Versjonen overtas bare når vi faktisk forkaster det som lå og ventet.
+     Beholder vi en ulagret endring, må den skrives mot versjonen den ble
+     laget mot — ellers bærer den et tall den aldri er blitt prøvd mot, og
+     en skriving fra en annen fane blir borte uten at noen får vite det. */
+  if(!valg.beholdVentende){ versjon = kropp.versjon || 0; ventende = null; }
   blokkert = false;
   overstyrOdelagt = false;
   avbrytNyttForsok();
-  meld("lagret");
+  meld(ventende === null ? "lagret" : "lagrer");
   return kropp;                 /* { versjon, jobber, tom?, advarsel?, forkastet? } */
 }
 
@@ -163,6 +197,11 @@ async function skrivOverHttp(jobber, flukt){
 
   if(svar.ok && kropp)              return { utfall: "ok", kropp };
   if(svar.status === 409 && kropp)  return { utfall: "konflikt", kropp };
+  /* Må stå foran den generiske avvist-grenen. Ellers får brukeren
+     «Lagringen avviste endringen» — feil forklaring — og en «Prøv
+     igjen»-knapp som vil feile for alltid. */
+  if(svar.status === 401)           return { utfall: "utlogget",
+                                             melding: (kropp && kropp.melding) || null };
   if(svar.status === 503)           return { utfall: "ødelagt",
                                              melding: (kropp && kropp.melding) || null };
   return { utfall: "avvist",
@@ -209,6 +248,15 @@ async function kjør(flukt){
       behold(nå);
       blokkert = true;
       meld("ulagret", r.melding || "Datafilen kan ikke leses.");
+    }else if(r.utfall === "utlogget"){
+      /* Endringen ligger i behold, sperren står, og ingen ny timer
+         planlegges: et nytt forsøk ville feilet like sikkert og bare
+         fylt nettverksfanen. Porten kommer opp via Økt.påUtlogget. */
+      behold(nå);
+      blokkert = true;
+      avbrytNyttForsok();
+      meld("utlogget", r.melding || "Du er logget ut. Endringen ligger her til du er inne igjen.");
+      Økt.meldUtlogget(r.melding);
     }else{
       behold(nå);
       meld("ulagret", r.melding || "Lagringen avviste endringen.");

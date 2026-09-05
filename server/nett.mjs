@@ -7,15 +7,13 @@
    ============================================================ */
 
 import dns from "node:dns/promises";
-import fs from "node:fs/promises";
-import path from "node:path";
 import { sjekkLenke } from "../src/felles.mjs";
+import { NOKKELFIL, lesEgenNokkel, miljønokkel } from "./nokkel.mjs";
 
 const MAKS_SIDE   = 2 * 1024 * 1024;
 const MAKS_HOPP   = 3;
 const TIDSGRENSE  = 10_000;
 const MODELL_URL  = "https://api.anthropic.com/v1/messages";
-const NOKKELFIL   = "nokkel.txt";
 
 const AGENT = "Jobbsoknader/1.0 (personlig soknadsoversikt)";
 
@@ -141,32 +139,36 @@ export class ManglerNokkel extends Error {
   constructor(melding){ super(melding); this.navn = "mangler-nokkel"; }
 }
 
-/* Nøkkelen ligger helst i en fil ved siden av datafilen: den kan settes
-   chmod 600, den er allerede i .gitignore, og den slipper å stå i klartekst
-   i ~/.zshrc der hvert eneste program på maskinen ser den. Miljøvariabelen
-   virker fortsatt og går foran, for den som vil ha den.
+/* Nøkkelen ligger i en fil i brukerens egen katalog: den kan settes
+   chmod 600, den er allerede i .gitignore, og den slipper å stå i
+   klartekst i ~/.zshrc der hvert eneste program på maskinen ser den.
 
-   Filen leses ved hvert kall. Det er én liten lesing per import, og til
-   gjengjeld virker en ny nøkkel uten at serveren må startes på nytt. */
-export async function lesNokkel(katalog){
-  const fra = process.env.ANTHROPIC_API_KEY?.trim();
-  if(fra) return fra;
+   Presedensen er snudd siden enbrukertiden, da miljøvariabelen gikk
+   foran filen. Med nøkkel per bruker ville en delt miljøvariabel
+   overstyrt hver enkelt brukers egen — og verre: åpen registrering
+   ville gitt bort operatørens kreditt. Derfor vinner brukerens egen
+   fil alltid, og miljøvariabelen gjelder bare når kallstedet sier
+   `tillatMiljø` (første bruker, eller DELT_NOKKEL=1).
 
-  if(katalog){
-    try{
-      const t = (await fs.readFile(path.join(katalog, NOKKELFIL), "utf8")).trim();
-      if(t) return t;
-    }catch{ /* finnes ikke, eller kan ikke leses — samme svar som ingen nøkkel */ }
+   Reglene for selve nøkkelen står i server/nokkel.mjs. */
+export async function lesNokkel({ katalog, tillatMiljø = false } = {}){
+  const egen = await lesEgenNokkel(katalog);
+  if(egen) return egen;
+
+  if(tillatMiljø){
+    const fra = miljønokkel();
+    if(fra) return fra;
   }
 
   throw new ManglerNokkel(
-    `Ingen API-nøkkel. Legg den i ${NOKKELFIL} i datakatalogen, eller sett ANTHROPIC_API_KEY.`);
+    `Ingen API-nøkkel. Legg inn din egen under «Dataene dine», eller legg den i ${NOKKELFIL} i din egen katalog.`);
 }
 
-/* Samler de to operasjonene slik lagLager samler filoperasjonene, og
-   av samme grunn: katalogen er noe serveren vet, ikke noe modulen gjør. */
-export function lagNett({ katalog } = {}){
-  return { hentSide, spørModell: kropp => spørModell(kropp, katalog) };
+/* Samler de to operasjonene slik lagLager samler filoperasjonene.
+   Katalogen følger nå kallet og ikke modulen: hvilken bruker som
+   importerer avgjøres per forespørsel, ikke ved oppstart. */
+export function lagNett(){
+  return { hentSide, spørModell: (kropp, valg) => spørModell(kropp, valg) };
 }
 
 /* Verdt ett nytt forsøk: køen er full, eller noe er nede et øyeblikk.
@@ -176,8 +178,8 @@ const PAUSE = 1_500;
 
 const sov = ms => new Promise(r => setTimeout(r, ms));
 
-export async function spørModell(kropp, katalog){
-  const nokkel = await lesNokkel(katalog);
+export async function spørModell(kropp, valg = {}){
+  const nokkel = await lesNokkel(valg);
 
   const send = () => fetch(MODELL_URL, {
     method: "POST",
@@ -213,6 +215,9 @@ export async function spørModell(kropp, katalog){
       const j = JSON.parse(tekst);
       if(j?.error?.message) melding = `Modellen svarte ${r.status}: ${j.error.message}`;
     }catch{ /* behold den enkle meldingen */ }
+    /* Anthropic ekkoer ikke nøkkelen, men vi bygger ikke på antakelser
+       om en annen parts feiltekster. Står den der, går den ikke ut. */
+    if(melding.includes(nokkel)) melding = melding.replaceAll(nokkel, "«…»");
     throw new Error(melding);
   }
 

@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { lagServer } from "./server.mjs";
+import { lagBrukere, BRUKERKATALOG } from "./brukere.mjs";
 import { erIntern, lesNokkel, ManglerNokkel } from "./nett.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel, tolkModellsvar,
          slåSammen, sektorForSelskap, avkod, tolkEtiketter, fristFraTekst,
@@ -19,22 +20,38 @@ import { lagLinje, leggTil, tolkLogg, sammendrag, kroner,
    det er derfor de to operasjonene injiseres i lagServer.
    ============================================================ */
 
+/* Importen krever nå en økt, og lista den leser er brukerens egen.
+   Derfor opprettes én bruker per test, og eventuelle rader legges i
+   brukerens katalog — ikke i roten. `api` bærer cookien videre, så
+   selve testene ser like ut som før. */
 async function start(nett, jobber = []){
   const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "jobber-import-"));
-  const tjener  = lagServer({ katalog, nett });
+  const brukere = lagBrukere({ katalog, iterasjoner: 1 });
+  const tjener  = lagServer({ katalog, brukere, nett });
+  await new Promise(r => tjener.listen(0, "127.0.0.1", r));
+  const base = `http://127.0.0.1:${tjener.address().port}`;
+
+  const r = await fetch(`${base}/api/registrer`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ epost: "ola@example.no", passord: "et-godt-nok-passord" })
+  });
+  const { bruker } = await r.json();
+  const cookie = r.headers.getSetCookie()[0].split(";")[0];
+  const api = (sti, valg = {}) => fetch(base + sti,
+    { ...valg, headers: { cookie, ...(valg.headers || {}) } });
+
+  const minKatalog = path.join(katalog, BRUKERKATALOG, bruker.id);
   if(jobber.length){
-    await fs.writeFile(path.join(katalog, "jobber.json"),
+    await fs.mkdir(minKatalog, { recursive: true });
+    await fs.writeFile(path.join(minKatalog, "jobber.json"),
       JSON.stringify({ versjon: 1, oppdatert: new Date().toISOString(), jobber }));
   }
-  await new Promise(r => tjener.listen(0, "127.0.0.1", r));
-  return {
-    katalog,
-    base: `http://127.0.0.1:${tjener.address().port}`,
-    stopp: () => new Promise(r => tjener.close(r))
-  };
+
+  return { katalog, minKatalog, base, api, cookie,
+           stopp: () => new Promise(x => tjener.close(x)) };
 }
 
-const importer = (base, url) => fetch(`${base}/api/importer`, {
+const importer = (api, url) => api("/api/importer", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ url })
@@ -352,14 +369,14 @@ test("selskap i listen gir sektoren derfra", () => {
 
 test("strukturerte data alene: modellen blir aldri spurt", async t => {
   let spurt = false;
-  const { base, stopp } = await start({
+  const { api, stopp } = await start({
     hentSide: async url => ({ status: 200, sluttUrl: url,
       html: ldJson(stilling({ employmentType: "FULL_TIME" })) }),
     spørModell: async () => { spurt = true; return { content: [] }; }
   });
   t.after(stopp);
 
-  const j = await (await importer(base, "https://akerbp.com/jobb/1")).json();
+  const j = await (await importer(api, "https://akerbp.com/jobb/1")).json();
   assert.equal(spurt, false);
   assert.equal(j.utkast.stilling, "Graduate: Data Engineer");
   assert.equal(j.utkast.frist, "2026-09-13");
@@ -367,36 +384,36 @@ test("strukturerte data alene: modellen blir aldri spurt", async t => {
 });
 
 test("modellen fyller hullene når siden er tom for struktur", async t => {
-  const { base, stopp } = await start(nettMed(
+  const { api, stopp } = await start(nettMed(
     "<h1>Analytiker</h1><p>Vi søker en analytiker til Trondheim, med oppstart til høsten.</p>",
     { title: "Analytiker", company: "Ukjent AS", deadline: "2026-11-01",
       deadline_type: "fixed", location: "Trondheim", sector: "finans", job_type: "fulltid" }));
   t.after(stopp);
 
-  const j = await (await importer(base, "https://ukjent.no/jobb/2")).json();
+  const j = await (await importer(api, "https://ukjent.no/jobb/2")).json();
   assert.equal(j.utkast.selskap, "Ukjent AS");
   assert.equal(j.utkast.frist, "2026-11-01");
   assert.equal(j.kilder.selskap, "modell");
 });
 
 test("kjent selskap gjenbruker sektoren og overstyrer modellen", async t => {
-  const { base, stopp } = await start(
+  const { api, stopp } = await start(
     nettMed("<h1>Konsulent</h1><p>Vi søker konsulenter til Oslo i høst.</p>",
             { title: "Konsulent", company: "Bekk", sector: "teknologi" }),
     [{ id: "a1", selskap: "Bekk", stilling: "Utvikler", sektor: "konsulent",
        lenke: "", sted: "", frist: null, status: "todo", notat: "", sendtDato: null }]);
   t.after(stopp);
 
-  const j = await (await importer(base, "https://bekk.no/jobb/3")).json();
+  const j = await (await importer(api, "https://bekk.no/jobb/3")).json();
   assert.equal(j.utkast.sektor, "konsulent");
   assert.equal(j.kilder.sektor, "selskap");
 });
 
 test("en side uten noe å lese gir 422 med lenken i behold", async t => {
-  const { base, stopp } = await start(nettMed("<div id='app'></div>", {}));
+  const { api, stopp } = await start(nettMed("<div id='app'></div>", {}));
   t.after(stopp);
 
-  const r = await importer(base, "https://js-tung.no/jobb/4");
+  const r = await importer(api, "https://js-tung.no/jobb/4");
   assert.equal(r.status, 422);
   const j = await r.json();
   assert.equal(j.feil, "tomt");
@@ -404,38 +421,38 @@ test("en side uten noe å lese gir 422 med lenken i behold", async t => {
 });
 
 test("feil i hentingen blir 502 med meldingen, ikke en serverfeil", async t => {
-  const { base, stopp } = await start({
+  const { api, stopp } = await start({
     hentSide: async () => { throw new Error("Adressen peker til et internt nett."); },
     spørModell: async () => ({ content: [] })
   });
   t.after(stopp);
 
-  const r = await importer(base, "http://127.0.0.1:4173/api/jobber");
+  const r = await importer(api, "http://127.0.0.1:4173/api/jobber");
   assert.equal(r.status, 502);
   assert.match((await r.json()).melding, /internt nett/);
 });
 
 test("manglende nøkkel er sin egen feil, ikke en generisk 500", async t => {
-  const { base, stopp } = await start({
+  const { api, stopp } = await start({
     hentSide: async url => ({ status: 200, sluttUrl: url, html: "<p>" + "tekst ".repeat(20) + "</p>" }),
     spørModell: async () => { const e = new Error("Ingen API-nøkkel."); e.navn = "mangler-nokkel"; throw e; }
   });
   t.after(stopp);
 
-  const r = await importer(base, "https://a.no/jobb/5");
+  const r = await importer(api, "https://a.no/jobb/5");
   assert.equal(r.status, 503);
   assert.equal((await r.json()).feil, "mangler-nokkel");
 });
 
 test("endepunktet tar bare POST, og krever en url", async t => {
-  const { base, stopp } = await start(nettMed("<p>x</p>"));
+  const { api, stopp } = await start(nettMed("<p>x</p>"));
   t.after(stopp);
 
-  const g = await fetch(`${base}/api/importer`);
+  const g = await api("/api/importer");
   assert.equal(g.status, 405);
   assert.equal(g.headers.get("allow"), "POST");
 
-  const u = await fetch(`${base}/api/importer`, { method: "POST", body: "{}" });
+  const u = await api("/api/importer", { method: "POST", body: "{}" });
   assert.equal(u.status, 400);
   assert.equal((await u.json()).feil, "mangler url");
 });
@@ -461,7 +478,7 @@ test("finnesFraFor kjenner igjen en rad du allerede har", () => {
 
 test("en annonse du har fra før hentes ikke i det hele tatt", async t => {
   let hentet = 0, spurt = 0;
-  const { base, stopp } = await start({
+  const { api, stopp } = await start({
     hentSide: async url => { hentet++; return { status: 200, sluttUrl: url, html: "<p>x</p>" }; },
     spørModell: async () => { spurt++; return { content: [] }; }
   }, [{ id: "a1", selskap: "Equinor", stilling: "Sommerjobb",
@@ -469,7 +486,7 @@ test("en annonse du har fra før hentes ikke i det hele tatt", async t => {
         status: "todo", sektor: "energi", notat: "", sendtDato: null }]);
   t.after(stopp);
 
-  const r = await importer(base, "https://www.equinor.com/jobb/9?utm_source=x");
+  const r = await importer(api, "https://www.equinor.com/jobb/9?utm_source=x");
   assert.equal(r.status, 409);
   const j = await r.json();
   assert.equal(j.feil, "finnes");
@@ -556,26 +573,33 @@ test("prisen regnes av de ekte tokentallene", () => {
 });
 
 test("en vellykket import skriver én linje, og endepunktet leser den", async t => {
-  const { base, stopp, katalog } = await start(nettMed(
+  const { api, stopp, minKatalog } = await start(nettMed(
     "<h1>Analytiker</h1><p>" + "tekst ".repeat(30) + "</p>",
     { title: "Analytiker", company: "Ukjent AS" }));
   t.after(stopp);
 
-  assert.equal((await (await fetch(`${base}/api/importlogg`)).json()).sammendrag, null);
+  assert.equal((await (await api("/api/importlogg")).json()).sammendrag, null);
 
-  await importer(base, "https://ukjent.no/jobb/1");
-  await new Promise(r => setTimeout(r, 50));       /* loggen skrives uten å blokkere svaret */
+  await importer(api, "https://ukjent.no/jobb/1");
 
-  const s = (await (await fetch(`${base}/api/importlogg`)).json()).sammendrag;
+  /* Loggen skrives uten å blokkere svaret, så den er ikke der ennå når
+     importen er ferdig. Et fast antall millisekunder er en gjetning som
+     ryker når maskinen er travel; her ventes det på linjen selv. */
+  let s = null;
+  for(let i = 0; i < 100 && !s; i++){
+    s = (await (await api("/api/importlogg")).json()).sammendrag;
+    if(!s) await new Promise(r => setTimeout(r, 10));
+  }
+  assert.ok(s, "loggen ble skrevet");
   assert.equal(s.antall, 1);
   assert.equal(s.vert, undefined);                  /* sammendraget bærer ingen adresser */
-  assert.ok(await fs.readFile(path.join(katalog, "importlogg.jsonl"), "utf8"));
+  assert.ok(await fs.readFile(path.join(minKatalog, "importlogg.jsonl"), "utf8"));
 });
 
 test("importloggen tar bare GET", async t => {
-  const { base, stopp } = await start(nettMed("<p>x</p>"));
+  const { api, stopp } = await start(nettMed("<p>x</p>"));
   t.after(stopp);
-  const r = await fetch(`${base}/api/importlogg`, { method: "POST" });
+  const r = await api("/api/importlogg", { method: "POST" });
   assert.equal(r.status, 405);
 });
 
@@ -612,7 +636,8 @@ const tomKatalog = () => fs.mkdtemp(path.join(os.tmpdir(), "jobber-nokkel-"));
 
 test("uten nøkkel noe sted er det en egen feil", async () => {
   const katalog = await tomKatalog();
-  const e = await medMiljø(undefined, () => lesNokkel(katalog).then(() => null, x => x));
+  const e = await medMiljø(undefined,
+    () => lesNokkel({ katalog, tillatMiljø: true }).then(() => null, x => x));
   assert.ok(e instanceof ManglerNokkel);
   assert.equal(e.navn, "mangler-nokkel");
   assert.match(e.message, /nokkel\.txt/);
@@ -621,19 +646,28 @@ test("uten nøkkel noe sted er det en egen feil", async () => {
 test("nokkel.txt leses, og trimmes", async () => {
   const katalog = await tomKatalog();
   await fs.writeFile(path.join(katalog, "nokkel.txt"), "  sk-ant-fra-fil\n");
-  assert.equal(await medMiljø(undefined, () => lesNokkel(katalog)), "sk-ant-fra-fil");
+  assert.equal(await medMiljø(undefined, () => lesNokkel({ katalog })), "sk-ant-fra-fil");
 });
 
-test("miljøvariabelen går foran filen", async () => {
+/* Denne testen sto før på hodet: miljøvariabelen gikk foran filen.
+   Rekkefølgen er snudd bevisst da nøkkelen ble per bruker. En delt
+   ANTHROPIC_API_KEY ville ellers overstyrt hver enkelt brukers egen
+   nøkkel — og med åpen registrering ville det gitt bort operatørens
+   kreditt til hvem som helst. Nå vinner brukerens egen fil alltid,
+   og miljøvariabelen gjelder bare der kallstedet tillater den.
+   Reglene rundt står i server/nokkel.mjs og testes der. */
+test("brukerens egen nøkkelfil går foran miljøvariabelen", async () => {
   const katalog = await tomKatalog();
   await fs.writeFile(path.join(katalog, "nokkel.txt"), "sk-ant-fra-fil");
-  assert.equal(await medMiljø("sk-ant-fra-miljo", () => lesNokkel(katalog)), "sk-ant-fra-miljo");
+  assert.equal(await medMiljø("sk-ant-fra-miljo",
+    () => lesNokkel({ katalog, tillatMiljø: true })), "sk-ant-fra-fil");
 });
 
 test("tomme verdier teller som ingen nøkkel", async () => {
   const katalog = await tomKatalog();
   await fs.writeFile(path.join(katalog, "nokkel.txt"), "   \n");
-  await assert.rejects(() => medMiljø("   ", () => lesNokkel(katalog)), ManglerNokkel);
+  await assert.rejects(() => medMiljø("   ",
+    () => lesNokkel({ katalog, tillatMiljø: true })), ManglerNokkel);
 });
 
 /* ---------- feltet overlever lagringen ---------- */

@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "node server/server.mjs",
-    "test": "node --test server/lager.test.mjs server/server.test.mjs server/import.test.mjs",
+    "test": "node --test server/lager.test.mjs server/katalog.test.mjs server/server.test.mjs server/import.test.mjs server/brukerlogikk.test.mjs server/brukere.test.mjs server/nokkel.test.mjs server/innlogging.test.mjs server/okt-app.test.mjs server/flyt.test.mjs server/okt-flyt.test.mjs",
     "bygg:front": "node scripts/bygg-front.mjs",
     "tauri": "tauri",
     "app:dev": "tauri dev",
