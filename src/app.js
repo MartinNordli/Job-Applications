@@ -5,6 +5,8 @@ import { STATUSER, SEKTORER, JOBBTYPER, SEKTOR_FOR, ER_SENDT, ER_ARKIV, validerS
 import { START } from "./startliste.js";
 import * as Lagring from "./lagring.js";
 import { importerFraLenke, importtall, TRINN } from "./import.js";
+import * as Økt from "./okt.js";
+import { krevØkt, krevØktIgjen, portenStår } from "./innlogging.js";
 
 const NOKKEL = "jobbsoknader-2027";
 window.__jobbsoknaderKjorer = true;   /* se fallback-skriptet i index.html */
@@ -19,6 +21,10 @@ let I_DAG = new Date(new Date().toDateString());
    2. Tilstand og lagring
    ============================================================ */
 let data = [];
+/* Hvem listen tilhører. Settes av porten før noe hentes, og trengs to
+   steder etterpå: sidefoten skal vise navnet, og en gjeninnlogging må
+   kunne se om det er samme person som kom tilbake. */
+let brukeren = null, erFørste = false;
 let visning = "frister";
 let sok = "", filtSektor = "", filtSted = "";
 let angre = null, angreTid = null;
@@ -644,9 +650,11 @@ function tegnSkuff(){
       + '<div class="felt" style="margin-top:26px;padding-top:20px;border-top:1px solid var(--linje)">'
       + '<button class="knapp knapp--bred knapp--fare" data-gjor="tilbakestill">Tilbakestill til startlisten</button>'
       + '<p class="felt__hjelp">Erstatter alt du har lagt inn med de 55 søknadene appen startet med.</p></div>'
-      + '<div class="felt" id="importtall" style="margin-top:26px;padding-top:20px;border-top:1px solid var(--linje)"></div>';
+      + '<div class="felt" id="importtall" style="margin-top:26px;padding-top:20px;border-top:1px solid var(--linje)"></div>'
+      + '<div class="felt" id="apiNokkel" style="margin-top:26px;padding-top:20px;border-top:1px solid var(--linje)"></div>';
     b.innerHTML = '<button class="knapp" data-gjor="lukk">Lukk</button>';
     visImporttall();
+    visNokkel();
     return;
   }
 
@@ -1129,6 +1137,96 @@ async function visImporttall(){
               + felt + '.</p>' : "");
 }
 
+/* ---- nøkkelen importen bruker ---- */
+
+/* Nøkkelen går inn og aldri ut. Feltet er tomt hver gang, står utenfor
+   noe <form> — nettleserens passordbehandler skal ikke tilby å huske en
+   API-nøkkel — og statuslinjen sier bare hvilken nøkkel som gjelder, i
+   samme mono-mikrotekst som lagringstilstanden.
+
+   Hele blokken tegnes med én gang og fylles etterpå, så ingenting
+   flytter seg når svaret kommer. */
+async function visNokkel(){
+  const el = $("#apiNokkel");
+  if(!el) return;
+  el.innerHTML = '<p class="merkelinje">Nøkkel til importen</p>'
+    + '<p class="lagret" id="nokkelTilstand" style="margin:9px 0 13px" role="status" aria-live="polite"></p>'
+    + '<p class="feil" id="nokkelFeil" hidden></p>'
+    + '<label class="felt__merke" for="apiNokkelInn">Ny nøkkel</label>'
+    + '<input class="felt__inn" id="apiNokkelInn" type="password" autocomplete="off"'
+    + ' spellcheck="false" placeholder="sk-ant-…" aria-describedby="nokkelFeil nokkelHjelp">'
+    + '<p class="felt__hjelp" id="nokkelHjelp" style="margin-bottom:11px">Lagres i din egen katalog '
+    + 'og vises aldri igjen. Erstatter den som ligger der nå.</p>'
+    + '<div class="nokkelrad">'
+    + '<button class="knapp" data-gjor="lagreNokkel" id="lagreNokkel">Lagre nøkkel</button>'
+    + '<button class="knapp knapp--fare" data-gjor="fjernNokkel" id="fjernNokkel" hidden>Fjern nøkkel</button>'
+    + '</div>';
+
+  const r = await Økt.hentNokkel();
+  const t = $("#nokkelTilstand");
+  if(!t || skuffModus !== "eksport") return;
+
+  if(!r.ok){
+    t.textContent = "Fikk ikke lest nøkkeltilstanden";
+    t.dataset.t = "ulagret";
+    return;
+  }
+  delete t.dataset.t;
+  t.textContent =
+      r.kilde === "egen"  ? "Nøkkel satt" + (r.hale ? " · ····" + r.hale : "")
+                            + (r.satt ? " · " + siden(r.satt) : "")
+    : r.kilde === "miljø" ? "Serverens nøkkel brukes"
+    :                       "Ingen nøkkel — importen er slått av";
+  /* Bare en nøkkel du har satt selv kan fjernes. Serverens egen tilhører
+     den som startet serveren. */
+  const fjern = $("#fjernNokkel");
+  if(fjern) fjern.hidden = r.kilde !== "egen";
+}
+
+function visNokkelfeil(melding){
+  const el = $("#nokkelFeil");
+  if(!el) return;
+  el.textContent = melding;
+  el.hidden = false;
+}
+
+async function lagreNokkel(){
+  const inn = $("#apiNokkelInn"), knapp = $("#lagreNokkel");
+  if(!inn) return;
+  const verdi = inn.value.trim();
+  if(!verdi){ visNokkelfeil("Lim inn API-nøkkelen først."); inn.focus(); return; }
+
+  const feilEl = $("#nokkelFeil");
+  if(feilEl) feilEl.hidden = true;
+  if(knapp) knapp.disabled = true;
+  const r = await Økt.settNokkel(verdi);
+  if(knapp && knapp.isConnected) knapp.disabled = false;
+
+  if(!r.ok){
+    if(r.feil === "utlogget") return;        /* porten tar over */
+    visNokkelfeil(r.melding || "Nøkkelen ble ikke lagret.");
+    inn.focus();
+    return;
+  }
+  inn.value = "";
+  visNokkel();
+  varsle("Nøkkelen er lagret");
+}
+
+function fjernNokkel(){
+  spor("Nøkkelen slettes fra katalogen din. Importen slutter å virke med mindre "
+     + "serveren har sin egen.", "Fjern nøkkel", true, async () => {
+    const r = await Økt.fjernNokkel();
+    if(!r.ok){
+      if(r.feil !== "utlogget") varsle(r.melding || "Nøkkelen ble ikke fjernet");
+      return;
+    }
+    /* Resultatet er bare synlig i skuffen, så den åpnes igjen. */
+    apneSkuff("eksport");
+    varsle("Nøkkelen er fjernet");
+  });
+}
+
 /* ============================================================
    13. Hendelser
    ============================================================ */
@@ -1146,8 +1244,10 @@ if(Lagring.I_APP){
 }
 
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-gjor],[data-modus],[data-temavalg],[data-visning],#neste,#apneNy,#lukkSkuff,#apneEksport,#nullstill,#lagreSkjema,#lagreLim,#hentLenke");
+  const t = e.target.closest("[data-gjor],[data-modus],[data-temavalg],[data-visning],#neste,#apneNy,#lukkSkuff,#apneEksport,#nullstill,#lagreSkjema,#lagreLim,#hentLenke,#loggUt");
   if(!t) return;
+
+  if(t.id === "loggUt"){ loggUt(); return; }
 
   if(t.id === "apneNy"){ apneSkuff("ny"); return; }
   if(t.id === "apneEksport"){ apneSkuff("eksport"); return; }
@@ -1184,13 +1284,15 @@ document.addEventListener("click", e => {
          });
   }
   else if(g === "importerJson") importerJson();
+  else if(g === "lagreNokkel") lagreNokkel();
+  else if(g === "fjernNokkel") fjernNokkel();
   else if(g === "flyttHit") flyttHit();
   else if(g === "gjenopprettKopi") gjenopprettKopi();
   else if(g === "brukStartliste"){ data = silt(fraStart().concat(data)); taValget(); lagre(); tegn(); lukkSkuff(); varsle("Startet med startlisten"); }
   else if(g === "apneValget") apneSkuff(venterValg || "flytt");
   else if(g === "bekreftJa"){ const bk = bekreftelse; lukkSkuff(); if(bk) bk.gjor(); }
   else if(g === "prøvLagring") Lagring.prøvIgjen();
-  else if(g === "hentPåNytt") start();
+  else if(g === "hentPåNytt") hentData();
   else if(g && STATUSER[g]) settStatus(id, g);
 });
 
@@ -1224,6 +1326,9 @@ document.addEventListener("input", e => { if(e.target.id === "limInn") tegnForha
 
 document.addEventListener("keydown", fokusfelle);
 document.addEventListener("keydown", e => {
+  /* Porten eier tastaturet mens den står. Uten dette ville «n» åpnet
+     skuffen og «/» flyttet fokus ut i en app brukeren ikke er inne i. */
+  if(portenStår()) return;
   if(e.key === "Escape"){ lukkSkuff(); return; }
   const iFelt = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
   if(iFelt){
@@ -1303,6 +1408,7 @@ const LAGRETEKST = {
   lagrer:    () => "Lagrer…",
   ulagret:   () => "Ikke lagret",
   blokkert:  () => "Ikke lagret",
+  utlogget:  () => "Ikke lagret",
   frakoblet: () => "Ikke lagret",
   konflikt:  () => "Endret et annet sted"
 };
@@ -1316,6 +1422,10 @@ Lagring.påTilstand(t => {
               "Prøv igjen", "prøvLagring");
   else if(t.navn === "ulagret")
     visStripe(t.melding || "Lagringen avviste endringen.", "Prøv igjen", "prøvLagring");
+  /* Ingen «Prøv igjen» her: et nytt forsøk ville feilet like sikkert.
+     Veien tilbake går gjennom porten, og den står allerede. */
+  else if(t.navn === "utlogget")
+    visStripe(t.melding || "Du er logget ut. Endringen ligger her til du er inne igjen.");
   else if(t.navn === "konflikt")
     visStripe("Dataene ble endret et annet sted — antakelig i en annen fane. "
       + "Endringen din er ikke skrevet, og blir det ikke før du henter på nytt.",
@@ -1437,7 +1547,96 @@ addEventListener("visibilitychange", () => { if(document.visibilityState === "vi
 addEventListener("focus", sjekkDøgn);
 setInterval(sjekkDøgn, 60000);
 
+/* ============================================================
+   17. Porten, brukeren og økten
+   ============================================================ */
+
+/* Porten avgjøres før noe hentes. Uten det ville en 401 kommet
+   forkledd som «Ingen kontakt med lagringen. Kjører serveren?» —
+   riktig stripe, feil forklaring, og ingen vei videre. */
 async function start(){
+  skjulStripe();
+  const økt = await krevØkt();
+  brukeren = økt.bruker;
+  erFørste = !!økt.erFørste;
+  visBruker();
+  if(økt.migreringsfeil)
+    varsle("Fikk ikke flyttet inn det som lå i datakatalogen fra før");
+  await hentData();
+  if(økt.migrert && økt.migrert.includes("jobber.json") && data.length)
+    varsle("Tok med " + antall(data.length, "søknad", "søknader") + " som lå her fra før");
+}
+
+function visBruker(){
+  const el = $("#bruker");
+  if(!el) return;
+  if(!brukeren){ el.hidden = true; return; }
+  const navn = brukeren.navn || brukeren.epost;
+  $("#brukerTegn").textContent = monogram(navn);
+  $("#brukerNavn").textContent = navn;
+  /* Knappen bærer bare et ikon. Navnet på handlingen — og hvem den
+     gjelder — må da stå i det tilgjengelige navnet. */
+  $("#loggUt").setAttribute("aria-label", "Logg ut " + navn);
+  el.title = brukeren.epost;
+  el.hidden = false;
+}
+
+function loggUt(){
+  const gjør = async () => {
+    await Økt.loggUt();
+    /* app.js har modultilstand overalt. Å nullstille den for hånd er
+       en feilkilde uten gevinst — siden lastes i stedet. */
+    location.reload();
+  };
+  if(!Lagring.harUlagret()) return gjør();
+  spor("Endringen din er ikke lagret ennå. Logger du ut nå, blir den borte.",
+       "Logg ut likevel", true, gjør);
+}
+
+/* Serveren har svart 401 på noe som krevde en økt. Kalles én gang per
+   bortfall, ikke én gang per kall — det er okt.js som passer på det. */
+Økt.påUtlogget(async melding => {
+  if(portenStår()) return;
+  lukkSkuff();
+  /* Et varsel med «Angre» skal ikke bli stående bak låsen: knappen er
+     inert, og en handling du ikke kan ta er verre enn ingen. */
+  clearTimeout(angreTid);
+  $("#varsel").classList.remove("er-apen");
+  $("#varsel").setAttribute("inert", "");
+  const før = brukeren;
+  const økt = await krevØktIgjen({ melding, forrigeBruker: før,
+                                   ulagret: Lagring.harUlagret() });
+  /* En annen bruker er en annen liste. Da er det ingenting å ta med
+     videre, og en omlasting er både enklere og sikrere. */
+  if(!før || økt.bruker.id !== før.id){ location.reload(); return; }
+  brukeren = økt.bruker;
+  erFørste = !!økt.erFørste;
+  visBruker();
+  await gjenoppta();
+});
+
+/* Samme bruker er tilbake. Lå det noe ulagret, skal det overleve
+   hentingen og skrives mot den ferske versjonen. */
+async function gjenoppta(){
+  /* Sto et engangsvalg — flytt hit, eller gjenopprett sikkerhetskopien —
+     ubesvart da økten røk, er tilstanden for sammensatt til å plukkes
+     opp midt i. Da lastes siden på nytt og valget stilles forfra. */
+  if(venterValg || filErOdelagt){ location.reload(); return; }
+  const ulagret = Lagring.harUlagret();
+  try{
+    const svar = await Lagring.hent({ beholdVentende: ulagret });
+    if(!ulagret) data = svar.jobber || [];
+    Lagring.frigi();
+    if(ulagret) Lagring.prøvIgjen();
+    else skjulStripe();
+    tegn();
+  }catch(e){
+    if(e.utlogget) return;          /* porten kommer opp igjen av seg selv */
+    await hentData();
+  }
+}
+
+async function hentData(){
   skjulStripe();
   try{
     const svar = await Lagring.hent();
@@ -1453,14 +1652,18 @@ async function start(){
       }
       /* Ingen datafil ennå. Har nettleseren data fra før, skal brukeren
          få velge — vi flytter ikke noe uten å spørre. */
-      const gamle = fraNettleser();
+      const gamle = erFørste ? fraNettleser() : null;
       if(gamle && gamle.length){
         venterValg = "flytt";
         Lagring.blokker();
         data = []; tegn(); apneSkuff("flytt"); return;
       }
-      data = fraStart();
-      lagre();
+      /* Bare den første brukeren arver det som lå i datakatalogen fra
+         før. Alle andre starter tomt — en ny bruker skal ikke få en
+         annens jobbsøknader som «sine». Startlisten ligger fortsatt
+         under «Dataene dine» for den som vil ha den. */
+      if(erFørste){ data = fraStart(); lagre(); }
+      else data = [];
     }else{
       data = svar.jobber || [];
       if(svar.advarsel) varsle(svar.advarsel);

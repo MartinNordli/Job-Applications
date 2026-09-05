@@ -71,6 +71,14 @@
   --sans:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
   --mono:"Geist Mono","IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
   --side:236px;
+  /* Skannebredden. Raden er to klynger — hvem/hva til venstre, når og
+     hva-nå til høyre — og hver piksel mellom dem er lengre vei for det
+     ene blikket som betyr noe: fra stillingen til fristen. Bredden er
+     derfor et tak, ikke et mål å fylle. 1120 er valgt så en vanlig
+     1440-skjerm fyller vinduet ned til sidemargen, uten at spranget
+     mellom klyngene blir lengre enn det er verdt. Alt over taket
+     fordeles likt på begge sider (se .hoved). */
+  --les:1120px;
   --dato:54px;      /* datokolonnen i en rad */
   --om:92px;        /* nedtellingskolonnen — bredden er reservert, så
                        ingenting flytter seg når et merke dukker opp */
@@ -169,6 +177,27 @@ a{color:inherit}
            font-size:13.5px;font-weight:500;color:var(--blekk-3);text-align:left}
 .sidelenke:hover{background:var(--innfelt);color:var(--blekk)}
 
+/* Hvem er logget inn. Blokken er ikke et kontrollpunkt: monogrammet og
+   navnet er noe man leser, ikke noe man trykker på. Utlogging er en
+   sjelden og bevisst handling og har derfor sitt eget, mindre mål ved
+   siden av — er de ett mål, blir utlogging det som skjer når man klikker
+   på sitt eget navn. Monogrammet er samme brikke som radene bruker, i
+   den innfelte flaten. */
+.bruker{display:flex;align-items:center;gap:9px;padding:4px 0 4px 8px;border-radius:var(--r-s)}
+.bruker__tegn{flex:none;width:24px;height:24px;border-radius:50%;background:var(--innfelt-2);
+              color:var(--blekk-2);display:flex;align-items:center;justify-content:center;
+              font-family:var(--mono);font-size:10px;font-weight:500}
+.bruker__navn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+              font-size:13px;font-weight:500;color:var(--blekk-2)}
+/* Ikonet står alltid framme. En utlogging som først må hentes fram av en
+   pekermarkør er sin egen felle for den som bruker tastatur. */
+.bruker__ut{flex:none;display:flex;align-items:center;justify-content:center;
+            width:28px;height:28px;padding:0;background:none;border:0;border-radius:var(--r-xs);
+            color:var(--blekk-3);cursor:pointer;
+            transition:background .12s ease,color .12s ease}
+.bruker__ut:hover{background:var(--innfelt-2);color:var(--blekk)}
+.bruker__ut:active{background:var(--linje-2)}
+
 /* Lagringstilstand. Mono, som alle andre tall og etiketter i appen.
    Bare «ikke lagret» og «frakoblet» får kulør — de er de eneste
    tilstandene som faktisk haster. */
@@ -176,12 +205,18 @@ a{color:inherit}
         font-family:var(--mono);font-size:10.5px;letter-spacing:.01em;color:var(--blekk-3)}
 .lagret:empty{display:none}
 .lagret::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;flex:none;opacity:.5}
-.lagret[data-t="ulagret"],.lagret[data-t="frakoblet"],.lagret[data-t="konflikt"]{color:var(--ild-t)}
+.lagret[data-t="ulagret"],.lagret[data-t="frakoblet"],.lagret[data-t="konflikt"],
+.lagret[data-t="utlogget"]{color:var(--ild-t)}
 .lagret[data-t="ulagret"]::before,.lagret[data-t="frakoblet"]::before,
-.lagret[data-t="konflikt"]::before{opacity:1}
+.lagret[data-t="konflikt"]::before,.lagret[data-t="utlogget"]::before{opacity:1}
 
 /* ---------- innholdsflaten ---------- */
-.hoved{min-width:0;padding:26px 30px 96px;max-width:1040px}
+/* Kolonnen står midt i plassen ved siden av sidepanelet, ikke inntil
+   det. Med bare et tak samlet all overflødig bredde seg i ett dødt bånd
+   til høyre, og appen så ut som den var for liten for vinduet.
+   width:100% er ikke overflødig: et rutenettbarn med auto-marger og
+   width:auto krymper til innholdet i stedet for å strekke seg. */
+.hoved{min-width:0;width:100%;max-width:var(--les);margin-inline:auto;padding:26px 30px 96px}
 .tittelrad{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-start;justify-content:space-between;margin-bottom:18px}
 .tittelrad__tekst{min-width:0}
 .tittel{margin:0;font-size:27px;font-weight:700;letter-spacing:-.03em;line-height:1.08}
@@ -487,7 +522,52 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
 .varsel__angre{background:none;border:0;color:var(--varsel-lenke);font-weight:600;cursor:pointer;padding:5px 9px;border-radius:6px}
 .varsel__angre:hover{background:rgba(255,255,255,.12)}
 
+/* ---------- nøkkelen i «Dataene dine» ---------- */
+/* To knapper som deler bredden når begge finnes, og hele bredden når
+   bare den ene gjør det. */
+.nokkelrad{display:flex;gap:9px;flex-wrap:wrap}
+.nokkelrad .knapp{flex:1;min-width:132px}
+
+/* ---------- porten ---------- */
+/* Låsen foran appen. Samme materiale som skuffen — hvitt kort løftet
+   over linbunnen — men den står midt på flaten i stedet for i kanten:
+   den er ikke et panel ved siden av noe, den er alt som finnes. */
+.port{position:fixed;inset:0;z-index:80;display:flex;padding:24px 16px;overflow-y:auto;
+      background:var(--bunn);animation:portFram .16s ease-out}
+/* Røk økten mens appen sto åpen, skal listen bli stående synlig bak.
+   Samme slør som foran skuffen, og halve beskjeden: arbeidet er der ennå. */
+.port--over{background:var(--slor)}
+/* margin:auto sentrerer i begge retninger og lar innholdet skyves ned
+   i stedet for å bli klippet på korte skjermer. */
+.port__ramme{margin:auto;width:min(384px,100%);display:flex;flex-direction:column;gap:13px}
+.port__kort{background:var(--kort);border-radius:var(--r);box-shadow:var(--loft-3);
+            padding:26px 26px 18px}
+/* Ventelinjen står avsatt hele tiden, så knappen ikke flytter seg når
+   «Logger inn…» kommer og går. */
+.port__kort .henter{margin-top:10px}
+/* Ordmerket er sidepanelets, uten sidepanelets innrykk. */
+.merke--port{padding:0;margin-bottom:22px}
+.port__ingress{margin:0 0 18px;font-size:13.5px;line-height:1.5;color:var(--blekk-2)}
+.port__ingress-2{display:block;margin-top:5px;font-size:12.5px;color:var(--blekk-3)}
+.port .modus{margin-bottom:18px}
+.port__kort .felt:last-of-type{margin-bottom:19px}
+.port__fot{margin:0;padding:0 2px;font-size:12px;color:var(--blekk-3)}
+/* Over den dempede appen ville fotnoten stått dårlig, og den orienterer
+   uansett bare den som kommer inn for første gang. */
+.port--over .port__fot{display:none}
+.port__laster{justify-content:center}
+/* Nedtellingen ved for mange forsøk. Tall står i mono, som ellers. */
+.port__ur{font-family:var(--mono);font-variant-numeric:tabular-nums}
+@keyframes portFram{from{opacity:0}to{opacity:1}}
+
 /* ---------- responsiv ---------- */
+/* Svært brede skjermer: sidepanelet tar ett trinn opp. Det er panelet,
+   ikke listen, som har innhold som vil ha mer plass — hele navnet i
+   sidefoten, «neste frist»-kortet og fanenavnene. Listen holder
+   skannebredden sin uansett hvor stort vinduet blir. */
+@media (min-width:1600px){
+  :root{--side:272px}
+}
 @media (max-width:1100px){
   .fliser{grid-template-columns:1fr 1fr}
   .rutenett{grid-template-columns:1fr}
@@ -513,6 +593,7 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
   .handling,.handling--stille{min-height:44px;padding:10px 13px}
   .handling--stille{padding:10px 11px}
   .nav__post,.nyknapp,.sidelenke{min-height:44px}
+  .bruker__ut{width:44px;height:44px}
   /* Knappene i skuffen er de eneste igjen som ikke nådde fingermålet. */
   .knapp,.modus__knapp{min-height:44px}
 }
@@ -523,7 +604,9 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
   .skall{grid-template-columns:1fr}
   .side{position:sticky;top:0;height:68px;flex-direction:row;align-items:center;gap:12px;
         padding:9px 16px;box-shadow:0 1px 0 var(--linje);z-index:30;overflow-x:auto}
-  .merke__ar{display:none}
+  /* Årstallet vike i toppstripa, men porten er ikke toppstripa —
+     der er ordmerket alt som står. */
+  .side .merke__ar{display:none}
   .nav{flex-direction:row;gap:4px;flex:1}
   .nav__merke,.nav__tall{display:none}
   /* Sidefoten faller bort, men lagringstilstanden og temavalget følger
@@ -531,6 +614,14 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
      skjermbredde. */
   .sidefot{margin:0;order:2;flex-direction:row;align-items:center;gap:6px}
   .sidefot .neste,.sidefot .sidelenke{display:none}
+  /* Navnet vike; monogrammet blir stående som merke, og utlogging som
+     eget berøringsmål ved siden av. Knappens tilgjengelige navn settes
+     i app.js, så den sier «Logg ut …» selv om ordet aldri vises. */
+  .bruker{padding:0;gap:4px}
+  .bruker__tegn{width:30px;height:30px;font-size:11px}
+  .bruker__ut{width:44px;height:44px}
+  .bruker__navn{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+                overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   .lagret{padding:0;white-space:nowrap}
   .modus--tema{flex:none}
   .modus--tema .modus__knapp{width:44px;height:44px;padding:0}
@@ -549,7 +640,7 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
      som sidens egen overskrift, og h1-en blir liggende for skjermlesere
      i stedet for å bli fjernet. Det frigjør ~200px, som er forskjellen
      på om temavalget må blas fram eller ikke. */
-  .merke{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  .side .merke{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
          overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   /* ikonet bærer knappen alene */
   .nyknapp{font-size:0;padding:10px 12px;gap:0}
