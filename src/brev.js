@@ -170,26 +170,26 @@ const opprett=async(id,inn,signal)=>I_APP?lokal().opprett(id,inn):(await http(st
 /* Fasehendelsen eies av transporten på begge sider. Over HTTP sender serveren
    den; i appen er det ingen strøm foran oss, så den lages her. Begge veier
    gjelder det samme: fase alltid først, også når trinnet gjenopptas. */
-function trinn(id,kid,trinnnavn,svar,{signal,vakt}){
+function trinn(id,kid,trinnnavn,svar,{signal,melder}){
   if(!I_APP) return strøm(sti(id)+`/kjoringer/${kid}/trinn`,{body:{trinn:trinnnavn,svar},signal,
-    påFase:d=>vakt.fase(d),påDelta:(tekst,om)=>vakt.delta(tekst,om)});
-  vakt.fase({trinn:trinnnavn,fase:FASE[trinnnavn],nullstill:true});
-  return lokal().trinn(id,kid,trinnnavn,svar,{signal,påDelta:tekst=>vakt.delta(tekst,{trinn:trinnnavn})});
+    påFase:d=>melder.fase(d),påDelta:(tekst,om)=>melder.delta(tekst,om)});
+  melder.fase({trinn:trinnnavn,fase:FASE[trinnnavn],nullstill:true});
+  return lokal().trinn(id,kid,trinnnavn,svar,{signal,påDelta:tekst=>melder.delta(tekst,{trinn:trinnnavn})});
 }
 export const avbryt=(id,kid)=>I_APP?lokal().avbryt(id,kid):http(sti(id)+`/kjoringer/${kid}/avbryt`,{method:"POST",body:{}});
 export async function analyser(id,{signal,...meldinger}={}){
   const v=vakt(signal,meldinger);
   let k;
-  try{k=await opprett(id,{},signal);const r=await trinn(id,k.id,"analyse",{},{signal,vakt:v});return {id:k.id,analyse:r.kjoring.analyse,dokument:r.dokument};}
+  try{k=await opprett(id,{},signal);const r=await trinn(id,k.id,"analyse",{},{signal,melder:v});return {id:k.id,analyse:r.kjoring.analyse,dokument:r.dokument};}
   catch(e){if(signal?.aborted&&k)await avbryt(id,k.id).catch(()=>{});throw e;}
   finally{v.steng();}
 }
 export async function skriv(id,kid,svar={}, {signal,...meldinger}={}){
   const v=vakt(signal,meldinger);
   try{
-    await trinn(id,kid,"skriv",svar,{signal,vakt:v});
+    await trinn(id,kid,"skriv",svar,{signal,melder:v});
     if(signal?.aborted)throw new Brevfeil("avbrutt","Skrivingen ble avbrutt.");
-    const r=await trinn(id,kid,"kontroller",{},{signal,vakt:v});return r.dokument;
+    const r=await trinn(id,kid,"kontroller",{},{signal,melder:v});return r.dokument;
   }catch(e){if(signal?.aborted)await avbryt(id,kid).catch(()=>{});throw e;}
   finally{v.steng();}
 }
@@ -198,7 +198,7 @@ export async function forbedre(id,instruks,{signal,...meldinger}={}){
   let k;
   try{
     k=await opprett(id,{instruks},signal);
-    if(!k.analyse)await trinn(id,k.id,"analyse",{},{signal,vakt:v});
+    if(!k.analyse)await trinn(id,k.id,"analyse",{},{signal,melder:v});
     return await skriv(id,k.id,k.svar||{},{signal,...meldinger});
   }catch(e){if(signal?.aborted&&k)await avbryt(id,k.id).catch(()=>{});throw e;}
   finally{v.steng();}
