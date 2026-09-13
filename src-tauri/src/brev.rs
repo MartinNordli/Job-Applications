@@ -13,7 +13,10 @@ use std::{
     },
     time::Duration,
 };
-use tauri::{AppHandle, Manager};
+use tauri::{
+    ipc::{Channel, JavaScriptChannelId},
+    AppHandle, Manager, Webview,
+};
 
 const MAKS_DOKUMENT: usize = 32 * 1024 * 1024;
 const MAKS_SVAR: usize = 2 * 1024 * 1024;
@@ -439,11 +442,95 @@ fn kall() -> &'static Mutex<Kall> {
     KALL.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
+/// Én melding på kanalen: hele SSE-linjer, uten linjeskift. Frontenden legger
+/// linjeskiftet tilbake når rammene settes sammen. Rust kjenner ikke Anthropics
+/// eller OpenAIs hendelsesformat og skal ikke gjøre det: da måtte protokollen
+/// vedlikeholdes to steder for alltid.
+#[derive(Clone, Serialize)]
+pub struct Linjer {
+    linjer: Vec<String>,
+}
+
+/// Deler en byte-strøm i hele linjer. `\n` og `\r\n` behandles likt, og
+/// linjeskiftet strippes. En komplett SSE-linje er per definisjon gyldig UTF-8,
+/// så byte-grensen mellom to biter kan aldri dele et tegn i to.
+struct Linjedeler {
+    rest: Vec<u8>,
+    lest: usize,
+}
+
+impl Linjedeler {
+    fn ny() -> Self {
+        Self {
+            rest: Vec::new(),
+            lest: 0,
+        }
+    }
+    fn ta(&mut self, bit: &[u8]) -> Result<Vec<String>, String> {
+        self.lest += bit.len();
+        if self.lest > MAKS_SVAR {
+            return Err("Modellen sendte et for stort svar.".into());
+        }
+        self.rest.extend_from_slice(bit);
+        let mut ut = Vec::new();
+        let mut start = 0;
+        for i in 0..self.rest.len() {
+            if self.rest[i] != b'\n' {
+                continue;
+            }
+            let mut slutt = i;
+            if slutt > start && self.rest[slutt - 1] == b'\r' {
+                slutt -= 1;
+            }
+            ut.push(
+                std::str::from_utf8(&self.rest[start..slutt])
+                    .map_err(|_| "Modellen svarte i feil format.".to_string())?
+                    .to_string(),
+            );
+            start = i + 1;
+        }
+        self.rest.drain(..start);
+        Ok(ut)
+    }
+    /// En avsluttende linje uten linjeskift. SSE dispatcher den ikke, men den
+    /// hører med i kroppen vi gir tilbake.
+    fn slutt(&mut self) -> Option<String> {
+        if self.rest.is_empty() {
+            return None;
+        }
+        let mut linje = std::mem::take(&mut self.rest);
+        if linje.last() == Some(&b'\r') {
+            linje.pop();
+        }
+        String::from_utf8(linje).ok()
+    }
+}
+
+/// Kroppen frontenden sender inn. Strømming er eneste transportvei: et kall
+/// uten den ville gitt en annen feilsemantikk enn Node-siden har.
+fn sjekk_modellkropp(leverandor: &str, modell: &str, kropp: &str) -> Result<(), String> {
+    if kropp.len() > 1024 * 1024 {
+        return Err("Grunnlaget er for stort.".into());
+    }
+    let json: Value = serde_json::from_str(kropp).map_err(|_| "Ugyldig modellforespørsel.")?;
+    if json.get("model").and_then(Value::as_str) != Some(modell) {
+        return Err("Ukjent modell.".into());
+    }
+    if json.get("stream").and_then(Value::as_bool) != Some(true) {
+        return Err("Strømming må være påslått.".into());
+    }
+    if leverandor == "openai" && json.get("store").and_then(Value::as_bool) != Some(false) {
+        return Err("Modellagring må være avslått.".into());
+    }
+    Ok(())
+}
+
 async fn modellkall(
     nokkel: String,
     url: &'static str,
     anthropic: bool,
     kropp: String,
+    kanal: Option<Channel<Linjer>>,
 ) -> Result<String, String> {
     let klient = reqwest::Client::builder()
         .timeout(Duration::from_secs(120))
@@ -474,40 +561,52 @@ async fn modellkall(
             ),
         });
     }
-    let mut bytes = Vec::new();
+    /* Linjene sendes videre med én gang, men samles også opp: svaret
+       frontenden tolker er den returnerte kroppen, aldri kanalen. En tapt
+       eller sen kanalmelding kan dermed ikke endre brevet. */
+    let mut deler = Linjedeler::ny();
+    let mut samlet = String::new();
     while let Some(bit) = svar
         .chunk()
         .await
         .map_err(|_| "Mistet kontakten med modelltjenesten.")?
     {
-        if bytes.len() + bit.len() > MAKS_SVAR {
-            return Err("Modellen sendte et for stort svar.".into());
+        let linjer = deler.ta(&bit)?;
+        if linjer.is_empty() {
+            continue;
         }
-        bytes.extend_from_slice(&bit);
+        for l in &linjer {
+            samlet.push_str(l);
+            samlet.push('\n');
+        }
+        if let Some(k) = &kanal {
+            let _ = k.send(Linjer { linjer });
+        }
     }
-    String::from_utf8(bytes).map_err(|_| "Modellen svarte i feil format.".into())
+    if let Some(l) = deler.slutt() {
+        samlet.push_str(&l);
+        samlet.push('\n');
+    }
+    Ok(samlet)
 }
 
 #[tauri::command]
 pub async fn brev_modell(
     app: AppHandle,
+    webview: Webview,
     bruker: String,
     leverandor: String,
     kropp: String,
     kjoring_id: Option<String>,
+    kanal: Option<JavaScriptChannelId>,
 ) -> Result<String, String> {
+    // Channel selv kan ikke deserialiseres; ID-en kobles til webviewet her.
+    // Uten kanal sendes ingen linjer, og et kall uten forhåndsvisning koster
+    // dermed ingen IPC-trafikk.
+    let kanal: Option<Channel<Linjer>> = kanal.map(|id| id.channel_on(webview));
     let dir = profil(&app, &bruker)?;
     let (_, url, modell) = self::leverandor(&leverandor)?;
-    if kropp.len() > 1024 * 1024 {
-        return Err("Grunnlaget er for stort.".into());
-    }
-    let json: Value = serde_json::from_str(&kropp).map_err(|_| "Ugyldig modellforespørsel.")?;
-    if json.get("model").and_then(Value::as_str) != Some(modell) {
-        return Err("Ukjent modell.".into());
-    }
-    if leverandor == "openai" && json.get("store").and_then(Value::as_bool) != Some(false) {
-        return Err("Modellagring må være avslått.".into());
-    }
+    sjekk_modellkropp(&leverandor, modell, &kropp)?;
     let nokkel = les_nokkel(&dir, &leverandor)?
         .ok_or("mangler-nokkel: Legg til API-nøkkelen for valgt leverandør.")?;
     if !gyldig_nokkel(&nokkel) {
@@ -531,7 +630,13 @@ pub async fn brev_modell(
         if aktive.contains_key(&navn) {
             return Err("En generering kjører allerede.".into());
         }
-        let oppgave = tokio::spawn(modellkall(nokkel, url, leverandor == "anthropic", kropp));
+        let oppgave = tokio::spawn(modellkall(
+            nokkel,
+            url,
+            leverandor == "anthropic",
+            kropp,
+            kanal,
+        ));
         aktive.insert(navn.clone(), oppgave.abort_handle());
         oppgave
     };
@@ -713,6 +818,91 @@ mod tester {
                 .filter(|r| r.as_ref().err().is_some_and(|e| e == "konflikt"))
                 .count(),
             1
+        );
+    }
+    #[test]
+    fn linjedeler_over_chunkgrenser_crlf_og_tak() {
+        let mut d = Linjedeler::ny();
+        // En linje delt over to biter settes sammen.
+        assert_eq!(d.ta(b"event: fase\ndata: {\"a\"").unwrap(), vec!["event: fase"]);
+        assert_eq!(
+            d.ta(b":1}\n\n").unwrap(),
+            vec!["data: {\"a\":1}".to_string(), String::new()]
+        );
+        // CRLF gir nøyaktig samme linjer som LF: linjeskiftet strippes alltid,
+        // og JS-siden legger på \n igjen. Uenighet her ville blitt en stille feil.
+        assert_eq!(
+            d.ta(b"event: x\r\ndata: y\r\n\r\n").unwrap(),
+            vec!["event: x".to_string(), "data: y".to_string(), String::new()]
+        );
+        assert_eq!(d.slutt(), None);
+
+        // Et flerbytetegn delt mellom to biter tolkes ikke før linjen er hel.
+        let mut d = Linjedeler::ny();
+        let kilde = "data: årene\n".as_bytes();
+        assert!(d.ta(&kilde[..7]).unwrap().is_empty());
+        assert_eq!(d.ta(&kilde[7..]).unwrap(), vec!["data: årene"]);
+
+        // En avsluttende halv linje er ingen ramme, men går ikke tapt.
+        let mut d = Linjedeler::ny();
+        assert!(d.ta(b"data: halv").unwrap().is_empty());
+        assert_eq!(d.slutt(), Some("data: halv".to_string()));
+
+        // Ugyldig UTF-8 i en hel linje er et formatavvik, ikke noe å gjette på.
+        let mut d = Linjedeler::ny();
+        assert_eq!(
+            d.ta(b"\xff\xfe\n").unwrap_err(),
+            "Modellen svarte i feil format."
+        );
+
+        let mut d = Linjedeler::ny();
+        assert!(d.ta(&vec![b'x'; MAKS_SVAR]).unwrap().is_empty());
+        assert_eq!(
+            d.ta(b"mer\n").unwrap_err(),
+            "Modellen sendte et for stort svar."
+        );
+    }
+    #[test]
+    fn modellkroppen_ma_be_om_strom_og_riktig_modell() {
+        let ok = r#"{"model":"gpt-6-astra","store":false,"stream":true}"#;
+        assert!(sjekk_modellkropp("openai", "gpt-6-astra", ok).is_ok());
+        assert_eq!(
+            sjekk_modellkropp("openai", "gpt-6-astra", r#"{"model":"gpt-6-astra","store":false}"#)
+                .unwrap_err(),
+            "Strømming må være påslått."
+        );
+        assert_eq!(
+            sjekk_modellkropp(
+                "openai",
+                "gpt-6-astra",
+                r#"{"model":"gpt-6-astra","store":false,"stream":"ja"}"#
+            )
+            .unwrap_err(),
+            "Strømming må være påslått."
+        );
+        assert_eq!(
+            sjekk_modellkropp(
+                "openai",
+                "gpt-6-astra",
+                r#"{"model":"gpt-6-astra","store":true,"stream":true}"#
+            )
+            .unwrap_err(),
+            "Modellagring må være avslått."
+        );
+        assert_eq!(
+            sjekk_modellkropp("anthropic", "claude-opus-5", r#"{"model":"feil","stream":true}"#)
+                .unwrap_err(),
+            "Ukjent modell."
+        );
+        assert!(sjekk_modellkropp(
+            "anthropic",
+            "claude-opus-5",
+            r#"{"model":"claude-opus-5","stream":true}"#
+        )
+        .is_ok());
+        assert_eq!(
+            sjekk_modellkropp("anthropic", "claude-opus-5", "ikke json").unwrap_err(),
+            "Ugyldig modellforespørsel."
         );
     }
     #[test]
