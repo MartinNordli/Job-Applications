@@ -53,6 +53,9 @@ try{
   await page.screenshot({path:path.join(dir,"02-sporsmal.png"),fullPage:true});
   await page.locator("#brevSvar0").fill("Jeg vil bruke erfaringen min til å hjelpe kunder i hverdagen.");
   await page.getByRole("button",{name:"Skriv med svarene",exact:true}).click();
+  // Fasene når flaten. Den kaller fortsatt påTrinn-aliaset; bygges flaten om
+  // til påFase, skal denne linjen fortsatt holde.
+  await page.waitForFunction(()=>document.querySelector("#brevStatus").textContent.includes("Kontrollerer"));
   await page.waitForFunction(()=>document.querySelector("#brevTekst").value.includes("Jeg søker")&&!document.querySelector('[data-brev="forbedre"]').disabled);
   assert.deepEqual(kall,["analyse","skriv","kontroll"]);
   // Trinnene gikk som strøm, og modellen strømmet det feltet trinnet eier.
