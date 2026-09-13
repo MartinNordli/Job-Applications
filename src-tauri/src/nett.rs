@@ -232,7 +232,7 @@ pub async fn spor_modell(nokkel: String, kropp: String) -> Result<String, String
             .and_then(|j| j["error"]["message"].as_str().map(str::to_owned))
             .map(|m| format!("Modellen svarte {}: {m}", kode.as_u16()))
             .unwrap_or_else(|| format!("Modellen svarte {}.", kode.as_u16()));
-        return Err(melding);
+        return Err(melding.replace(&nokkel, "«…»"));
     }
     Ok(tekst)
 }

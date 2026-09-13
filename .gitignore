@@ -1,4 +1,5 @@
 node_modules/
+src/vendor/
 .DS_Store
 
 # Dataene dine. Repoet er offentlig, og jobber.json er ekte søknader —

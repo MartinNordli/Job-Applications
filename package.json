@@ -3,8 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prestart": "node scripts/bygg-dokumenter.mjs",
     "start": "node server/server.mjs",
-    "test": "node --test server/lager.test.mjs server/katalog.test.mjs server/server.test.mjs server/import.test.mjs server/brukerlogikk.test.mjs server/brukere.test.mjs server/nokkel.test.mjs server/innlogging.test.mjs server/okt-app.test.mjs server/flyt.test.mjs server/okt-flyt.test.mjs",
+    "test": "node --test server/*.test.mjs",
+    "pretest:ui": "node scripts/bygg-dokumenter.mjs",
+    "test:ui": "node scripts/test-brev-browser.mjs",
+    "bygg:dokumenter": "node scripts/bygg-dokumenter.mjs",
     "bygg:front": "node scripts/bygg-front.mjs",
     "tauri": "tauri",
     "app:dev": "tauri dev",
@@ -12,9 +16,19 @@
     "test:rust": "cd src-tauri && cargo test"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.11.4"
+    "@tauri-apps/cli": "^2.11.4",
+    "esbuild": "^0.28.2",
+    "playwright": "^1.63.0"
+  },
+  "dependencies": {
+    "@pdf-lib/fontkit": "^1.1.1",
+    "docx": "^9.7.1",
+    "fflate": "^0.8.3",
+    "mammoth": "^1.12.3",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^4.10.38"
   }
 }

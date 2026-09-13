@@ -9,6 +9,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import "./bygg-dokumenter.mjs";
 
 const ROT  = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = path.join(ROT, "dist");
@@ -24,7 +25,7 @@ for(const navn of MED){
 
 /* Testfiler og annet som bare hører hjemme i utviklingsmappa. */
 for(const rusk of await fs.readdir(path.join(DIST, "src"))){
-  if(rusk.endsWith(".test.mjs") || rusk.endsWith(".test.js"))
+  if(rusk.endsWith(".test.mjs") || rusk.endsWith(".test.js") || rusk === "brev-dokumentmotor.mjs")
     await fs.rm(path.join(DIST, "src", rusk));
 }
 

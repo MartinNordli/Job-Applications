@@ -25,6 +25,7 @@ use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
 
 mod nett;
+mod brev;
 
 /// Filen API-nøkkelen ligger i, ved siden av datafilen — i profilens
 /// katalog, ikke i rota. Rust leser den selv når modellen skal spørres,
@@ -213,7 +214,18 @@ pub fn run() {
             flytt_fil,
             skriv_atomisk,
             hent_side,
-            spor_modell
+            spor_modell,
+            brev::brev_les,
+            brev::brev_skriv,
+            brev::brev_slett,
+            brev::brev_liste,
+            brev::brev_nokkel_status,
+            brev::brev_nokkel_sett,
+            brev::brev_nokkel_slett,
+            brev::brev_gjenopprett,
+            brev::brev_modell,
+            brev::brev_avbryt_modell,
+            brev::brev_lagre_fil
         ])
         .run(tauri::generate_context!())
         .expect("appen klarte ikke å starte");

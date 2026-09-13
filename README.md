@@ -1,7 +1,69 @@
 # Jobbsøknader
 
 Personlig oversikt over jobbsøknader: frister som nærmer seg, søknader som er
-sendt, og hvor de står. Kontoer på egen maskin, ingen sky.
+sendt, og hvor de står. Kontoer og dokumenter lagres på egen maskin.
+Søknadsbrev og enkelte annonseimporter bruker valgt modellleverandørs API.
+
+## Skriv søknadsbrev
+
+Velg **Søknadsbrev** på en jobb i listen. Legg inn CV-en din som PDF, Word
+(`.docx`) eller tekst, og hent annonsen fra lenken eller lim inn teksten.
+CV-en gjenbrukes på profilen din. **Se eller lim inn CV-tekst** viser akkurat
+det som ble lest, slik at du kan rette kolonnerekkefølge eller manglende tekst.
+PDF-er må ha et tekstlag; skannede eller passordbeskyttede dokumenter må
+erstattes med en lesbar fil eller innlimt tekst. Originalfilen lagres ikke.
+
+Under **Litt om deg og denne jobben** kan du beskrive motivasjon, relevante
+eksempler og ønsker for brevet. Feltet er valgfritt. Velg **Skriv utkast**:
+modellen analyserer grunnlaget, stiller eventuelt inntil tre valgfrie spørsmål,
+skriver brevet og gjør en egen redaktørkontroll. Du kan hoppe over spørsmålene.
+Manglende informasjon skal ikke erstattes med oppdiktede erfaringer eller
+personlig motivasjon.
+
+**Språk** står på Automatisk. Et konkret valg i feltet går foran et uttrykkelig
+språkønske i konteksten, som går foran annonsens søknadsspråkkrav og deretter
+annonsens hovedspråk. CV-ens språk bestemmer ikke brevspråket.
+
+Velg Claude eller OpenAI under **Skriv med**, og legg inn din egen nøkkel under
+**API-nøkkel og data**. Claude bruker Opus 5 (`claude-opus-5`) i alle tre
+brevtrinn og samme Anthropic-nøkkel som annonseimporten;
+OpenAI har en separat nøkkel. Nøkler returneres aldri fra HTTP-serveren.
+Det skjer ingen automatisk overgang til en annen leverandør hvis et kall feiler.
+CV-tekst, annonse, kontekst og eventuelle svar sendes til leverandøren du velger.
+Å laste inn en CV eller eksportere et brev gjør ingen modellkall.
+
+Brevet kan redigeres direkte og lagres etter en kort skrivepause. **Lag ny
+versjon** bruker teksten du ser og forbedringsinstruksjonen din. Tidligere
+versjoner og manuelle endringer beholdes. Oppdatert CV eller annonse endrer
+ikke grunnlaget til gamle brevversjoner. **Kopier brev** og **Last ned**
+bruker den synlige teksten; Word og PDF lages lokalt.
+
+Det første utkastet bruker tre modellkall. En forbedring med samme grunnlag
+gjenbruker analysen og trenger to. Ingen automatiske reparasjonsrunder skjules
+bak knappen. En brutt forbindelse kan bety at leverandøren har behandlet et
+kall uten at svaret kom frem; appen starter ikke hele kjeden på nytt av seg selv.
+Modellkontroll og kildehenvisninger reduserer feil, men brevet må fortsatt leses
+av personen som skal bruke det.
+
+**Sikkerhetskopi** i brevflaten omfatter profilens CV, brev, kildegrunnlag og
+versjoner, også brev til jobber som senere er fjernet. Nøkler følger ikke med.
+Gjenoppretting legger inn dokumenter som ikke finnes; den erstatter ikke en
+eksisterende samling. Den gamle JSON-eksporten under **Dataene dine** inneholder
+bare jobblisten. Ta begge kopiene hvis du vil flytte hele oversikten.
+
+CV og brev ligger i `cv.json` og `brev-<jobb-id>.json` i profilkatalogen, utenfor
+jobblisten. Filene har revisjonskontroll, en kopi av forrige lagring og en kort
+fillås som deles av nettleserversjonen og Mac-appen. Ved en lagringskonflikt
+beholdes teksten på skjermen. Ikke lukk før den er kopiert eller lagret.
+**Gjenopprett forrige lagring** kan hente den lokale kopien når et dokument er
+skadet; originalen legges til side. Sletting av brevdata fjerner også de
+tilhørende lokale kopiene. Sletting av profilens CV fjerner ikke CV-grunnlaget
+som allerede er lagret sammen med tidligere brevversjoner.
+
+Skriveinstruksjoner og evalueringsdata ligger i kildekoden. `node evals/kjor.mjs`
+viser 24 syntetiske testtilfeller uten nettverkskall. Se `evals/README.md` for
+eksplisitt kjøring av betalte modeller og vurdering av skrivekvalitet. Vanlige
+tester bruker simulerte modellresponser og krever ingen API-nøkkel.
 
 ## Kom i gang
 
@@ -11,6 +73,7 @@ en Mac-app du starter fra Dock, og en nettleserversjon for rask redigering.
 ### Som app
 
 ```sh
+npm install
 npm run app:bygg
 ```
 
@@ -32,11 +95,13 @@ ha ø; det som går over en URL, kan ikke.
 ### I nettleseren
 
 ```sh
+npm install
 npm start
 ```
 
-Åpne <http://127.0.0.1:4173>. Ingen avhengigheter å installere — alt bruker det
-som følger med Node (versjon 18 eller nyere).
+Åpne <http://127.0.0.1:4173>. Bruk Node 20 eller nyere. Dokumentbibliotekene
+installeres med npm; de pakkes lokalt før oppstart og lastes først når du
+leser eller eksporterer en fil. Ingen CDN er nødvendig.
 
 Første gang møter du porten: opprett en konto. Den første kontoen arver det som
 allerede ligger i datakatalogen — se **Kontoer** under. Har du i tillegg data
@@ -266,12 +331,15 @@ overlegget.
 ## Tester
 
 ```sh
-npm test        # lagerlogikken, serveren, kontoene og flytene
+npm test        # lagerlogikken, serveren, kontoene, brev og dokumenter
+npm run test:ui # isolert nettlesertest med syntetiske modellresponser
 npm run test:rust   # filoperasjonene appen bruker
 ```
 
-Nye testfiler må legges til i `test`-skriptet i `package.json` for hånd — det
-bruker ingen glob.
+`npm test` finner alle `server/*.test.mjs`. Nettlesertesten bruker installert
+Chrome på macOS, ellers Playwright Chromium (`npx playwright install chromium`).
+`BROWSER_EXECUTABLE` kan angi en annen Chromium-binær. Den oppretter en midlertidig
+profil og lagrer skjermbilder og eksportfiler der; egne kontoer berøres ikke.
 
 ## Oppbygging
 

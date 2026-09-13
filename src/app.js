@@ -7,6 +7,7 @@ import * as Lagring from "./lagring.js";
 import { importerFraLenke, importtall, TRINN } from "./import.js";
 import * as Økt from "./okt.js";
 import { krevØkt, krevØktIgjen, portenStår } from "./innlogging.js";
+import { åpneBrevflate } from "./brevflate.js";
 
 const NOKKEL = "jobbsoknader-2027";
 window.__jobbsoknaderKjorer = true;   /* se fallback-skriptet i index.html */
@@ -217,7 +218,7 @@ function radHtml(p){
       + '<span class="rad__und">' + stilling + metaHtml + '</span>'
     + '</div>'
     + '<div class="rad__hoyre">' + om + merke
-      + '<div class="rad__verktoy">' + hoved
+      + '<div class="rad__verktoy"><button class="handling handling--brev" data-gjor="brev" data-id="' + p.id + '">Søknadsbrev</button>' + hoved
         + '<div class="rad__mer">' + avslag
           + '<button class="handling handling--stille" data-gjor="rediger" data-id="' + p.id + '">Rediger</button>'
           + '<button class="handling handling--stille handling--fare" data-gjor="slett" data-id="' + p.id + '">Slett</button>'
@@ -557,12 +558,21 @@ const SKUFFTITTEL = {
 
 /* Hva skuffen skal gjøre når den lukkes, og hvor fokus skal tilbake. */
 let bekreftelse = null, fokusFor = null, fokusTid = null;
+let brevflate = null;
 
-const FOKUSERBARE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+const FOKUSERBARE = 'a[href],summary,button:not([disabled]):not([tabindex="-1"]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 /* Listen er kommaseparert, og «#skuff » foran hele strengen ville bare
    bundet seg til det første leddet — resten hadde plukket opp knapper
    ute i appen. Hvert ledd må få prefikset for seg. */
 const I_SKUFF = FOKUSERBARE.split(",").map(v => "#skuff " + v).join(",");
+function synligFokus(el){
+  if(el.matches(":disabled") || !el.getClientRects().length) return false;
+  const foldet = el.closest("details:not([open])");
+  /* Firefox kan gi skjulte details-barn en offsetParent. Bare selve
+     overskriften skal delta i fokusrekken før innholdet foldes ut. */
+  if(foldet && !foldet.querySelector(":scope > summary")?.contains(el)) return false;
+  return getComputedStyle(el).visibility !== "hidden";
+}
 
 /* Alt utenom dialogen og sløret settes inert mens skuffen står åpen.
    Det holder ikke å bare ta skallet: varselet ligger utenfor det, og
@@ -578,12 +588,14 @@ function baksideInert(pa){
 }
 
 function apneSkuff(hva, id){
+  if(brevflate){ brevflate.rydd(); brevflate = null; }
+  $("#skuff").classList.toggle("skuff--brev", hva === "brev");
   redigerer = id ? data.find(p => p.id === id) : null;
   if(hva === "rediger")   skuffModus = "skjema";
   else if(hva === "ny")   skuffModus = (skuffModus === "lim" || skuffModus === "lenke") ? skuffModus : "skjema";
   else                    skuffModus = hva;
 
-  $("#skuffTittel").textContent = redigerer ? "Rediger søknad"
+  $("#skuffTittel").textContent = hva === "brev" ? "Søknadsbrev" : redigerer ? "Rediger søknad"
     : skuffModus === "gjenopprett" ? (filErOdelagt ? "Datafilen kan ikke leses" : "Datafilen mangler")
     : (SKUFFTITTEL[skuffModus] || "Legg til søknad");
   tegnSkuff();
@@ -598,13 +610,20 @@ function apneSkuff(hva, id){
   clearTimeout(fokusTid);
   fokusTid = setTimeout(() => {
     if(!$("#skuff").classList.contains("er-apen")) return;
-    const f = $("#skuff input, #skuff textarea") || $(I_SKUFF) || $("#skuff");
+    const f = $$(I_SKUFF).find(synligFokus) || $("#skuff");
     if(f) f.focus();
   }, 60);
 }
 
-function lukkSkuff(){
+function lukkSkuff(tvang = false){
   if(!$("#skuff").classList.contains("er-apen")) return;
+  if(brevflate && tvang !== true){
+    const denne = brevflate;
+    denne.lukk().then(ok => { if(ok && brevflate === denne) lukkSkuff(true); });
+    return;
+  }
+  if(brevflate){ brevflate.rydd(); brevflate = null; }
+  $("#skuff").classList.remove("skuff--brev");
   clearTimeout(fokusTid);
   /* Lukkes et valg uten at det ble tatt, står lagringen fortsatt sperret.
      Da må det stå noe på skjermen — ellers ser en tom app helt normal ut. */
@@ -626,7 +645,7 @@ function lukkSkuff(){
 /* Tab skal gå rundt inni dialogen, ikke ut av den. */
 function fokusfelle(e){
   if(e.key !== "Tab" || !$("#skuff").classList.contains("er-apen")) return;
-  const f = $$(I_SKUFF).filter(el => el.offsetParent !== null || el === document.activeElement);
+  const f = $$(I_SKUFF).filter(synligFokus);
   if(!f.length) return;
   const forst = f[0], siste = f[f.length - 1];
   if(e.shiftKey && document.activeElement === forst){ e.preventDefault(); siste.focus(); }
@@ -635,6 +654,10 @@ function fokusfelle(e){
 
 function tegnSkuff(){
   const k = $("#skuffKropp"), b = $("#skuffBunn");
+  if(skuffModus === "brev" && redigerer){
+    brevflate = åpneBrevflate({ jobb: redigerer, navn: brukeren?.navn || "", kropp: k, bunn: b, påLukk: () => lukkSkuff(true) });
+    return;
+  }
   if(skuffModus === "eksport"){
     k.innerHTML = '<p class="felt__hjelp" style="margin:0 0 16px">'
       + data.length + ' søknader ligger i <code>data/jobber.json</code>. Ta en kopi når du vil ha dem et annet sted.</p>'
@@ -769,7 +792,8 @@ function tegnSkuff(){
           + '<div class="felt"><p class="felt__hjelp" style="margin-top:26px">Settes av seg selv når du merker en søknad som sendt. Fyll den inn her for eldre søknader.</p></div>'
           + '</div>'
         : "")
-    + felt("notat", "Notat", p.notat, "text", "f.eks. frist kl. 12:00");
+    + felt("notat", "Notat", p.notat, "text", "f.eks. frist kl. 12:00")
+    + (redigerer ? '<div class="brev__inngang"><button class="knapp knapp--bred" type="button" data-gjor="brevFraSkjema" data-id="' + esc(p.id) + '">Skriv søknadsbrev</button><p class="felt__hjelp">Lagre endringene og skriv et brev med CV-en og annonsen som grunnlag.</p></div>' : "");
 }
 
 function felt(id, merke, verdi, type, plass){
@@ -1269,6 +1293,18 @@ document.addEventListener("click", e => {
 
   const g = t.dataset.gjor, id = t.dataset.id;
   if(g === "lukk") lukkSkuff();
+  else if(g === "brev") apneSkuff("brev", id);
+  else if(g === "brevFraSkjema"){
+    lagreSkjema();
+    if(!$("#skuff").classList.contains("er-apen")){
+      const profil = brukeren?.id;
+      Lagring.nåMedEnGang().then(() => {
+        if(profil !== brukeren?.id || $("#skuff").classList.contains("er-apen")) return;
+        if(Lagring.harUlagret()) return varsle("Jobbendringene er ikke lagret ennå. Prøv igjen når lagringen er ferdig.");
+        apneSkuff("brev", id);
+      });
+    }
+  }
   else if(g === "rediger") apneSkuff("rediger", id);
   else if(g === "slett") slett(id);
   else if(g === "nyFraTom"){ skuffModus = "skjema"; apneSkuff("ny"); }
@@ -1330,6 +1366,9 @@ document.addEventListener("keydown", e => {
      skuffen og «/» flyttet fokus ut i en app brukeren ikke er inne i. */
   if(portenStår()) return;
   if(e.key === "Escape"){ lukkSkuff(); return; }
+  /* Brevflaten har egne native knapper og flerlinjefelt. Enter skal
+     aldri falle gjennom til lagring av et vanlig jobbskjema. */
+  if(skuffModus === "brev" && $("#skuff").classList.contains("er-apen")) return;
   const iFelt = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
   if(iFelt){
     /* Enter gjør det modusen handler om. Uten dette ville Enter i
@@ -1597,7 +1636,7 @@ function loggUt(){
    bortfall, ikke én gang per kall — det er okt.js som passer på det. */
 Økt.påUtlogget(async melding => {
   if(portenStår()) return;
-  lukkSkuff();
+  lukkSkuff(true);
   /* Et varsel med «Angre» skal ikke bli stående bak låsen: knappen er
      inert, og en handling du ikke kan ta er verre enn ingen. */
   clearTimeout(angreTid);

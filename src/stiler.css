@@ -68,6 +68,8 @@
   --slor:        light-dark(rgba(24,26,30,.28), rgba(8,6,4,.58));
 
   --r:14px; --r-s:9px; --r-xs:7px;
+  --brev-bredde:1120px;
+  --brev-kildebredde:320px;
   --sans:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
   --mono:"Geist Mono","IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
   --side:236px;
@@ -503,6 +505,132 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
 .knapp--stille:hover{background:var(--innfelt);box-shadow:none}
 .knapp--fare{color:var(--ild-t)}
 .knapp--bred{width:100%;justify-content:center}
+
+/* ---------- søknadsbrevet ----------
+   Brevet er hovedflaten. Kildene ligger i en rolig marg, og de lange
+   tekstene foldes ut bare når man trenger dem. Samme Lin/Sot-materiale,
+   mer luft rundt sammenhengende prosa enn rundt liste- og datafeltene. */
+.handling--brev{color:var(--hav-t);background:var(--hav-vask)}
+.handling--brev:hover{background:var(--hav-vask);box-shadow:inset 0 0 0 1px var(--hav)}
+.brev__inngang{margin-top:23px;padding-top:20px;border-top:1px solid var(--linje)}
+.skuff--brev{width:min(var(--brev-bredde),calc(100vw - 24px))}
+.skuff--brev .skuff__topp{padding:22px 28px 3px}
+.skuff--brev .skuff__tittel{font-size:23px;letter-spacing:-.03em}
+.skuff__kropp--brev{padding:0;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.brev__jobb{font-size:14px;margin:0;padding:0 28px 12px;font-weight:500;line-height:1.45;overflow-wrap:anywhere}
+.brev__jobb span{color:var(--blekk-3);font-weight:400}
+.brev__tilbakemelding{min-height:30px;padding:0 28px 9px;color:var(--blekk-3);font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brev__tilbakemelding .knapp{font-size:12px;padding:3px 8px;min-height:26px}
+.brev__feil,.brev__lukkevalg{flex:none;margin:0 24px 12px;padding:12px 15px;background:var(--ild-vask);border-radius:var(--r-s);color:var(--ild-t);font-size:13px;max-height:160px;overflow:auto}
+.brev__feil p,.brev__lukkevalg p{margin:0 0 9px}
+.brev__gjenoppretting{margin:0 24px 15px;flex:none}
+.brev__lukkevalg{background:var(--rav-vask);color:var(--blekk-2)}
+.brev__lukkevalg .knapp + .knapp{margin-left:6px}
+.brev{flex:1;min-height:0;display:grid;grid-template-columns:var(--brev-kildebredde) minmax(0,1fr);border-top:1px solid var(--linje)}
+.brev__grunnlag{padding:23px 23px 26px 28px;overflow-y:auto;min-height:0;scrollbar-gutter:stable}
+.brev__felter{border:0;margin:0;padding:0;min-width:0}
+.brev__felter:disabled{opacity:.7}
+.brev__avsnitt{margin-bottom:23px}
+.brev__avsnitt h3,.brev__sporsmal h3{font-size:14px;margin:0 0 10px;letter-spacing:-.012em;font-weight:600}
+.brev__seksjonsrad{margin-bottom:10px}
+.brev__seksjonsrad h3{margin-bottom:3px}
+.brev__sekundar{display:block;color:var(--blekk-3);font-size:11.5px;font-weight:400;line-height:1.5}
+.brev__filvalg{display:block;position:relative;border-radius:var(--r-s);background:var(--innfelt);padding:12px;cursor:pointer;transition:background .15s ease}
+.brev__filvalg:hover,.brev__filvalg.er-over{background:var(--innfelt-2)}
+.brev__filvalg:focus-within{outline:2px solid var(--hav);outline-offset:2px}
+.brev__filvalg input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.brev__filnavn{display:block;margin-bottom:3px;font-size:13px;font-weight:500;overflow-wrap:anywhere}
+.brev__detaljer{margin-top:9px}
+.brev__detaljer > summary{font-size:12px;color:var(--blekk-2);cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;padding:4px 0;width:fit-content}
+.brev__detaljer > summary::before{content:"›";font-size:17px;line-height:1;transition:transform .15s ease}
+.brev__detaljer[open] > summary::before{transform:rotate(90deg)}
+.brev__detaljer > summary::-webkit-details-marker{display:none}
+.brev__detaljer[open] > summary{margin-bottom:8px}
+.brev__kildetekst{min-height:220px;max-height:420px;font-family:var(--sans);font-size:13px;line-height:1.6}
+.brev__lenkerad{display:flex;gap:6px;align-items:center}
+.brev__lenkerad .felt__inn{min-width:0;font-size:12px;padding:9px 10px}
+.brev__lenkerad .knapp{font-size:12px;padding:9px 12px;flex:none}
+.brev__felttittel{display:block;font-size:14px;font-weight:600;letter-spacing:-.012em;line-height:1.45;margin-bottom:10px}
+.brev__felttittel span{display:block;margin-top:3px;font-size:11.5px;color:var(--blekk-3);font-weight:400;letter-spacing:0}
+.brev__kontekst{min-height:118px;font-family:var(--sans);font-size:13px;line-height:1.6}
+.brev__valg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.brev__valg .felt__inn{padding:9px 8px;font-size:12px}
+.brev__valg .felt__merke{font-size:12px}
+.brev__innstillinger{margin:17px 0 20px}
+.brev__innstillinger .felt__merke{margin-top:12px}
+.brev__småhandlinger{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:10px}
+.brev__småhandlinger .knapp{font-size:12px;padding:8px 10px}
+.brev__datahandlinger{display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin-top:18px;padding-top:15px;border-top:1px solid var(--linje)}
+.brev__datahandlinger .knapp{font-size:12px;padding:8px 0;text-align:left}
+.brev__importvalg{display:block;position:relative;font-size:12px;color:var(--blekk-2);padding:8px 0;cursor:pointer}
+.brev__importvalg input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
+.brev__importvalg:focus-within{outline:2px solid var(--hav);outline-offset:2px}
+.brev__sporsmal{padding:18px 0 7px;margin:17px 0;border-top:1px solid var(--linje)}
+.brev__sporsmal > .felt__hjelp{margin-bottom:15px}
+.brev__svar{min-height:75px;font-family:var(--sans);font-size:13px;line-height:1.5}
+.brev__skriv{margin-top:20px}
+.brev__skriv .felt__hjelp{font-size:11.5px;margin-top:10px}
+.brev__skriveflate{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--innfelt);padding:19px 24px 20px;gap:12px}
+.brev__verktoylinje{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:24px}
+.brev__versjon{font-family:var(--sans);font-size:12px;color:var(--blekk-2);border:0;background:transparent;max-width:65%;padding:3px 0;cursor:pointer}
+.brev__lagret{font-family:var(--mono);font-size:10.5px;color:var(--blekk-3);white-space:nowrap;text-align:right}
+.brev__papir{min-height:150px;flex:1;background:var(--kort);border-radius:var(--r-s);box-shadow:var(--loft);display:flex;overflow:hidden}
+.brev__tekst{display:block;flex:1;width:100%;min-width:0;min-height:0;padding:30px 34px;border:0;resize:none;background:transparent;font-family:var(--sans);font-size:16px;line-height:1.8;color:var(--blekk);scrollbar-gutter:stable}
+.brev__tekst::placeholder{color:var(--blekk-3);opacity:1}
+.brev__tekst:disabled{opacity:1;-webkit-text-fill-color:var(--blekk-2)}
+.brev__tekst:focus-visible{outline-offset:-3px;border-radius:var(--r-s)}
+.brev__endret{font-size:12px;color:var(--blekk-3);margin:0;line-height:1.5}
+.brev__forbedring{flex:none;margin-top:3px}
+.brev__forbedringsrad{display:flex;gap:9px;align-items:stretch}
+.brev__forbedringsrad .felt__omr{font-family:var(--sans);font-size:13px;line-height:1.5;min-height:59px;max-height:120px;padding:9px 11px;background:var(--kort);resize:vertical}
+.brev__forbedringsrad .knapp{flex:none;font-size:12px;padding:10px 13px}
+.brev__forbedring .felt__hjelp{font-size:11.5px;margin-top:6px}
+.skuff__bunn--brev{align-items:center;padding:14px 25px;background:var(--kort);border-top:1px solid var(--linje);flex:none}
+.brev__ord{margin-right:auto;font-family:var(--mono);font-size:11px;color:var(--blekk-3);white-space:nowrap}
+.brev__generer{margin-right:5px}
+.skuff__bunn--brev:not(.har-brev) .brev__nedlasting{display:none}
+.skuff__bunn--brev:not(.har-brev) [data-brev="kopier"]{display:none}
+.brev__kopistatus{font-size:12px;color:var(--blekk-3)}
+.brev__nedlasting{position:relative}
+.brev__nedlasting > summary{list-style:none;display:flex;align-items:center;gap:14px}
+.brev__nedlasting > summary::-webkit-details-marker{display:none}
+.brev__meny{position:absolute;right:0;bottom:calc(100% + 10px);width:175px;background:var(--kort);box-shadow:var(--loft-2);border-radius:var(--r-s);padding:5px;z-index:2}
+.brev__meny button{display:block;width:100%;text-align:left;border:0;background:none;border-radius:var(--r-xs);font-size:13px;padding:11px 12px;cursor:pointer}
+.brev__meny button:hover{background:var(--innfelt)}
+.brev__meny button:disabled{opacity:.45;cursor:default}
+.brev .knapp:disabled,.skuff__bunn--brev .knapp:disabled{opacity:.45;cursor:default;box-shadow:none}
+.brev__faner{display:none}
+@media (max-width:800px){
+  .skuff--brev{top:0;right:0;bottom:0;width:100vw;border-radius:0}
+  .skuff--brev .skuff__topp{padding:18px 20px 3px}
+  .brev__jobb{padding:0 20px 9px}
+  .brev__tilbakemelding{padding:0 20px 8px;min-height:29px}
+  .brev__faner{display:flex;margin:0 20px 13px;flex:none}
+  .brev{display:flex;flex-direction:column;border-top:0}
+  .brev__grunnlag{padding:5px 20px 25px;flex:1}
+  .brev__skriveflate{padding:12px 16px 18px;flex:1;overflow-y:auto;gap:10px}
+  .brev[data-fane="grunnlag"] .brev__skriveflate{display:none}
+  .brev[data-fane="brev"] .brev__grunnlag{display:none}
+  .brev__seksjonsrad{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .brev__seksjonsrad h3{margin:0}
+  .brev__filvalg{padding:14px}
+  .brev__papir{flex:none;min-height:330px;height:52dvh}
+  .brev__tekst{padding:22px;font-size:16px;line-height:1.75}
+  .brev__forbedringsrad{flex-direction:column}
+  .brev__forbedringsrad .knapp{align-self:flex-end}
+  .brev__kildetekst,.brev__kontekst,.brev__svar,.brev__valg .felt__inn,.brev__lenkerad .felt__inn,.brev__forbedringsrad .felt__omr{font-size:16px}
+  .brev__detaljer > summary{min-height:40px;font-size:13px}
+  .skuff__bunn--brev{padding:12px 16px;flex-wrap:wrap;gap:8px;padding-bottom:max(12px,env(safe-area-inset-bottom))}
+  .skuff__bunn--brev .knapp{font-size:13px;padding:11px 13px;min-height:44px}
+  .skuff__bunn--brev.har-brev .brev__generer{order:3;flex-basis:100%;margin:2px 0 0}
+  .brev__kopistatus:empty{display:none}
+  .brev__feil,.brev__lukkevalg{margin:0 16px 10px}
+  .brev__valg{gap:14px}
+}
+@media (pointer:coarse){
+  .brev input,.brev textarea,.brev select{font-size:16px}
+  .brev__detaljer > summary,.brev__meny button,.brev__importvalg{min-height:44px}
+}
 /* Mens noe pågår blir knappen stående der den står, men slutter å svare. */
 .knapp:disabled{cursor:default;opacity:.5}
 .knapp:disabled:hover{box-shadow:var(--loft)}
