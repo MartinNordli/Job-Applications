@@ -71,6 +71,38 @@ test("avbryt stanser videre trinn og et sent svar overskriver ikke brevet",async
   assert.equal((await tjeneste.hentBrev("j1")).kjoring.status,"avbrutt");
   await assert.rejects(tjeneste.trinn("j1",k.id,"skriv"),{code:"opptatt"});assert.equal(kall.length,1);
 });
+test("påDelta føres til modellkallet med riktig felt, og aldri inn i dokumentet",async t=>{
+  const {tjeneste,kall}=await oppsett(t,async p=>{
+    p.påDelta?.("forhåndsvisning som aldri skal lagres");
+    return modell(p);
+  });
+  const deltaer=[];
+  const k=await tjeneste.opprett("j1");
+  const påDelta=(tekst)=>deltaer.push(tekst);
+  await tjeneste.trinn("j1",k.id,"analyse",{},{påDelta});
+  await tjeneste.trinn("j1",k.id,"skriv",{},{påDelta});
+  const r=await tjeneste.trinn("j1",k.id,"kontroller",{},{påDelta});
+  assert.deepEqual(kall.map(p=>p.felt),["begrunnelse","tekst","tekst"]);
+  assert.equal(deltaer.length,3);
+  // Bare den oppfylte returverdien blir brevtekst. Deltaene finnes ikke i dokumentet.
+  assert.equal(r.dokument.tekst,"Jeg søker stillingen som kunderådgiver.");
+  assert.equal(JSON.stringify(r.dokument).includes("forhåndsvisning"),false);
+});
+test("et gjenopptatt trinn kaller verken modellen eller påDelta",async t=>{
+  const {tjeneste,kall}=await oppsett(t,async p=>{p.påDelta?.("tekstbit");return modell(p);});
+  const deltaer=[];const påDelta=t=>deltaer.push(t);
+  const k=await tjeneste.opprett("j1");
+  await tjeneste.trinn("j1",k.id,"analyse",{},{påDelta});
+  assert.equal(kall.length,1);assert.equal(deltaer.length,1);
+  await tjeneste.trinn("j1",k.id,"analyse",{},{påDelta});
+  assert.equal(kall.length,1);assert.equal(deltaer.length,1);
+});
+test("uten påDelta sendes verken felt eller tilbakekalling til modellen",async t=>{
+  const {tjeneste,kall}=await oppsett(t);
+  const k=await tjeneste.opprett("j1");await tjeneste.trinn("j1",k.id,"analyse");
+  assert.equal(Object.hasOwn(kall[0],"felt"),false);
+  assert.equal(Object.hasOwn(kall[0],"påDelta"),false);
+});
 test("lagret analyse kan fortsettes etter ny tjenesteinstans uten å betale analyse igjen",async t=>{
   const {tjeneste,kall,lag}=await oppsett(t);
   const k=await tjeneste.opprett("j1");await tjeneste.trinn("j1",k.id,"analyse");

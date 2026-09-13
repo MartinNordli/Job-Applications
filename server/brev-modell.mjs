@@ -5,6 +5,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { validerNokkel, hale } from "../src/brukerlogikk.mjs";
 import { leverandorFor, byggModellkropp, tolkModellsvar } from "../src/brev-provider.mjs";
+import { delSse, lagSvarsamler, lagFeltstrøm } from "../src/brev-strom.mjs";
 
 const TIDSGRENSE = 120_000;
 const MAKS_SVAR = 2 * 1024 * 1024;
@@ -52,7 +53,7 @@ export async function fjernBrevNokkel({ katalog }, leverandor){
 }
 
 export function lagBrevModell({ katalog, tillatMiljø = false, fetch: hent = globalThis.fetch }){
-  return async ({ leverandor, system, innhold, skjema, trinn, signal }) => {
+  return async ({ leverandor, system, innhold, skjema, trinn, signal, felt, påDelta }) => {
     const valg = leverandorFor(leverandor);
     const kropp = byggModellkropp({ leverandor, system, innhold, skjema, trinn });
     const funn = await lesNokkel({ katalog, tillatMiljø }, leverandor);
@@ -63,6 +64,13 @@ export function lagBrevModell({ katalog, tillatMiljø = false, fetch: hent = glo
     signal?.addEventListener("abort", avbrytFraBruker, { once: true });
     if(signal?.aborted) avbryt.abort();
     const timer = setTimeout(() => avbryt.abort(), TIDSGRENSE);
+    /* Forhåndsvisningen slutter i samme øyeblikk kallet er over eller avbrutt:
+       en delta som kommer etter at svaret har satt seg, ville vist tekst som
+       ikke lenger er sann. En feil i mottakeren skal heller ikke rive kallet. */
+    let ferdig = false;
+    const meld = typeof påDelta === "function"
+      ? tekst => { if(ferdig || avbryt.signal.aborted) return; try{ påDelta(tekst); }catch{} }
+      : null;
     try{
       const r = await hent(valg.url, {
         method: "POST", signal: avbryt.signal,
@@ -77,7 +85,20 @@ export function lagBrevModell({ katalog, tillatMiljø = false, fetch: hent = glo
         if(r.status === 429) throw new BrevModellfeil("for-mange", "Leverandøren har nådd en grense. Vent litt og prøv igjen.", 429);
         throw new BrevModellfeil("modell", `Modelltjenesten svarte ${r.status}. Prøv igjen senere.`);
       }
-      let tekst = "";
+      /* Svaret er en SSE-strøm. Rammene settes sammen til nøyaktig samme
+         objekt et ikke-strømmet kall ga, og forhåndsvisningen dekodes ved
+         siden av. Deltaene er provisoriske og brukes aldri til resultatet. */
+      const del = delSse(), samler = lagSvarsamler(leverandor);
+      const feltstrøm = meld && felt ? lagFeltstrøm(felt) : null;
+      const mat = bit => {
+        for(const ramme of del(bit)){
+          const tillegg = samler.ta(ramme);
+          if(tillegg && feltstrøm){
+            const dekodet = feltstrøm.ta(tillegg);
+            if(dekodet) meld(dekodet);
+          }
+        }
+      };
       if(r.body){
         const reader = r.body.getReader();
         const decoder = new TextDecoder(); let storrelse = 0;
@@ -86,14 +107,14 @@ export function lagBrevModell({ katalog, tillatMiljø = false, fetch: hent = glo
             const bit = await reader.read(); if(bit.done) break;
             storrelse += bit.value.byteLength;
             if(storrelse > MAKS_SVAR){ await reader.cancel(); throw new BrevModellfeil("modellformat", "Modellen sendte et for stort svar."); }
-            tekst += decoder.decode(bit.value, { stream: true });
+            mat(decoder.decode(bit.value, { stream: true }));
           }
-          tekst += decoder.decode();
+          mat(decoder.decode());
         }finally{ reader.releaseLock(); }
-      }else tekst = await r.text();
-      let raa;
-      try{ raa = JSON.parse(tekst); }
-      catch{ throw new BrevModellfeil("modellformat", "Modellen svarte i feil format."); }
+      }else mat(await r.text());
+      const raa = samler.svar();
+      // En strøm som slutter uten avsluttende hendelse er et halvt svar.
+      if(!raa) throw new BrevModellfeil("modellformat", "Modellen svarte i feil format.");
       return tolkModellsvar(leverandor, raa);
     }catch(e){
       if(signal?.aborted) throw new BrevModellfeil("avbrutt", "Genereringen ble avbrutt.", 499);
@@ -101,6 +122,7 @@ export function lagBrevModell({ katalog, tillatMiljø = false, fetch: hent = glo
       if(e instanceof BrevModellfeil || e?.navn === "modellformat") throw e;
       throw new BrevModellfeil("modell", "Fikk ikke kontakt med modelltjenesten. Prøv igjen.");
     }finally{
+      ferdig = true;
       clearTimeout(timer); signal?.removeEventListener("abort", avbrytFraBruker);
     }
   };

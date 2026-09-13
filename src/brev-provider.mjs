@@ -16,9 +16,11 @@ export function byggModellkropp({ leverandor, system, innhold, skjema, trinn }){
   const tekst = typeof innhold === "string" ? innhold : JSON.stringify(innhold);
   if(typeof tekst !== "string" || !tekst.trim()) throw new Error("Mangler grunnlag.");
   if(tekst.length > 500_000 || system.length > 40_000) throw new Error("Grunnlaget er for stort.");
+  // Begge leverandørene strømmer alltid. Én transportvei betyr én feilsemantikk.
   if(leverandor === "anthropic") return {
     model: modell,
     max_tokens: 8000,
+    stream: true,
     system,
     messages: [{ role: "user", content: tekst }],
     output_config: { format: { type: "json_schema", schema: skjema } }
@@ -26,6 +28,7 @@ export function byggModellkropp({ leverandor, system, innhold, skjema, trinn }){
   return {
     model: modell,
     store: false,
+    stream: true,
     instructions: system,
     input: [{ role: "user", content: [{ type: "input_text", text: tekst }] }],
     max_output_tokens: 8000,

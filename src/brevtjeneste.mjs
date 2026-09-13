@@ -61,7 +61,7 @@ export function lagBrevtjeneste({lager,kallModell,hentJobb,lagId = () => crypto.
       return d;
     });
   }
-  async function trinn(id,kid,trinnnavn,svar={}, {signal}={}){
+  async function trinn(id,kid,trinnnavn,svar={}, {signal,påDelta}={}){
     await sjekkJobb(id);
     const ventet = {analyse:"klar",skriv:"venter",kontroller:"skrevet"};
     const status = {analyse:"analyserer",skriv:"skriver",kontroller:"kontrollerer"};
@@ -91,7 +91,9 @@ export function lagBrevtjeneste({lager,kallModell,hentJobb,lagId = () => crypto.
     signal?.addEventListener("abort",av,{once:true});
     try{
       let resultat;
-      const valg = {kallModell,signal:controller.signal};
+      // Deltaene går bare til den som kaller. Ingen av dem rører dokumentet:
+      // kontrollen kan forkaste en tekst som allerede er strømmet ferdig.
+      const valg = {kallModell,signal:controller.signal,...(typeof påDelta==="function"?{påDelta}:{})};
       if(trinnnavn==="analyse") resultat=await analyserGrunnlag(k.grunnlag,valg);
       if(trinnnavn==="skriv") resultat=await skrivUtkast(k.grunnlag,k.analyse,k.svar,{...valg,tekst:k.utgangspunkt,instruks:k.instruks});
       if(trinnnavn==="kontroller") resultat=await kontrollerUtkast(k.grunnlag,k.analyse,k.svar,k.utkast,valg);

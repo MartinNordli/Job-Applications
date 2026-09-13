@@ -137,12 +137,19 @@ function maksOrd(g, svar, revisjon){
   }
   return null;
 }
+/* Hvilket toppnivåfelt som er verdt å strømme, per trinn. Skjemaene bor her,
+   så valget hører hjemme her og ikke i transporten. */
+export const FELT = Object.freeze({ analyse: "begrunnelse", skriv: "tekst", kontroll: "tekst" });
+
 async function kall(g, trinn, oppgave, innhold, skjema, valg){
   valg.signal?.throwIfAborted();
   if(typeof valg.kallModell !== "function") throw new TypeError("kallModell mangler");
+  // Uten påDelta sendes verken felt eller tilbakekalling videre, slik at
+  // kall uten forhåndsvisning ser nøyaktig ut som før.
+  const strøm = typeof valg.påDelta === "function" ? { felt: FELT[trinn], påDelta: valg.påDelta } : null;
   const r = await valg.kallModell({ leverandor: g.leverandor,
     system: `${RAMME}\n\nOppgave: ${oppgave}\nPromptversjon: ${PROMPTVERSJON}`,
-    innhold: JSON.stringify(innhold), skjema, trinn, signal: valg.signal });
+    innhold: JSON.stringify(innhold), skjema, trinn, signal: valg.signal, ...strøm });
   valg.signal?.throwIfAborted();
   sjekkSchema(r?.data, skjema);
   return { ...r.data, bruk: r.bruk ?? null, modell: r.modell ?? LEVERANDORER[g.leverandor].modell };
