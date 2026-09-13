@@ -140,6 +140,11 @@ function maksOrd(g, svar, revisjon){
 /* Hvilket toppnivåfelt som er verdt å strømme, per trinn. Skjemaene bor her,
    så valget hører hjemme her og ikke i transporten. */
 export const FELT = Object.freeze({ analyse: "begrunnelse", skriv: "tekst", kontroll: "tekst" });
+/* Fasenavnet et trinn har mens det pågår. Det er med vilje nøyaktig det samme
+   som kjoring.status blir, så flaten kan lese en pågående kjøring fra et lagret
+   dokument og fra strømmen på samme måte. Merk at trinnet heter «kontroller»
+   her, mens modellkallet i FELT heter «kontroll». */
+export const FASE = Object.freeze({ analyse: "analyserer", skriv: "skriver", kontroller: "kontrollerer" });
 
 async function kall(g, trinn, oppgave, innhold, skjema, valg){
   valg.signal?.throwIfAborted();

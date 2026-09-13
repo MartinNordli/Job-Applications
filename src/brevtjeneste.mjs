@@ -1,7 +1,7 @@
 import { Brevfeil, brevfil, validerCv, validerBrev } from "./brevdata.mjs";
-import { analyserGrunnlag, skrivUtkast, kontrollerUtkast, validerGrunnlag, PROMPTVERSJON } from "./brevlogikk.mjs";
+import { analyserGrunnlag, skrivUtkast, kontrollerUtkast, validerGrunnlag, PROMPTVERSJON, FASE } from "./brevlogikk.mjs";
 
-const aktive = new Set(["analyserer","skriver","kontrollerer"]);
+const aktive = new Set(Object.values(FASE));
 const klon = v => structuredClone(v);
 const tidspunkt = () => new Date().toISOString();
 const kildefelt = d => ({ annonse:d.annonse.tekst,kontekst:d.kontekst,sprak:d.sprak,leverandor:d.leverandor });
@@ -64,7 +64,7 @@ export function lagBrevtjeneste({lager,kallModell,hentJobb,lagId = () => crypto.
   async function trinn(id,kid,trinnnavn,svar={}, {signal,påDelta}={}){
     await sjekkJobb(id);
     const ventet = {analyse:"klar",skriv:"venter",kontroller:"skrevet"};
-    const status = {analyse:"analyserer",skriv:"skriver",kontroller:"kontrollerer"};
+    const status = FASE;
     if(!ventet[trinnnavn]) throw new Brevfeil("ugyldig","Ukjent skrivetrinn.");
     let k;
     const nå = await les(id);
