@@ -111,14 +111,27 @@ try{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
   await page.emulateMedia({colorScheme:"light"});
   await page.screenshot({path:path.join(dir,"06-mobil-lys.png"),fullPage:true});
+  // Navnene i fremdriftsraden må få plass på én linje hver, ellers faller
+  // mikrolinjene fra hverandre i høyden. Dette er den smaleste bredden.
+  assert.equal(new Set(await page.$$eval(".brev__steg__mikro",e=>e.map(m=>m.getBoundingClientRect().top))).size,1);
   await page.getByRole("tab",{name:"Grunnlag",exact:true}).click();
   await page.getByRole("button",{name:"Innstillinger",exact:true}).click();
+  // Panelet bytter ut kildemargen, det legger seg ikke oppå den.
+  assert.equal(await page.locator("#brevGrunnlag").isHidden(),true);
+  await page.screenshot({path:path.join(dir,"07-innstillinger-mobil.png"),fullPage:true});
   const backup=page.waitForEvent("download");await page.getByRole("button",{name:"Last ned sikkerhetskopi",exact:true}).click();
   await (await backup).saveAs(path.join(dir,"sikkerhetskopi.json"));
   const eksport=JSON.parse(await fs.readFile(path.join(dir,"sikkerhetskopi.json"),"utf8"));
   assert.equal(eksport.format,"jobbsoknader-brev");assert.ok(eksport.dokumenter["brev-brevtest.json"].versjoner.length>=2);
+  // Panelet er én knapp unna margen, begge veier, og papiret blir stående.
+  await page.setViewportSize({width:1180,height:820});
+  await page.emulateMedia({colorScheme:"light",reducedMotion:"no-preference"});
+  await page.screenshot({path:path.join(dir,"08-innstillinger.png"),fullPage:true});
+  await page.getByRole("button",{name:"Lukk innstillinger",exact:true}).click();
+  await page.waitForFunction(()=>!document.querySelector("#brevGrunnlag").offsetParent===false);
+  assert.equal(await page.locator("#brevInnstillinger").isHidden(),true);
   // Feil må bevare et eksisterende brev.
-  await page.setViewportSize({width:1180,height:820});modellfeil=true;
+  modellfeil=true;
   await page.locator("#brevInstruks").fill("En gang til.");await page.getByRole("button",{name:"Lag ny versjon",exact:true}).click();
   await page.locator("#brevFeil").waitFor({state:"visible"});
   assert.ok((await page.locator("#brevTekst").inputValue()).includes("Min manuelle avslutning."));

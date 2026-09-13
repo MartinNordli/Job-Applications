@@ -607,8 +607,10 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
 .brev[data-panel="innstillinger"] .brev__grunnlag{display:none}
 .brev__innstillinger .felt__merke{font-size:12px}
 .brev__innstillinger .felt__hjelp{margin-top:6px}
-.brev__innstillinger h4{font-size:12px;margin:0 0 11px;font-weight:600;color:var(--blekk-2);
-                        letter-spacing:.06em;text-transform:uppercase}
+/* Samme merkelinje som ellers i huset, så bolken leses som en etikett og
+   ikke som enda en overskrift. */
+.brev__innstillinger h4{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.11em;
+                        text-transform:uppercase;color:var(--blekk-3);margin:0 0 12px}
 .brev__småhandlinger{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:10px}
 .brev__småhandlinger .knapp{font-size:12px;padding:8px 10px}
 .brev__datahandlinger{display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin-top:26px;padding-top:19px;border-top:1px solid var(--linje)}
@@ -688,9 +690,7 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
   .skuff--brev .skuff__topp{padding:18px 20px 3px}
   .brev__topprad{padding:0 20px 10px}
   .brev__flytrad{padding:0 20px 9px}
-  /* Tre navn på 390 px kan bryte til to linjer. Navnehøyden står avsatt,
-     så mikrolinjene står på samme høyde enten de bryter eller ikke. */
-  .brev__steg__navn{font-size:11.5px;min-height:2.7em}
+  .brev__steg__navn{font-size:11.5px}
   .brev__tilbakemelding{padding:0 20px 8px;min-height:29px}
   .brev__faner{display:flex;margin:0 20px 13px;flex:none}
   .brev{display:flex;flex-direction:column;border-top:0}

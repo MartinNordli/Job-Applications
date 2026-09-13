@@ -20,12 +20,26 @@ skriver brevet og gjør en egen redaktørkontroll. Du kan hoppe over spørsmåle
 Manglende informasjon skal ikke erstattes med oppdiktede erfaringer eller
 personlig motivasjon.
 
+Fremdriftsraden øverst viser de tre stegene: **Leser grunnlaget**,
+**Avklaring** og **Skriver brevet**. Den står der før du trykker, så du vet at
+avklaringssteget kan komme. Stiller modellen ingen spørsmål, sier steget det og
+flyten går videre. Spørsmålene kommer på papiret der brevet ellers står.
+Brevteksten strømmer inn mens den skrives, først utkastet og så
+redaktørkontrollens gjennomgang, som er et nytt gjennomløp og ikke et tillegg.
+Teksten du ser under arbeid er et forslag: den lagres ikke og erstatter aldri
+det du selv har skrevet i brevfeltet, og kontrollen kan forkaste den. Først når
+et trinn er godkjent, lander teksten i brevet. **Avbryt** stopper når som helst,
+og grunnlaget og tidligere brev beholdes.
+
 **Språk** står på Automatisk. Et konkret valg i feltet går foran et uttrykkelig
 språkønske i konteksten, som går foran annonsens søknadsspråkkrav og deretter
 annonsens hovedspråk. CV-ens språk bestemmer ikke brevspråket.
 
-Velg Claude eller OpenAI under **Skriv med**, og legg inn din egen nøkkel under
-**API-nøkkel og data**. Claude bruker Opus 5 (`claude-opus-5`) i alle tre
+Velg Claude eller OpenAI under **Skriv med**, og legg inn din egen nøkkel. Begge
+deler ligger under **Innstillinger** øverst i brevvinduet, sammen med
+sikkerhetskopi og sletting. Panelet bytter ut kildekolonnen mens brevet blir
+stående. Mangler nøkkelen, sier kildekolonnen fra og tar deg dit.
+Claude bruker Opus 5 (`claude-opus-5`) i alle tre
 brevtrinn og samme Anthropic-nøkkel som annonseimporten;
 OpenAI har en separat nøkkel. Nøkler returneres aldri fra HTTP-serveren.
 Det skjer ingen automatisk overgang til en annen leverandør hvis et kall feiler.
@@ -45,7 +59,7 @@ kall uten at svaret kom frem; appen starter ikke hele kjeden på nytt av seg sel
 Modellkontroll og kildehenvisninger reduserer feil, men brevet må fortsatt leses
 av personen som skal bruke det.
 
-**Sikkerhetskopi** i brevflaten omfatter profilens CV, brev, kildegrunnlag og
+**Sikkerhetskopi** under **Innstillinger** omfatter profilens CV, brev, kildegrunnlag og
 versjoner, også brev til jobber som senere er fjernet. Nøkler følger ikke med.
 Gjenoppretting legger inn dokumenter som ikke finnes; den erstatter ikke en
 eksisterende samling. Den gamle JSON-eksporten under **Dataene dine** inneholder
