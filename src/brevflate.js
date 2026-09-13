@@ -26,8 +26,19 @@ export function åpneBrevflate({ jobb, navn = "", kropp, bunn, påLukk }) {
   kropp.classList.add("skuff__kropp--brev");
   bunn.classList.add("skuff__bunn--brev");
   kropp.innerHTML = `
-    <p class="brev__jobb">${esc(jobb.stilling)} <span>hos ${esc(jobb.selskap)}</span></p>
-    <div class="brev__tilbakemelding" role="status" aria-live="polite"><span id="brevStatus">Henter grunnlaget…</span><button class="knapp knapp--stille" type="button" data-brev="stopp" hidden>Avbryt</button></div>
+    <div class="brev__topprad">
+      <p class="brev__jobb">${esc(jobb.stilling)} <span>hos ${esc(jobb.selskap)}</span></p>
+      <button class="knapp knapp--stille brev__panelknapp" type="button" data-brev="innstillinger" aria-expanded="false" aria-controls="brevInnstillinger">Innstillinger</button>
+    </div>
+    <div class="brev__flytrad">
+      <ol class="brev__flyt" id="brevFlyt" aria-label="Slik blir brevet til">
+        <li class="brev__steg" data-steg="analyse" data-tilstand="kommende"><span class="brev__steg__navn">Leser grunnlaget</span><span class="brev__steg__mikro"><span class="skjult">Gjenstår</span></span></li>
+        <li class="brev__steg" data-steg="avklaring" data-tilstand="kommende"><span class="brev__steg__navn">Avklaring</span><span class="brev__steg__mikro"><span class="skjult">Gjenstår, hvis modellen har spørsmål</span></span></li>
+        <li class="brev__steg" data-steg="skriv" data-tilstand="kommende"><span class="brev__steg__navn">Skriver brevet</span><span class="brev__steg__mikro"><span class="skjult">Gjenstår</span></span></li>
+      </ol>
+      <button class="knapp knapp--stille brev__avbryt" type="button" data-brev="stopp" hidden>Avbryt</button>
+    </div>
+    <p class="brev__tilbakemelding" role="status" aria-live="polite"><span id="brevStatus">Henter grunnlaget…</span></p>
     <div class="brev__feil" id="brevFeil" role="alert" hidden></div>
     <div class="brev__gjenoppretting" id="brevGjenoppretting" hidden><button class="knapp" type="button" data-brev="gjenopprett">Gjenopprett forrige lagring</button><p class="felt__hjelp">Den forrige lokale sikkerhetskopien brukes. Originalfilen blir bevart.</p></div>
     <div class="brev__lukkevalg" id="brevLukkevalg" hidden><p>Endringene er ikke lagret. Prøv igjen, eller kopier brevet før du lukker.</p><div class="brev__småhandlinger"><button class="knapp" type="button" data-brev="prøv">Prøv å lagre</button><button class="knapp" type="button" data-brev="hentLagret">Hent lagret versjon</button><button class="knapp knapp--fare" type="button" data-brev="forkast">Lukk uten å lagre</button></div></div>
@@ -35,7 +46,7 @@ export function åpneBrevflate({ jobb, navn = "", kropp, bunn, påLukk }) {
       <button class="modus__knapp" id="brevGrunnlagFane" type="button" role="tab" aria-selected="true" aria-controls="brevGrunnlag" data-brev="fane" data-fane="grunnlag">Grunnlag</button>
       <button class="modus__knapp" id="brevTekstFane" type="button" role="tab" aria-selected="false" aria-controls="brevSkriveflate" data-brev="fane" data-fane="brev" tabindex="-1">Søknadsbrev</button>
     </div>
-    <div class="brev" data-fane="grunnlag" aria-busy="true">
+    <div class="brev" data-fane="grunnlag" data-panel="kilder" aria-busy="true">
       <section class="brev__grunnlag" id="brevGrunnlag" role="tabpanel" aria-labelledby="brevGrunnlagFane">
         <fieldset class="brev__felter" id="brevGrunnlagsfelter" disabled>
           <legend class="skjult">Grunnlag for søknadsbrevet</legend>
@@ -53,29 +64,58 @@ export function åpneBrevflate({ jobb, navn = "", kropp, bunn, påLukk }) {
             <label class="brev__felttittel" for="brevKontekst">Litt om deg og denne jobben <span>Valgfritt</span></label>
             <textarea class="felt__omr brev__kontekst" id="brevKontekst" maxlength="10000" placeholder="Hva tiltrekker deg ved jobben? Er det erfaringer eller ønsker brevet bør ta hensyn til?"></textarea>
           </section>
-          <div class="brev__valg">
-            <div><label class="felt__merke" for="brevSprak">Språk</label><select class="felt__inn" id="brevSprak"><option value="auto">Automatisk</option value="nb">Norsk bokmål</option><option value="nn">Norsk nynorsk</option><option value="en">Engelsk</option><option value="sv">Svensk</option><option value="da">Dansk</option><option value="de">Tysk</option><option value="fr">Fransk</option></select></div>
-            <div><label class="felt__merke" for="brevLeverandor">Skriv med</label><select class="felt__inn" id="brevLeverandor"><option value="anthropic">Claude</option><option value="openai">OpenAI</option></select></div>
-          </div>
-          <p class="felt__hjelp" id="brevSprakhjelp">Følger annonsens språk og eventuelle språkønsker du oppgir.</p>
-          <details class="brev__detaljer brev__innstillinger" id="brevInnstillinger"><summary>API-nøkkel og data</summary>
-            <p class="felt__hjelp" id="brevNokkelstatus">Henter nøkkelstatus…</p>
-            <label class="felt__merke" for="brevNokkel">API-nøkkel for valgt leverandør</label><input class="felt__inn" id="brevNokkel" type="password" autocomplete="off" spellcheck="false">
-            <div class="brev__småhandlinger"><button class="knapp" type="button" data-brev="nøkkel">Lagre nøkkel</button><button class="knapp knapp--stille" type="button" data-brev="fjernNøkkel" hidden>Fjern nøkkel</button></div>
-            <div class="brev__datahandlinger"><button class="knapp knapp--stille" type="button" data-brev="backup">Last ned sikkerhetskopi</button><label class="brev__importvalg">Gjenopprett fra sikkerhetskopi<input id="brevImporter" type="file" accept=".json,application/json"></label><p class="felt__hjelp">Sikkerhetskopien inneholder CV, brev og grunnlag. API-nøkler følger ikke med.</p><button class="knapp knapp--stille knapp--fare" type="button" data-brev="slettCv">Slett CV fra profilen</button><button class="knapp knapp--stille knapp--fare" type="button" data-brev="slettBrev">Slett brevet og versjonene</button></div>
-          </details>
+          <section class="brev__avsnitt brev__avsnitt--smal">
+            <label class="felt__merke" for="brevSprak">Språk</label>
+            <select class="felt__inn" id="brevSprak"><option value="auto">Automatisk</option><option value="nb">Norsk bokmål</option><option value="nn">Norsk nynorsk</option><option value="en">Engelsk</option><option value="sv">Svensk</option><option value="da">Dansk</option><option value="de">Tysk</option><option value="fr">Fransk</option></select>
+            <p class="felt__hjelp" id="brevSprakhjelp">Automatisk følger annonsens språk og eventuelle språkønsker du oppgir.</p>
+          </section>
         </fieldset>
-        <section class="brev__sporsmal" id="brevSporsmal" hidden><h3>Gjør brevet mer personlig</h3><p class="felt__hjelp">Svar på det du vil. Du kan også skrive uten svar.</p><div id="brevSporsmalsfelt"></div><div class="brev__småhandlinger"><button class="knapp knapp--primar" type="button" data-brev="svar">Skriv med svarene</button><button class="knapp knapp--stille" type="button" data-brev="hopp">Hopp over og skriv</button></div></section>
-        <div class="brev__skriv"><p class="felt__hjelp">CV-en, annonsen og konteksten sendes til leverandøren du har valgt.</p></div>
+        <div class="brev__skriv">
+          <div class="brev__mangler" id="brevNokkelvarsel" hidden><p id="brevNokkelmangel">Du mangler API-nøkkel.</p><button class="knapp" type="button" data-brev="tilNøkkel">Legg til nøkkel</button></div>
+          <p class="felt__hjelp">CV-en, annonsen og konteksten sendes til leverandøren du har valgt.</p>
+        </div>
+      </section>
+      <section class="brev__innstillinger" id="brevInnstillinger" aria-labelledby="brevInnstillingerTittel" hidden>
+        <h3 id="brevInnstillingerTittel">Innstillinger</h3>
+        <section class="brev__avsnitt brev__avsnitt--smal">
+          <label class="felt__merke" for="brevLeverandor">Skriv med</label>
+          <select class="felt__inn" id="brevLeverandor"><option value="anthropic">Claude</option><option value="openai">OpenAI</option></select>
+          <p class="felt__hjelp">Valget huskes på profilen din. Hver leverandør har sin egen nøkkel.</p>
+        </section>
+        <section class="brev__avsnitt">
+          <label class="felt__merke" for="brevNokkel">API-nøkkel for valgt leverandør</label>
+          <input class="felt__inn" id="brevNokkel" type="password" autocomplete="off" spellcheck="false">
+          <p class="felt__hjelp" id="brevNokkelstatus">Henter nøkkelstatus…</p>
+          <div class="brev__småhandlinger"><button class="knapp" type="button" data-brev="nøkkel">Lagre nøkkel</button><button class="knapp knapp--stille" type="button" data-brev="fjernNøkkel" hidden>Fjern nøkkel</button></div>
+        </section>
+        <section class="brev__datahandlinger">
+          <h4>Dataene dine</h4>
+          <button class="knapp knapp--stille" type="button" data-brev="backup">Last ned sikkerhetskopi</button>
+          <label class="brev__importvalg">Gjenopprett fra sikkerhetskopi<input id="brevImporter" type="file" accept=".json,application/json"></label>
+          <p class="felt__hjelp">Sikkerhetskopien inneholder CV, brev og grunnlag. API-nøkler følger ikke med.</p>
+          <button class="knapp knapp--stille knapp--fare" type="button" data-brev="slettCv">Slett CV fra profilen</button>
+          <button class="knapp knapp--stille knapp--fare" type="button" data-brev="slettBrev">Slett brevet og versjonene</button>
+        </section>
       </section>
       <section class="brev__skriveflate" id="brevSkriveflate" role="tabpanel" aria-labelledby="brevTekstFane">
         <div class="brev__verktoylinje"><label class="skjult" for="brevVersjon">Brevversjon</label><select class="brev__versjon" id="brevVersjon" disabled><option>Første utkast</option></select><span class="brev__lagret" id="brevLagret" role="status" aria-live="polite"></span></div>
         <p class="brev__endret" id="brevEndret" hidden>Grunnlaget er endret siden denne versjonen.</p>
-        <div class="brev__papir"><label class="skjult" for="brevTekst">Søknadsbrevet ditt</label><textarea class="brev__tekst" id="brevTekst" maxlength="16000" spellcheck="true" disabled placeholder="Brevet vises her.\n\nLegg til CV og stillingsannonse, så skriver vi et utkast du kan gjøre til ditt eget."></textarea></div>
+        <div class="brev__papir">
+          <label class="skjult" for="brevTekst">Søknadsbrevet ditt</label>
+          <textarea class="brev__tekst" id="brevTekst" maxlength="16000" spellcheck="true" disabled placeholder="Brevet vises her.\n\nLegg til CV og stillingsannonse, så skriver vi et utkast du kan gjøre til ditt eget."></textarea>
+          <div class="brev__strom" id="brevStrom" aria-hidden="true" hidden><span id="brevStromTekst"></span><span class="brev__markor"></span></div>
+          <section class="brev__avklaring" id="brevSporsmal" aria-labelledby="brevAvklaringstittel" hidden>
+            <h3 id="brevAvklaringstittel">Vil du legge til noe før brevet skrives?</h3>
+            <p class="brev__begrunnelse" id="brevBegrunnelse" hidden></p>
+            <p class="felt__hjelp">Svar på det du vil. Brevet blir skrevet uansett.</p>
+            <div id="brevSporsmalsfelt"></div>
+            <div class="brev__småhandlinger"><button class="knapp knapp--primar" type="button" data-brev="svar">Skriv med svarene</button><button class="knapp knapp--stille" type="button" data-brev="hopp">Hopp over og skriv</button></div>
+          </section>
+        </div>
         <div class="brev__forbedring" id="brevForbedring" hidden><label class="felt__merke" for="brevInstruks">Hva vil du forbedre?</label><div class="brev__forbedringsrad"><textarea class="felt__omr" id="brevInstruks" maxlength="2000" rows="2" placeholder="For eksempel: Gjør åpningen mer konkret"></textarea><button class="knapp" type="button" data-brev="forbedre">Lag ny versjon</button></div><p class="felt__hjelp">Tar utgangspunkt i teksten du ser nå. Tidligere versjoner beholdes.</p></div>
       </section>
     </div>`;
-  bunn.innerHTML = `<button class="knapp knapp--primar brev__generer" type="button" data-brev="skriv" disabled>Skriv utkast</button><span class="brev__ord" id="brevOrd">0 ord</span><span class="brev__kopistatus" id="brevKopistatus" role="status" aria-live="polite"></span><button class="knapp" type="button" data-brev="kopier" disabled>Kopier brev</button><details class="brev__nedlasting"><summary class="knapp knapp--primar">Last ned <span aria-hidden="true">⌄</span></summary><div class="brev__meny"><button type="button" data-brev="docx" disabled>Word (.docx)</button><button type="button" data-brev="pdf" disabled>PDF (.pdf)</button></div></details>`;
+  bunn.innerHTML = `<button class="knapp knapp--primar brev__generer" type="button" data-brev="skriv" disabled>Skriv utkast</button><span class="brev__ord" id="brevOrd"></span><span class="brev__kopistatus" id="brevKopistatus" role="status" aria-live="polite"></span><button class="knapp" type="button" data-brev="kopier" disabled>Kopier brev</button><details class="brev__nedlasting"><summary class="knapp knapp--primar">Last ned <span aria-hidden="true">⌄</span></summary><div class="brev__meny"><button type="button" data-brev="docx" disabled>Word (.docx)</button><button type="button" data-brev="pdf" disabled>PDF (.pdf)</button></div></details>`;
 
   function melding(tekst = "") { if (aktiv) finn("#brevStatus").textContent = tekst; }
   function feil(feilen) {
@@ -84,6 +124,67 @@ export function åpneBrevflate({ jobb, navn = "", kropp, bunn, påLukk }) {
     finn("#brevFeil").hidden = false;
   }
   function ryddFeil() { finn("#brevFeil").hidden = true; }
+
+  /* ---- fremdriftsraden ----
+     Modellens tre faser (analyse, skriv, kontroller) er ikke de tre stegene
+     brukeren har et forhold til. Kontrollen er ikke et eget steg, den er
+     slutten av skrivingen; avklaringen er ikke en modellfase, men den er
+     det eneste steget som krever noe av brukeren. Raden viser derfor
+     flyten slik den oppleves, og mikrolinjen under hvert navn sier hva
+     som faktisk skjer der akkurat nå. */
+  const STEG = ["analyse", "avklaring", "skriv"];
+  const steget = steg => finn(`[data-steg="${steg}"]`);
+  function settSteg(steg, tilstand, mikro = "") {
+    const element = steget(steg); if (!element) return;
+    element.dataset.tilstand = tilstand;
+    element.querySelector(".brev__steg__mikro").innerHTML = mikro ? esc(mikro) : '<span class="skjult">Gjenstår</span>';
+  }
+  function flytKlar() { STEG.forEach(steg => settSteg(steg, "kommende")); }
+  /* Et avbrudd eller en feil skal etterlate raden ærlig: steget som var i
+     arbeid sier at det stoppet, resten står som de sto. */
+  function flytStoppet() { STEG.forEach(steg => { if (steget(steg)?.dataset.tilstand === "aktiv") settSteg(steg, "stoppet", "stoppet"); }); }
+  function påFase({ trinn, nullstill }, tekster = {}) {
+    if (nullstill) strømTøm();
+    if (trinn === "analyse") settSteg("analyse", "aktiv", "leser");
+    else if (trinn === "skriv") {
+      /* Ble analysen gjenbrukt, fyrte fasen aldri. Raden sier det rett ut
+         i stedet for å late som steget ikke fantes. */
+      settSteg("analyse", "ferdig", steget("analyse")?.dataset.tilstand === "kommende" ? "gjenbrukt" : "ferdig");
+      if (steget("avklaring")?.dataset.tilstand === "kommende") settSteg("avklaring", "ferdig", "ingen spørsmål");
+      settSteg("skriv", "aktiv", "skriver");
+    } else if (trinn === "kontroller") settSteg("skriv", "aktiv", "leser gjennom");
+    melding(tekster[trinn] || "");
+  }
+
+  /* ---- strømmeflaten ----
+     Teksten modellen skriver er provisorisk: kontrollen kan forkaste den
+     etterpå, og et manuelt tastetrykk går alltid foran. Den legges derfor
+     som et eget lag over papiret, aldri i #brevTekst, med nøyaktig samme
+     typografi og innrykk, slik at ingen linje flytter seg når det ferdige
+     brevet lander. Laget er utenfor aria-live med vilje: fasene annonseres,
+     ikke tegnene. */
+  let strømAv = false, strømFølger = true;
+  function strømTøm() { finn("#brevStromTekst").textContent = ""; finn("#brevStrom").hidden = true; strømFølger = true; }
+  function strømSkjul() { finn("#brevStrom").hidden = true; }
+  function strømTillegg(tekst) {
+    if (strømAv || !tekst || finn(".brev").classList.contains("avklarer")) return;
+    const flate = finn("#brevStrom");
+    /* Et gjenopptatt trinn gir fase uten deltaer. Flaten avsløres derfor
+       først når det finnes noe å vise. */
+    if (flate.hidden) { flate.hidden = false; flate.scrollTop = 0; strømFølger = true; }
+    finn("#brevStromTekst").textContent += tekst;
+    if (strømFølger) flate.scrollTop = flate.scrollHeight;
+  }
+  /* Papiret tilhører brukeren. Rører hen teksten sin mens modellen skriver,
+     trekker forhåndsvisningen seg for resten av kjøringen. */
+  function strømOverta() { if (!finn("#brevStrom").hidden) { strømAv = true; strømSkjul(); } }
+  function lagMelder(nummer, tekster) {
+    return {
+      påFase: fase => { if (nummer === arbeidsnr) påFase(fase, tekster); },
+      påDelta: tekst => { if (nummer === arbeidsnr) strømTillegg(tekst); }
+    };
+  }
+
   function settFane(fane, fokuser = false) {
     finn(".brev").dataset.fane = fane;
     kropp.querySelectorAll('[data-brev="fane"]').forEach(knapp => {
@@ -97,7 +198,7 @@ export function åpneBrevflate({ jobb, navn = "", kropp, bunn, påLukk }) {
     bunn.classList.toggle("har-brev", !!tekst);
     finn('[data-brev="skriv"]').textContent = tekst ? "Skriv nytt utkast" : "Skriv utkast";
     finn('[data-brev="skriv"]').classList.toggle("knapp--primar", !tekst);
-    finn("#brevOrd").textContent = `${tekst ? tekst.split(/\s+/u).length : 0} ord`;
+    finn("#brevOrd").textContent = tekst ? `${tekst.split(/\s+/u).length} ord` : "";
     ["kopier", "docx", "pdf"].forEach(handling => finn(`[data-brev="${handling}"]`).disabled = !tekst || (opptatt && handling !== "kopier"));
     finn("#brevForbedring").hidden = !tekst;
   }
@@ -106,6 +207,9 @@ export function åpneBrevflate({ jobb, navn = "", kropp, bunn, påLukk }) {
     opptatt = verdi; melding(tekst);
     finn(".brev").setAttribute("aria-busy", String(verdi));
     finn("#brevGrunnlagsfelter").disabled = verdi || !dokument;
+    /* Leverandøren ligger i innstillingspanelet og er utenfor feltgruppa,
+       men den kan ikke byttes mens et kall er underveis. */
+    finn("#brevLeverandor").disabled = verdi || !dokument;
     finn("#brevTekst").disabled = !dokument;
     finn("#brevInstruks").disabled = verdi;
     finn("#brevVersjon").disabled = verdi || !dokument?.versjoner?.length;
@@ -138,15 +242,36 @@ export function åpneBrevflate({ jobb, navn = "", kropp, bunn, påLukk }) {
     finn("#brevCvTekst").value = cv?.tekst || "";
     finn("#brevCvNavn").textContent = cv?.tekst ? (cv.navn || "CV lagt inn som tekst") : "Velg CV";
   }
+  const leverandørnavn = () => finn("#brevLeverandor").selectedOptions[0]?.textContent || "leverandøren";
+  /* Nøkkelen bor i innstillingspanelet, men mangler den, stopper skrivingen.
+     Kildekolonnen sier det derfor rett ut og peker på panelet, i stedet for
+     at brukeren skal finne fram til det selv. */
+  function visNøkkelmangel(mangler) {
+    finn("#brevNokkelvarsel").hidden = !mangler;
+    if (mangler) finn("#brevNokkelmangel").textContent = `Du mangler API-nøkkel for ${leverandørnavn()}. Brevet kan ikke skrives uten.`;
+  }
   async function visNøkkel() {
     const leverandør = finn("#brevLeverandor").value;
     finn("#brevNokkelstatus").textContent = "Henter nøkkelstatus…";
     try {
       const status = await Brev.nokkelStatus(leverandør);
       if (!aktiv || leverandør !== finn("#brevLeverandor").value) return;
-      finn("#brevNokkelstatus").textContent = status.finnes ? `Nøkkel satt${status.hale ? " · ····" + status.hale : ""}` : "Legg til en API-nøkkel for å skrive med denne leverandøren.";
+      finn("#brevNokkelstatus").textContent = status.finnes ? `Nøkkel satt${status.hale ? " · ····" + status.hale : ""}` : `Legg til en API-nøkkel for å skrive med ${leverandørnavn()}.`;
       finn('[data-brev="fjernNøkkel"]').hidden = !status.finnes;
-    } catch (e) { if (aktiv) finn("#brevNokkelstatus").textContent = e.message || "Kunne ikke lese nøkkelstatus"; }
+      visNøkkelmangel(!status.finnes);
+    } catch (e) { if (aktiv) { finn("#brevNokkelstatus").textContent = e.message || "Kunne ikke lese nøkkelstatus"; visNøkkelmangel(false); } }
+  }
+  /* Panelet heter data-panel og ikke data-visning med vilje: app.js har en
+     delegert lytter på [data-visning] for hovednavigasjonen, og et hvilket
+     som helst klikk inne i skuffen ville boblet opp og byttet side. */
+  function visInnstillinger(åpen, fokuser = true) {
+    const knapp = finn('[data-brev="innstillinger"]');
+    finn(".brev").dataset.panel = åpen ? "innstillinger" : "kilder";
+    finn("#brevInnstillinger").hidden = !åpen;
+    knapp.setAttribute("aria-expanded", String(åpen));
+    knapp.textContent = åpen ? "Lukk innstillinger" : "Innstillinger";
+    if (!fokuser) return;
+    if (åpen) finn("#brevLeverandor").focus(); else knapp.focus();
   }
   function endret(erGrunnlag = false) {
     endring++;
@@ -229,10 +354,18 @@ export function åpneBrevflate({ jobb, navn = "", kropp, bunn, påLukk }) {
   function svarene() {
     return Object.fromEntries([...kropp.querySelectorAll("[data-sporsmal]")].map(felt => [felt.dataset.sporsmal, felt.value.trim()]));
   }
+  /* Avklaringen dekker papiret. Brevfeltet under er fortsatt et felt, så
+     det tas ut av fokusrekken mens laget står der; ellers kunne tabulator
+     føre markøren inn i en tekst ingen ser. */
+  function lukkAvklaring() {
+    finn("#brevSporsmal").hidden = true;
+    finn(".brev").classList.remove("avklarer");
+    finn("#brevTekst").removeAttribute("inert");
+  }
   async function avbryt() {
     arbeidsnr++; forespørsel?.abort();
     const id = kjøring; kjøring = null;
-    finn("#brevSporsmal").hidden = true;
+    lukkAvklaring(); strømSkjul(); flytStoppet();
     if (id) { try { await Brev.avbryt(jobb.id, id); } catch (e) { if (aktiv) feil(e); } }
     if (arbeid) await arbeid.catch(() => {});
     if (aktiv) await ferskRevisjon();
@@ -242,18 +375,24 @@ export function åpneBrevflate({ jobb, navn = "", kropp, bunn, påLukk }) {
   async function skriv(svar = {}) {
     if (!kjøring) return;
     const nummer = arbeidsnr;
-    modellarbeid = true;
-    settOpptatt(true, "Skriver utkast…");
+    modellarbeid = true; strømAv = false;
+    if (steget("avklaring")?.dataset.tilstand === "aktiv") settSteg("avklaring", "ferdig", Object.values(svar).some(Boolean) ? "besvart" : "hoppet over");
+    lukkAvklaring();
+    settOpptatt(true, "Skriver teksten…");
     const mitt = kjøring;
     try {
-      const resultat = await Brev.skriv(jobb.id, mitt, svar, { signal: forespørsel.signal, påTrinn: trinn => { if (nummer === arbeidsnr) melding(trinn === "kontrollerer" ? "Kontrollerer språk og innhold…" : "Skriver utkast…"); } });
+      const resultat = await Brev.skriv(jobb.id, mitt, svar,
+        { signal: forespørsel.signal, ...lagMelder(nummer, { skriv: "Skriver teksten…", kontroller: "Leser gjennom teksten…" }) });
       if (!aktiv || nummer !== arbeidsnr) return;
       const beholdt = await taImot(resultat);
       if (!aktiv || nummer !== arbeidsnr) return;
-      finn("#brevEndret").hidden = true; finn("#brevSporsmal").hidden = true;
+      /* Først når den ferdige teksten står i feltet trekkes laget over den
+         bort. Typografien er den samme, så ingen linje flytter seg. */
+      strømSkjul(); settSteg("skriv", "ferdig", "ferdig");
+      finn("#brevEndret").hidden = true;
       settFane("brev");
       melding(beholdt ? "Endringene dine er beholdt. Det nye forslaget ligger i versjonslisten." : "Utkastet er klart. Les gjennom og gjør teksten til din egen.");
-    } catch (e) { if (nummer === arbeidsnr) { feil(e); await ferskRevisjon(); melding("Skrivingen stoppet. Grunnlaget og tidligere brev er beholdt."); } }
+    } catch (e) { if (nummer === arbeidsnr) { strømSkjul(); flytStoppet(); feil(e); await ferskRevisjon(); melding("Skrivingen stoppet. Grunnlaget og tidligere brev er beholdt."); } }
     finally { if (nummer === arbeidsnr) { kjøring = null; modellarbeid = false; forespørsel = null; if (aktiv) { settOpptatt(false, finn("#brevStatus").textContent); if (endring !== lagret) lagre().catch(feil); } } }
   }
   async function start() {
@@ -262,50 +401,61 @@ export function åpneBrevflate({ jobb, navn = "", kropp, bunn, påLukk }) {
     if (!finn("#brevCvTekst").value.trim()) { finn("#brevCvDetaljer").open = true; feil("Legg til CV-en din først."); settFane("grunnlag"); finn("#brevCvTekst").focus(); return; }
     if (!finn("#brevAnnonseTekst").value.trim()) { finn("#brevAnnonseDetaljer").open = true; feil("Hent annonsen eller lim inn annonseteksten først."); settFane("grunnlag"); finn("#brevAnnonseTekst").focus(); return; }
     const nummer = ++arbeidsnr;
-    forespørsel = new AbortController(); modellarbeid = true;
+    forespørsel = new AbortController(); modellarbeid = true; strømAv = false;
+    flytKlar(); settFane("brev");
     settOpptatt(true, "Leser grunnlaget…");
     try {
       endring++; await lagre();
       if (!aktiv || nummer !== arbeidsnr) return;
-      const resultat = await Brev.analyser(jobb.id, { signal: forespørsel.signal });
+      const resultat = await Brev.analyser(jobb.id, { signal: forespørsel.signal, ...lagMelder(nummer, { analyse: "Leser grunnlaget…" }) });
       if (!aktiv || nummer !== arbeidsnr) return;
       kjøring = resultat.id;
       if (resultat.dokument) dokument = { ...dokument, revisjon: resultat.dokument.revisjon, kjoring: resultat.dokument.kjoring };
       else await ferskRevisjon();
       if (!aktiv || nummer !== arbeidsnr) return;
       const analyse = resultat.analyse || {};
-      finn("#brevSprakhjelp").textContent = analyse.begrunnelse || `Brevet skrives på ${analyse.sprak || "annonsens språk"}.`;
-      if ((analyse.sporsmal || []).length) {
-        visSpørsmål(analyse);
-        settFane("grunnlag"); finn("#brevSporsmal").scrollIntoView({ block: "nearest" });
-        finn("#brevSporsmalsfelt textarea")?.focus();
-      } else await skriv();
-    } catch (e) { if (nummer === arbeidsnr) { feil(e); await ferskRevisjon(); modellarbeid = false; if (aktiv) { settOpptatt(false); if (endring !== lagret) lagre().catch(feil); } } }
+      if ((analyse.sporsmal || []).length) visSpørsmål(analyse);
+      else await skriv();
+    } catch (e) { if (nummer === arbeidsnr) { strømSkjul(); flytStoppet(); feil(e); await ferskRevisjon(); modellarbeid = false; if (aktiv) { settOpptatt(false); if (endring !== lagret) lagre().catch(feil); } } }
   }
-  function visSpørsmål(analyse, svar = {}) {
-    finn("#brevSporsmalsfelt").innerHTML = (analyse.sporsmal || []).slice(0, 3).map((spørsmål, indeks) => `<div class="felt"><label class="felt__merke" for="brevSvar${indeks}">${esc(spørsmål.tekst)}</label><textarea class="felt__omr brev__svar" id="brevSvar${indeks}" data-sporsmal="${esc(spørsmål.id)}" maxlength="3000">${esc(svar[spørsmål.id] || "")}</textarea></div>`).join("");
+  /* Avklaringen legger seg på papiret, der brevet ellers kommer. Steget står
+     mellom brukeren og teksten, og skal stå der blikket allerede er. */
+  function visSpørsmål(analyse, svar = {}, fokuser = true) {
+    const spørsmål = (analyse.sporsmal || []).slice(0, 3);
+    finn("#brevSporsmalsfelt").innerHTML = spørsmål.map((s, indeks) => `<div class="felt"><label class="felt__merke" for="brevSvar${indeks}">${esc(s.tekst)}</label><textarea class="felt__omr brev__svar" id="brevSvar${indeks}" data-sporsmal="${esc(s.id)}" maxlength="3000">${esc(svar[s.id] || "")}</textarea></div>`).join("");
+    finn("#brevBegrunnelse").textContent = analyse.begrunnelse || "";
+    finn("#brevBegrunnelse").hidden = !analyse.begrunnelse;
+    strømSkjul();
+    settSteg("analyse", "ferdig", "ferdig");
+    settSteg("avklaring", "aktiv", spørsmål.length === 1 ? "1 spørsmål" : `${spørsmål.length} spørsmål`);
+    finn(".brev").classList.add("avklarer");
+    finn("#brevTekst").setAttribute("inert", "");
     finn("#brevSporsmal").hidden = false; settOpptatt(false, "Du kan legge til noen detaljer før brevet skrives.");
+    settFane("brev");
     finn("#brevGrunnlagsfelter").disabled = true;
     finn("#brevVersjon").disabled = true;
     finn('[data-brev="forbedre"]').disabled = true;
     finn('[data-brev="stopp"]').hidden = false;
     finn('[data-brev="skriv"]').disabled = true;
-    finn("#brevSprakhjelp").textContent = analyse.begrunnelse || "";
+    if (fokuser) finn("#brevSporsmalsfelt textarea")?.focus();
   }
   async function forbedre() {
     const instruks = finn("#brevInstruks").value.trim();
     if (!instruks) { feil("Skriv hva du vil forbedre først."); finn("#brevInstruks").focus(); return; }
     const nummer = ++arbeidsnr;
-    forespørsel = new AbortController(); modellarbeid = true; settOpptatt(true, "Lager en ny versjon…");
+    forespørsel = new AbortController(); modellarbeid = true; strømAv = false;
+    flytKlar(); settOpptatt(true, "Lager en ny versjon…");
     try {
       await lagre(); if (!aktiv || nummer !== arbeidsnr) return;
-      const resultat = await Brev.forbedre(jobb.id, instruks, { signal: forespørsel.signal, påTrinn: trinn => { if (nummer === arbeidsnr) melding(trinn === "kontrollerer" ? "Kontrollerer språk og innhold…" : trinn === "analyserer" ? "Leser grunnlaget…" : "Lager en ny versjon…"); } });
+      const resultat = await Brev.forbedre(jobb.id, instruks,
+        { signal: forespørsel.signal, ...lagMelder(nummer, { analyse: "Leser grunnlaget…", skriv: "Lager en ny versjon…", kontroller: "Leser gjennom teksten…" }) });
       if (!aktiv || nummer !== arbeidsnr) return;
       const beholdt = await taImot(resultat);
       if (!aktiv || nummer !== arbeidsnr) return;
+      strømSkjul(); settSteg("skriv", "ferdig", "ferdig");
       finn("#brevInstruks").value = "";
       melding(beholdt ? "Endringene dine er beholdt. Det nye forslaget ligger i versjonslisten." : "En ny versjon er klar. Den forrige ligger i versjonslisten.");
-    } catch (e) { if (nummer === arbeidsnr) { feil(e); await ferskRevisjon(); melding("Skrivingen stoppet. Teksten din er beholdt."); } }
+    } catch (e) { if (nummer === arbeidsnr) { strømSkjul(); flytStoppet(); feil(e); await ferskRevisjon(); melding("Skrivingen stoppet. Teksten din er beholdt."); } }
     finally { if (nummer === arbeidsnr) { modellarbeid = false; forespørsel = null; if (aktiv) { settOpptatt(false, finn("#brevStatus").textContent); if (endring !== lagret) lagre().catch(feil); } } }
   }
   async function bekreft(tekst, handling) {
@@ -319,6 +469,8 @@ export function åpneBrevflate({ jobb, navn = "", kropp, bunn, påLukk }) {
     if (handling === "fane") return;
     if (handling === "stopp") return avbryt();
     if (handling === "forkast") { rydd(); påLukk(); return; }
+    if (handling === "innstillinger") { visInnstillinger(finn(".brev").dataset.panel !== "innstillinger"); return; }
+    if (handling === "tilNøkkel") { visInnstillinger(true, false); finn("#brevNokkel").focus(); return; }
     if (handling === "gjenopprett") {
       if (!gjenoppretting) return;
       return bekreft("Bruk forrige lokale lagring av dette dokumentet? Den uleselige originalen blir bevart.", async () => {
@@ -390,8 +542,18 @@ export function åpneBrevflate({ jobb, navn = "", kropp, bunn, påLukk }) {
     const id = hendelse.target.id;
     if (id === "brevCvTekst") { cvEndring++; if (!cv?.navn) cv = { ...cv, navn: "CV", format: "tekst" }; finn("#brevCvNavn").textContent = "CV lagt inn som tekst"; endret(true); }
     else if (["brevAnnonseUrl", "brevAnnonseTekst", "brevKontekst"].includes(id)) endret(true);
-    else if (id === "brevTekst") { endret(); oppdaterOrd(); finn("#brevKopistatus").textContent = ""; }
+    else if (id === "brevTekst") { strømOverta(); endret(); oppdaterOrd(); finn("#brevKopistatus").textContent = ""; }
   });
+  /* Fokus i brevfeltet er brukerens krav på papiret, uansett om det kommer
+     fra tastaturet, et klikk eller et skjermleserkall. */
+  lytt(finn("#brevTekst"), "focus", strømOverta);
+  lytt(finn("#brevStrom"), "scroll", () => {
+    const flate = finn("#brevStrom");
+    strømFølger = flate.scrollHeight - flate.scrollTop - flate.clientHeight < 24;
+  });
+  /* Laget tar hjulet, så teksten kan leses bakover mens den skrives, men
+     gir fra seg klikket: da vil brukeren redigere, ikke lese. */
+  lytt(finn("#brevStrom"), "pointerdown", hendelse => { hendelse.preventDefault(); strømOverta(); finn("#brevTekst").focus(); });
   lytt(kropp, "change", hendelse => {
     const id = hendelse.target.id;
     if (id === "brevCvFil") { lesFil(hendelse.target.files?.[0]); hendelse.target.value = ""; }
@@ -461,8 +623,9 @@ export function åpneBrevflate({ jobb, navn = "", kropp, bunn, påLukk }) {
       kjøring = dokument.kjoring.id;
       if (dokument.kjoring.status === "venter" && dokument.kjoring.analyse) {
         forespørsel = new AbortController(); modellarbeid = true;
-        visSpørsmål(dokument.kjoring.analyse, dokument.kjoring.svar);
-        settFane("grunnlag");
+        /* Skuffen ble nettopp åpnet, og app.js flytter selv fokus inn i den.
+           Avklaringen skal gjenoppstå synlig, men ikke rykke fokus til seg. */
+        visSpørsmål(dokument.kjoring.analyse, dokument.kjoring.svar, false);
       } else {
         melding("Et tidligere utkast er under arbeid. Avbryt det før du skriver på nytt.");
         finn('[data-brev="stopp"]').hidden = false; finn('[data-brev="stopp"]').textContent = "Avbryt forrige kjøring";

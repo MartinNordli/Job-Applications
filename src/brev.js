@@ -70,16 +70,14 @@ async function strøm(sti,{body,signal,påFase,påDelta}){
 
 /* Ingen tilbakekalling skal fyre etter avbrudd eller etter at promisen har
    satt seg: flaten ville da tegnet tekst som ikke lenger er sann. Vakten står
-   her og ikke bare i flaten, så alle kallsteder og begge modi arver den.
-   påTrinn er bakoverkompatibel og kalles med fasenavnet på nøyaktig samme
-   steder som før; den finnes bare inntil flaten bygger mot påFase. */
-function vakt(signal,{påFase,påDelta,påTrinn}={}){
+   her og ikke bare i flaten, så alle kallsteder og begge modi arver den. */
+function vakt(signal,{påFase,påDelta}={}){
   let stengt=false;
   const åpen=()=>!stengt&&!signal?.aborted;
   return {
     steng(){stengt=true;},
     // En feil i mottakerens tegning skal ikke rive brevet den tegner.
-    fase(d){if(åpen())try{påFase?.(d);påTrinn?.(d.fase);}catch{}},
+    fase(d){if(åpen())try{påFase?.(d);}catch{}},
     delta(tekst,om){if(åpen())try{påDelta?.(tekst,om);}catch{}}
   };
 }

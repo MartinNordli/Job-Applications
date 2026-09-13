@@ -44,20 +44,34 @@ try{
   await page.goto(url);await page.locator('[data-gjor="brev"]').first().click();
   await page.locator("#brevKontekst").waitFor({state:"visible"});
   await page.waitForFunction(()=>!document.querySelector("#brevGrunnlagsfelter").disabled);
+  // Raden står fremme før man trykker. Det er den som gjør at avklaringen
+  // ikke kommer som en overraskelse midt i det man tror er en generering.
+  assert.deepEqual(await page.$$eval(".brev__steg",e=>e.map(s=>s.dataset.tilstand)),["kommende","kommende","kommende"]);
+  // Språkvelgeren leverer koden, ikke etiketten.
+  assert.deepEqual(await page.$$eval("#brevSprak option",o=>o.map(x=>x.value)),["auto","nb","nn","en","sv","da","de","fr"]);
   await page.screenshot({path:path.join(dir,"01-grunnlag.png"),fullPage:true});
   await page.getByRole("button",{name:"Hent",exact:true}).click();
   await page.waitForFunction(()=>document.querySelector("#brevAnnonseTekst").value.length>80&&!document.querySelector("#brevGrunnlagsfelter").disabled);
   await page.locator("#brevKontekst").fill("Jeg ønsker en rolle med tett kundekontakt.");
   await page.getByRole("button",{name:"Skriv utkast",exact:true}).click();
   await page.locator("#brevSvar0").waitFor({state:"visible"});
+  // Analysen er ferdig, avklaringen er stedet vi står, skrivingen gjenstår.
+  assert.deepEqual(await page.$$eval(".brev__steg",e=>e.map(s=>s.dataset.tilstand)),["ferdig","aktiv","kommende"]);
   await page.screenshot({path:path.join(dir,"02-sporsmal.png"),fullPage:true});
   await page.locator("#brevSvar0").fill("Jeg vil bruke erfaringen min til å hjelpe kunder i hverdagen.");
   await page.getByRole("button",{name:"Skriv med svarene",exact:true}).click();
-  // Fasene når flaten. Den kaller fortsatt påTrinn-aliaset; bygges flaten om
-  // til påFase, skal denne linjen fortsatt holde.
-  await page.waitForFunction(()=>document.querySelector("#brevStatus").textContent.includes("Kontrollerer"));
+  // Teksten skal synes mens den blir skrevet, ikke først når den er ferdig.
+  await page.waitForFunction(()=>{const s=document.querySelector("#brevStrom");return !s.hidden&&s.textContent.trim().length>0;});
+  await page.screenshot({path:path.join(dir,"02b-strommer.png"),fullPage:true});
+  // Kontrollen skriver brevet på nytt, den skjøter ikke på utkastet. Raden
+  // sier det, og laget tømmes ved fasebyttet.
+  await page.waitForFunction(()=>document.querySelector('[data-steg="skriv"] .brev__steg__mikro').textContent==="leser gjennom");
+  await page.waitForFunction(()=>document.querySelector("#brevStatus").textContent.includes("Leser gjennom"));
   await page.waitForFunction(()=>document.querySelector("#brevTekst").value.includes("Jeg søker")&&!document.querySelector('[data-brev="forbedre"]').disabled);
   assert.deepEqual(kall,["analyse","skriv","kontroll"]);
+  // Når brevet står i feltet, er laget over papiret borte og raden ferdig.
+  assert.equal(await page.locator("#brevStrom").isHidden(),true);
+  assert.deepEqual(await page.$$eval(".brev__steg",e=>e.map(s=>s.dataset.tilstand)),["ferdig","ferdig","ferdig"]);
   // Trinnene gikk som strøm, og modellen strømmet det feltet trinnet eier.
   assert.ok(trinnsvar.length>=3);
   assert.ok(trinnsvar.every(r=>r.status===200&&r.type?.startsWith("text/event-stream")),JSON.stringify(trinnsvar));
@@ -98,7 +112,7 @@ try{
   await page.emulateMedia({colorScheme:"light"});
   await page.screenshot({path:path.join(dir,"06-mobil-lys.png"),fullPage:true});
   await page.getByRole("tab",{name:"Grunnlag",exact:true}).click();
-  await page.locator("#brevInnstillinger summary").click();
+  await page.getByRole("button",{name:"Innstillinger",exact:true}).click();
   const backup=page.waitForEvent("download");await page.getByRole("button",{name:"Last ned sikkerhetskopi",exact:true}).click();
   await (await backup).saveAs(path.join(dir,"sikkerhetskopi.json"));
   const eksport=JSON.parse(await fs.readFile(path.join(dir,"sikkerhetskopi.json"),"utf8"));

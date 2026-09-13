@@ -517,10 +517,50 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
 .skuff--brev .skuff__topp{padding:22px 28px 3px}
 .skuff--brev .skuff__tittel{font-size:23px;letter-spacing:-.03em}
 .skuff__kropp--brev{padding:0;display:flex;flex-direction:column;min-height:0;overflow:hidden}
-.brev__jobb{font-size:14px;margin:0;padding:0 28px 12px;font-weight:500;line-height:1.45;overflow-wrap:anywhere}
+.brev__topprad{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:0 28px 13px}
+.brev__jobb{font-size:14px;margin:0;font-weight:500;line-height:1.45;overflow-wrap:anywhere;min-width:0}
 .brev__jobb span{color:var(--blekk-3);font-weight:400}
-.brev__tilbakemelding{min-height:30px;padding:0 28px 9px;color:var(--blekk-3);font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
-.brev__tilbakemelding .knapp{font-size:12px;padding:3px 8px;min-height:26px}
+.brev__panelknapp{flex:none;font-size:12px;padding:5px 9px}
+
+/* ---------- fremdriftsraden ----------
+   Huset avviser spinneren med rette: en lenkeimport haster ikke, den tar
+   bare litt tid. Et modellkall er en annen sak. Det varer i titalls
+   sekunder, det har navngitte trinn, og ett av trinnene kan kreve noe av
+   brukeren. Da er det ikke ventingen som skal vises, men hvor i flyten vi
+   er, og hva som gjenstår. Raden står derfor fremme hele tiden, også før
+   man trykker: da vet man at avklaringen kan komme, i stedet for å bli
+   overrasket av den midt i det man tror er en generering.
+
+   Tilstanden bæres av tekst og av prikkens form, aldri av bevegelse
+   alene. Prikken puster mens et steg er i arbeid, men den er fullt synlig
+   i utgangspunktet, så raden er like leselig når bevegelsen er skrudd av.
+   Mikrolinjen under navnet er mono, som resten av husets mikrostatus. */
+.brev__flytrad{display:flex;align-items:flex-start;gap:14px;padding:0 28px 11px}
+.brev__flyt{flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+            list-style:none;margin:0;padding:0}
+/* Prikken og hårstreken ligger på sin egen linje over navnet. Legges de
+   på samme linje, streker streken ut teksten den skal binde sammen. */
+.brev__steg{position:relative;min-width:0;padding:13px 0 0;color:var(--blekk-3)}
+.brev__steg::before{content:"";position:absolute;left:0;top:3px;width:7px;height:7px;border-radius:50%;
+                    background:currentColor;opacity:.32}
+/* Hårstreken binder stegene til én rad. Den deler rader inni én flate,
+   som er det hårstreker gjør her, og stopper før neste prikk. */
+.brev__steg:not(:last-child)::after{content:"";position:absolute;left:11px;top:6px;right:7px;
+                                    height:1px;background:var(--linje-2)}
+.brev__steg__navn{display:block;font-size:12px;line-height:1.35;color:inherit;overflow-wrap:anywhere}
+.brev__steg__mikro{display:block;min-height:15px;margin-top:2px;font-family:var(--mono);
+                   font-size:10.5px;line-height:1.4;color:var(--blekk-3)}
+.brev__steg[data-tilstand="ferdig"]{color:var(--blekk-2)}
+.brev__steg[data-tilstand="ferdig"]::before{opacity:1;background:none;box-shadow:inset 0 0 0 1.5px currentColor}
+.brev__steg[data-tilstand="aktiv"]{color:var(--blekk)}
+.brev__steg[data-tilstand="aktiv"] .brev__steg__navn{font-weight:600}
+.brev__steg[data-tilstand="aktiv"]::before{opacity:1;background:var(--hav);animation:brevPuls 1.7s ease-in-out infinite}
+.brev__steg[data-tilstand="stoppet"]{color:var(--ild-t)}
+.brev__steg[data-tilstand="stoppet"]::before{opacity:1}
+.brev__steg[data-tilstand="stoppet"] .brev__steg__mikro{color:var(--ild-t)}
+@keyframes brevPuls{0%,100%{opacity:1}50%{opacity:.3}}
+.brev__avbryt{flex:none;font-size:12px;padding:3px 8px;min-height:26px}
+.brev__tilbakemelding{margin:0;min-height:28px;padding:0 28px 9px;color:var(--blekk-3);font-size:12px;line-height:1.45}
 .brev__feil,.brev__lukkevalg{flex:none;margin:0 24px 12px;padding:12px 15px;background:var(--ild-vask);border-radius:var(--r-s);color:var(--ild-t);font-size:13px;max-height:160px;overflow:auto}
 .brev__feil p,.brev__lukkevalg p{margin:0 0 9px}
 .brev__gjenoppretting{margin:0 24px 15px;flex:none}
@@ -531,7 +571,7 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
 .brev__felter{border:0;margin:0;padding:0;min-width:0}
 .brev__felter:disabled{opacity:.7}
 .brev__avsnitt{margin-bottom:23px}
-.brev__avsnitt h3,.brev__sporsmal h3{font-size:14px;margin:0 0 10px;letter-spacing:-.012em;font-weight:600}
+.brev__avsnitt h3,.brev__innstillinger h3{font-size:14px;margin:0 0 10px;letter-spacing:-.012em;font-weight:600}
 .brev__seksjonsrad{margin-bottom:10px}
 .brev__seksjonsrad h3{margin-bottom:3px}
 .brev__sekundar{display:block;color:var(--blekk-3);font-size:11.5px;font-weight:400;line-height:1.5}
@@ -553,28 +593,71 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
 .brev__felttittel{display:block;font-size:14px;font-weight:600;letter-spacing:-.012em;line-height:1.45;margin-bottom:10px}
 .brev__felttittel span{display:block;margin-top:3px;font-size:11.5px;color:var(--blekk-3);font-weight:400;letter-spacing:0}
 .brev__kontekst{min-height:118px;font-family:var(--sans);font-size:13px;line-height:1.6}
-.brev__valg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
-.brev__valg .felt__inn{padding:9px 8px;font-size:12px}
-.brev__valg .felt__merke{font-size:12px}
-.brev__innstillinger{margin:17px 0 20px}
-.brev__innstillinger .felt__merke{margin-top:12px}
+.brev__avsnitt--smal .felt__inn{padding:9px 8px;font-size:12px}
+.brev__avsnitt--smal .felt__merke{font-size:12px}
+
+/* ---------- innstillingspanelet ----------
+   Nøkkel, sikkerhetskopi og de to slettehandlingene sto tidligere i
+   kildemargen, mellom CV-en og annonsen. Det er innstillinger og
+   irreversible handlinger midt i skrivestien. De bytter nå ut margen i
+   stedet for å ligge i den: nøkkelen er fortsatt én knapp unna, siden man
+   ikke kan skrive uten den, men papiret til høyre blir stående, så man
+   ser hva man kom fra. */
+.brev__innstillinger:not([hidden]){padding:23px 23px 26px 28px;overflow-y:auto;min-height:0;scrollbar-gutter:stable}
+.brev[data-panel="innstillinger"] .brev__grunnlag{display:none}
+.brev__innstillinger .felt__merke{font-size:12px}
+.brev__innstillinger .felt__hjelp{margin-top:6px}
+.brev__innstillinger h4{font-size:12px;margin:0 0 11px;font-weight:600;color:var(--blekk-2);
+                        letter-spacing:.06em;text-transform:uppercase}
 .brev__småhandlinger{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:10px}
 .brev__småhandlinger .knapp{font-size:12px;padding:8px 10px}
-.brev__datahandlinger{display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin-top:18px;padding-top:15px;border-top:1px solid var(--linje)}
+.brev__datahandlinger{display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin-top:26px;padding-top:19px;border-top:1px solid var(--linje)}
 .brev__datahandlinger .knapp{font-size:12px;padding:8px 0;text-align:left}
 .brev__importvalg{display:block;position:relative;font-size:12px;color:var(--blekk-2);padding:8px 0;cursor:pointer}
 .brev__importvalg input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
 .brev__importvalg:focus-within{outline:2px solid var(--hav);outline-offset:2px}
-.brev__sporsmal{padding:18px 0 7px;margin:17px 0;border-top:1px solid var(--linje)}
-.brev__sporsmal > .felt__hjelp{margin-bottom:15px}
-.brev__svar{min-height:75px;font-family:var(--sans);font-size:13px;line-height:1.5}
+/* ---------- lagene over papiret ----------
+   Både teksten som strømmer og avklaringen legger seg oppå papiret i
+   stedet for i margen. Det er dit blikket går når man har bedt om et
+   brev, og det er der begge hører hjemme: strømmen er brevet under
+   arbeid, avklaringen er det siste som står mellom brukeren og teksten.
+   Begge er hvite kort over kortet, så ingen ny flate innføres. */
+.brev__strom,.brev__avklaring{position:absolute;inset:0;background:var(--kort);
+                              border-radius:var(--r-s);overflow-y:auto;scrollbar-gutter:stable}
+/* Nøyaktig samme typografi og innrykk som selve brevfeltet. Det er hele
+   poenget: når det ferdige brevet lander, skal ikke én linje flytte seg. */
+.brev__strom{padding:30px 34px;font-family:var(--sans);font-size:16px;line-height:1.8;
+             color:var(--blekk);white-space:pre-wrap;overflow-wrap:anywhere}
+.brev__markor{display:inline-block;width:2px;height:1.05em;margin-left:2px;
+               vertical-align:-.18em;background:var(--blekk-2);animation:brevMarkor 1.1s step-end infinite}
+/* Markøren står synlig i utgangspunktet, så den er der også når
+   bevegelsen er skrudd av. */
+@keyframes brevMarkor{0%,100%{opacity:1}50%{opacity:0}}
+.brev__avklaring{padding:26px 30px 28px}
+.brev__avklaring h3{font-size:17px;margin:0 0 9px;letter-spacing:-.02em;font-weight:600;line-height:1.3}
+.brev__avklaring > .felt__hjelp{margin:0 0 17px}
+.brev__begrunnelse{margin:0 0 13px;padding:10px 13px;background:var(--innfelt);border-radius:var(--r-xs);
+                   font-size:12.5px;line-height:1.55;color:var(--blekk-2)}
+.brev__avklaring .felt + .felt{margin-top:15px}
+.brev__avklaring .brev__småhandlinger{margin-top:19px}
+/* Forbedringsraden hører til et ferdig brev, ikke til et steg som står
+   foran det. */
+.brev.avklarer .brev__forbedring{display:none}
+.brev__svar{min-height:82px;font-family:var(--sans);font-size:13.5px;line-height:1.55}
+
 .brev__skriv{margin-top:20px}
+/* Nøkkelen ligger i panelet, men mangler den, stopper skrivingen. Det er
+   en advarsel om noe man må ordne, ikke et varsel om at noe er galt. */
+.brev__mangler{margin-bottom:13px;padding:12px 14px;background:var(--rav-vask);
+               border-radius:var(--r-s);color:var(--blekk-2);font-size:12.5px;line-height:1.5}
+.brev__mangler p{margin:0 0 10px}
+.brev__mangler .knapp{font-size:12px;padding:8px 11px}
 .brev__skriv .felt__hjelp{font-size:11.5px;margin-top:10px}
 .brev__skriveflate{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--innfelt);padding:19px 24px 20px;gap:12px}
 .brev__verktoylinje{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:24px}
 .brev__versjon{font-family:var(--sans);font-size:12px;color:var(--blekk-2);border:0;background:transparent;max-width:65%;padding:3px 0;cursor:pointer}
 .brev__lagret{font-family:var(--mono);font-size:10.5px;color:var(--blekk-3);white-space:nowrap;text-align:right}
-.brev__papir{min-height:150px;flex:1;background:var(--kort);border-radius:var(--r-s);box-shadow:var(--loft);display:flex;overflow:hidden}
+.brev__papir{position:relative;min-height:150px;flex:1;background:var(--kort);border-radius:var(--r-s);box-shadow:var(--loft);display:flex;overflow:hidden}
 .brev__tekst{display:block;flex:1;width:100%;min-width:0;min-height:0;padding:30px 34px;border:0;resize:none;background:transparent;font-family:var(--sans);font-size:16px;line-height:1.8;color:var(--blekk);scrollbar-gutter:stable}
 .brev__tekst::placeholder{color:var(--blekk-3);opacity:1}
 .brev__tekst:disabled{opacity:1;-webkit-text-fill-color:var(--blekk-2)}
@@ -603,11 +686,18 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
 @media (max-width:800px){
   .skuff--brev{top:0;right:0;bottom:0;width:100vw;border-radius:0}
   .skuff--brev .skuff__topp{padding:18px 20px 3px}
-  .brev__jobb{padding:0 20px 9px}
+  .brev__topprad{padding:0 20px 10px}
+  .brev__flytrad{padding:0 20px 9px}
+  /* Tre navn på 390 px kan bryte til to linjer. Navnehøyden står avsatt,
+     så mikrolinjene står på samme høyde enten de bryter eller ikke. */
+  .brev__steg__navn{font-size:11.5px;min-height:2.7em}
   .brev__tilbakemelding{padding:0 20px 8px;min-height:29px}
   .brev__faner{display:flex;margin:0 20px 13px;flex:none}
   .brev{display:flex;flex-direction:column;border-top:0}
   .brev__grunnlag{padding:5px 20px 25px;flex:1}
+  .brev__innstillinger:not([hidden]){padding:5px 20px 25px;flex:1}
+  /* Panelet hører til grunnlagsfanen; brevfanen skal vise papiret. */
+  .brev[data-fane="brev"] .brev__innstillinger{display:none}
   .brev__skriveflate{padding:12px 16px 18px;flex:1;overflow-y:auto;gap:10px}
   .brev[data-fane="grunnlag"] .brev__skriveflate{display:none}
   .brev[data-fane="brev"] .brev__grunnlag{display:none}
@@ -616,16 +706,18 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
   .brev__filvalg{padding:14px}
   .brev__papir{flex:none;min-height:330px;height:52dvh}
   .brev__tekst{padding:22px;font-size:16px;line-height:1.75}
+  .brev__strom{padding:22px;font-size:16px;line-height:1.75}
+  .brev__avklaring{padding:20px}
+  .brev__avklaring h3{font-size:16px}
   .brev__forbedringsrad{flex-direction:column}
   .brev__forbedringsrad .knapp{align-self:flex-end}
-  .brev__kildetekst,.brev__kontekst,.brev__svar,.brev__valg .felt__inn,.brev__lenkerad .felt__inn,.brev__forbedringsrad .felt__omr{font-size:16px}
+  .brev__kildetekst,.brev__kontekst,.brev__svar,.brev__avsnitt--smal .felt__inn,.brev__lenkerad .felt__inn,.brev__forbedringsrad .felt__omr{font-size:16px}
   .brev__detaljer > summary{min-height:40px;font-size:13px}
   .skuff__bunn--brev{padding:12px 16px;flex-wrap:wrap;gap:8px;padding-bottom:max(12px,env(safe-area-inset-bottom))}
   .skuff__bunn--brev .knapp{font-size:13px;padding:11px 13px;min-height:44px}
   .skuff__bunn--brev.har-brev .brev__generer{order:3;flex-basis:100%;margin:2px 0 0}
   .brev__kopistatus:empty{display:none}
   .brev__feil,.brev__lukkevalg{margin:0 16px 10px}
-  .brev__valg{gap:14px}
 }
 @media (pointer:coarse){
   .brev input,.brev textarea,.brev select{font-size:16px}
