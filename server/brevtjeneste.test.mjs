@@ -33,7 +33,7 @@ test("hele kjeden, manuell redigering og revisjon gir bevarte versjoner",async t
   assert.equal(ferdig.kjoring.status,"ferdig");assert.equal(ferdig.dokument.versjoner.length,1);
   assert.deepEqual(kall.map(p=>p.trinn),["analyse","skriv","kontroll"]);
   const promptversjon = ferdig.dokument.versjoner[0].promptversjon;
-  assert.equal(promptversjon,"brev-2");
+  assert.equal(promptversjon,"brev-3");
   assert.ok(kall.every(p=>p.system.includes(`Promptversjon: ${promptversjon}`)));
   assert.equal(ferdig.dokument.versjoner[0].svar.q1,"Jeg ønsker mer arbeid med kunder.");
   const manuell=await tjeneste.lagreBrev("j1",{...ferdig.dokument,tekst:"Min egen innledning og mitt eget språk."});

@@ -1,7 +1,9 @@
 /* Kun syntetiske personer og virksomheter. Hold disse atskilt fra promptens eksempler. */
 export const FELLES_VURDERINGSKRITERIER = [
-  "Åpningen tilfører et konkret poeng om personen, motivasjonen eller arbeidet; den står ikke løst som «Jeg søker stillingen …».",
-  "Relevant erfaring er valgt slik at leseren forstår forbindelsen til jobben uten gjentatte forklaringer som «Dette er relevant fordi …».",
+  "Brevet følger strukturen hilsen, innledning, hvorfor denne stillingen og virksomheten, hvorfor søkeren og avslutning, med riktig avslutningshilsen og navn fra kildene.",
+  "Innledningen sier hvorfor søkeren skriver og tilfører samtidig et konkret poeng om personen, motivasjonen eller arbeidet; den står ikke løst som «Jeg søker stillingen …».",
+  "3–5 sentrale krav fra annonsen er uttrykkelig koblet til konkrete, kildebelagte eksempler, slik at recruiteren ikke må trekke slutningen selv.",
+  "Brevet ville ikke lest likt med en annen virksomhets navn, uten at det finner på noe om virksomheten.",
   "Brevet utdyper kildegrunnlaget gjennom arbeidssituasjon, egne valg eller oppgitt motivasjon fremfor å skrive om CV-punktene én for én.",
   "Personlighet og engasjement bygger på opplysninger fra brukeren. Tynt grunnlag gir nøktern tekst og eventuelt gode spørsmål, aldri oppdiktet lidenskap."
 ];
@@ -9,15 +11,15 @@ const fokuspunkter = {
   "01": ["Spør gjerne om hva personen likte ved kassererarbeidet; ikke påstå at økonomi er en lidenskap bare fordi graden er i økonomi."],
   "02": ["La gleden ved å ta imot nye kolleger prege åpning og stemme. Bruk det konkrete opplæringseksemplet, uten å blåse det opp til lederansvar eller dokumenterte resultater."],
   "03": ["Gjør karriereskiftet forståelig gjennom det brukeren vil bruke mer tid på. Unngå en liste over «overførbare ferdigheter»."],
-  "04": ["La ønsket om forutsigbare tjenester og eksemplet fra feilretting bære teksten. Behold relevant faglighet uten teknologistakk eller pedagogisk forklaring av hvorfor drift passer til driftsarbeid."],
+  "04": ["La ønsket om forutsigbare tjenester og eksemplet fra feilretting bære teksten. Koble eksemplet uttrykkelig til kravet om stabile tjenester, uten teknologistakk eller sjargong."],
   "05": ["Utdyp hvordan kandidaten undersøkte plukkarbeidet og valgte en endring. Tallet 12 prosent skal støtte eksemplet, ikke bli en løs CV-meritt eller et oppdiktet større resultat."],
   "06": ["Utdyp bare det begrensede grunnlaget tillater. Ikke lån framgangsmåte eller 12-prosentresultatet fra tilfelle 05."],
   "08": ["En naturlig, kort åpning og et nyttig valgfritt spørsmål er bedre enn en oppdiktet personlighet eller en lang søknad fylt med påstander."],
   "09": ["Åpningen og stemmen skal være naturlig nynorsk, uten oversatt standardmal eller antatt lidenskap for ungdomsarbeid."],
   "10": ["Bruk den oppgitte interessen for gode intervjuopplevelser til en naturlig engelsk åpning; unngå «I am writing to apply …» og overdrevet entusiasme."],
   "14": ["Bruk den konkret oppgitte interessen for intervjuer, men ikke dikt opp hva slags intervjuer kandidaten allerede har gjennomført."],
-  "20": ["Besvar det eksplisitte annonsespørsmålet om relevans. Ønsket om implisitt relevans er ikke grunn til å ignorere et direkte spørsmål."],
-  "21": ["Åpningen må tilføre noe også innenfor 120 ord. Ikke bruk plassen på søknadsformalitet eller gjentatt stillingsnavn."],
+  "20": ["Besvar det eksplisitte annonsespørsmålet om aktiviteten og hvordan erfaringen passer til stillingen."],
+  "21": ["Åpningen må tilføre noe også innenfor 120 ord. Hilsen og avslutning teller med i grensen, så hold dem korte, og ikke gjenta stillingsnavnet."],
   "23": ["Oversett den klisjépregede selvbeskrivelsen til det konkrete, oppgitte serviceengasjementet. Ikke fjern all varme og personlighet sammen med klisjeene."],
   "24": ["Vis interesse for kvalitetsarbeidet gjennom kandidatens eget eksempel. Ikke legg til en historie om arbeidsgiverens verdier, klimaambisjoner eller samfunnsoppdrag."]
 };

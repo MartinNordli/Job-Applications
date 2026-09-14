@@ -11,14 +11,16 @@ node evals/kjor.mjs --live --leverandor openai --repetisjoner 3 --baseline --rap
 
 Dette koster API-bruk: 216 kall per leverandør uten baseline, inntil 288 med baseline. `--tilfelle 09 --repetisjoner 1` kjører bare ett tilfelle. Det er ingen automatisk retry. Rapporten overskriver aldri en eksisterende fil. Ubesvarte oppfølgingsspørsmål hoppes over med hensikt; spørsmål og bruk ligger i rapporten.
 
-De automatiske kontrollene dekker format, kildehenvisninger, valgt språk, kjente stilbrudd og enkelte eksplisitte tilfellekrav. De beviser ikke at brevet er naturlig eller at en påstand er semantisk støttet. For hver modell/promptendring må en person vurdere brev og baseline i tilfeldig rekkefølge uten å se hvilken variant som skrev dem. Modell-ID og promptversjon i rapporten skal følge vurderingen; et modellbytte er ikke i seg selv dokumentasjon på bedre brev.
+De automatiske kontrollene dekker format, kildehenvisninger, valgt språk, kjente stilbrudd og enkelte eksplisitte tilfellekrav. De beviser ikke at brevet er naturlig eller at en påstand er semantisk støttet. Skriveoppskriften bygger på Oxfords veiledning for søknadsbrev: fortell en målrettet historie fremfor å gjenta CV-en, følg strukturen innledning, hvorfor stillingen, hvorfor deg og avslutning, og gi bevis for alle påstander.
+For hver modell/promptendring må en person vurdere brev og baseline i tilfeldig rekkefølge uten å se hvilken variant som skrev dem. Modell-ID og promptversjon i rapporten skal følge vurderingen; et modellbytte er ikke i seg selv dokumentasjon på bedre brev.
 
 Vurder hvert brev 1–5 etter disse kriteriene. Godkjenning krever ingen oppdiktede konkrete påstander og minst 4 i hver dimensjon:
 
 | Kriterium | Hva en god tekst viser |
 | --- | --- |
-| Naturlig åpning | Første setning tilfører et konkret poeng om personen, motivasjonen eller arbeidet. En løs «Jeg søker stillingen …» eller «I am writing to apply …» teller som svak åpning. Vurder funksjonen, ikke bare bestemte ord. |
-| Relevans uten overforklaring | Utvalget av erfaringer gjør forbindelsen til jobben forståelig. Brevet trenger ikke forklare etter hvert eksempel at erfaringen er relevant eller verdifull. Direkte annonsespørsmål om relevans skal likevel besvares. |
+| Struktur og åpning | Brevet har hilsen, innledning, hvorfor stillingen og virksomheten, hvorfor søkeren og avslutning med riktig avslutningshilsen. Innledningen sier hvorfor søkeren skriver og tilfører samtidig et konkret poeng om personen, motivasjonen eller arbeidet. En løs «Jeg søker stillingen …» eller «I am writing to apply …» uten slikt poeng teller som svak åpning. Vurder funksjonen, ikke bare bestemte ord. |
+| Tydelig kobling til kravene | 3–5 sentrale krav er uttrykkelig koblet til konkrete eksempler, slik at recruiteren ikke må trekke slutningen selv. Hver påstand om en ferdighet har bevis. Tomme koblingsfraser uten innhold, som «dette kan jeg bruke hos dere», trekker ned. |
+| Tilpasset virksomheten | Brevet ville ikke lest likt med en annen virksomhets navn. Det som sies om virksomheten, kommer fra annonsen eller brukeren. |
 | Utdypning fremfor CV-gjengivelse | Teksten gir innblikk i en konkret situasjon, egne valg, arbeidsmåte eller oppgitt motivasjon. Den omskriver ikke bare CV-punkter til avsnitt. Utdypningen må ha dekning i kildene; manglende detaljer kan gi spørsmål, ikke nye fakta. |
 | Troverdig motivasjon og personlighet | Oppgitt interesse, glede, ambisjon eller engasjement får plass og høres ut som et menneske. Konkrete, kildebaserte uttrykk for lidenskap er velkomne; generelle superlativer og oppdiktet entusiasme er det ikke. En nøktern tekst kan få høy score når brukeren ikke har oppgitt følelser eller motivasjon. |
 | Faktastøtte | Erfaring, egne bidrag, resultater og personlige begrunnelser kan spores til grunnlaget. Et rimelig utvalg og en ny formulering er tillatt; nye årsaksforklaringer, resultater eller personlighetstrekk krever støtte. |
