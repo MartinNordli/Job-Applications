@@ -13,5 +13,5 @@ addEventListener("DOMContentLoaded", () => setTimeout(() => {
   el.innerHTML = '<div class="tomt"><p class="tomt__tittel">Appen trenger serveren</p>'
     + '<p class="tomt__tekst">Kjør <code>npm start</code> i prosjektmappa og åpne '
     + '<a href="http://127.0.0.1:4173">127.0.0.1:4173</a>. Søknadene ligger i '
-    + '<code>data/jobber.json</code>, og siden når dem bare gjennom serveren.</p></div>';
+    + 'datakatalogen på maskinen, og siden når dem bare gjennom serveren.</p></div>';
 }, 1500));

@@ -54,7 +54,7 @@ function fraNettleser(){
 }
 
 /* Alt som endrer data går gjennom denne ene funksjonen. Den samler
-   opp raske endringer og skriver hele dokumentet til data/jobber.json. */
+   opp raske endringer og skriver hele dokumentet til kontoens jobber.json. */
 function lagre(){ Lagring.lagre(data); }
 
 /* ============================================================
@@ -660,7 +660,7 @@ function tegnSkuff(){
   }
   if(skuffModus === "eksport"){
     k.innerHTML = '<p class="felt__hjelp" style="margin:0 0 16px">'
-      + data.length + ' søknader ligger i <code>data/jobber.json</code>. Ta en kopi når du vil ha dem et annet sted.</p>'
+      + data.length + ' søknader ligger i <code>jobber.json</code> i kontoens katalog. Ta en kopi når du vil ha dem et annet sted.</p>'
       + '<div class="felt"><button class="knapp knapp--bred" data-gjor="kopiMd">Kopier som Markdown</button>'
       + '<p class="felt__hjelp">Samme oppsett som notatet ditt — grupper, lenker og datoer.</p></div>'
       + '<div class="felt"><button class="knapp knapp--bred" data-gjor="kopiJson">Kopier som JSON</button>'
@@ -689,7 +689,7 @@ function tegnSkuff(){
       + '<p class="felt__hjelp" style="margin:0 0 18px">'
       + (n === 1 ? 'søknad lagret i nettleseren.' : 'søknader lagret i nettleseren.') + '</p>'
       + '<p style="margin:0 0 14px;color:var(--blekk-2);font-size:14px;line-height:1.5">'
-      + 'Flytt dem til <code>data/jobber.json</code>, så ligger de som en vanlig fil på maskinen din '
+      + 'Flytt dem til <code>jobber.json</code> i kontoens katalog, så ligger de som en vanlig fil på maskinen din '
       + 'og følger med i sikkerhetskopier.</p>'
       + '<p class="felt__hjelp">Kopien i nettleseren blir liggende urørt.</p>';
     b.innerHTML = '<button class="knapp" data-gjor="brukStartliste">Bruk startlisten</button>'
@@ -707,9 +707,9 @@ function tegnSkuff(){
       + (n === 1 ? 'søknad.' : 'søknader.') + '</p>'
       + '<p style="margin:0 0 14px;color:var(--blekk-2);font-size:14px;line-height:1.5">'
       + (filErOdelagt
-          ? '<code>data/jobber.json</code> kan ikke leses. Den blir flyttet til side — ikke slettet — '
+          ? '<code>jobber.json</code> kan ikke leses. Den blir flyttet til side — ikke slettet — '
             + 'og <code>jobber.forrige.json</code> skrives inn i stedet.'
-          : '<code>data/jobber.json</code> finnes ikke lenger, men <code>jobber.forrige.json</code> ligger igjen')
+          : '<code>jobber.json</code> finnes ikke lenger, men <code>jobber.forrige.json</code> ligger igjen')
       + (sisteKopi.oppdatert ? ' Kopien er fra ' + esc(kortTid(sisteKopi.oppdatert)) + '.' : '.')
       + '</p><p class="felt__hjelp">Ingenting skrives før du velger.</p>';
     b.innerHTML = '<button class="knapp" data-gjor="brukStartliste">Bruk startlisten</button>'
@@ -1391,7 +1391,7 @@ document.addEventListener("keydown", e => {
    14. Fargetema
    ============================================================ */
 /* Temaet er en innstilling for denne nettleseren, ikke data. Det går
-   utenom Lagring og havner aldri i data/jobber.json. Selve
+   utenom Lagring og havner aldri i jobber.json. Selve
    påføringen skjer allerede i <head> — se index.html — så det ikke
    blinker lyst før app.js rekker å kjøre; her holdes bare valget,
    knappene og nettleserflaten i takt. */
@@ -1718,7 +1718,7 @@ async function hentData(){
       const harKopi = !!(sisteKopi && sisteKopi.jobber.length);
       venterValg = harKopi ? "gjenopprett" : null;
       Lagring.blokker("Datafilen kan ikke leses. Den ligger urørt som "
-        + (e.sti || "data/jobber.json") + ", og ingenting lagres før du har valgt hva som skal skje."
+        + (e.sti || "jobber.json") + ", og ingenting lagres før du har valgt hva som skal skje."
         + (harKopi ? "" : " Rett opp filen, og hent så på nytt."));
     }else{
       venterValg = null;
