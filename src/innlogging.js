@@ -114,8 +114,7 @@ function tegn(){
 
 function kroppen(verdier){
   const merke = '<div class="merke merke--port">'
-    + '<h2 class="merke__navn" id="portTittel">Jobbsøknader</h2>'
-    + '<span class="merke__ar">2027</span></div>';
+    + '<h2 class="merke__navn" id="portTittel">Hired</h2></div>';
 
   /* Registeret finnes, men kan ikke leses. Da skal flaten ikke tilby
      å opprette den første kontoen over noe som allerede står der. */

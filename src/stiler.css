@@ -1,5 +1,5 @@
 /* ============================================================
-   Jobbsøknader 2027 — Lin (lys) og Sot (mørk)
+   Hired — fargetemaene og flatesystemet
    Tre flatenivåer: bunnen under alt, kort løftet over den, innfelte
    spor inni kortene. Flater skilles av nivå, aldri av ramme; hårstreker
    brukes bare til å dele rader *inni* én flate. Kulør betyr hastegrad,
@@ -140,7 +140,6 @@ a{color:inherit}
       box-shadow:1px 0 0 var(--linje)}
 .merke{display:block;padding:0 8px}
 .merke__navn{margin:0;font-size:17px;font-weight:700;letter-spacing:-.024em;line-height:1.15}
-.merke__ar{display:block;font-family:var(--mono);font-size:11px;font-weight:400;color:var(--blekk-3);margin-top:3px;letter-spacing:.02em}
 
 .nyknapp{width:100%;padding:11px 14px;background:var(--blekk);color:var(--kort);
          border:0;border-radius:var(--r-s);font-weight:600;font-size:14px;cursor:pointer;
@@ -826,7 +825,6 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
         padding:9px 16px;box-shadow:0 1px 0 var(--linje);z-index:30;overflow-x:auto}
   /* Årstallet vike i toppstripa, men porten er ikke toppstripa —
      der er ordmerket alt som står. */
-  .side .merke__ar{display:none}
   .nav{flex-direction:row;gap:4px;flex:1}
   .nav__merke,.nav__tall{display:none}
   /* Sidefoten faller bort, men lagringstilstanden og temavalget følger

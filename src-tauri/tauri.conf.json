@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Jobbsøknader",
+  "productName": "Hired",
   "version": "1.0.0",
   "identifier": "no.nordli.jobbsoknader",
   "build": {
@@ -12,7 +12,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Jobbsøknader",
+        "title": "Hired",
         "width": 1180,
         "height": 820,
         "minWidth": 720,

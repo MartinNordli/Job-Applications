@@ -596,7 +596,7 @@ if(process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href){
   if(beskjed) console.warn(beskjed);
 
   lagServer({ katalog }).listen(port, "127.0.0.1", () => {
-    console.log(`Jobbsøknader kjører på http://127.0.0.1:${port}`);
+    console.log(`Hired kjører på http://127.0.0.1:${port}`);
     console.log(`Dataene ligger i ${katalog}`);
   });
 }

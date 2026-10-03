@@ -1,4 +1,4 @@
-# Jobbsøknader
+# Hired
 
 Personlig oversikt over jobbsøknader: frister som nærmer seg, søknader som er sendt, og hvor de står.
 Appen skriver også søknadsbrev med utgangspunkt i CV-en din og stillingsannonsen.
@@ -33,8 +33,10 @@ npm install
 npm run app:bygg
 ```
 
-Kommandoen legger `Jobbsøknader.app` i `src-tauri/target/release/bundle/macos/`.
+Kommandoen legger `Hired.app` i `src-tauri/target/release/bundle/macos/`.
 Kopier den til `/Applications`, så finner du den i Spotlight.
+Appen het tidligere `Jobbsøknader.app`.
+Har du den gamle i `/Applications`, kan du slette den: dataene ligger i den samme katalogen og følger med til Hired.
 Bygget samler frontenden i `dist/` først, så appen får med alt som er endret i nettleserversjonen.
 Bygg og kopier på nytt etter hver oppdatering, ellers kjører du en eldre utgave.
 

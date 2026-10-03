@@ -887,7 +887,7 @@ function tilMarkdown(){
   const lop  = todo.filter(p => !p.frist);
   const sen  = todo.filter(p => p.frist && dagerTil(p.frist) > 7);
 
-  L.push("# Jobbsøknader 2027", "", "> [!abstract] Status");
+  L.push("# Hired", "", "> [!abstract] Status");
   L.push("> **" + data.filter(p => ER_SENDT(p.status)).length + "** sendt · **" + todo.length + "** igjen · **"
     + data.filter(p => p.status === "rejected").length + "** avslag · **"
     + data.filter(p => p.status === "trukket").length + "** trukket · **"
