@@ -21,6 +21,12 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 # Allerede i treet via Tauri; vi trenger bare sleep til det nye forsøket.
 tokio = { version = "1", features = ["time", "rt", "sync"] }
 rfd = "0.15"
+# Fristvarselet: lokal dato, systemvarselet og uid-en launchctl trenger.
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+libc = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+mac-notification-sys = "0.6"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

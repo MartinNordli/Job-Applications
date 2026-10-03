@@ -26,6 +26,7 @@ use tauri::{AppHandle, Manager};
 
 mod nett;
 mod brev;
+pub mod varsel;
 
 /// Filen API-nøkkelen ligger i, ved siden av datafilen — i profilens
 /// katalog, ikke i rota. Rust leser den selv når modellen skal spørres,
@@ -204,10 +205,31 @@ async fn spor_modell(
     nett::spor_modell(nokkel, kropp).await
 }
 
+/// Fristvarselet for profilen som er innlogget. Kjøres utenfor
+/// hovedtråden: varselsenteret venter på at varselet er levert.
+#[tauri::command]
+async fn sjekk_frister(app: AppHandle, bruker: String) -> Result<usize, String> {
+    let rot = katalog(&app)?;
+    tauri::async_runtime::spawn_blocking(move || varsel::kjør_for(&rot, &bruker))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .setup(|_| {
+            /* Bakgrunnsjobben som varsler når appen er lukket. En feil
+               her skal ikke stoppe appen; varselet kommer fortsatt
+               mens den er åpen. */
+            std::thread::spawn(|| {
+                if let Err(e) = varsel::installer_agent() {
+                    eprintln!("fristvarselet i bakgrunnen ble ikke satt opp: {e}");
+                }
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             data_katalog,
             les_tekst,
@@ -215,6 +237,7 @@ pub fn run() {
             skriv_atomisk,
             hent_side,
             spor_modell,
+            sjekk_frister,
             brev::brev_les,
             brev::brev_skriv,
             brev::brev_slett,
