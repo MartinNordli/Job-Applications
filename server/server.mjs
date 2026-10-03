@@ -41,6 +41,7 @@ import { tolkStrukturert, renskTekst, byggForespørsel,
          tolkModellsvar, slåSammen, sektorForSelskap, manglendeFelt, finnesFraFor } from "../src/importlogikk.mjs";
 import { LOGGFIL, lagLinje, leggTil, sammendrag } from "../src/importlogg.mjs";
 import { erBrevbane, lagBrevRuter } from "./brev-api.mjs";
+import { erVarselbane, lagVarselRuter } from "./varsel-api.mjs";
 
 const HER = path.dirname(fileURLToPath(import.meta.url));
 const ROT = path.resolve(HER, "..");
@@ -525,6 +526,7 @@ async function apiRuter(req, res, bane, ktx){
   const tillatMiljø = økt.erFørste || deltMiljønokkel();
 
   if(erBrevbane(bane)) return await ktx.brevRuter(req,res,bane,{lager,filer,katalog,tillatMiljø});
+  if(erVarselbane(bane)) return await ktx.varselRuter(req, res, bane, { lager, filer, katalog });
 
   if(bane === "/api/nokkel")     return await apiNokkel(req, res, { filer, tillatMiljø });
   if(bane === "/api/jobber")     return await apiJobber(req, res, lager);
@@ -543,6 +545,7 @@ export function lagServer(valg = {}){
   const nett    = valg.nett    ?? lagNett();
   const brukere = valg.brukere ?? lagBrukere({ katalog });
   const brevRuter = lagBrevRuter({nett,modellFor:valg.brevModellFor});
+  const varselRuter = lagVarselRuter({ svar, lesJson, ikkeTillatt, nå: valg.nå });
 
   /* Tre vinduer, tre grunner. Innlogging: 600 000 iterasjoner er
      dyrt for oss også, og pbkdf2 deler trådpulje med fs. Registrering:
@@ -571,7 +574,7 @@ export function lagServer(valg = {}){
            registeret, så den gjøres ikke for statiske filer. */
         const økt = await brukere.verifiserToken(tolkCookies(req.headers.cookie)[COOKIE]);
         const ip  = req.socket.remoteAddress || "ukjent";
-        return await apiRuter(req, res, bane, { brukere, økt, nett, grenser, ip, brevRuter });
+        return await apiRuter(req, res, bane, { brukere, økt, nett, grenser, ip, brevRuter, varselRuter });
       }
 
       await statisk(req, res, bane);
