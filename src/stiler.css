@@ -6,10 +6,12 @@
    ingenting annet — unntaket er --hav, som er appens interaksjonsfarge
    (valgt fane, fokusring, diagramfyll) og aldri står for et varsel.
 
-   Temaet: hele paletten står én gang, i light-dark(). Systemet velger
-   som standard, og color-scheme på :root lar det manuelle valget
-   overstyre begge veier. Bare skygger og nedtrekkspila kan ikke gå
-   gjennom light-dark() — de gjentas i de to blokkene lenger nede.
+   Temaet: Lin og Sot står én gang, i light-dark(). Systemet velger
+   mellom dem som standard, og color-scheme på :root lar det manuelle
+   valget overstyre begge veier. Bare skygger og nedtrekkspila kan ikke
+   gå gjennom light-dark(); de gjentas i de to blokkene lenger nede.
+   Ink og elfenben, Blush og Midnatt er egne paletter som setter hvert
+   token selv, se blokkene etter Sot.
    ============================================================ */
 :root{
   color-scheme:light dark;
@@ -64,7 +66,11 @@
   --varsel-lenke:  light-dark(#A9B7F5, #A2C0D6);
   --varsel-ring:   light-dark(transparent, #3E362C);
 
-  --knapp-hover: light-dark(#2E3238, #DED8CF);
+  /* Primærknappen. I Lin og Sot er den blekket selv; temaene som fyller
+     den med aksentfargen (Blush, Midnatt) setter alle tre. */
+  --primar:       var(--blekk);
+  --primar-blekk: var(--kort);
+  --primar-hover: light-dark(#2E3238, #DED8CF);
   --slor:        light-dark(rgba(24,26,30,.28), rgba(8,6,4,.58));
 
   --r:14px; --r-s:9px; --r-xs:7px;
@@ -98,7 +104,7 @@
    avgrensningen, og skyggen blir bare dybde bak den. Dette og pila er
    det eneste som må stå to ganger; alt annet ligger i light-dark(). */
 @media (prefers-color-scheme:dark){
-  :root:not([data-tema="lys"]){
+  :root:not([data-tema]){
     --loft:0 0 0 1px #262019, 0 1px 3px rgba(0,0,0,.34);
     --loft-2:0 0 0 1px #2F281F, 0 4px 12px rgba(0,0,0,.42);
     --loft-3:0 0 0 1px #362E24, 0 14px 44px rgba(0,0,0,.62);
@@ -113,6 +119,78 @@
   --pil:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23968F84' stroke-width='1.5'/%3E%3C/svg%3E");
 }
 :root[data-tema="lys"]{color-scheme:light}
+
+/* ============================================================
+   De tre navngitte temaene. De står utenfor light-dark(): hvert er
+   én palett, lys eller mørk, og setter hvert token selv. color-scheme
+   låses likevel, så skjemaelementer og rullefelt følger med.
+   Brødtekst, dempet tekst og alle statusmerker klarer 4.5:1 mot sin
+   flate, og diagramtrinnene er kjørt gjennom dataviz-validatoren.
+   ============================================================ */
+
+/* Ink og elfenben: blått blekk på elfenben. Aksenten er blekket selv,
+   så kulør er fortsatt forbeholdt hastegrad. */
+:root[data-tema="ink"]{
+  color-scheme:light;
+  --bunn:#F7F5F0; --kort:#FFFFFF; --innfelt:#FAF8F4; --innfelt-2:#E9E3D8;
+  --blekk:#1A2232; --blekk-2:#4A5263; --blekk-3:#5B6373;
+  --linje:#E8E4DB; --linje-2:#D6D0C4;
+  --ild:#C2392D; --ild-t:#B3332A; --ild-vask:#FAE6E2; --ild-trykk:#9A2B22;
+  --rav:#A8740E; --rav-t:#85600C; --rav-vask:#F6EDD9;
+  --mose:#2D7A55; --mose-t:#2A7350; --mose-vask:#E0EFE7;
+  --hav:#1A2232; --hav-t:#1A2232; --hav-vask:#E9E3D8;
+  /* Aksenten er det mørkeste blekket, så den kan ikke være midttrinnet. */
+  --graf-1:#A9B1C1; --graf-2:#7A869C; --graf-3:#4D5970; --graf-4:#1A2232;
+  --varsel-bunn:#1A2232; --varsel-blekk:#F7F5F0; --varsel-lenke:#B9C4E0; --varsel-ring:transparent;
+  --primar:#1A2232; --primar-blekk:#FFFFFF; --primar-hover:#2C3650;
+  --slor:rgba(26,34,50,.28);
+  --loft:0 1px 2px rgba(26,34,50,.05), 0 4px 14px rgba(26,34,50,.07);
+  --loft-2:0 2px 4px rgba(26,34,50,.06), 0 10px 28px rgba(26,34,50,.10);
+  --loft-3:0 8px 16px rgba(26,34,50,.08), 0 24px 60px rgba(26,34,50,.16);
+  --pil:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%235B6373' stroke-width='1.5'/%3E%3C/svg%3E");
+}
+
+/* Blush: babyrosa flater, rosebær som aksent. Ild er dratt mot
+   oransje, så et hastevarsel aldri forveksles med aksenten. */
+:root[data-tema="blush"]{
+  color-scheme:light;
+  --bunn:#FBF5F6; --kort:#FFFFFF; --innfelt:#FCF7F8; --innfelt-2:#F5E6E9;
+  --blekk:#2B2226; --blekk-2:#5E4E55; --blekk-3:#6E5E65;
+  --linje:#F0E4E7; --linje-2:#E2D0D5;
+  --ild:#C8431F; --ild-t:#B23C1C; --ild-vask:#FBE7DF; --ild-trykk:#9A3318;
+  --rav:#A8740E; --rav-t:#85600C; --rav-vask:#F7EDDA;
+  --mose:#2E7A57; --mose-t:#2A7350; --mose-vask:#E2F0E8;
+  --hav:#A84D62; --hav-t:#913F54; --hav-vask:#F4D6DC;
+  --graf-1:#DDA9B5; --graf-2:#C27A8C; --graf-3:#A84D62; --graf-4:#6F2F40;
+  --varsel-bunn:#2B2226; --varsel-blekk:#FBF5F6; --varsel-lenke:#F2B8C6; --varsel-ring:transparent;
+  --primar:#A84D62; --primar-blekk:#FFFFFF; --primar-hover:#934155;
+  --slor:rgba(43,34,38,.28);
+  --loft:0 1px 2px rgba(43,34,38,.05), 0 4px 14px rgba(43,34,38,.07);
+  --loft-2:0 2px 4px rgba(43,34,38,.06), 0 10px 28px rgba(43,34,38,.10);
+  --loft-3:0 8px 16px rgba(43,34,38,.08), 0 24px 60px rgba(43,34,38,.16);
+  --pil:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%236E5E65' stroke-width='1.5'/%3E%3C/svg%3E");
+}
+
+/* Midnatt: blåsvart med sand som aksent. Som Sot bærer en hårfin
+   ring avgrensningen, og skyggen er bare dybde bak den. */
+:root[data-tema="midnatt"]{
+  color-scheme:dark;
+  --bunn:#0F1520; --kort:#1B2230; --innfelt:#141B28; --innfelt-2:#2A3344;
+  --blekk:#F5F2EC; --blekk-2:#B4BCCB; --blekk-3:#97A0B1;
+  --linje:#232B3A; --linje-2:#313B4D;
+  --ild:#FF7A5C; --ild-t:#FF8D73; --ild-vask:#3A1F22; --ild-trykk:#E0603F;
+  --rav:#D9A350; --rav-t:#E2B266; --rav-vask:#33291A;
+  --mose:#84AE8F; --mose-t:#94BE9F; --mose-vask:#1C2B25;
+  --hav:#D8C3A1; --hav-t:#E3D2B5; --hav-vask:#2A3344;
+  --graf-1:#5E5443; --graf-2:#8C7B60; --graf-3:#D8C3A1; --graf-4:#F0E2C8;
+  --varsel-bunn:#2A3344; --varsel-blekk:#F5F2EC; --varsel-lenke:#E3D2B5; --varsel-ring:#3A4558;
+  --primar:#D8C3A1; --primar-blekk:#1A2232; --primar-hover:#E6D5B8;
+  --slor:rgba(4,7,12,.6);
+  --loft:0 0 0 1px #232B3A, 0 1px 3px rgba(0,0,0,.34);
+  --loft-2:0 0 0 1px #2A3344, 0 4px 12px rgba(0,0,0,.42);
+  --loft-3:0 0 0 1px #313B4D, 0 14px 44px rgba(0,0,0,.62);
+  --pil:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%2397A0B1' stroke-width='1.5'/%3E%3C/svg%3E");
+}
 
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -141,11 +219,11 @@ a{color:inherit}
 .merke{display:block;padding:0 8px}
 .merke__navn{margin:0;font-size:17px;font-weight:700;letter-spacing:-.024em;line-height:1.15}
 
-.nyknapp{width:100%;padding:11px 14px;background:var(--blekk);color:var(--kort);
+.nyknapp{width:100%;padding:11px 14px;background:var(--primar);color:var(--primar-blekk);
          border:0;border-radius:var(--r-s);font-weight:600;font-size:14px;cursor:pointer;
          display:flex;align-items:center;justify-content:center;gap:8px;
          transition:background .12s ease}
-.nyknapp:hover{background:var(--knapp-hover)}
+.nyknapp:hover{background:var(--primar-hover)}
 
 .nav{display:flex;flex-direction:column;gap:2px}
 .nav__merke{padding:0 8px;margin-bottom:8px}
@@ -498,8 +576,8 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
 .knapp{padding:10px 15px;background:var(--kort);border:0;border-radius:var(--r-s);cursor:pointer;
        font-weight:600;font-size:14px;box-shadow:var(--loft)}
 .knapp:hover{box-shadow:var(--loft-2)}
-.knapp--primar{background:var(--blekk);color:var(--kort)}
-.knapp--primar:hover{background:var(--knapp-hover)}
+.knapp--primar{background:var(--primar);color:var(--primar-blekk)}
+.knapp--primar:hover{background:var(--primar-hover)}
 .knapp--stille{background:none;box-shadow:none;color:var(--blekk-2);font-weight:500}
 .knapp--stille:hover{background:var(--innfelt);box-shadow:none}
 .knapp--fare{color:var(--ild-t)}
@@ -725,7 +803,7 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
 /* Mens noe pågår blir knappen stående der den står, men slutter å svare. */
 .knapp:disabled{cursor:default;opacity:.5}
 .knapp:disabled:hover{box-shadow:var(--loft)}
-.knapp--primar:disabled:hover{background:var(--blekk)}
+.knapp--primar:disabled:hover{background:var(--primar)}
 
 /* ---------- varsel ---------- */
 .varsel{position:fixed;left:calc(50% + var(--side)/2);bottom:26px;transform:translate(-50%,14px);z-index:70;
