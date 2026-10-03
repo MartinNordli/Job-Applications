@@ -20,3 +20,4 @@ src-tauri/gen/
 # Lokalt agent-oppsett for Claude Code, ikke en del av appen.
 .claude/
 data.sikkerhetskopi-*/
+src-tauri/icons/master.png
