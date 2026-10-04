@@ -207,10 +207,34 @@ fn profiler(rot: &Path) -> Result<Vec<String>, String> {
         .unwrap_or_default())
 }
 
-/* Appen og en bakgrunnskjøring i samme prosess skal ikke lese den
-   samme loggen samtidig. Mellom prosesser er verste utfall ett
-   dobbeltvarsel, og det er ikke verdt en fillås. */
+/* To sjekker skal aldri lese den samme loggen samtidig: begge ville
+   sett en logg uten varselet og begge sendt det. Det skjer i praksis,
+   ikke bare i teorien. Når appen installerer agenten, kjører launchd
+   den med en gang (RunAtLoad), i samme sekund som appen selv sjekker
+   ved oppstart. Derfor en lås i prosessen og en fillås mellom
+   prosessene. Låsen slippes når filen lukkes, også om prosessen dør. */
 static KØ: Mutex<()> = Mutex::new(());
+const LÅSEFIL: &str = ".varsel.lock";
+
+struct Fillås(#[allow(dead_code)] std::fs::File);
+
+fn lås_katalog(rot: &Path) -> Result<Fillås, String> {
+    std::fs::create_dir_all(rot).map_err(|e| format!("kunne ikke lage {}: {e}", rot.display()))?;
+    let f = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(rot.join(LÅSEFIL))
+        .map_err(|e| format!("kunne ikke åpne låsen: {e}"))?;
+    #[cfg(unix)]
+    {
+        use std::os::fd::AsRawFd;
+        if unsafe { libc::flock(f.as_raw_fd(), libc::LOCK_EX) } != 0 {
+            return Err(format!("kunne ikke låse: {}", std::io::Error::last_os_error()));
+        }
+    }
+    Ok(Fillås(f))
+}
 
 /// `bare` = én profil (appen), `None` = alle (bakgrunnsjobben).
 pub fn sjekk_katalog(
@@ -221,6 +245,7 @@ pub fn sjekk_katalog(
     avsender: &dyn Avsender,
 ) -> Result<usize, String> {
     let _lås = KØ.lock().unwrap_or_else(|e| e.into_inner());
+    let _fillås = lås_katalog(rot)?;
     let ider = match bare {
         Some(id) => vec![id.to_string()],
         None => profiler(rot)?,
@@ -517,6 +542,20 @@ mod tester {
         assert!(!rot.join("brukere/aaaaaaaaaaaaaaaa").join(LOGGFIL).exists());
         let opptak = Opptak(RefCell::new(Vec::new()), false);
         assert_eq!(sjekk_katalog(&rot, Some("aaaaaaaaaaaaaaaa"), i_dag, "T", &opptak).unwrap(), 1);
+        let _ = std::fs::remove_dir_all(&rot);
+    }
+
+    #[test]
+    fn fillåsen_holder_en_annen_ute_til_den_slippes() {
+        use std::os::fd::AsRawFd;
+        let rot = katalog("lås");
+        let første = lås_katalog(&rot).unwrap();
+        /* En annen åpning av filen, som i en annen prosess. */
+        let annen = std::fs::OpenOptions::new().write(true).open(rot.join(LÅSEFIL)).unwrap();
+        let prøv = || unsafe { libc::flock(annen.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) };
+        assert_ne!(prøv(), 0, "låsen skulle vært tatt");
+        drop(første);
+        assert_eq!(prøv(), 0, "låsen skulle vært sluppet");
         let _ = std::fs::remove_dir_all(&rot);
     }
 
