@@ -15,6 +15,7 @@ Appen finnes i to utgaver med samme kode og samme data:
 
 - [Kom i gang](#kom-i-gang)
 - [Oversikten](#oversikten)
+- [Fristvarsel](#fristvarsel)
 - [Legg til søknader](#legg-til-søknader)
 - [Import fra lenke](#import-fra-lenke)
 - [Søknadsbrev](#søknadsbrev)
@@ -131,7 +132,18 @@ Filtrene gjelder også i **Tall**.
 
 ### Tema og tastatur
 
-Fargetemaet kan være System, Lys eller Mørk.
+Fargetemaet velges under **Innstillinger** i sidepanelet.
+På smal skjerm er innstillingene et ikon i toppstripa.
+
+| Tema | Hva det er |
+| --- | --- |
+| System | Lin eller Sot, etter hva Macen står på |
+| Lin | Lys, varm og nøytral |
+| Sot | Mørk, varm og nøytral |
+| Ink og elfenben | Lys, med blått blekk på elfenben |
+| Blush | Lys og babyrosa, med rosebær som aksent |
+| Midnatt | Mørk og blå, med sand som aksent |
+
 Valget huskes i nettleseren eller appen og havner aldri i datafilen.
 
 | Tast | Handling |
@@ -142,6 +154,33 @@ Valget huskes i nettleseren eller appen og havner aldri i datafilen.
 | `Enter` | Lagre skjemaet, hent lenken eller legg til fra notat |
 
 Snarveiene er inaktive mens innloggingen står, ellers ville `n` åpnet skjemaet bak den.
+
+## Fristvarsel
+
+Hired sier fra med et varsel øverst til høyre på skjermen når en søknadsfrist nærmer seg.
+Under **Innstillinger** slår du varselet av eller på og velger hvor lenge før fristen det skal komme: 1, 2, 3, 5, 7 eller 14 dager.
+Standard er på, én dag før.
+
+Hver søknad varsles én gang per frist.
+Flytter du fristen, kan den varsle på nytt.
+Bare søknader med status «Å søke på» varsles, og en frist som er i dag regnes også med, så en Mac som var slått av i går sier fra i dag.
+
+**I Mac-appen** kommer varselet også når Hired er lukket.
+Appen legger en bakgrunnsjobb i `~/Library/LaunchAgents/no.nordli.jobbsoknader.fristvarsel.plist` første gang den startes fra `/Applications`.
+Jobben kjører kl. 09 og når du logger inn, og macOS viser én gang beskjeden om at et bakgrunnsobjekt er lagt til.
+Første varsel ber macOS om lov til å vise varsler for Hired.
+Bakgrunnsjobben fjernes slik:
+
+```sh
+launchctl bootout gui/$(id -u)/no.nordli.jobbsoknader.fristvarsel
+rm ~/Library/LaunchAgents/no.nordli.jobbsoknader.fristvarsel.plist
+```
+
+**I nettleseren** kommer varselet mens Hired er åpen i en fane.
+Nettleseren må gi lov først, og det gjør du med **Tillat varsler** under Innstillinger.
+Er Mac-appen installert, varsler bakgrunnsjobben også for nettleserversjonen, siden begge bruker samme datakatalog.
+
+Appen, bakgrunnsjobben og nettleseren fører det samme registeret over hva som er varslet, så samme frist gir ikke flere varsler.
 
 ## Legg til søknader
 
@@ -371,6 +410,8 @@ Flytt innholdet inn i katalogen over mens appen og serveren er avslått.
     nokkel.txt              Anthropic-nøkkelen, modus 0600
     nokkel-openai.txt       OpenAI-nøkkelen, modus 0600
     cv.json                 CV-teksten
+    varsel.json             fristvarselet: på eller av, og hvor mange dager før
+    varslet.json            fristene som alt er varslet
     brev-<jobb-id>.json     brev, grunnlag og versjoner for én søknad
 ```
 
@@ -431,8 +472,8 @@ Repoet er offentlig, og filene inneholder ekte søknader.
 
 ```sh
 npm test          # lagerlogikk, server, kontoer, import, brev og dokumenter
-npm run test:ui   # nettlesertest av brevflyten med syntetiske modellsvar
-npm run test:rust # fil-, nett- og brevoperasjonene i Mac-appen
+npm run test:ui   # nettlesertester av brevflyten og innstillingene
+npm run test:rust # fil-, nett-, brev- og varseloperasjonene i Mac-appen
 ```
 
 `npm test` kjører alle `server/*.test.mjs` med `node:test`.
@@ -464,9 +505,9 @@ Kjøring mot betalte modeller og vurdering av skrivekvalitet er beskrevet i [`ev
 ```
 index.html               markup
 hent-gamle-data.html     henter søknader ut av den første utgavens nettleserlager
-src/stiler.css           «Lin», designsystemet
+src/stiler.css           designsystemet og fargetemaene
 src/skrifter.css         Familjen Grotesk og Geist Mono, lagt inn lokalt
-src/tema-tidlig.js       setter fargetemaet før første maling
+src/tema-tidlig.js       temaene, og det valgte satt før første maling
 src/app.js               appen: visninger, skjema, eksport og hendelser
 src/felles.mjs           statuser, sektorer og validering, delt av alle lag
 src/startliste.js        søknadene appen starter med
@@ -496,6 +537,9 @@ src/annonsetekst.mjs     annonseteksten ut av en hentet side
 src/brev-dokumenter.mjs  lesing av CV og eksport av brev
 src/brev-dokumentmotor.mjs  PDF og Word, pakkes til src/vendor/
 
+src/fristvarsel.mjs      når en frist varsles, og med hvilke ord
+src/varsling.js          fristvarselet i flaten, velger modus
+
 server/server.mjs        statiske filer og API-et
 server/brukere.mjs       registeret, PBKDF2, cookier og ett lager per konto
 server/katalog.mjs       hvor datakatalogen ligger
@@ -505,14 +549,18 @@ server/nokkel.mjs        API-nøkkelen, inn og aldri ut
 server/brev-api.mjs      endepunktene for CV, brev, nøkler og kjøringer
 server/brev-modell.mjs   modellkall og profilnøkler for brevet
 server/brevlager.mjs     CV- og brevfilene, med lås
+server/varsel-api.mjs    varselinnstillingen og sjekken for nettleseren
 
 src-tauri/src/lib.rs     filoperasjonene appen bruker
 src-tauri/src/nett.rs    henting og modellkall for importen i appen
 src-tauri/src/brev.rs    brevfiler, nøkler, modellkall og nedlasting i appen
+src-tauri/src/varsel.rs  fristvarselet i macOS og bakgrunnsjobben
 
 scripts/bygg-front.mjs       samler frontenden i dist/ for Tauri
 scripts/bygg-dokumenter.mjs  pakker dokumentmotoren med esbuild
 scripts/test-brev-browser.mjs  nettlesertesten av brevflyten
+scripts/test-innstillinger-browser.mjs  nettlesertesten av temaene og fristvarselet
+scripts/lag-ikon.py      lager appikonet fra src-tauri/icons/kilde.png
 evals/                   evaluering av søknadsbrev
 temaer/                  fargestudier, ikke i bruk av appen
 specs/job-tracker/       filbasert lagring: hva som ble bygget og hvorfor
