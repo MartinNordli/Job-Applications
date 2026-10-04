@@ -7,7 +7,7 @@
     "start": "node server/server.mjs",
     "test": "node --test server/*.test.mjs",
     "pretest:ui": "node scripts/bygg-dokumenter.mjs",
-    "test:ui": "node scripts/test-brev-browser.mjs",
+    "test:ui": "node scripts/test-brev-browser.mjs && node scripts/test-innstillinger-browser.mjs",
     "bygg:dokumenter": "node scripts/bygg-dokumenter.mjs",
     "bygg:front": "node scripts/bygg-front.mjs",
     "tauri": "tauri",

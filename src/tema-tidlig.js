@@ -16,7 +16,7 @@
    Uten data-tema følger appen systemet, mellom Lin og Sot. */
 window.TEMAER = [
   { id: "system",  navn: "System",          om: "Lin eller Sot, som Macen",
-    prøve: ["#EBE8E1", "#17181A", "#16130F", "#F2EEE8"] },
+    prøve: ["#EBE8E1", "#3D52D5", "#16130F", "#7391A8"] },
   { id: "lys",     navn: "Lin",             om: "Lys, varm og nøytral",
     prøve: ["#EBE8E1", "#17181A", "#3D52D5", "#E6E3DA"] },
   { id: "mork",    navn: "Sot",             om: "Mørk, varm og nøytral",

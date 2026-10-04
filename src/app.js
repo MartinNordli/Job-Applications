@@ -8,6 +8,8 @@ import { importerFraLenke, importtall, TRINN } from "./import.js";
 import * as Økt from "./okt.js";
 import { krevØkt, krevØktIgjen, portenStår } from "./innlogging.js";
 import { åpneBrevflate } from "./brevflate.js";
+import * as Varsling from "./varsling.js";
+import { DAGVALG } from "./fristvarsel.mjs";
 
 const NOKKEL = "jobbsoknader-2027";
 window.__jobbsoknaderKjorer = true;   /* se fallback-skriptet i index.html */
@@ -551,6 +553,7 @@ const SKUFFTITTEL = {
   lim:     "Legg til søknad",
   lenke:   "Legg til søknad",
   eksport: "Dataene dine",
+  innstillinger: "Innstillinger",
   flytt:   "Flytt dataene hit",
   gjenopprett: "Datafilen mangler",
   bekreft: "Er du sikker?"
@@ -678,6 +681,33 @@ function tegnSkuff(){
     b.innerHTML = '<button class="knapp" data-gjor="lukk">Lukk</button>';
     visImporttall();
     visNokkel();
+    return;
+  }
+
+  if(skuffModus === "innstillinger"){
+    const valgt = lestTema();
+    k.innerHTML = '<section class="innst" aria-labelledby="temaTittel">'
+      + '<p class="merkelinje innst__tittel" id="temaTittel">Fargetema</p>'
+      + '<fieldset class="temaer"><legend class="skjult">Fargetema</legend>'
+      + window.TEMAER.map(t => '<label class="tema">'
+          + '<input type="radio" name="tema" value="' + t.id + '"' + (t.id === valgt ? " checked" : "") + '>'
+          + '<span class="tema__prove" aria-hidden="true">'
+          + t.prøve.map(f => '<i style="background:' + f + '"></i>').join("") + '</span>'
+          + '<span class="tema__navn">' + esc(t.navn) + '</span>'
+          + '<span class="tema__om">' + esc(t.om) + '</span></label>').join("")
+      + '</fieldset>'
+      + '<p class="felt__hjelp">Gjelder denne ' + (Lagring.I_APP ? "maskinen" : "nettleseren") + '.</p></section>'
+      + '<section class="innst" aria-labelledby="varselTittel">'
+      + '<p class="merkelinje innst__tittel" id="varselTittel">Fristvarsel</p>'
+      + '<label class="avkrys"><input type="checkbox" id="varselPa" disabled> Varsle meg før søknadsfrister</label>'
+      + '<div class="innst__rad"><label class="felt__merke" for="varselDager">Hvor lenge før</label>'
+      + '<select class="felt__inn" id="varselDager" disabled>'
+      + DAGVALG.map(d => '<option value="' + d + '">' + antall(d, "dag", "dager") + ' før</option>').join("")
+      + '</select></div>'
+      + '<p class="felt__hjelp" id="varselHjelp" role="status" aria-live="polite"></p>'
+      + '<button class="knapp innst__tillat" type="button" data-gjor="tillatVarsler" id="varselTillat" hidden>Tillat varsler</button></section>';
+    b.innerHTML = '<button class="knapp" data-gjor="lukk">Lukk</button>';
+    visVarsel();
     return;
   }
 
@@ -1251,6 +1281,70 @@ function fjernNokkel(){
   });
 }
 
+/* Fristvarselet. Innstillingen ligger i profilens katalog, ikke i
+   nettleseren: bakgrunnsjobben i Mac-appen må kunne lese den når appen
+   er lukket. Hva som varsles, står i src/fristvarsel.mjs. */
+let varselnr = 0;
+async function visVarsel(){
+  const nr = ++varselnr;
+  const r = await Varsling.hentInnstilling();
+  const på = $("#varselPa"), dager = $("#varselDager");
+  if(!på || skuffModus !== "innstillinger" || nr !== varselnr) return;
+  if(!r.ok){ visVarselhjelp(r.melding); return; }
+  /* En verdi skrevet for hånd i filen, som 4, skal vises som den er. */
+  if(!DAGVALG.includes(r.dagerFør))
+    dager.insertAdjacentHTML("beforeend", '<option value="' + r.dagerFør + '">' + antall(r.dagerFør, "dag", "dager") + " før</option>");
+  på.checked = r.på;
+  dager.value = String(r.dagerFør);
+  på.disabled = false;
+  dager.disabled = !r.på;
+  visVarselhjelp();
+}
+
+function visVarselhjelp(feil){
+  const el = $("#varselHjelp"), på = $("#varselPa");
+  if(!el || !på) return;
+  const t = Varsling.tillatelse();
+  const tekst = feil ? feil
+    : !på.checked      ? "Ingen varsler. Fristene står fortsatt øverst i listen."
+    : t === "app"      ? "Varselet kommer øverst til høyre på skjermen, også når Hired er lukket. Første gang spør macOS om lov."
+    : t === "granted"  ? "Varselet kommer øverst til høyre mens Hired er åpen i nettleseren. Med Mac-appen installert kommer det også når den er lukket."
+    : t === "denied"   ? "Nettleseren har blokkert varsler fra denne siden. Slå dem på i nettleserens innstillinger for nettstedet."
+    : t === "ustøttet" ? "Denne nettleseren kan ikke vise varsler."
+    :                    "Nettleseren må gi lov før den kan vise varsler.";
+  el.textContent = tekst;
+  /* Lov må gis med et klikk: nettlesere avviser en forespørsel som
+     ikke kommer fra brukeren selv. */
+  const tillat = $("#varselTillat");
+  if(tillat) tillat.hidden = !!feil || !på.checked || t !== "default";
+}
+
+async function lagreVarsel(){
+  const på = $("#varselPa"), dager = $("#varselDager");
+  if(!på || på.disabled) return;
+  const ønsket = { på: på.checked, dagerFør: Number(dager.value) };
+  dager.disabled = !ønsket.på;
+  if(ønsket.på && Varsling.tillatelse() === "default") await Varsling.beOmTillatelse();
+  på.disabled = true;
+  const r = await Varsling.settInnstilling(ønsket);
+  if(!på.isConnected) return;
+  på.disabled = false;
+  if(!r.ok){ varsle(r.melding); visVarsel(); return; }
+  visVarselhjelp();
+  if(r.på) Varsling.sjekk();
+}
+
+/* Etter en lagring kan en ny frist ha kommet innenfor rekkevidde. Flere
+   lagringer på rad gir én sjekk. */
+let sjekkTid = null;
+function sjekkSnart(){
+  clearTimeout(sjekkTid);
+  sjekkTid = setTimeout(() => Varsling.sjekk(), 1500);
+}
+/* Står appen åpen over natten, fanger døgnskiftet det nye døgnet. En
+   sjekk i timen tar resten, som en Mac som har sovet. */
+setInterval(() => Varsling.sjekk(), 60 * 60 * 1000);
+
 /* ============================================================
    13. Hendelser
    ============================================================ */
@@ -1268,20 +1362,20 @@ if(Lagring.I_APP){
 }
 
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-gjor],[data-modus],[data-temavalg],[data-visning],#neste,#apneNy,#lukkSkuff,#apneEksport,#nullstill,#lagreSkjema,#lagreLim,#hentLenke,#loggUt");
+  const t = e.target.closest("[data-gjor],[data-modus],[data-visning],#neste,#apneNy,#lukkSkuff,#apneEksport,#apneInnstillinger,#nullstill,#lagreSkjema,#lagreLim,#hentLenke,#loggUt");
   if(!t) return;
 
   if(t.id === "loggUt"){ loggUt(); return; }
 
   if(t.id === "apneNy"){ apneSkuff("ny"); return; }
   if(t.id === "apneEksport"){ apneSkuff("eksport"); return; }
+  if(t.id === "apneInnstillinger"){ apneSkuff("innstillinger"); return; }
   if(t.id === "lukkSkuff"){ lukkSkuff(); return; }
   if(t.id === "nullstill"){ sok = ""; filtSektor = ""; filtSted = ""; $("#sok").value = ""; tegn(); return; }
   if(t.id === "lagreSkjema"){ lagreSkjema(); return; }
   if(t.id === "lagreLim"){ lagreLim(); return; }
   if(t.id === "hentLenke"){ hentFraLenke(); return; }
   if(t.id === "neste"){ if(t.dataset.id) hoppTilSoknad(t.dataset.id); return; }
-  if(t.dataset.temavalg){ settTema(t.dataset.temavalg); return; }
 
   if(t.dataset.visning){
     visning = t.dataset.visning;
@@ -1322,6 +1416,7 @@ document.addEventListener("click", e => {
   else if(g === "importerJson") importerJson();
   else if(g === "lagreNokkel") lagreNokkel();
   else if(g === "fjernNokkel") fjernNokkel();
+  else if(g === "tillatVarsler") Varsling.beOmTillatelse().then(() => { visVarselhjelp(); Varsling.sjekk(); });
   else if(g === "flyttHit") flyttHit();
   else if(g === "gjenopprettKopi") gjenopprettKopi();
   else if(g === "brukStartliste"){ data = silt(fraStart().concat(data)); taValget(); lagre(); tegn(); lukkSkuff(); varsle("Startet med startlisten"); }
@@ -1359,6 +1454,10 @@ $("#sok").addEventListener("input", e => { sok = e.target.value; tegn(); });
 $("#filtSektor").addEventListener("change", e => { filtSektor = e.target.value; tegn(); });
 $("#filtSted").addEventListener("change", e => { filtSted = e.target.value; tegn(); });
 document.addEventListener("input", e => { if(e.target.id === "limInn") tegnForhaand(e.target.value); });
+document.addEventListener("change", e => {
+  if(e.target.name === "tema") settTema(e.target.value);
+  else if(e.target.id === "varselPa" || e.target.id === "varselDager") lagreVarsel();
+});
 
 document.addEventListener("keydown", fokusfelle);
 document.addEventListener("keydown", e => {
@@ -1398,10 +1497,13 @@ document.addEventListener("keydown", e => {
 const TEMA_NOKKEL = "jobbsoknader-tema";
 const morktSystem = matchMedia("(prefers-color-scheme:dark)");
 
+/* Listen over temaer står i src/tema-tidlig.js, som har kjørt før dette. */
+const erTema = t => t !== "system" && window.TEMAER.some(v => v.id === t);
+
 function lestTema(){
   try{
     const t = localStorage.getItem(TEMA_NOKKEL);
-    return t === "lys" || t === "mork" ? t : "system";
+    return erTema(t) ? t : "system";
   }catch(e){ return "system"; }
 }
 
@@ -1412,7 +1514,7 @@ function settTema(valg){
     if(valg === "system") localStorage.removeItem(TEMA_NOKKEL);
     else localStorage.setItem(TEMA_NOKKEL, valg);
   }catch(e){}   /* privat vindu eller full lagring: temaet gjelder økta ut */
-  $$("#temavalg .modus__knapp").forEach(b => b.setAttribute("aria-checked", String(b.dataset.temavalg === valg)));
+  $$('#skuff input[name="tema"]').forEach(r => { r.checked = r.value === valg; });
   følgTemafarge();
 }
 
@@ -1453,6 +1555,7 @@ const LAGRETEKST = {
 };
 
 Lagring.påTilstand(t => {
+  if(t.navn === "lagret") sjekkSnart();
   elLagret.dataset.t = t.navn;
   elLagret.textContent = (LAGRETEKST[t.navn] || (() => ""))(t);
 
@@ -1581,6 +1684,7 @@ function sjekkDøgn(){
   if(nå.getTime() === I_DAG.getTime()) return;
   I_DAG = nå;
   tegn();
+  Varsling.sjekk();
 }
 addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") sjekkDøgn(); });
 addEventListener("focus", sjekkDøgn);
@@ -1602,6 +1706,7 @@ async function start(){
   if(økt.migreringsfeil)
     varsle("Fikk ikke flyttet inn det som lå i datakatalogen fra før");
   await hentData();
+  Varsling.sjekk();
   if(økt.migrert && økt.migrert.includes("jobber.json") && data.length)
     varsle("Tok med " + antall(data.length, "søknad", "søknader") + " som lå her fra før");
 }

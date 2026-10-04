@@ -115,7 +115,7 @@ try{
   // mikrolinjene fra hverandre i høyden. Dette er den smaleste bredden.
   assert.equal(new Set(await page.$$eval(".brev__steg__mikro",e=>e.map(m=>m.getBoundingClientRect().top))).size,1);
   await page.getByRole("tab",{name:"Grunnlag",exact:true}).click();
-  await page.getByRole("button",{name:"Innstillinger",exact:true}).click();
+  await page.locator("#skuff").getByRole("button",{name:"Innstillinger",exact:true}).click();
   // Panelet bytter ut kildemargen, det legger seg ikke oppå den.
   assert.equal(await page.locator("#brevGrunnlag").isHidden(),true);
   await page.screenshot({path:path.join(dir,"07-innstillinger-mobil.png"),fullPage:true});
