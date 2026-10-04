@@ -1,5 +1,5 @@
 /* ============================================================
-   Fristvarsel — systemvarselet øverst til høyre, også når appen
+   Fristvarsel: systemvarselet øverst til høyre, også når appen
    er lukket.
 
    Regelen og ordene er en kopi av src/fristvarsel.mjs. Kopien finnes

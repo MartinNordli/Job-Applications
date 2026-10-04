@@ -1,5 +1,5 @@
 /* ============================================================
-   Varsling — fristvarselet sett fra flaten.
+   Varsling: fristvarselet sett fra flaten.
 
    To grener, ett grensesnitt, som src/okt.js:
 

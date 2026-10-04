@@ -1,5 +1,5 @@
 /* ============================================================
-   Fristvarsel over HTTP — innstillingen og runden for nettleseren.
+   Fristvarsel over HTTP: innstillingen og runden for nettleseren.
 
    GET  /api/varsel        → { på, dagerFør }
    PUT  /api/varsel        ← { på, dagerFør }  → 200 med det lagrede

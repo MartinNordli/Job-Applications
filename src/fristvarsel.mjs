@@ -1,5 +1,5 @@
 /* ============================================================
-   Fristvarsel — når en søknadsfrist skal varsles, og med hvilke ord.
+   Fristvarsel: når en søknadsfrist skal varsles, og med hvilke ord.
 
    Uten filsystem og uten klokke: den som kaller sender inn dagens
    dato, søknadene, innstillingen og loggen over det som alt er
