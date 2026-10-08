@@ -71,16 +71,6 @@ Den første kontoen overtar det som allerede ligger i datakatalogen, se [Kontoer
 Finnes det søknader i nettleserens gamle lager, spør appen om de skal flyttes inn, og kopien i nettleseren blir liggende urørt.
 Finnes det ingen data noe sted, starter den første kontoen med startlisten.
 
-### Har du brukt den aller første utgaven?
-
-Den første `index.html` ble åpnet som en fil, og nettleseren holder det lageret adskilt fra `http://127.0.0.1:4173`.
-Appen finner altså ikke de gamle søknadene av seg selv.
-Slik henter du dem:
-
-1. Åpne `hent-gamle-data.html` på samme måte som du åpnet den gamle appen, altså ved å dobbeltklikke filen i samme nettleser.
-2. Kopier JSON-en den viser.
-3. Start appen, velg **Dataene dine**, lim inn under **Lim inn JSON** og trykk **Erstatt listen med dette**. Du kan angre.
-
 ## Oversikten
 
 ### Visninger
@@ -509,7 +499,6 @@ Kjøring mot betalte modeller og vurdering av skrivekvalitet er beskrevet i [`ev
 
 ```
 index.html               markup
-hent-gamle-data.html     henter søknader ut av den første utgavens nettleserlager
 src/stiler.css           designsystemet og fargetemaene
 src/skrifter.css         Familjen Grotesk og Geist Mono, lagt inn lokalt
 src/tema-tidlig.js       temaene, og det valgte satt før første maling

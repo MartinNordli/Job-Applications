@@ -469,7 +469,6 @@ async function apiNokkel(req, res, ktx){
    den oppløste stien, så «/src/../..» ikke kan skjule seg bak prefikset. */
 function lovligFil(full){
   return full === path.join(ROT, "index.html")
-      || full === path.join(ROT, "hent-gamle-data.html")
       || full.startsWith(path.join(ROT, "src") + path.sep)
       || full.startsWith(path.join(ROT, "temaer") + path.sep);
 }
