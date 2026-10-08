@@ -54,6 +54,7 @@ export const SEKTOR_FOR = {
 };
 
 export const ER_SENDT = s => s === "sent" || s === "interview";
+export const FIKK_INTERVJU = s => s === "interview" || s === "accepted";
 export const ER_ARKIV = s => s === "rejected" || s === "expired"
                           || s === "accepted" || s === "trukket";
 
@@ -192,6 +193,11 @@ export function validerSoknad(inn, valg = {}){
      kjent jobbtype er helt vanlig, og «annet» ville løyet. */
   const jobbtype = Object.hasOwn(JOBBTYPER, tekst(o.jobbtype)) ? tekst(o.jobbtype) : "";
 
+  /* Om søknaden noen gang ga intervju. Statusen sier bare hvor den står
+     nå, og et avslag etter intervjuet ville ellers slettet sporet av det.
+     Står den på intervju eller videre, har den åpenbart fått et. */
+  const intervju = o.intervju === true || FIKK_INTERVJU(status);
+
   if(feil.length) return { ok: false, feil, verdi: null };
 
   return {
@@ -201,7 +207,7 @@ export function validerSoknad(inn, valg = {}){
       id: id || valg.lagId(),
       selskap, stilling,
       lenke: l.verdi,
-      sted, frist, status, sektor, jobbtype, notat, sendtDato,
+      sted, frist, status, sektor, jobbtype, notat, sendtDato, intervju,
       opprettet: erIsoTid(o.opprettet) ? o.opprettet : null,
       oppdatert: erIsoTid(o.oppdatert) ? o.oppdatert : null
     }

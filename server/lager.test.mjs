@@ -48,8 +48,16 @@ test("ukjente felt faller bort", () => {
   assert.equal("hemmelig" in r.verdi, false);
   assert.deepEqual(Object.keys(r.verdi).sort(), [
     "frist","id","jobbtype","lenke","notat","opprettet","oppdatert","sektor",
-    "selskap","sendtDato","sted","stilling","status"
+    "intervju","selskap","sendtDato","sted","stilling","status"
   ].sort());
+});
+
+test("intervju: bare ekte true teller, og intervju- eller videre-status gir det alltid", () => {
+  assert.equal(validerSoknad(rad()).verdi.intervju, false);
+  assert.equal(validerSoknad(rad({ status: "rejected", intervju: true })).verdi.intervju, true);
+  assert.equal(validerSoknad(rad({ status: "rejected", intervju: "true" })).verdi.intervju, false);
+  assert.equal(validerSoknad(rad({ status: "interview" })).verdi.intervju, true);
+  assert.equal(validerSoknad(rad({ status: "accepted", intervju: false })).verdi.intervju, true);
 });
 
 test("duplikat id forkastes, første vinner", () => {

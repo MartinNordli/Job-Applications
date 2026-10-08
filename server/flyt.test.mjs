@@ -166,6 +166,23 @@ test("statusbytte til sendt tar med sendtDato, og arkivering overlever rundturen
     "sendtDato hører til søknaden, ikke til statusen den har nå");
 });
 
+test("et intervju blir stående når søknaden senere får avslag", async t => {
+  const { Lagring, minKatalog, stopp } = await start();
+  t.after(stopp);
+
+  await Lagring.hent();
+  Lagring.lagre([rad({ status: "interview", sendtDato: "2026-09-05" })]);
+  await Lagring.nåMedEnGang();
+  let dok = await påDisk(minKatalog);
+  assert.equal(dok.jobber[0].intervju, true);
+
+  Lagring.lagre([{ ...dok.jobber[0], status: "rejected" }]);
+  await Lagring.nåMedEnGang();
+  dok = await påDisk(minKatalog);
+  assert.equal(dok.jobber[0].status, "rejected");
+  assert.equal(dok.jobber[0].intervju, true, "intervjuet hører til søknaden, ikke til statusen den har nå");
+});
+
 test("å slette og angre gir raden tilbake på sin plass", async t => {
   const { Lagring, minKatalog, stopp } = await start();
   t.after(stopp);
