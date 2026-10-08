@@ -13,7 +13,7 @@
 import * as Lagring from "./lagring.js";
 import * as Økt from "./okt.js";
 import { SEKTOR_FOR } from "./felles.mjs";
-import { LOGGFIL, lagLinje, leggTil, sammendrag } from "./importlogg.mjs";
+import { LOGGFIL, lagLinje, leggTil } from "./importlogg.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel,
          tolkModellsvar, slåSammen, sektorForSelskap, manglendeFelt, finnesFraFor } from "./importlogikk.mjs";
 
@@ -148,23 +148,6 @@ async function skrivLogg(linje){
   let fra = "";
   try{ fra = (await f.lesTekst(LOGGFIL)) ?? ""; }catch{ /* første gang */ }
   await f.skrivAtomisk(LOGGFIL, leggTil(fra, linje));
-}
-
-/* Tre tall om hva importen har kostet. `null` når ingenting er importert. */
-export async function importtall(){
-  if(!Lagring.I_APP){
-    try{
-      const r = await fetch("/api/importlogg");
-      /* En 401 her sier ingenting brukeren har bedt om å få vite —
-         tallene er en opplysning i skuffen, ikke en handling. Porten
-         kommer opp av det neste kallet som faktisk betyr noe. */
-      return r.ok ? (await r.json()).sammendrag : null;
-    }catch{ return null; }
-  }
-  try{
-    const f = await filer();
-    return sammendrag((await f.lesTekst(LOGGFIL)) ?? "");
-  }catch{ return null; }
 }
 
 /* Rust sender feil som strenger over invoke. */

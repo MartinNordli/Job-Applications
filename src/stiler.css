@@ -448,7 +448,7 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
    Diagrammene deler én kulørskala (--graf-1…4) og lar tallene stå i
    tekstfargene. En strek som bærer verdi er tynn; akser og hjelpelinjer
    trekker seg tilbake. */
-.fliser{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.fliser{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:16px}
 .nokkel{background:var(--kort);border-radius:var(--r);box-shadow:var(--loft);padding:17px 19px 19px}
 .nokkel__merke{margin-bottom:11px}
 .nokkel__verdi{margin:0;font-size:29px;font-weight:600;letter-spacing:-.035em;line-height:1;
@@ -460,7 +460,7 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
 .kort{background:var(--kort);border-radius:var(--r);box-shadow:var(--loft);padding:20px 22px 22px;margin-bottom:16px}
 .kort__tittel{margin:0;font-size:15.5px;font-weight:600;letter-spacing:-.014em}
 .kort__und{margin:4px 0 20px;font-size:12.5px;color:var(--blekk-3);line-height:1.5}
-.rutenett{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.rutenett{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-bottom:16px}
 .rutenett > .kort{margin-bottom:0}
 .tegn{display:flex;gap:16px;margin:-8px 0 16px;font-size:12px;color:var(--blekk-2)}
 .tegn__post{display:flex;align-items:center;gap:6px}
@@ -529,6 +529,11 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
               display:flex;align-items:center;justify-content:center;gap:6px;
               transition:background .12s ease,color .12s ease}
 .modus__knapp:hover{color:var(--blekk)}
+/* Bryteren i «Legg til søknad» blir liggende øverst når skjemaet rulles.
+   Innpakningen dekker hele bredden av skuffen og litt under, så feltene
+   glir inn under en ren kant i stedet for å skimtes rundt hjørnene. */
+.modusfeste{position:sticky;top:0;z-index:2;background:var(--kort);margin:0 -22px 8px;padding:0 22px 12px}
+.modusfeste .modus{margin-bottom:0}
 .modus__knapp[aria-selected="true"],.modus__knapp[aria-checked="true"]{
   background:var(--kort);color:var(--blekk);font-weight:600;box-shadow:var(--loft)}
 
@@ -570,6 +575,7 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
 .felt__rad{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .avkrys{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--blekk-2);margin-top:9px;cursor:pointer}
 .avkrys input{width:16px;height:16px;accent-color:var(--hav)}
+.avkrys--felt{margin:0 0 15px}
 /* Ventetilstanden i lenkeimporten snakker samme språk som
    lagringstilstanden nede i sidepanelet: mono mikrotekst i --blekk-3.
    Ingen spinner, ingen kulør — det som skjer haster ikke, det tar bare
@@ -591,12 +597,6 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
 code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
      padding:1px 5px;border-radius:var(--r-xs)}
 
-.forhaand{border-radius:var(--r-s);background:var(--innfelt);margin-top:14px;overflow:hidden}
-.forhaand__topp{padding:11px 13px 9px}
-.forhaand__post{padding:10px 13px;background:var(--kort);margin:0 6px 6px;border-radius:var(--r-xs);font-size:13px}
-.forhaand__post b{font-weight:600}
-.forhaand__post em{font-style:normal;color:var(--blekk-3);font-family:var(--mono);font-size:11px}
-.forhaand__ingen{padding:16px 13px;font-size:13px;color:var(--blekk-3);margin:0}
 
 .knapp{padding:10px 15px;background:var(--kort);border:0;border-radius:var(--r-s);cursor:pointer;
        font-weight:600;font-size:14px;box-shadow:var(--loft)}
@@ -840,7 +840,15 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
 /* Står skuffen åpen, legger varselet seg oppå skuffefoten på smale
    skjermer og skjuler «Legg til søknad». Da løftes det over foten
    i stedet — det er meldingen som skal flytte seg, ikke knappen. */
-.skuff.er-apen ~ .varsel{bottom:96px}
+.skuff.er-apen ~ .varsel{bottom:96px;left:calc(100vw - 12px - min(444px, 100vw - 24px) / 2)}
+/* Er det god plass ved siden av skuffen, står varselet der, midt i den
+   synlige delen av listen, i stedet for oppå skjemaet. */
+@media (min-width:1101px){
+  .skuff.er-apen ~ .varsel{bottom:26px;left:calc((var(--side) + 100vw - 456px) / 2)}
+}
+/* Brevflaten fyller nesten hele vinduet. Der hører varselet hjemme over
+   dens egen fot, midt på flaten. */
+.skuff--brev.er-apen ~ .varsel{bottom:96px;left:calc(100vw - 12px - min(var(--brev-bredde), 100vw - 24px) / 2)}
 .varsel__angre{background:none;border:0;color:var(--varsel-lenke);font-weight:600;cursor:pointer;padding:5px 9px;border-radius:6px}
 .varsel__angre:hover{background:rgba(255,255,255,.12)}
 
@@ -891,7 +899,9 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
   :root{--side:272px}
 }
 @media (max-width:1100px){
+  /* Fem fliser i to kolonner: neste frist får hele den første raden. */
   .fliser{grid-template-columns:1fr 1fr}
+  .fliser > :first-child{grid-column:1/-1}
   .rutenett{grid-template-columns:1fr}
 }
 /* Listen er for smal til at handlingene får stå ved siden av teksten;

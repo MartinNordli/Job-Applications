@@ -294,12 +294,3 @@ test("importen melder fra om økten på samme måte som lagringen", async t => {
   assert.equal(porter.length, 1);
 });
 
-test("importtallene er en opplysning, ikke en handling — en 401 der reiser ingen port", async t => {
-  const { porter, glemKapsel, stopp } = await start();
-  t.after(stopp);
-
-  glemKapsel();
-  const { importtall } = await importmodulen();
-  assert.equal(await importtall(), null);
-  assert.equal(porter.length, 0);
-});

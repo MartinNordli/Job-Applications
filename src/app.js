@@ -1,10 +1,10 @@
 /* ============================================================
    1. Data
    ============================================================ */
-import { STATUSER, SEKTORER, JOBBTYPER, SEKTOR_FOR, ER_SENDT, ER_ARKIV, validerSoknad, sjekkLenke } from "./felles.mjs";
+import { STATUSER, SEKTORER, JOBBTYPER, ER_SENDT, ER_ARKIV, FIKK_INTERVJU, validerSoknad, sjekkLenke } from "./felles.mjs";
 import { START } from "./startliste.js";
 import * as Lagring from "./lagring.js";
-import { importerFraLenke, importtall, TRINN } from "./import.js";
+import { importerFraLenke, TRINN } from "./import.js";
 import * as Økt from "./okt.js";
 import { krevØkt, krevØktIgjen, portenStår } from "./innlogging.js";
 import { åpneBrevflate } from "./brevflate.js";
@@ -317,7 +317,7 @@ function tomHtml(tekst){
     + '<p class="tomt__tittel">' + (filtrert ? "Ingen treff" : "Ingenting her ennå") + '</p>'
     + '<p class="tomt__tekst">' + (filtrert
         ? "Ingen søknader passer filtrene. Nullstill dem for å se alt igjen."
-        : (tekst || "Legg til den første søknaden, eller lim inn en hel liste rett fra notatet ditt.")) + '</p>'
+        : (tekst || "Legg til den første søknaden, for hånd eller rett fra lenken til utlysningen.")) + '</p>'
     + (filtrert
         ? '<button class="knapp" data-gjor="nullstillFilter">Nullstill filtre</button>'
         : '<button class="knapp knapp--primar" data-gjor="nyFraTom">Legg til søknad</button>') + '</div>';
@@ -365,8 +365,12 @@ function visTall(){
   const alle    = data.filter(passererFilter);
   const sendt   = alle.filter(p => ER_SENDT(p.status) || p.status === "accepted"
                                  || p.status === "rejected" || p.status === "trukket");
-  const svar    = alle.filter(p => p.status === "interview" || p.status === "accepted" || p.status === "rejected");
-  const videre  = alle.filter(p => p.status === "interview" || p.status === "accepted");
+  /* Intervjuet telles fra flagget, ikke fra statusen: et avslag etter
+     intervjuet er fortsatt et intervju. Begge er utvalg av det sendte,
+     så trakten aldri får et trinn som er større enn det over. */
+  const intervju = sendt.filter(p => p.intervju);
+  const svar     = sendt.filter(p => p.intervju || p.status === "rejected");
+  const andel    = n => Math.round((n / sendt.length) * 100) + " %";
   const aSoke   = alle.filter(p => p.status === "todo");
   const medFrist = aSoke.filter(p => p.frist && dagerTil(p.frist) >= 0).sort(sorterFrist);
   const denneUka = medFrist.filter(p => dagerTil(p.frist) <= 7);
@@ -378,7 +382,9 @@ function visTall(){
         neste && dagerTil(neste.frist) <= 7)
     + nokkel("Å søke på", aSoke.length, fristOppdeling(aSoke).tekst, false)
     + nokkel("Sendt", sendt.length,
-        sendt.length ? Math.round((svar.length / sendt.length) * 100) + " % har svart" : "Ingen sendt ennå", false)
+        sendt.length ? andel(svar.length) + " har svart" : "Ingen sendt ennå", false)
+    + nokkel("Intervju", intervju.length,
+        sendt.length ? andel(intervju.length) + " av de sendte" : "Ingen sendt ennå", false)
     + nokkel("Frister denne uka", denneUka.length,
         denneUka.length ? esc(kortListe(denneUka.map(p => p.selskap).filter((v, i, a) => a.indexOf(v) === i))) : "Pusterom",
         denneUka.length > 0)
@@ -388,16 +394,16 @@ function visTall(){
     { navn:"Sporet",      verdi: alle.length },
     { navn:"Sendt",       verdi: sendt.length },
     { navn:"Fått svar",   verdi: svar.length },
-    { navn:"Gått videre", verdi: videre.length }
+    { navn:"Fikk intervju", verdi: intervju.length }
   ];
   const tMaks = Math.max(1, trinn[0].verdi);
-  h += '<div class="kort"><h3 class="kort__tittel">Fra liste til tilbud</h3>'
+  h += '<div class="kort"><h3 class="kort__tittel">Fra liste til intervju</h3>'
     + '<p class="kort__und">Hvert trinn er et utvalg av trinnet over. Andelen måles mot antallet du har sendt.</p>'
     + '<div class="trakt">' + trinn.map((t, i) =>
         '<div class="trakt__trinn"><div class="trakt__navn">' + t.navn + '</div>'
       + '<div class="trakt__spor"><div class="trakt__fyll" style="width:' + ((t.verdi / tMaks) * 100) + '%"></div>'
       + '<span class="trakt__verdi">' + t.verdi + '</span>'
-      + (i > 1 && sendt.length ? '<span class="trakt__andel">' + Math.round((t.verdi / sendt.length) * 100) + ' % av sendt</span>' : "")
+      + (i > 1 && sendt.length ? '<span class="trakt__andel">' + andel(t.verdi) + ' av sendt</span>' : "")
       + '</div></div>').join("") + '</div></div>';
 
   const uker = [];
@@ -535,9 +541,12 @@ function fyllVelg(sel, par, valgt, forste){
 }
 
 /* ============================================================
-   9. Skuffen — skjema, innliming, eksport
+   9. Skuffen: skjema, lenkeimport, data og innstillinger
    ============================================================ */
-let skuffModus = "skjema", redigerer = null;
+let skuffModus = "lenke", redigerer = null;
+/* Hvilken vei inn en ny søknad sist tok. Lenken står først og er
+   standard; velger brukeren «For hånd», husker skuffen det til neste gang. */
+let nyModus = "lenke";
 /* Det importen leste ut av en utlysning. Det er ikke `redigerer`:
    en rad som redigeres finnes allerede i listen, mens et utkast bare
    er forslag til et tomt skjema. Ingenting herfra lagres før brukeren
@@ -550,7 +559,6 @@ let hentenr = 0;
 
 const SKUFFTITTEL = {
   skjema:  "Legg til søknad",
-  lim:     "Legg til søknad",
   lenke:   "Legg til søknad",
   eksport: "Dataene dine",
   innstillinger: "Innstillinger",
@@ -595,7 +603,7 @@ function apneSkuff(hva, id){
   $("#skuff").classList.toggle("skuff--brev", hva === "brev");
   redigerer = id ? data.find(p => p.id === id) : null;
   if(hva === "rediger")   skuffModus = "skjema";
-  else if(hva === "ny")   skuffModus = (skuffModus === "lim" || skuffModus === "lenke") ? skuffModus : "skjema";
+  else if(hva === "ny")   skuffModus = nyModus;
   else                    skuffModus = hva;
 
   $("#skuffTittel").textContent = hva === "brev" ? "Søknadsbrev" : redigerer ? "Rediger søknad"
@@ -663,24 +671,10 @@ function tegnSkuff(){
   }
   if(skuffModus === "eksport"){
     k.innerHTML = '<p class="felt__hjelp" style="margin:0 0 16px">'
-      + data.length + ' søknader ligger i <code>jobber.json</code> i kontoens katalog. Ta en kopi når du vil ha dem et annet sted.</p>'
-      + '<div class="felt"><button class="knapp knapp--bred" data-gjor="kopiMd">Kopier som Markdown</button>'
-      + '<p class="felt__hjelp">Samme oppsett som notatet ditt — grupper, lenker og datoer.</p></div>'
-      + '<div class="felt"><button class="knapp knapp--bred" data-gjor="kopiJson">Kopier som JSON</button>'
-      + '<p class="felt__hjelp">Alle feltene, klare til å limes inn igjen senere.</p></div>'
-      + '<div class="felt" style="margin-top:26px;padding-top:20px;border-top:1px solid var(--linje)">'
-      + '<label class="felt__merke" for="limJson">Lim inn JSON</label>'
-      + '<textarea class="felt__omr" id="limJson" spellcheck="false" placeholder="[ { &quot;selskap&quot;: … } ]"></textarea>'
-      + '<button class="knapp knapp--bred" data-gjor="importerJson" style="margin-top:10px">Erstatt listen med dette</button>'
-      + '<p class="felt__hjelp">Bytter ut hele listen med det du limer inn. Du kan angre etterpå.</p></div>'
-      + '<div class="felt" style="margin-top:26px;padding-top:20px;border-top:1px solid var(--linje)">'
-      + '<button class="knapp knapp--bred knapp--fare" data-gjor="tilbakestill">Tilbakestill til startlisten</button>'
-      + '<p class="felt__hjelp">Erstatter alt du har lagt inn med de 55 søknadene appen startet med.</p></div>'
-      + '<div class="felt" id="importtall" style="margin-top:26px;padding-top:20px;border-top:1px solid var(--linje)"></div>'
-      + '<div class="felt" id="apiNokkel" style="margin-top:26px;padding-top:20px;border-top:1px solid var(--linje)"></div>';
+      + antall(data.length, "søknad ligger", "søknader ligger") + ' i <code>jobber.json</code> i kontoens katalog.</p>'
+      + '<div class="felt"><button class="knapp knapp--bred knapp--fare" data-gjor="tilbakestill">Tilbakestill til startlisten</button>'
+      + '<p class="felt__hjelp">Erstatter alt du har lagt inn med de 55 søknadene appen startet med.</p></div>';
     b.innerHTML = '<button class="knapp" data-gjor="lukk">Lukk</button>';
-    visImporttall();
-    visNokkel();
     return;
   }
 
@@ -705,9 +699,11 @@ function tegnSkuff(){
       + DAGVALG.map(d => '<option value="' + d + '">' + antall(d, "dag", "dager") + ' før</option>').join("")
       + '</select></div>'
       + '<p class="felt__hjelp" id="varselHjelp" role="status" aria-live="polite"></p>'
-      + '<button class="knapp innst__tillat" type="button" data-gjor="tillatVarsler" id="varselTillat" hidden>Tillat varsler</button></section>';
+      + '<button class="knapp innst__tillat" type="button" data-gjor="tillatVarsler" id="varselTillat" hidden>Tillat varsler</button></section>'
+      + '<section class="innst" id="apiNokkel" aria-labelledby="nokkelTittel"></section>';
     b.innerHTML = '<button class="knapp" data-gjor="lukk">Lukk</button>';
     visVarsel();
+    visNokkel();
     return;
   }
 
@@ -757,27 +753,15 @@ function tegnSkuff(){
     return;
   }
   b.innerHTML = '<button class="knapp" data-gjor="lukk">Avbryt</button>'
-    + (skuffModus === "lim"
-        ? '<button class="knapp knapp--primar" id="lagreLim">Legg til</button>'
-        : '<button class="knapp knapp--primar" id="lagreSkjema">' + (redigerer ? "Lagre endringer" : "Legg til søknad") + '</button>');
+    + '<button class="knapp knapp--primar" id="lagreSkjema">' + (redigerer ? "Lagre endringer" : "Legg til søknad") + '</button>';
 
-  /* Tre veier inn i det samme skjemaet — for hånd, fra et notat, fra en
-     lenke. Navnene er bygget likt, så bryteren leses som ett sett. */
+  /* To veier inn i det samme skjemaet. Lenken står først: den gjør mest
+     av jobben. Bryteren klistrer seg til toppen av skuffen, så den er
+     innen rekkevidde også når skjemaet er rullet ned. */
   const bytter = redigerer ? "" :
-      '<div class="modus" role="tablist">'
-    + '<button class="modus__knapp" role="tab" data-modus="skjema" aria-selected="' + (skuffModus === "skjema") + '">For hånd</button>'
-    + '<button class="modus__knapp" role="tab" data-modus="lim" aria-selected="' + (skuffModus === "lim") + '">Fra notat</button>'
-    + '<button class="modus__knapp" role="tab" data-modus="lenke" aria-selected="' + (skuffModus === "lenke") + '">Fra lenke</button></div>';
-
-  if(skuffModus === "lim"){
-    k.innerHTML = bytter
-      + '<div class="felt"><label class="felt__merke" for="limInn">Linjer fra notatet</label>'
-      + '<textarea class="felt__omr" id="limInn" spellcheck="false" placeholder="- [ ] **28.08** · **Aker BP** · [Graduate: Life Cycle Data Services](https://…) _Oslo / Trondheim_"></textarea>'
-      + '<p class="felt__hjelp">Én søknad per linje. Frist leses fra <b>**DD.MM**</b>, stilling og lenke fra <b>[tekst](url)</b>, sted fra <b>_kursiv_</b>. Linjer uten frist blir løpende opptak.</p></div>'
-      + '<div class="forhaand" id="limForhaand"></div>';
-    tegnForhaand("");
-    return;
-  }
+      '<div class="modusfeste"><div class="modus" role="tablist">'
+    + '<button class="modus__knapp" role="tab" data-modus="lenke" aria-selected="' + (skuffModus === "lenke") + '">Fra lenke</button>'
+    + '<button class="modus__knapp" role="tab" data-modus="skjema" aria-selected="' + (skuffModus === "skjema") + '">For hånd</button></div></div>';
 
   /* Lenkeimporten. Foten har ingen «Legg til søknad» her: det finnes
      ingenting å legge til før annonsen er lest. */
@@ -821,6 +805,9 @@ function tegnSkuff(){
           + felt("sendtDato", "Sendt", p.sendtDato, "date", "")
           + '<div class="felt"><p class="felt__hjelp" style="margin-top:26px">Settes av seg selv når du merker en søknad som sendt. Fyll den inn her for eldre søknader.</p></div>'
           + '</div>'
+          /* Blir stående når statusen senere går til avslag eller trukket,
+             så tallene husker at søknaden ga intervju. */
+          + '<label class="avkrys avkrys--felt"><input type="checkbox" id="fintervju"' + (p.intervju ? " checked" : "") + '> Fikk intervju</label>'
         : "")
     + felt("notat", "Notat", p.notat, "text", "f.eks. frist kl. 12:00")
     + (redigerer ? '<div class="brev__inngang"><button class="knapp knapp--bred" type="button" data-gjor="brevFraSkjema" data-id="' + esc(p.id) + '">Skriv søknadsbrev</button><p class="felt__hjelp">Lagre endringene og skriv et brev med CV-en og annonsen som grunnlag.</p></div>' : "");
@@ -829,142 +816,6 @@ function tegnSkuff(){
 function felt(id, merke, verdi, type, plass){
   return '<div class="felt"><label class="felt__merke" for="f' + id + '">' + merke + '</label>'
     + '<input class="felt__inn" id="f' + id + '" type="' + type + '" value="' + esc(verdi || "") + '" placeholder="' + esc(plass) + '"></div>';
-}
-
-/* ---- innlimingsparser ---- */
-function tolkLinje(linje){
-  let t = linje.replace(/^\s*>?\s*[-*]\s*(\[[ xX]\]\s*)?/, "").trim();
-  if(!t || /^#/.test(t) || /^\[!/.test(t) || /^-{3,}$/.test(t) || /^>/.test(t)) return null;
-
-  let frist = null, lenke = "", stilling = "", sted = "", notat = "";
-
-  const lm = t.match(/\[([^\]]+)\]\(([^)\s]+)\)/);
-  if(lm){
-    stilling = lm[1].trim();
-    /* Lenken havner rett i href. Godtar bare http/https — en
-       javascript:-lenke fra et innlimt notat skal ikke overleve hit. */
-    const sl = sjekkLenke(lm[2].trim());
-    lenke = sl.ok ? sl.verdi : "";
-    t = t.replace(lm[0], " ");
-  }
-
-  const dm = t.match(/\*{0,2}(\d{1,2})\.(\d{1,2})\.?\*{0,2}(?=\s*[·|]|\s|$)/);
-  if(dm){ frist = gjettAar(+dm[1], +dm[2]); t = t.replace(dm[0], " "); }
-
-  const im = t.match(/_([^_]+)_/);
-  if(im){
-    t = t.replace(im[0], " ");
-    const biter = im[1].split(",").map(x => x.trim()).filter(Boolean);
-    const notatAktig = x => /frist|søkt|avslag|åpner|kl\.|ikke |opptak/i.test(x);
-    sted  = biter.filter(x => !notatAktig(x)).join(", ");
-    notat = biter.filter(notatAktig).join(", ");
-  }
-
-  let selskap = "";
-  const bm = t.match(/\*\*([^*]+)\*\*/);
-  if(bm){ selskap = bm[1].trim(); t = t.replace(bm[0], " "); }
-
-  const rest = t.split(/[·|]/).map(s => s.replace(/[*_`]/g, "").trim()).filter(Boolean);
-  if(!selskap) selskap = rest.shift() || "";
-  if(!stilling) stilling = rest.shift() || "";
-  if(rest.length) notat = [notat, rest.join(" · ")].filter(Boolean).join(" · ");
-  if(!selskap) return null;
-
-  return {
-    id: nyId(), selskap, stilling: stilling || "Uten tittel", lenke, sted, frist,
-    status: "todo", sektor: SEKTOR_FOR[selskap.toLowerCase()] || "annet", notat, sendtDato: null
-  };
-}
-function gjettAar(dag, mnd){
-  const na = I_DAG.getFullYear();
-  let d = new Date(na, mnd - 1, dag);
-  if((d - I_DAG) / 86400000 < -60) d = new Date(na + 1, mnd - 1, dag);
-  return tilIso(d);
-}
-function tolkTekst(tekst){
-  /* Samme validering som serveren, så det som forhåndsvises er det
-     som faktisk blir lagret. */
-  return tekst.split("\n").map(tolkLinje).filter(Boolean)
-    .map(p => { const r = validerSoknad(p); return r.ok ? r.verdi : null; })
-    .filter(Boolean);
-}
-
-function tegnForhaand(tekst){
-  const el = $("#limForhaand");
-  if(!el) return;
-  const funn = tolkTekst(tekst);
-  const lag = $("#lagreLim");
-  if(lag) lag.textContent = funn.length ? "Legg til " + funn.length + (funn.length === 1 ? " søknad" : " søknader") : "Legg til";
-  if(!funn.length){
-    el.innerHTML = '<p class="forhaand__ingen">Ingenting tolket ennå. Lim inn linjene, så vises de her før de legges til.</p>';
-    return;
-  }
-  el.innerHTML = '<div class="forhaand__topp">' + funn.length + ' tolket</div>'
-    + funn.slice(0, 40).map(p => '<div class="forhaand__post"><b>' + esc(p.selskap) + '</b> — ' + esc(p.stilling)
-      + '<br><em>' + (p.frist ? kortDato(p.frist) : "løpende") + (p.sted ? " · " + esc(p.sted) : "") + '</em></div>').join("");
-}
-
-/* ============================================================
-   10. Eksport
-   ============================================================ */
-function tilMarkdown(){
-  const L = [];
-  const rad = p => "> - [ ] " + (p.frist ? "**" + kortDato(p.frist) + "** · " : "") + "**" + p.selskap + "** · "
-    + (p.lenke ? "[" + p.stilling + "](" + p.lenke + ")" : p.stilling) + (p.sted ? " · _" + p.sted + "_" : "");
-
-  const todo = data.filter(p => p.status === "todo").sort(sorterFrist);
-  const uka  = todo.filter(p => p.frist && dagerTil(p.frist) >= 0 && dagerTil(p.frist) <= 7);
-  const lop  = todo.filter(p => !p.frist);
-  const sen  = todo.filter(p => p.frist && dagerTil(p.frist) > 7);
-
-  L.push("# Hired", "", "> [!abstract] Status");
-  L.push("> **" + data.filter(p => ER_SENDT(p.status)).length + "** sendt · **" + todo.length + "** igjen · **"
-    + data.filter(p => p.status === "rejected").length + "** avslag · **"
-    + data.filter(p => p.status === "trukket").length + "** trukket · **"
-    + data.filter(p => p.status === "expired").length + "** utløpt", "", "---", "", "## Å søke på", "");
-
-  if(uka.length){ L.push("> [!danger]+ Denne uka · " + uka.length, ">"); uka.forEach(p => L.push(rad(p))); L.push(""); }
-  if(lop.length){ L.push("> [!note]- Fortløpende · " + lop.length, ">"); lop.forEach(p => L.push(rad(p))); L.push(""); }
-
-  const mnd = new Map();
-  sen.forEach(p => { const n = MND[tilDato(p.frist).getMonth()]; if(!mnd.has(n)) mnd.set(n, []); mnd.get(n).push(p); });
-  mnd.forEach((liste, navn) => {
-    L.push("> [!todo]+ " + navn[0].toUpperCase() + navn.slice(1) + " · " + liste.length, ">");
-    liste.forEach(p => L.push(rad(p))); L.push("");
-  });
-
-  const sendt = data.filter(p => ER_SENDT(p.status));
-  L.push("---", "", "## Sendt", "", "> [!success]- Venter på svar · " + sendt.length, ">");
-  Object.keys(SEKTORER).forEach(k => {
-    const g = sendt.filter(p => p.sektor === k);
-    if(!g.length) return;
-    L.push("> **" + SEKTORER[k] + "**", ">");
-    g.forEach(p => L.push("> - **" + p.selskap + "** · " + (p.lenke ? "[" + p.stilling + "](" + p.lenke + ")" : p.stilling) + (p.sted ? " · _" + p.sted + "_" : "")));
-    L.push(">");
-  });
-
-  const ark = data.filter(p => ER_ARKIV(p.status));
-  if(ark.length){
-    L.push("", "---", "", "## Arkiv", "", "> [!failure]- Avsluttet · " + ark.length, ">");
-    ark.forEach(p => L.push("> - **" + p.selskap + "** · " + (p.lenke ? "[" + p.stilling + "](" + p.lenke + ")" : p.stilling)
-      + " · _" + (p.notat || STATUSER[p.status].toLowerCase()) + "_"));
-  }
-  return L.join("\n");
-}
-
-function kopier(tekst, hva){
-  const ferdig = () => varsle(hva + " kopiert til utklippstavlen");
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(tekst).then(ferdig, () => reserveKopi(tekst, ferdig));
-  } else reserveKopi(tekst, ferdig);
-}
-function reserveKopi(tekst, ferdig){
-  const t = document.createElement("textarea");
-  t.value = tekst; t.style.position = "fixed"; t.style.opacity = "0";
-  document.body.appendChild(t); t.select();
-  try{ document.execCommand("copy"); ferdig(); }
-  catch(e){ varsle("Kopiering ble blokkert. Marker teksten manuelt."); }
-  document.body.removeChild(t);
 }
 
 /* ============================================================
@@ -988,13 +839,14 @@ function varsle(tekst, angreFn){
 function settStatus(id, ny){
   const p = data.find(x => x.id === id);
   if(!p) return;
-  const fra = { status: p.status, sendtDato: p.sendtDato };
+  const fra = { status: p.status, sendtDato: p.sendtDato, intervju: p.intervju };
   p.status = ny;
   if(ny === "sent" && !p.sendtDato) p.sendtDato = tilIso(I_DAG);
   if(ny === "todo") p.sendtDato = null;
+  if(FIKK_INTERVJU(ny)) p.intervju = true;
   lagre(); tegn();
   varsle(p.selskap + " · " + STATUSER[ny].toLowerCase(), () => {
-    p.status = fra.status; p.sendtDato = fra.sendtDato; lagre(); tegn();
+    p.status = fra.status; p.sendtDato = fra.sendtDato; p.intervju = fra.intervju; lagre(); tegn();
   });
 }
 function slett(id){
@@ -1028,6 +880,7 @@ function lagreSkjema(){
     jobbtype:  v("jobbtype"),
     status:    $("#fStatus").value,
     sendtDato: redigerer ? (v("sendtDato") || null) : null,
+    intervju:  redigerer ? $("#fintervju").checked : false,
     opprettet: redigerer ? redigerer.opprettet : null,
     oppdatert: redigerer ? redigerer.oppdatert : null
   };
@@ -1058,16 +911,6 @@ function lagreSkjema(){
   }
   lagre(); tegn(); lukkSkuff();
 }
-function lagreLim(){
-  const funn = tolkTekst($("#limInn").value);
-  if(!funn.length){ varsle("Fant ingen søknader i teksten"); return; }
-  const fra = data.length;
-  data = data.concat(funn);
-  lagre(); lukkSkuff(); tegn();
-  varsle("La til " + funn.length + (funn.length === 1 ? " søknad" : " søknader"),
-    () => { data = data.slice(0, fra); lagre(); tegn(); });
-}
-
 /* ---- import fra lenke ---- */
 
 /* Husets språk for «noe skjer»: mono mikrotekst, to trinn, ingen
@@ -1082,7 +925,7 @@ const VENTETEKST = {
    escapet. */
 const IMPORTHJELP = {
   "finnes":         'Åpne den fra listen hvis du vil endre noe. Vil du legge den inn på nytt likevel, velg «For hånd».',
-  "mangler-nokkel": 'Importen trenger en API-nøkkel i <code>nokkel.txt</code> i datakatalogen. README-en viser hvordan.',
+  "mangler-nokkel": 'Importen trenger en API-nøkkel. Legg den inn under Innstillinger.',
   "frakoblet":      'Sjekk at serveren kjører, og prøv igjen.',
   "ellers":         'Lenken står igjen. Velg «For hånd» hvis du heller vil fylle inn resten selv.'
 };
@@ -1157,38 +1000,10 @@ async function hentFraLenke(){
    som er handlingsrettet — står «selskap» øverst lenge, er et
    selskapsuttrekk neste ting å skrive. */
 
-const kr  = n => "kr " + n.toFixed(2).replace(".", ",");
-const ore = n => (n * 100).toFixed(1).replace(".", ",") + " øre";
 
 function siden(iso){
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "" : d.getDate() + ". " + MND[d.getMonth()];
-}
-
-async function visImporttall(){
-  const t = await importtall();
-  const el = $("#importtall");
-  /* Skuffen kan ha blitt lukket eller byttet modus mens vi ventet. */
-  if(!el || skuffModus !== "eksport") return;
-
-  if(!t || !t.antall){
-    el.innerHTML = '<p class="merkelinje">Import fra lenke</p>'
-      + '<p class="felt__hjelp">Ingen importer ennå. Tallene dukker opp her når du har hentet en utlysning.</p>';
-    return;
-  }
-
-  const felt = t.felt.slice(0, 4)
-    .map(([f, n]) => esc(f) + " " + n).join(" · ");
-
-  el.innerHTML = '<p class="merkelinje">Import fra lenke</p>'
-    + '<p class="lagret" style="margin:0 0 3px">' + t.antall
-      + (t.antall === 1 ? " import" : " importer") + " siden " + esc(siden(t.fra)) + '</p>'
-    + '<p class="lagret" style="margin:0 0 3px">' + kr(t.kroner) + " til sammen · "
-      + ore(t.snittKroner) + ' i snitt</p>'
-    + '<p class="lagret" style="margin:0">' + t.utenModell + " av " + t.antall
-      + ' gikk uten modell</p>'
-    + (felt ? '<p class="felt__hjelp" style="margin-top:9px">Modellen måtte fylle: '
-              + felt + '.</p>' : "");
 }
 
 /* ---- nøkkelen importen bruker ---- */
@@ -1203,7 +1018,7 @@ async function visImporttall(){
 async function visNokkel(){
   const el = $("#apiNokkel");
   if(!el) return;
-  el.innerHTML = '<p class="merkelinje">Nøkkel til importen</p>'
+  el.innerHTML = '<p class="merkelinje innst__tittel" id="nokkelTittel">API-nøkkel for import fra lenke</p>'
     + '<p class="lagret" id="nokkelTilstand" style="margin:9px 0 13px" role="status" aria-live="polite"></p>'
     + '<p class="feil" id="nokkelFeil" hidden></p>'
     + '<label class="felt__merke" for="apiNokkelInn">Ny nøkkel</label>'
@@ -1218,7 +1033,7 @@ async function visNokkel(){
 
   const r = await Økt.hentNokkel();
   const t = $("#nokkelTilstand");
-  if(!t || skuffModus !== "eksport") return;
+  if(!t || skuffModus !== "innstillinger") return;
 
   if(!r.ok){
     t.textContent = "Fikk ikke lest nøkkeltilstanden";
@@ -1230,7 +1045,7 @@ async function visNokkel(){
       r.kilde === "egen"  ? "Nøkkel satt" + (r.hale ? " · ····" + r.hale : "")
                             + (r.satt ? " · " + siden(r.satt) : "")
     : r.kilde === "miljø" ? "Serverens nøkkel brukes"
-    :                       "Ingen nøkkel — importen er slått av";
+    :                       "Ingen nøkkel, importen er slått av";
   /* Bare en nøkkel du har satt selv kan fjernes. Serverens egen tilhører
      den som startet serveren. */
   const fjern = $("#fjernNokkel");
@@ -1276,7 +1091,7 @@ function fjernNokkel(){
       return;
     }
     /* Resultatet er bare synlig i skuffen, så den åpnes igjen. */
-    apneSkuff("eksport");
+    apneSkuff("innstillinger");
     varsle("Nøkkelen er fjernet");
   });
 }
@@ -1362,7 +1177,7 @@ if(Lagring.I_APP){
 }
 
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-gjor],[data-modus],[data-visning],#neste,#apneNy,#lukkSkuff,#apneEksport,#apneInnstillinger,#nullstill,#lagreSkjema,#lagreLim,#hentLenke,#loggUt");
+  const t = e.target.closest("[data-gjor],[data-modus],[data-visning],#neste,#apneNy,#lukkSkuff,#apneEksport,#apneInnstillinger,#nullstill,#lagreSkjema,#hentLenke,#loggUt");
   if(!t) return;
 
   if(t.id === "loggUt"){ loggUt(); return; }
@@ -1373,7 +1188,6 @@ document.addEventListener("click", e => {
   if(t.id === "lukkSkuff"){ lukkSkuff(); return; }
   if(t.id === "nullstill"){ sok = ""; filtSektor = ""; filtSted = ""; $("#sok").value = ""; tegn(); return; }
   if(t.id === "lagreSkjema"){ lagreSkjema(); return; }
-  if(t.id === "lagreLim"){ lagreLim(); return; }
   if(t.id === "hentLenke"){ hentFraLenke(); return; }
   if(t.id === "neste"){ if(t.dataset.id) hoppTilSoknad(t.dataset.id); return; }
 
@@ -1383,7 +1197,7 @@ document.addEventListener("click", e => {
     window.scrollTo({ top: 0, behavior: "auto" });
     return;
   }
-  if(t.dataset.modus){ skuffModus = t.dataset.modus; hentenr++; tegnSkuff(); const f = $("#skuff input,#skuff textarea"); if(f) f.focus(); return; }
+  if(t.dataset.modus){ skuffModus = nyModus = t.dataset.modus; hentenr++; tegnSkuff(); const f = $("#skuff input,#skuff textarea"); if(f) f.focus(); return; }
 
   const g = t.dataset.gjor, id = t.dataset.id;
   if(g === "lukk") lukkSkuff();
@@ -1401,10 +1215,8 @@ document.addEventListener("click", e => {
   }
   else if(g === "rediger") apneSkuff("rediger", id);
   else if(g === "slett") slett(id);
-  else if(g === "nyFraTom"){ skuffModus = "skjema"; apneSkuff("ny"); }
+  else if(g === "nyFraTom") apneSkuff("ny");
   else if(g === "nullstillFilter"){ sok = ""; filtSektor = ""; filtSted = ""; $("#sok").value = ""; tegn(); }
-  else if(g === "kopiMd") kopier(tilMarkdown(), "Markdown");
-  else if(g === "kopiJson") kopier(JSON.stringify(data, null, 2), "JSON");
   else if(g === "tilbakestill"){
     const fra = data;
     spor("Startlisten på 55 søknader erstatter alt som ligger her nå. Du kan angre etterpå.",
@@ -1413,7 +1225,6 @@ document.addEventListener("click", e => {
            varsle("Tilbakestilt til startlisten", () => { data = fra; lagre(); tegn(); });
          });
   }
-  else if(g === "importerJson") importerJson();
   else if(g === "lagreNokkel") lagreNokkel();
   else if(g === "fjernNokkel") fjernNokkel();
   else if(g === "tillatVarsler") Varsling.beOmTillatelse().then(() => { visVarselhjelp(); Varsling.sjekk(); });
@@ -1453,7 +1264,6 @@ $("#slor").addEventListener("click", lukkSkuff);
 $("#sok").addEventListener("input", e => { sok = e.target.value; tegn(); });
 $("#filtSektor").addEventListener("change", e => { filtSektor = e.target.value; tegn(); });
 $("#filtSted").addEventListener("change", e => { filtSted = e.target.value; tegn(); });
-document.addEventListener("input", e => { if(e.target.id === "limInn") tegnForhaand(e.target.value); });
 document.addEventListener("change", e => {
   if(e.target.name === "tema") settTema(e.target.value);
   else if(e.target.id === "varselPa" || e.target.id === "varselDager") lagreVarsel();
@@ -1475,14 +1285,13 @@ document.addEventListener("keydown", e => {
     if(e.key === "Enter" && e.target.closest("#skuff") && e.target.tagName !== "TEXTAREA"){
       e.preventDefault();
       if(skuffModus === "lenke") hentFraLenke();
-      else if(skuffModus === "lim") lagreLim();
       else lagreSkjema();
     }
     return;
   }
   if(e.metaKey || e.ctrlKey || e.altKey) return;
   if($("#skuff").classList.contains("er-apen")) return;   /* dialogen eier tastaturet */
-  if(e.key === "n"){ e.preventDefault(); skuffModus = "skjema"; apneSkuff("ny"); }
+  if(e.key === "n"){ e.preventDefault(); apneSkuff("ny"); }
   if(e.key === "/"){ e.preventDefault(); $("#sok").focus(); }
 });
 
@@ -1650,31 +1459,6 @@ function flyttHit(){
   lagre(); tegn(); lukkSkuff();
   varsle("Flyttet " + antall(gyldige.length, "søknad", "søknader") + " til datafilen"
     + (tapt > 0 ? " · " + tapt + " kunne ikke leses" : ""));
-}
-
-function importerJson(){
-  const el = $("#limJson");
-  if(!el) return;
-  const raa = el.value.trim();
-  if(!raa){ varsle("Lim inn JSON i feltet først"); return; }
-
-  let inn;
-  try{ inn = JSON.parse(raa); }
-  catch{ varsle("Fant ingen gyldig JSON i feltet"); return; }
-
-  /* Godtar både en ren liste og hele dokumentet fra datafilen. */
-  const liste = Array.isArray(inn) ? inn : (inn && Array.isArray(inn.jobber) ? inn.jobber : null);
-  if(!liste){ varsle("Forventet en liste med søknader"); return; }
-
-  const gyldige = silt(liste);
-  if(!gyldige.length){ varsle("Ingen gyldige søknader i det du limte inn"); return; }
-
-  const fra = data, tapt = liste.length - gyldige.length;
-  data = gyldige;
-  lagre(); lukkSkuff(); tegn();
-  varsle("Erstattet listen med " + antall(gyldige.length, "søknad", "søknader")
-    + (tapt > 0 ? " · " + tapt + " forkastet" : ""),
-    () => { data = fra; lagre(); tegn(); });
 }
 
 /* En fane som blir stående over midnatt skal ikke fortsette å vise

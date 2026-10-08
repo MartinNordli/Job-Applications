@@ -104,7 +104,7 @@ Et klikk hopper til søknaden og markerer den.
 - **Rediger** og **Slett**.
 - Stillingstittelen lenker til annonsen. I Mac-appen åpnes lenken i systemets nettleser.
 
-Sletting, statusbytte, å erstatte listen og tilbakestilling kan angres fra varselet som dukker opp.
+Sletting, statusbytte og tilbakestilling kan angres fra varselet som dukker opp.
 
 ### Statuser, sektorer og jobbtyper
 
@@ -122,8 +122,12 @@ Filtrene gjelder også i **Tall**.
 
 ### Tall
 
-- Nøkkeltall: neste frist, antall å søke på, antall sendt med andelen som har fått svar, og frister denne uka.
-- **Fra liste til tilbud**: sporet, sendt, fått svar og gått videre.
+- Nøkkeltall: neste frist, antall å søke på, antall sendt med andelen som har fått svar, antall intervjuer med andelen av det du har sendt, og frister denne uka.
+- **Fra liste til intervju**: sporet, sendt, fått svar og fikk intervju.
+
+Intervjuet huskes på søknaden.
+Merker du en søknad med **Fikk intervju**, teller den med også når den senere får avslag eller blir trukket.
+For eldre søknader kan du krysse av for **Fikk intervju** når du redigerer dem.
 - **Fristtrykk de neste ti ukene**: antall frister per uke.
 - **Sektorene du satser på**: sendt og ikke sendt per sektor.
 - **Hvor stillingene ligger**: de sju vanligste stedene.
@@ -151,7 +155,7 @@ Valget huskes i nettleseren eller appen og havner aldri i datafilen.
 | `n` | Ny søknad |
 | `/` | Søk |
 | `Esc` | Lukk |
-| `Enter` | Lagre skjemaet, hent lenken eller legg til fra notat |
+| `Enter` | Lagre skjemaet eller hent lenken |
 
 Snarveiene er inaktive mens innloggingen står, ellers ville `n` åpnet skjemaet bak den.
 
@@ -184,13 +188,14 @@ Appen, bakgrunnsjobben og nettleseren fører det samme registeret over hva som e
 
 ## Legg til søknader
 
-**Legg til søknad** åpner et skjema med tre faner.
+**Legg til søknad** åpner et skjema med to faner.
+Fanene blir stående øverst når du ruller nedover i skjemaet.
 
-- **For hånd**: selskap, stilling, lenke, frist eller løpende opptak, sted, sektor, jobbtype, status og notat. Selskap og stilling må fylles ut, fristen må være en ekte dato, og lenker må være `http` eller `https`.
-- **Fra notat**: lim inn linjer fra et Markdown-notat, for eksempel Obsidian. Frist leses fra `**DD.MM**`, stilling og lenke fra `[tekst](url)`, sted fra `_kursiv_` og selskap fra fet skrift. Appen viser hva den har tolket før noe legges til.
 - **Fra lenke**: se neste avsnitt.
+- **For hånd**: selskap, stilling, lenke, frist eller løpende opptak, sted, sektor, jobbtype, status og notat. Selskap og stilling må fylles ut, fristen må være en ekte dato, og lenker må være `http` eller `https`.
 
-Når du redigerer en søknad, kan du også sette sendtdato for eldre søknader og gå rett til søknadsbrevet.
+Skuffen åpner med fanen du brukte sist, og **Fra lenke** første gang.
+Når du redigerer en søknad, kan du også sette sendtdato, krysse av for intervju og gå rett til søknadsbrevet.
 
 ## Import fra lenke
 
@@ -219,9 +224,8 @@ Da blir lenken stående i skjemaet, og resten fyller du ut for hånd.
 
 Adresser på egen maskin eller eget nett hentes aldri: `localhost`, private nett og `169.254.169.254` avvises, også via videresending.
 
-Under **Dataene dine** står tre tall om importen: hva den har kostet til sammen, hvor ofte modellen slapp å kjøre, og hvilke felt modellen oftest måtte fylle.
-Det siste er det nyttigste: står ett felt øverst lenge, er et uttrekk for nettopp det feltet det neste som bør skrives.
-Tallene kommer fra `importlogg.jsonl` i kontoens katalog, med én linje per import (høyst 500), vertsnavn og ekte tokentall fra API-et.
+Hver import føres i `importlogg.jsonl` i kontoens katalog, med én linje per import (høyst 500), vertsnavn, feltene modellen måtte fylle og ekte tokentall fra API-et.
+`GET /api/importlogg` i nettleserversjonen oppsummerer loggen: hva importen har kostet, hvor ofte modellen slapp å kjøre, og hvilke felt modellen oftest måtte fylle.
 Prisen står i `src/importlogg.mjs`.
 
 ## Søknadsbrev
@@ -279,7 +283,7 @@ CV-tekst, annonse, kontekst og eventuelle svar sendes til leverandøren du har v
 
 - **Skriv med**: Claude (`claude-opus-5`) eller OpenAI (`gpt-6-astra`). Valget huskes på profilen.
 - **API-nøkkel for valgt leverandør**: legg til eller fjern. Mangler nøkkelen, sier grunnlagskolonnen fra og tar deg dit.
-- **Last ned sikkerhetskopi** og **Gjenopprett fra sikkerhetskopi**, se [Dataene dine](#dataene-dine).
+- **Last ned sikkerhetskopi** og **Gjenopprett fra sikkerhetskopi**, se [Sikkerhetskopi av brevene](#sikkerhetskopi-av-brevene).
 - **Slett CV fra profilen** og **Slett brevet og versjonene**.
 
 ## API-nøkler
@@ -291,7 +295,7 @@ Hver konto har sine egne nøkler, lagret i kontoens katalog med modus `0600`.
 | `nokkel.txt` | Anthropic: import fra lenke og brev med Claude |
 | `nokkel-openai.txt` | OpenAI: brev med OpenAI |
 
-Anthropic-nøkkelen kan legges inn under **Dataene dine** eller i brevskriverens innstillinger.
+Anthropic-nøkkelen kan legges inn under **Innstillinger** eller i brevskriverens innstillinger.
 OpenAI-nøkkelen legges inn i brevskriverens innstillinger.
 
 Nøklene går inn og aldri ut igjen.
@@ -357,18 +361,18 @@ Det finnes foreløpig ingen knapp for å bytte passord i appen.
 
 ## Dataene dine
 
-**Dataene dine** nederst i sidepanelet samler det som gjelder søknadslisten:
+**Dataene dine** nederst i sidepanelet viser hvor mange søknader som ligger i `jobber.json`, og har **Tilbakestill til startlisten**, som erstatter alt med de 55 søknadene appen startet med.
+Tilbakestillingen kan angres.
 
-- **Kopier som Markdown**: samme oppsett som notatet, med grupper, lenker og datoer.
-- **Kopier som JSON**: alle feltene, klare til å limes inn igjen.
-- **Lim inn JSON**: erstatter hele listen. Godtar både en ren liste og hele datafilen. Kan angres.
-- **Tilbakestill til startlisten**: erstatter alt med de 55 søknadene appen startet med. Kan angres.
-- Tallene om importen og Anthropic-nøkkelen.
+Søknadslisten er en vanlig JSON-fil, se [Hvor dataene ligger](#hvor-dataene-ligger).
+Vil du ta en kopi av den eller flytte den, kopierer du filen.
+
+### Sikkerhetskopi av brevene
 
 **Sikkerhetskopien** under brevskriverens innstillinger omfatter profilens CV, brev, kildegrunnlag og versjoner, også brev til søknader som senere er fjernet.
 Nøkler følger ikke med.
 Gjenoppretting legger inn dokumenter som mangler, men erstatter ikke en eksisterende samling.
-JSON-eksporten under **Dataene dine** inneholder bare søknadslisten, så ta begge kopiene hvis du vil flytte alt.
+Den omfatter ikke søknadslisten, så kopier `jobber.json` også hvis du vil flytte alt.
 
 ## Hvor dataene ligger
 
@@ -434,6 +438,7 @@ Flytt innholdet inn i katalogen over mens appen og serveren er avslått.
       "jobbtype": "graduate",
       "notat": "",
       "sendtDato": null,
+      "intervju": false,
       "opprettet": "…",
       "oppdatert": "…"
     }
