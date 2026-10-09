@@ -495,6 +495,15 @@ test("lageret: en eldre klient uten feltene beholder det som står i filen", asy
   assert.deepEqual(s.jobber[0].intervjuer, intervjuer);
 });
 
+test("lageret: noe som ikke er en liste tømmer ikke listene i filen", async () => {
+  const { lager } = await lagerMedKlokke();
+  const hendelser = [{ til: "todo", dato: "2026-10-01", kilde: "bruker" }];
+  await lager.skriv([rad({ hendelser })], 0);
+  const r = await lager.skriv([rad({ hendelser: "tull", intervjuer: { a: 1 } })], 1);
+  assert.deepEqual(r.jobber[0].hendelser, hendelser);
+  assert.deepEqual(r.jobber[0].intervjuer, []);
+});
+
 test("lageret: en klient som sender tomme lister med vilje får tømme dem", async () => {
   const { lager } = await lagerMedKlokke();
   const intervjuer = [{ id: "i1", dato: "2026-10-12", tid: null, varighet: null, sted: "",

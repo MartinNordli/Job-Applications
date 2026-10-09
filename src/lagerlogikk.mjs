@@ -42,9 +42,10 @@ const likVerdi = (a, b) => a === b
 const likeRader = (a, b) => !!a && !!b && INNHOLD.every(f => likVerdi(a[f], b[f]));
 
 /* Listene på raden som en eldre klient ikke kjenner. Mangler nøkkelen
-   helt i det som kommer inn, er det ikke et ønske om å tømme listen:
-   det er en fane eller app fra før feltet fantes. Da beholdes det som
-   står i filen, i stedet for at historikken forsvinner stille. */
+   i det som kommer inn, eller er den ikke en liste, er det ikke et ønske
+   om å tømme listen: det er en fane eller app fra før feltet fantes, eller
+   noe vi ikke forstår. Da beholdes det som står i filen, i stedet for at
+   historikken forsvinner stille. Bare en ekte liste, også en tom, erstatter. */
 const BEVARES_NÅR_DE_MANGLER = ["hendelser", "intervjuer"];
 
 /* Sikkerhetsnettet for hendelsesloggen.
@@ -211,7 +212,7 @@ export function lagLager({ filer, lagId, nå: klokke = () => new Date() }){
       let rad = validert;
       if(gammel){
         for(const felt of BEVARES_NÅR_DE_MANGLER)
-          if(!Object.hasOwn(rå, felt)) rad = { ...rad, [felt]: gammel[felt] ?? [] };
+          if(!Array.isArray(rå[felt])) rad = { ...rad, [felt]: gammel[felt] ?? [] };
       }
       rad = { ...rad, hendelser: validerHendelser(sikreHendelser(gammel, rad, { iDag, tid, listeIBruk })) };
       if(!gammel)               return { ...rad, opprettet: tid, oppdatert: tid };
