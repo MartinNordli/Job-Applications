@@ -1,11 +1,15 @@
 import { lagBrevlager } from "./brevlager.mjs";
 import { lagBrevtjeneste } from "../src/brevtjeneste.mjs";
+import { lagJobbdokumenter } from "../src/jobbdokumenttjeneste.mjs";
 import { trekkUtAnnonse } from "../src/annonsetekst.mjs";
 import { Brevfeil } from "../src/brevdata.mjs";
 import { FASE } from "../src/brevlogikk.mjs";
 import { lagBrevModell, brevNokkelStatus, settBrevNokkel, fjernBrevNokkel } from "./brev-modell.mjs";
 
-export const erBrevbane = p => /^\/api\/(cv(?:\/gjenopprett)?|annonsetekst|brevdata|nokler\/[^/]+|jobber\/[^/]+\/brev(?:\/.*)?)$/.test(p);
+/* Alt som går til profildokumentene. /api/jobber selv er listen og
+   hører til server.mjs; under en søknad er brev og dokument her.
+   Utdraget har egen rot, så «utdrag» aldri kan forveksles med en id. */
+export const erBrevbane = p => /^\/api\/(cv(?:\/gjenopprett)?|annonsetekst|brevdata|nokler\/[^/]+|jobbdokumenter\/utdrag|jobber\/[^/]+\/(?:brev(?:\/.*)?|dokument(?:\/gjenopprett)?))$/.test(p);
 function send(res,status,data){
   res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"});
   res.end(JSON.stringify(data));
@@ -45,6 +49,7 @@ function åpneStrøm(res){
 }
 export function lagBrevRuter({nett,modellFor}){
   const tjenester=new Map();
+  const dokumenttjenester=new Map();
   const grenser=new Map();
   function tjeneste(ktx){
     const {katalog,tillatMiljø,lager}=ktx;
@@ -55,6 +60,13 @@ export function lagBrevRuter({nett,modellFor}){
       hentJobb:async id=>(await lager.les()).jobber?.find(j=>j.id===id)
     }));
     return tjenester.get(nøkkel);
+  }
+  function jobbdokumenter({katalog,lager}){
+    if(!dokumenttjenester.has(katalog))dokumenttjenester.set(katalog,lagJobbdokumenter({
+      lager:lagBrevlager(katalog),
+      hentJobb:async id=>(await lager.les()).jobber?.find(j=>j.id===id)
+    }));
+    return dokumenttjenester.get(katalog);
   }
   return async function ruter(req,res,bane,ktx){
     const controller=new AbortController();
@@ -88,6 +100,18 @@ export function lagBrevRuter({nett,modellFor}){
           if(!r.ok)throw new Brevfeil("ugyldig",r.melding||"API-nøkkelen har ugyldig format.");
         }
         if(req.method==="DELETE"){await fjernBrevNokkel(ktx,leverandor);r={ok:true};}
+      }else if(bane==="/api/jobbdokumenter/utdrag"){
+        metode(req,"GET");
+        r=await jobbdokumenter(ktx).utdrag(new URL(req.url,"http://127.0.0.1").searchParams.get("stier")??"");
+      }else if(/^\/api\/jobber\/[^/]+\/dokument(?:\/gjenopprett)?$/.test(bane)){
+        const m=bane.match(/^\/api\/jobber\/([A-Za-z0-9_-]{1,64})\/dokument(\/gjenopprett)?$/);
+        if(!m)throw new Brevfeil("ugyldig","Ugyldig jobb.");
+        const j=jobbdokumenter(ktx);
+        if(m[2]){metode(req,"POST");r=await j.gjenopprett(m[1]);}
+        else{
+          metode(req,"GET","PUT");
+          r=req.method==="GET"?await j.hent(m[1]):await j.lagre(m[1],await kropp(req));
+        }
       }else{
         const m=bane.match(/^\/api\/jobber\/([A-Za-z0-9_-]{1,64})\/brev(?:\/kjoringer(?:\/([A-Za-z0-9_-]{1,64})\/(trinn|avbryt))?)?$/);
         if(!m)throw new Brevfeil("finnes-ikke","Ukjent brevoperasjon.",404);

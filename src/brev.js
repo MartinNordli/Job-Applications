@@ -1,35 +1,15 @@
 /* Frontendens brevgrensesnitt. Samme dokumenter og kjede i begge modi. */
 import * as Økt from "./okt.js";
-import { Brevfeil, lesDokument, dokumentnavn } from "./brevdata.mjs";
+import { Brevfeil } from "./brevdata.mjs";
+import { I_APP, bruker, invoke, http, lokaltLager } from "./dokumentklient.js";
 import { lagBrevtjeneste } from "./brevtjeneste.mjs";
 import { byggModellkropp, tolkModellsvar } from "./brev-provider.mjs";
 import { delSse, lagSvarsamler, lagFeltstrøm } from "./brev-strom.mjs";
 import { FASE } from "./brevlogikk.mjs";
 import { trekkUtAnnonse } from "./annonsetekst.mjs";
 
-const I_APP=typeof window!=="undefined" && !!window.__TAURI__;
 const MAKS_STRØM=32*1024*1024;
 const tjenestene=new Map();
-function bruker(){const id=Økt.nåværendeBruker()?.id;if(!id)throw new Brevfeil("utlogget","Logg inn før du åpner brevet.",401);return id;}
-async function invoke(navn,valg={}){
-  try{return await window.__TAURI__.core.invoke(navn,valg);}
-  catch(e){
-    const m=typeof e==="string"?e:e?.message||"Appen kunne ikke fullføre handlingen.";
-    const kode=m.split(":",1)[0];
-    const kjente={konflikt:"Dokumentet er endret i et annet vindu. Teksten din er beholdt.",opptatt:"Dokumentet er opptatt. Prøv igjen når andre vinduer er lukket.",odelagt:"Dokumentet kan ikke leses. Gjenopprett forrige lagring.",gjenoppretting:"Hovedfilen mangler. Gjenopprett forrige lagring.",avbrutt:"Skrivingen ble avbrutt.",tidsavbrudd:"Modellen svarte ikke innen to minutter.","ingen-kopi":"Fant ingen tidligere lagring å gjenopprette."};
-    throw new Brevfeil(kjente[kode]?kode:/^[a-z-]+:/.test(m)?kode:"appfeil",kjente[kode]||m,409);
-  }
-}
-async function http(sti,{method="GET",body,signal}={}){
-  const id=bruker();let r;
-  try{r=await fetch(sti,{method,signal,credentials:"same-origin",headers:{"Content-Type":"application/json"},...(body!==undefined?{body:JSON.stringify(body)}:{})});}
-  catch(e){if(signal?.aborted)throw new Brevfeil("avbrutt","Skrivingen ble avbrutt.");throw new Brevfeil("frakoblet","Fikk ikke kontakt med appen. Teksten din er beholdt.");}
-  let j;try{j=await r.json();}catch{}
-  if(r.status===401){Økt.meldUtlogget(j?.melding);throw new Brevfeil("utlogget","Logg inn igjen for å fortsette.",401);}
-  if(id!==Økt.nåværendeBruker()?.id)throw new Brevfeil("utlogget","Profilen er byttet. Svaret ble forkastet.",401);
-  if(!r.ok||!j)throw new Brevfeil(j?.feil||"brevfeil",j?.melding||"Handlingen kunne ikke fullføres.",r.status);
-  return j;
-}
 /* Trinn-endepunktet svarer alltid text/event-stream. Kontrakten er: én
    fase-hendelse først, så null eller flere deltaer, så nøyaktig én avsluttende
    hendelse. En strøm som slutter uten avslutning er et transportbrudd. */
@@ -117,20 +97,8 @@ function forhåndsvisning(valg){
 function lokal(){
   const id=bruker();
   if(!tjenestene.has(id)){
-    const sjekk=()=>{if(bruker()!==id)throw new Brevfeil("utlogget","Profilen er byttet.",401);};
-    const lager={
-      async les(navn){sjekk();const rå=await invoke("brev_les",{bruker:id,navn});sjekk();return lesDokument(navn,rå);},
-      async skriv(navn,d,forventet){
-        sjekk();dokumentnavn(navn);
-        const tekst=JSON.stringify({...d,skjemaVersjon:1,revisjon:forventet+1,oppdatert:new Date().toISOString()});
-        const rå=await invoke("brev_skriv",{bruker:id,navn,tekst,forventet});sjekk();return lesDokument(navn,rå);
-      },
-      async slett(navn,forventet){sjekk();await invoke("brev_slett",{bruker:id,navn,forventet});},
-      async liste(){sjekk();return invoke("brev_liste",{bruker:id});},
-      async gjenopprett(navn){sjekk();return lesDokument(navn,await invoke("brev_gjenopprett",{bruker:id,navn}));}
-    };
-    tjenestene.set(id,lagBrevtjeneste({lager,
-      hentJobb:async jobbId=>{sjekk();const rå=await invoke("les_tekst",{bruker:id,navn:"jobber.json"});sjekk();return JSON.parse(rå||"{}").jobber?.find(j=>j.id===jobbId);},
+    const {lager,hentJobb,sjekk}=lokaltLager(id);
+    tjenestene.set(id,lagBrevtjeneste({lager,hentJobb,
       kallModell:async valg=>{
         sjekk();const kjoringId=crypto.randomUUID();
         const av=()=>{invoke("brev_avbryt_modell",{bruker:id,kjoringId}).catch(()=>{});};

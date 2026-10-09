@@ -6,6 +6,8 @@ import path from "node:path";
 import { lagServer } from "./server.mjs";
 import { lagBrukere } from "./brukere.mjs";
 import { delSse } from "../src/brev-strom.mjs";
+import { lagBrevlager } from "./brevlager.mjs";
+import { sjekksum } from "../src/jobbdokument.mjs";
 
 const analyse = () => ({sprak:"nb",begrunnelse:"Bokmål i annonsen.",sporsmal:[{id:"q1",tekst:"Hva ved stillingen motiverer deg?"}],krav:[],bevis:[],uklarheter:[],maAvklares:false});
 const brev = () => ({tekst:"Jeg søker stillingen som rådgiver.",sprak:"nb",merknader:[],pastander:[],maAvklares:false});
@@ -25,6 +27,11 @@ async function start(t,callback){
     const api=async(p,method="GET",body)=>{
       const r=await fetch(base+p,{method,headers:{...(cookie?{cookie}:{}),"Content-Type":"application/json"},...(body===undefined?{}:{body:JSON.stringify(body)})});
       return {status:r.status,data:await r.json(),headers:r.headers};
+    };
+    /* Kroppen sendes som den er, for å prøve det som ikke er JSON. */
+    api.rå=async(p,method,tekst)=>{
+      const r=await fetch(base+p,{method,headers:{...(cookie?{cookie}:{}),"Content-Type":"application/json"},body:tekst});
+      return {status:r.status,data:await r.json()};
     };
     /* Trinn-endepunktet er en SSE-strøm. Leseren gir tilbake det samme
        {status,data} som før, pluss fasene og deltaene underveis, slik at
@@ -204,4 +211,101 @@ test("modelltekst kan ikke forfalske en hendelse i strømmen",async t=>{
   assert.deepEqual(r.deltaer.map(d=>d.tekst),[angrep]);
   assert.equal(r.data.kjoring.status,"venter");
   assert.equal(r.data.dokument.tekst,"");
+});
+
+/* ---------- jobbdokumentene ---------- */
+
+const dsti="/api/jobber/j1/dokument";
+const profilkatalog=async(api,katalog)=>path.join(katalog,"brukere",(await api("/api/okt")).data.bruker.id);
+
+test("jobbdokumentet og utdraget krever økt og hører til én profil",async t=>{
+  const {api,registrer,utenOkt}=await start(t);const beta=await registrer("beta@example.no");
+  for(const p of [dsti,`${dsti}/gjenopprett`,"/api/jobbdokumenter/utdrag?stier=match.prosent"])
+    assert.equal((await utenOkt(p)).status,401,p);
+  for(const a of [api,beta])assert.equal((await a("/api/jobber","PUT",{versjon:0,jobber:[rad]})).status,200);
+  const d=(await api(dsti)).data;
+  assert.equal((await api(dsti,"PUT",{...d,annonse:{tekst:"Alfas annonse.",kilde:"limt"}})).status,200);
+  assert.equal((await beta(dsti)).data.annonse.tekst,"");
+  assert.deepEqual((await beta("/api/jobbdokumenter/utdrag?stier=annonse.sjekksum")).data,{});
+  assert.deepEqual((await api("/api/jobbdokumenter/utdrag?stier=annonse.sjekksum")).data,{"jobb-j1.json":{"annonse.sjekksum":sjekksum("Alfas annonse.")}});
+});
+test("jobbdokumentet følger revisjonen, og modellsvar kan ikke skrives fra klienten",async t=>{
+  const {api,katalog}=await start(t);
+  assert.equal((await api(dsti)).status,404);
+  assert.equal((await api("/api/jobber","PUT",{versjon:0,jobber:[rad]})).status,200);
+  const tom=(await api(dsti)).data;
+  assert.equal(tom.revisjon,0);assert.equal(tom.jobbId,"j1");assert.equal(tom.match,null);
+  let r=await api(dsti,"PUT",{...tom,annonse:{tekst:"Eksempelbedrift søker rådgiver.",kilde:"import",url:"https://example.invalid/jobb"},
+    match:{prosent:99},forberedelser:{i1:{sammendrag:"Laget i klienten."}}});
+  assert.equal(r.status,200);assert.equal(r.data.revisjon,1);
+  assert.equal(r.data.annonse.sjekksum,sjekksum("Eksempelbedrift søker rådgiver."));
+  assert.equal(r.data.match,null);assert.deepEqual(r.data.forberedelser,{});
+  // En vurdering lagt inn av tjenesten overlever en vanlig lagring av annonsen.
+  const lager=lagBrevlager(await profilkatalog(api,katalog));
+  await lager.skriv("jobb-j1.json",{...r.data,match:{prosent:71}},1);
+  r=await api(dsti,"PUT",{...r.data,revisjon:2,annonse:{...r.data.annonse,tekst:"Ny tekst."},match:null});
+  assert.equal(r.status,200);assert.equal(r.data.match.prosent,71);assert.equal(r.data.revisjon,3);
+  const utdatert=await api(dsti,"PUT",{...r.data,revisjon:2,annonse:{tekst:"Fra en gammel fane."}});
+  assert.equal(utdatert.status,409);assert.equal(utdatert.data.feil,"konflikt");
+  assert.equal((await api(dsti)).data.annonse.tekst,"Ny tekst.");
+  assert.equal((await api(dsti,"PUT",{...r.data,annonse:{tekst:"x".repeat(100001)}})).status,400);
+  assert.equal((await api(dsti,"PUT",{...r.data,annonse:{tekst:"x",url:"javascript:alert(1)"}})).status,400);
+  assert.equal((await api(dsti,"PUT",{...r.data,revisjon:"3"})).status,400);
+  assert.equal((await api(dsti,"DELETE",{revisjon:3})).status,405);
+  assert.equal((await api(`${dsti}/gjenopprett`,"GET")).status,405);
+  for(const p of ["/api/jobber/a.b/dokument","/api/jobber/..%2F..%2Fcv/dokument",`/api/jobber/${"x".repeat(65)}/dokument`]){
+    const svar=await api(p);assert.ok([400,404].includes(svar.status),`${p}: ${svar.status}`);
+  }
+  assert.equal((await api(dsti)).data.revisjon,3);
+});
+test("ugyldig JSON til jobbdokumentet gir 400 og ingen skriving",async t=>{
+  const {api}=await start(t);
+  assert.equal((await api("/api/jobber","PUT",{versjon:0,jobber:[rad]})).status,200);
+  const r=await api.rå(dsti,"PUT","{ikke json");
+  assert.equal(r.status,400);assert.equal((await api(dsti)).data.revisjon,0);
+});
+test("et skadet jobbdokument kan gjenopprettes fra forrige lagring over HTTP",async t=>{
+  const {api,katalog}=await start(t);
+  assert.equal((await api("/api/jobber","PUT",{versjon:0,jobber:[rad]})).status,200);
+  let d=(await api(dsti,"PUT",{...(await api(dsti)).data,annonse:{tekst:"Første."}})).data;
+  d=(await api(dsti,"PUT",{...d,annonse:{tekst:"Andre."}})).data;
+  const fil=path.join(await profilkatalog(api,katalog),"jobb-j1.json");
+  await fs.writeFile(fil,"ødelagt");
+  const feil=await api(dsti);assert.equal(feil.status,503);assert.equal(feil.data.feil,"odelagt");
+  const r=await api(`${dsti}/gjenopprett`,"POST");
+  assert.equal(r.status,200);assert.equal(r.data.annonse.tekst,"Første.");assert.ok(r.data.revisjon>d.revisjon);
+  assert.equal((await api(dsti)).data.annonse.tekst,"Første.");
+  assert.ok((await fs.readdir(path.dirname(fil))).some(n=>n.startsWith("jobb-j1.odelagt-")));
+});
+test("utdraget svarer med de stiene det ble bedt om, for alle jobbdokumentene",async t=>{
+  const {api,katalog}=await start(t);
+  const rader=[rad,{...rad,id:"j2",lenke:"https://example.invalid/jobb2"}];
+  assert.equal((await api("/api/jobber","PUT",{versjon:0,jobber:rader})).status,200);
+  await api(dsti,"PUT",{...(await api(dsti)).data,annonse:{tekst:"A.",hentet:"2026-10-01T10:00:00.000Z"}});
+  const lager=lagBrevlager(await profilkatalog(api,katalog));
+  await lager.skriv("jobb-j2.json",{revisjon:0,match:{prosent:64,oppsummering:"ø".repeat(1000)}},0);
+  await lager.skriv("brev-j1.json",{...(await lager.les("brev-j1.json")),tekst:"Brev."},0);
+  const r=await api("/api/jobbdokumenter/utdrag?stier=match.prosent,annonse.hentet,match.oppsummering");
+  assert.equal(r.status,200);
+  assert.deepEqual(r.data,{
+    "jobb-j1.json":{"annonse.hentet":"2026-10-01T10:00:00.000Z"},
+    "jobb-j2.json":{"match.prosent":64,"annonse.hentet":null,"match.oppsummering":"ø".repeat(300)}
+  });
+  assert.equal(r.headers.get("cache-control"),"no-store");
+  for(const p of ["/api/jobbdokumenter/utdrag","/api/jobbdokumenter/utdrag?stier=","/api/jobbdokumenter/utdrag?stier=__proto__",
+    "/api/jobbdokumenter/utdrag?stier=a..b","/api/jobbdokumenter/utdrag?stier="+Array.from({length:21},(_,i)=>`s${i}`).join(",")]){
+    const svar=await api(p);assert.equal(svar.status,400,p);assert.equal(svar.data.feil,"ugyldig");
+  }
+  assert.equal((await api("/api/jobbdokumenter/utdrag?stier=match.prosent","POST",{})).status,405);
+  assert.equal((await api("/api/jobbdokumenter")).status,404);
+  assert.equal((await api("/api/jobbdokumenter/annet")).status,404);
+});
+test("sikkerhetskopien over HTTP er versjon 2 og har med jobbdokumentet",async t=>{
+  const {api}=await start(t);await grunnlag(api);
+  await api(dsti,"PUT",{...(await api(dsti)).data,annonse:{tekst:"Annonse til kopien."}});
+  const r=await api("/api/brevdata");
+  assert.equal(r.data.skjemaVersjon,2);
+  assert.equal(r.data.dokumenter["jobb-j1.json"].annonse.tekst,"Annonse til kopien.");
+  const konflikt=await api("/api/brevdata","POST",r.data);
+  assert.equal(konflikt.status,409);
 });
