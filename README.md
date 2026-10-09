@@ -78,7 +78,11 @@ Finnes det ingen data noe sted, starter den første kontoen med startlisten.
 Sidepanelet har fire visninger, med antall søknader ved siden av navnet.
 
 - **Frister**: søknader du ikke har sendt. De er gruppert i «Denne uka» (inkludert frister som har gått ut), «Løpende opptak» og én gruppe per måned. En farget stripe og teksten «i dag», «i morgen», «om N dager» eller «N dager siden» viser hastegraden.
-- **Sendt**: søknader som venter på svar, gruppert etter sektor, med antall dager du har ventet.
+- **Sendt**: søknader som venter på svar, gruppert etter sektor.
+  Hver rad viser hvor lenge du har ventet («venter 12 dager»), regnet fra sendtdatoen.
+  Har søknaden et kommende intervju, står det i stedet («intervju i morgen», «intervju 14. okt»).
+  Ellers viser et intervju hvor lenge det har stått på («i intervju i 9 dager»).
+  Eldre søknader uten sendtdato viser ingen ventetid.
 - **Arkiv**: avslag, tilbud, trukne og utløpte søknader.
 - **Tall**: statistikk, se under.
 
@@ -112,17 +116,21 @@ Filtrene gjelder også i **Tall**.
 
 ### Tall
 
-- Nøkkeltall: neste frist, antall å søke på, antall sendt med andelen som har fått svar, antall intervjuer med andelen av det du har sendt, og frister denne uka.
+- Nøkkeltall: neste frist, frister denne uka, antall å søke på, antall sendt med andelen som har fått svar, og antall intervjuer med andelen av det du har sendt.
+- **Svartid**: median antall dager fra en søknad ble sendt til første svar (intervju, avslag eller tilbud).
+  Bare ekte hendelser teller, så eldre søknader uten hendelseslogg er ikke med.
+  Til den første søknaden du har merket som sendt får svar, står flisen tom.
+- **Uten svar**: søknader som har stått på Sendt i over 30 dager, med de som har ventet lengst først.
 - **Fra liste til intervju**: sporet, sendt, fått svar og fikk intervju.
-
-Intervjuet huskes på søknaden.
-Merker du en søknad med **Fikk intervju**, teller den med også når den senere får avslag eller blir trukket.
-For eldre søknader kan du krysse av for **Fikk intervju** når du redigerer dem.
 - **Fristtrykk de neste ti ukene**: antall frister per uke.
 - **Sektorene du satser på**: sendt og ikke sendt per sektor.
 - **Hvor stillingene ligger**: de sju vanligste stedene.
 - **Selskapene du følger tettest**: topp ti.
 - **Sendt per uke**: tempoet ditt, regnet fra sendtdatoene.
+
+Intervjuet huskes på søknaden.
+Merker du en søknad med **Fikk intervju**, teller den med også når den senere får avslag eller blir trukket.
+For eldre søknader kan du krysse av for **Fikk intervju** når du redigerer dem.
 
 ### Tema og tastatur
 
@@ -492,7 +500,7 @@ Repoet er offentlig, og filene inneholder ekte søknader.
 
 ```sh
 npm test          # lagerlogikk, server, kontoer, import, brev og dokumenter
-npm run test:ui   # nettlesertester av brevflyten og innstillingene
+npm run test:ui   # nettlesertester av brevflyten, innstillingene, skuffen og hendelsene
 npm run test:rust # fil-, nett-, brev- og varseloperasjonene i Mac-appen
 ```
 
