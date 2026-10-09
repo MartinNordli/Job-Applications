@@ -360,9 +360,12 @@ Vil du ta en kopi av den eller flytte den, kopierer du filen.
 ### Sikkerhetskopi av brevene
 
 **Sikkerhetskopien** under brevskriverens innstillinger omfatter profilens CV, brev, kildegrunnlag og versjoner, også brev til søknader som senere er fjernet.
+Den har også med `jobb-<jobb-id>.json` og `radar.json`.
 Nøkler følger ikke med.
 Gjenoppretting legger inn dokumenter som mangler, men erstatter ikke en eksisterende samling.
 Den omfatter ikke søknadslisten, så kopier `jobber.json` også hvis du vil flytte alt.
+Filen har `"skjemaVersjon": 2`.
+Kopier fra før, med `"skjemaVersjon": 1`, kan fortsatt gjenopprettes og inneholder bare CV og brev.
 
 ## Hvor dataene ligger
 
@@ -407,7 +410,13 @@ Flytt innholdet inn i katalogen over mens appen og serveren er avslått.
     varsel.json             fristvarselet: på eller av, og hvor mange dager før
     varslet.json            fristene som alt er varslet
     brev-<jobb-id>.json     brev, grunnlag og versjoner for én søknad
+    jobb-<jobb-id>.json     annonsen, vurderingen og intervjuforberedelsene for én søknad
+    radar.json              Radar: innstillinger, innboks og hva som er sett
 ```
+
+`jobb-<jobb-id>.json` holder det som hører til én søknad, men er for stort for listen eller lages i bakgrunnen.
+Annonsen ligger her med en sjekksum, så en vurdering som bygde på en eldre annonse kan merkes som utdatert.
+Filen har et tak på 4 MiB, og den er ikke det samme som brevdokumentet: å slette brevet sletter ikke annonsen.
 
 `jobber.json` er vanlig JSON som kan leses og redigeres for hånd:
 
@@ -451,7 +460,7 @@ Søknadslisten har ingen fillås, så to lagringer i nøyaktig samme øyeblikk k
 Sidepanelet viser om endringene er lagret, lagres nå eller ikke ble lagret.
 Er serveren nede, beholdes endringen og lagres når den er tilbake.
 
-**CV og brev** ligger utenfor søknadslisten.
+**CV, brev og jobbdokumentene** ligger utenfor søknadslisten.
 Filene har revisjonskontroll, en kopi av forrige lagring og en kort fillås som deles av nettleserversjonen og Mac-appen.
 Ved en lagringskonflikt beholdes teksten på skjermen, så ikke lukk før den er kopiert eller lagret.
 **Gjenopprett forrige lagring** henter den lokale kopien når et dokument er skadet, og originalen legges til side.
@@ -472,6 +481,7 @@ npm run test:rust # fil-, nett-, brev- og varseloperasjonene i Mac-appen
 ```
 
 `npm test` kjører alle `server/*.test.mjs` med `node:test`.
+`testdata/dokumenter.json` leses av både Node- og Rust-testene, så navnene på profildokumentene og utdraget for listen ikke glir fra hverandre.
 Testene bruker simulerte modellsvar og krever ingen API-nøkkel.
 
 Nettlesertesten bruker installert Chrome på macOS, ellers Playwright Chromium (`npx playwright install chromium`).
