@@ -1,7 +1,7 @@
 /* ============================================================
    1. Data
    ============================================================ */
-import { STATUSER, SEKTORER, JOBBTYPER, ER_SENDT, ER_ARKIV, FIKK_INTERVJU, validerSoknad, sjekkLenke } from "./felles.mjs";
+import { STATUSER, SEKTORER, JOBBTYPER, ER_SENDT, ER_ARKIV, validerSoknad, sjekkLenke } from "./felles.mjs";
 import { START } from "./startliste.js";
 import * as Lagring from "./lagring.js";
 import { importerFraLenke, TRINN } from "./import.js";
@@ -10,6 +10,7 @@ import { krevØkt, krevØktIgjen, portenStår } from "./innlogging.js";
 import { åpneBrevflate } from "./brevflate.js";
 import * as Varsling from "./varsling.js";
 import { DAGVALG } from "./fristvarsel.mjs";
+import { medStatus, synkSendt } from "./hendelser.mjs";
 
 const NOKKEL = "jobbsoknader-2027";
 window.__jobbsoknaderKjorer = true;   /* se fallback-skriptet i index.html */
@@ -839,14 +840,13 @@ function varsle(tekst, angreFn){
 function settStatus(id, ny){
   const p = data.find(x => x.id === id);
   if(!p) return;
-  const fra = { status: p.status, sendtDato: p.sendtDato, intervju: p.intervju };
-  p.status = ny;
-  if(ny === "sent" && !p.sendtDato) p.sendtDato = tilIso(I_DAG);
-  if(ny === "todo") p.sendtDato = null;
-  if(FIKK_INTERVJU(ny)) p.intervju = true;
+  /* Hendelsene er med i øyeblikksbildet, så angre fjerner hendelsen igjen.
+     medStatus lager en ny liste, og den gamle står urørt her. */
+  const fra = { status: p.status, sendtDato: p.sendtDato, intervju: p.intervju, hendelser: p.hendelser };
+  Object.assign(p, medStatus(p, ny, { iDag: tilIso(I_DAG) }));
   lagre(); tegn();
   varsle(p.selskap + " · " + STATUSER[ny].toLowerCase(), () => {
-    p.status = fra.status; p.sendtDato = fra.sendtDato; p.intervju = fra.intervju; lagre(); tegn();
+    Object.assign(p, fra); lagre(); tegn();
   });
 }
 function slett(id){
@@ -881,6 +881,10 @@ function lagreSkjema(){
     status:    $("#fStatus").value,
     sendtDato: redigerer ? (v("sendtDato") || null) : null,
     intervju:  redigerer ? $("#fintervju").checked : false,
+    /* Skjemaet viser ikke listene, men må sende dem videre. Ellers ville
+       validatoren gitt tomme lister, og Object.assign under slettet dem. */
+    hendelser:  redigerer ? redigerer.hendelser  : [],
+    intervjuer: redigerer ? redigerer.intervjuer : [],
     opprettet: redigerer ? redigerer.opprettet : null,
     oppdatert: redigerer ? redigerer.oppdatert : null
   };
@@ -898,9 +902,13 @@ function lagreSkjema(){
   }
   feilEl.hidden = true;
 
-  const verdi = sjekk.verdi;
-  if(ER_SENDT(verdi.status) && !verdi.sendtDato) verdi.sendtDato = tilIso(I_DAG);
-  if(verdi.status === "todo") verdi.sendtDato = null;
+  /* En ny søknad og et nytt statusvalg logges som hendelse. Ellers
+     holdes bare sendtDato og sendt-hendelsen i takt, så en rettet
+     sendtdato flytter hendelsen i stedet for å legge til en ny. */
+  const klokke = { iDag: tilIso(I_DAG) };
+  const verdi = !redigerer || redigerer.status !== sjekk.verdi.status
+    ? medStatus(sjekk.verdi, sjekk.verdi.status, klokke)
+    : synkSendt(sjekk.verdi, klokke);
 
   if(redigerer){
     Object.assign(redigerer, verdi);
