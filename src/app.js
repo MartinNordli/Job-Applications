@@ -296,9 +296,12 @@ function baandHtml(navn, rader, id){
    6. Visningene
    ============================================================ */
 /* Bånd i den rekkefølgen en person faktisk planlegger i: det som haster
-   denne uka først — utgåtte frister hører hjemme der, de trenger en
-   avgjørelse — så opptakene uten frist, som er de letteste å glemme, og
-   til slutt én bolk per kalendermåned.
+   denne uka først, så opptakene uten frist, som er de letteste å glemme,
+   og til slutt én bolk per kalendermåned.
+
+   Frister som har gått ut står ikke lenger i «Denne uka». Der skjøv de
+   den ene fristen som faktisk haster ut av synet. De har sitt eget,
+   sammenfoldede bånd nederst; se utgattHtml.
 
    Grensen er med vilje: står det 30. august, holder «Denne uka» ut 6.
    september, og SEPTEMBER-bolken begynner 7. september. */
@@ -310,9 +313,8 @@ function mndNavn(d){
 
 function fristBaand(liste){
   const baand = [];
-  /* liste er allerede sortert med sorterFrist: utgåtte datoer kommer
-     før dagens, så «utgått først» faller ut av sorteringen selv. */
-  const uka     = liste.filter(p => p.frist && dagerTil(p.frist) <= 7);
+  /* liste er sortert med sorterFrist og har ingen utgåtte frister. */
+  const uka     = liste.filter(p => p.frist && dagerTil(p.frist) >= 0 && dagerTil(p.frist) <= 7);
   const lopende = liste.filter(p => !p.frist);
   const senere  = liste.filter(p => p.frist && dagerTil(p.frist) > 7);
 
@@ -329,10 +331,62 @@ function fristBaand(liste){
   return baand;
 }
 
+/* Søknadene i utløpsbåndet: de som vises nå, så filtrene gjelder også
+   for «Flytt alle til arkivet». Den som gikk ut sist, står først. */
+const synligeUtgatte = () => data.filter(p => p.status === "todo" && erUtgatt(p) && passererFilter(p))
+  .sort((a, b) => sorterFrist(b, a));
+
+/* Om båndet står åpent. Listen tegnes på nytt ved hver endring, og uten
+   dette ville båndet klappet sammen hver gang en rad i det ble endret.
+   Tilstanden leses fra båndet som står der når listen tegnes: toggle
+   kommer først i en senere oppgave, og en omtegning rett etter et
+   klikk ville ellers tegnet båndet lukket. Lytteren under trengs for
+   at valget huskes når båndet har vært borte en stund. */
+let utgattApen = false;
+
+/* Utgåtte frister er sammenfoldet nederst: de trenger en avgjørelse,
+   men ikke i dag, og de skal ikke ta plass fra det som haster. Raden i
+   overskriften er samme klebende bånd som de andre, bare med en pil som
+   sier at det kan foldes ut. Kulør er tatt ut av radene her (se CSS):
+   en frist som har gått ut haster ikke lenger. */
+function utgattHtml(rader){
+  const filtrert = sok || filtSektor || filtSted;
+  return '<section class="baandblokk baandblokk--utgatt" id="baand-utgatt">'
+    + '<details class="utgatt" id="utgatt"' + (utgattApen ? " open" : "") + '>'
+    + '<summary class="baand baand--fold">'
+      + '<svg class="baand__pil" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="m3.5 2 3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      + '<h3 class="merkelinje baand__navn">Fristen har gått ut</h3>'
+      + '<span class="baand__strek" aria-hidden="true"></span>'
+      + '<span class="baand__tall" aria-label="' + antall(rader.length, "søknad", "søknader") + '">'
+      + rader.length + '</span></summary>'
+    + '<div class="utgatt__rad">'
+      + '<p class="utgatt__tekst">Søknader du ikke rakk å sende. I arkivet står de som utløpt.'
+        + (filtrert ? ' Bare de ' + rader.length + ' som passer filtrene, flyttes.' : '') + '</p>'
+      + '<button class="knapp knapp--liten" type="button" data-gjor="arkiverUtgatte">Flytt alle til arkivet</button>'
+    + '</div>'
+    + '<div class="stabel">' + rader.map(radHtml).join("") + '</div>'
+    + '</details></section>';
+}
+
 function visFrister(){
-  const liste = data.filter(p => p.status === "todo" && passererFilter(p)).sort(sorterFrist);
-  if(!liste.length) return tomHtml();
-  return fristBaand(liste).map(b => baandHtml(b.navn, b.rader, "baand-" + b.id)).join("");
+  const nå = document.getElementById("utgatt");
+  if(nå) utgattApen = nå.open;
+  const liste = data.filter(p => p.status === "todo" && passererFilter(p) && !erUtgatt(p)).sort(sorterFrist);
+  const utgatte = synligeUtgatte();
+  if(!liste.length && !utgatte.length) return tomHtml();
+  const filtrert = sok || filtSektor || filtSted;
+  /* Er alt som er igjen gått ut, sier listen det i stedet for å vise
+     bare et sammenfoldet bånd. */
+  const over = liste.length
+    ? fristBaand(liste).map(b => baandHtml(b.navn, b.rader, "baand-" + b.id)).join("")
+    : '<div class="tomt tomt--lav"><p class="tomt__tittel">Ingen åpne frister</p>'
+      + '<p class="tomt__tekst">' + (filtrert
+          ? "Ingen åpne frister passer filtrene. Det som har gått ut, ligger samlet under."
+          : "Det som har gått ut, ligger samlet under. Legg til en ny søknad når du finner noe å søke på.") + '</p>'
+      + (filtrert
+          ? '<button class="knapp" data-gjor="nullstillFilter">Nullstill filtre</button>'
+          : '<button class="knapp knapp--primar" data-gjor="nyFraTom">Legg til søknad</button>') + '</div>';
+  return over + (utgatte.length ? utgattHtml(utgatte) : "");
 }
 
 function visEtterSektor(filterFn, tomTekst){
@@ -913,6 +967,27 @@ function settStatus(id, ny){
     Object.assign(p, fra); lagre(); tegn();
   });
 }
+/* Flytter alle utgåtte som vises nå til arkivet, med én lagring og én
+   angre. Hendelsen dateres i dag; fristen står fortsatt på søknaden.
+
+   Båndet forsvinner med knappen, så fokus flyttes til sideoverskriften
+   i stedet for å falle ut til <body>. Angres det, står båndet der igjen,
+   og fokus går til overskriften i det. */
+function arkiverUtgatte(){
+  const rader = synligeUtgatte();
+  if(!rader.length) return;
+  const klokke = { iDag: tilIso(I_DAG) };
+  const før = rader.map(p => [p, { status: p.status, sendtDato: p.sendtDato, intervju: p.intervju, hendelser: p.hendelser }]);
+  rader.forEach(p => Object.assign(p, medStatus(p, "expired", klokke)));
+  lagre(); tegn();
+  $("#sidetittel").focus();
+  varsle("Flyttet " + antall(rader.length, "søknad", "søknader") + " til arkivet", () => {
+    før.forEach(([p, fra]) => Object.assign(p, fra));
+    lagre(); tegn();
+    const tilbake = $("#utgatt > summary");
+    if(tilbake) tilbake.focus();
+  });
+}
 function slett(id){
   const i = data.findIndex(p => p.id === id);
   if(i < 0) return;
@@ -1287,6 +1362,7 @@ document.addEventListener("click", e => {
   }
   else if(g === "rediger") apneSkuff("rediger", id);
   else if(g === "slett") slett(id);
+  else if(g === "arkiverUtgatte") arkiverUtgatte();
   else if(g === "nyFraTom") apneSkuff("ny");
   else if(g === "nullstillFilter"){ sok = ""; filtSektor = ""; filtSted = ""; $("#sok").value = ""; tegn(); }
   else if(g === "tilbakestill"){
@@ -1333,6 +1409,8 @@ function hoppTilSoknad(id){
 }
 
 $("#slor").addEventListener("click", lukkSkuff);
+/* toggle bobler ikke, så den fanges på vei ned. */
+document.addEventListener("toggle", e => { if(e.target.id === "utgatt" && e.target.isConnected) utgattApen = e.target.open; }, true);
 $("#sok").addEventListener("input", e => { sok = e.target.value; tegn(); });
 $("#filtSektor").addEventListener("change", e => { filtSektor = e.target.value; tegn(); });
 $("#filtSted").addEventListener("change", e => { filtSted = e.target.value; tegn(); });

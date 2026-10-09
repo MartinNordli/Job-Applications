@@ -298,7 +298,9 @@ a{color:inherit}
 .hoved{min-width:0;width:100%;max-width:var(--les);margin-inline:auto;padding:26px 30px 96px}
 .tittelrad{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-start;justify-content:space-between;margin-bottom:18px}
 .tittelrad__tekst{min-width:0}
-.tittel{margin:0;font-size:27px;font-weight:700;letter-spacing:-.03em;line-height:1.08}
+/* Overskriften tar imot fokus når noe den sto over forsvinner (se
+   arkiverUtgatte). Ringen skal rundt ordet, ikke rundt hele kolonnen. */
+.tittel{margin:0;font-size:27px;font-weight:700;letter-spacing:-.03em;line-height:1.08;width:fit-content}
 .tittel__und{margin:7px 0 0;font-size:13.5px;color:var(--blekk-2)}
 .tittel__und b{font-family:var(--mono);font-weight:500;font-size:.92em;
                font-variant-numeric:tabular-nums;color:var(--blekk)}
@@ -339,6 +341,25 @@ a{color:inherit}
 .baand__strek{flex:1;min-width:12px;height:1px;background:var(--linje-2)}
 .baand__tall{font-family:var(--mono);font-size:11px;font-weight:500;font-variant-numeric:tabular-nums;
              color:var(--blekk-3);white-space:nowrap}
+
+/* Utløpsbåndet nederst er sammenfoldet. Overskriften er det samme
+   båndet som over, gjort til en <summary>: en pil foran navnet sier at
+   det kan foldes ut, og navnet står ett trinn dempet, fordi ingenting
+   her haster lenger. */
+.baand--fold{cursor:pointer;list-style:none;-webkit-user-select:none;user-select:none}
+.baand--fold::-webkit-details-marker{display:none}
+.baand__pil{flex:none;margin-right:-4px;color:var(--blekk-3);transition:transform .12s ease-out,color .12s ease}
+.utgatt[open] .baand__pil{transform:rotate(90deg)}
+.baandblokk--utgatt .baand__navn{color:var(--blekk-2);transition:color .12s ease}
+.baand--fold:hover .baand__navn,.baand--fold:hover .baand__pil{color:var(--blekk)}
+.utgatt__rad{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 18px;margin:3px 0 12px}
+.utgatt__tekst{flex:1 1 260px;margin:0;font-size:12.5px;line-height:1.45;color:var(--blekk-2)}
+/* Kulør betyr hastegrad. En frist som har gått ut, haster ikke lenger,
+   så stripa og den røde nedtellingen tas ut her. Teksten «12 dager
+   siden» og båndets navn sier det samme uten farge. */
+.utgatt .rad[data-hast="forbi"]::before{background:transparent}
+.utgatt .rad__om[data-hast="forbi"]{color:var(--blekk-3);font-weight:400}
+.utgatt .rad[data-hast="forbi"] .dato__dag{color:var(--blekk-2)}
 
 /* ---------- listen ----------
    Ett kort per bånd, ikke ett per rad: 27 skygger under hverandre er
@@ -451,6 +472,9 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
 .tomt{background:var(--kort);border-radius:var(--r);box-shadow:var(--loft);padding:52px 28px;text-align:center}
 .tomt__tittel{font-size:18px;font-weight:600;letter-spacing:-.018em;margin:0 0 7px}
 .tomt__tekst{color:var(--blekk-2);margin:0 auto 20px;font-size:14px;max-width:44ch;line-height:1.5}
+/* Tomt over utløpsbåndet: samme melding, mindre plass, og samme luft
+   under filtrene som en båndoverskrift ville gitt. */
+.tomt--lav{margin-top:16px;padding:34px 28px}
 
 /* ---------- TALL ----------
    Diagrammene deler én kulørskala (--graf-1…4) og lar tallene stå i
@@ -626,6 +650,7 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
 .knapp--stille:hover{background:var(--innfelt);box-shadow:none}
 .knapp--fare{color:var(--ild-t)}
 .knapp--bred{width:100%;justify-content:center}
+.knapp--liten{padding:8px 13px;font-size:13px}
 
 /* ---------- søknadsbrevet ----------
    Brevet er hovedflaten. Kildene ligger i en rolig marg, og de lange
