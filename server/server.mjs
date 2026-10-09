@@ -41,6 +41,7 @@ import { SEKTOR_FOR } from "../src/felles.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel,
          tolkModellsvar, slåSammen, sektorForSelskap, manglendeFelt, finnesFraFor } from "../src/importlogikk.mjs";
 import { LOGGFIL, lagLinje, leggTil, sammendrag } from "../src/importlogg.mjs";
+import { trekkUtAnnonse } from "../src/annonsetekst.mjs";
 import { erBrevbane, lagBrevRuter } from "./brev-api.mjs";
 import { erVarselbane, lagVarselRuter } from "./varsel-api.mjs";
 
@@ -157,8 +158,9 @@ function lesKropp(req){
    Import fra lenke.
 
    Rekkefølgen er hele poenget: strukturerte data først, modellen
-   bare på det som fortsatt mangler, og ingenting lagres — svaret
-   er et utkast klienten fyller skjemaet med. `kilder` sier per
+   bare på det som fortsatt mangler, og ingenting lagres: svaret
+   er et utkast klienten fyller skjemaet med, og annonseteksten
+   klienten skriver til jobbdokumentet når søknaden er lagt til. `kilder` sier per
    felt hvor verdien kom fra, både til nytte i flaten og til
    feilsøking den dagen en side leses feil.
    ------------------------------------------------------------ */
@@ -250,7 +252,19 @@ async function apiImporter(req, res, nett, ktx){
   skrivLogg(filer, lagLinje({ url, felt: bruk ? manglende : [], bruk }))
     .catch(() => {});
 
-  return svar(res, 200, { ok: true, utkast, kilder, sluttUrl: side.sluttUrl });
+  return svar(res, 200, { ok: true, utkast, kilder, sluttUrl: side.sluttUrl,
+                          annonse: annonseFra(side, url) });
+}
+
+/* Siden er allerede hentet, så annonseteksten følger med utkastet.
+   Den lagres ikke her: søknaden finnes ikke før brukeren trykker
+   «Legg til», og da skriver klienten den til jobb-<id>.json. For lite
+   eller for mye tekst gjør bare at annonsen mangler, ikke at importen
+   feiler; den kan hentes eller limes inn senere. */
+function annonseFra(side, url){
+  try{
+    return { tekst: trekkUtAnnonse(side.html), url: side.sluttUrl || url, hentet: new Date().toISOString() };
+  }catch{ return null; }
 }
 
 async function skrivLogg(filer, linje){

@@ -409,6 +409,41 @@ test("kjent selskap gjenbruker sektoren og overstyrer modellen", async t => {
   assert.equal(j.kilder.sektor, "selskap");
 });
 
+test("importen gir med annonseteksten fra siden den allerede har hentet", async t => {
+  const beskrivelse = "<p>Vi søker en dataingeniør som vil bygge plattformen for boredata sammen med oss.</p>"
+                    + "<ul><li>Python og SQL</li><li>Erfaring med strømmende data</li></ul>";
+  const { api, stopp } = await start({
+    hentSide: async () => ({ status: 200, sluttUrl: "https://akerbp.com/jobb/1-endelig",
+      html: ldJson(stilling({ description: beskrivelse })) + "<nav>Meny</nav>" }),
+    spørModell: async () => { throw new Error("skal ikke spørres"); }
+  });
+  t.after(stopp);
+
+  const før = Date.now();
+  const j = await (await importer(api, "https://akerbp.com/jobb/1")).json();
+  assert.equal(j.ok, true);
+  assert.match(j.annonse.tekst, /dataingeniør/);
+  assert.match(j.annonse.tekst, /strømmende data/);
+  assert.ok(!j.annonse.tekst.includes("<"), "teksten skal være renset for markering");
+  assert.equal(j.annonse.url, "https://akerbp.com/jobb/1-endelig");
+  assert.ok(Date.parse(j.annonse.hentet) >= før - 1000);
+  assert.deepEqual(Object.keys(j.annonse).sort(), ["hentet", "tekst", "url"]);
+});
+
+test("en annonse som ikke lar seg lese ut, stopper ikke importen", async t => {
+  const { api, stopp } = await start({
+    hentSide: async url => ({ status: 200, sluttUrl: url, html: ldJson(stilling({ description: "Kort." })) }),
+    spørModell: async () => { throw new Error("skal ikke spørres"); }
+  });
+  t.after(stopp);
+
+  const r = await importer(api, "https://akerbp.com/jobb/kort");
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.equal(j.utkast.stilling, "Graduate: Data Engineer");
+  assert.equal(j.annonse, null);
+});
+
 test("en side uten noe å lese gir 422 med lenken i behold", async t => {
   const { api, stopp } = await start(nettMed("<div id='app'></div>", {}));
   t.after(stopp);

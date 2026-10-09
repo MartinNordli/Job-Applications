@@ -7,13 +7,16 @@
    i begge tilfeller — det er bare hentingen som skifter.
 
    Ingenting herfra lagres. Svaret er et utkast skjemaet fylles med,
-   og brukeren trykker selv.
+   og brukeren trykker selv. Annonseteksten følger med som `annonse`
+   (eller null), og skrives til jobbdokumentet først når søknaden
+   er lagt til.
    ============================================================ */
 
 import * as Lagring from "./lagring.js";
 import * as Økt from "./okt.js";
 import { SEKTOR_FOR } from "./felles.mjs";
 import { LOGGFIL, lagLinje, leggTil } from "./importlogg.mjs";
+import { trekkUtAnnonse } from "./annonsetekst.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel,
          tolkModellsvar, slåSammen, sektorForSelskap, manglendeFelt, finnesFraFor } from "./importlogikk.mjs";
 
@@ -53,7 +56,7 @@ async function overHttp(url, si){
   let j = null;
   try{ j = await r.json(); }catch{ /* faller gjennom til feilen under */ }
 
-  if(r.ok && j?.ok) return { utkast: j.utkast, kilder: j.kilder };
+  if(r.ok && j?.ok) return { utkast: j.utkast, kilder: j.kilder, annonse: j.annonse ?? null };
 
   /* Økten er borte. Flaten skal vise porten, ikke «importen feilet» —
      og adressen brukeren limte inn står fortsatt i feltet. */
@@ -122,7 +125,15 @@ async function iApp(url, valg, si){
      fordi en linje ikke lot seg skrive. */
   skrivLogg(lagLinje({ url, felt: bruk ? manglende : [], bruk })).catch(() => {});
 
-  return { utkast, kilder };
+  return { utkast, kilder, annonse: annonseFra(side, url) };
+}
+
+/* Samme regel som serveren: annonseteksten følger utkastet når den
+   kan leses ut, og en side med for lite tekst gjør bare at den mangler. */
+function annonseFra(side, url){
+  try{
+    return { tekst: trekkUtAnnonse(side.html), url: side.sluttUrl || url, hentet: new Date().toISOString() };
+  }catch{ return null; }
 }
 
 /* ---------- importloggen ---------- */
