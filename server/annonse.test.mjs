@@ -310,3 +310,15 @@ test("hentingen av det som mangler stopper ved taket og sier hva som gjenstår",
   assert.deepEqual(r.data.gjenstar, ["j30", "j31", "j32"]);
   assert.equal(nett.hentet.length, 30);
 });
+
+test("den utgåtte /api/annonsetekst sier fortsatt hvorfor hentingen feilet", async t => {
+  const nett = falskNett({ "https://example.invalid/intern": new Error("Adressen peker til et internt nett."),
+    "https://example.invalid/borte": new Error("Siden svarte 404.") });
+  const { api } = await start(t, nett);
+  let r = await api("/api/annonsetekst", "POST", { url: "https://example.invalid/intern" });
+  assert.equal(r.status, 502);assert.equal(r.data.melding, "Adressen peker til et internt nett.");
+  r = await api("/api/annonsetekst", "POST", { url: "https://example.invalid/borte" });
+  assert.equal(r.data.feil, "dod-lenke");
+  r = await api("/api/annonsetekst", "POST", { url: "https://example.invalid/jobb" });
+  assert.equal(r.status, 200);assert.match(r.data.tekst, /kundeservice/);
+});

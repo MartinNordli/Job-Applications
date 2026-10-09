@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { lagBrevlager } from "./brevlager.mjs";
 import { lagBrevtjeneste } from "../src/brevtjeneste.mjs";
 import { lagJobbdokumenter } from "../src/jobbdokumenttjeneste.mjs";
-import { trekkUtAnnonse } from "../src/annonsetekst.mjs";
+import { trekkUtAnnonse, hentefeil } from "../src/annonsetekst.mjs";
 import { Brevfeil } from "../src/brevdata.mjs";
 import { FASE } from "../src/brevlogikk.mjs";
 import { lagBrevModell, brevNokkelStatus, settBrevNokkel, fjernBrevNokkel } from "./brev-modell.mjs";
@@ -125,7 +125,8 @@ export function lagBrevRuter({nett,modellFor,annonsegrense=lagRatebegrenser(ANNO
            Nye kall bruker POST /api/jobber/:id/annonse/hent. */
         metode(req,"POST");const {url}=await kropp(req);
         if(typeof url!=="string" || url.length>2000)throw new Brevfeil("ugyldig","Lim inn en gyldig annonselenke.");
-        const side=await nett.hentSide(url);
+        let side;
+        try{side=await nett.hentSide(url);}catch(e){throw hentefeil(e);}
         r={tekst:trekkUtAnnonse(side.html),url:side.sluttUrl||url,hentet:new Date().toISOString()};
       }else if(bane.startsWith("/api/nokler/")){
         metode(req,"GET","PUT","DELETE");const leverandor=bane.split("/").at(-1);
