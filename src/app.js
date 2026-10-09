@@ -5,6 +5,7 @@ import { STATUSER, SEKTORER, JOBBTYPER, ER_SENDT, ER_ARKIV, validerSoknad, sjekk
 import { START } from "./startliste.js";
 import * as Lagring from "./lagring.js";
 import { importerFraLenke, TRINN } from "./import.js";
+import * as Jobbdokumenter from "./jobbdokumenter.js";
 import * as Økt from "./okt.js";
 import { krevØkt, krevØktIgjen, portenStår } from "./innlogging.js";
 import { åpneBrevflate } from "./brevflate.js";
@@ -1049,6 +1050,7 @@ function lagreSkjema(){
     ? medStatus(sjekk.verdi, sjekk.verdi.status, klokke)
     : synkSendt(sjekk.verdi, klokke);
 
+  const annonse = redigerer ? null : importertAnnonse();
   if(redigerer){
     Object.assign(redigerer, verdi);
     varsle("Lagret " + verdi.selskap);
@@ -1057,6 +1059,30 @@ function lagreSkjema(){
     varsle("La til " + verdi.selskap + " · " + verdi.stilling);
   }
   lagre(); tegn(); lukkSkuff();
+  if(annonse) lagreImportertAnnonse(verdi.id, annonse);
+}
+/* Utenfor lagreSkjema, der et lokalt `utkast` skygger for importens. */
+const importertAnnonse = () => (utkast && utkast.annonse) || null;
+
+/* Annonsen fra importen hører til jobbdokumentet, og det krever at
+   søknaden står i den lagrede listen. Derfor skrives den først når
+   lagringen er ferdig. Feiler det, er søknaden lagt til likevel, og
+   annonsen kan hentes eller limes inn senere. */
+async function lagreImportertAnnonse(id, annonse){
+  const profil = brukeren?.id;
+  try{
+    for(let i = 0; i < 20; i++){
+      await Lagring.nåMedEnGang();
+      if(!Lagring.harUlagret() || Lagring.erBlokkert()) break;
+      await new Promise(r => setTimeout(r, 250));
+    }
+    if(profil !== brukeren?.id) return;
+    await Jobbdokumenter.lagreAnnonse(id, { tekst: annonse.tekst, url: annonse.url, hentet: annonse.hentet, kilde: "import" });
+  }catch(e){
+    if(profil !== brukeren?.id) return;
+    console.warn("Annonsen fra importen ble ikke lagret:", e);
+    varsle("Søknaden er lagt til, men ikke annonsen. Hent den igjen senere.");
+  }
 }
 /* ---- import fra lenke ---- */
 
@@ -1110,7 +1136,7 @@ async function hentFraLenke(){
     });
     if(mitt !== hentenr) return;
 
-    utkast = Object.assign({}, svar.utkast, { lenke: svar.utkast.lenke || url });
+    utkast = Object.assign({}, svar.utkast, { lenke: svar.utkast.lenke || url, annonse: svar.annonse || null });
     skuffModus = "skjema";
     tegnSkuff();
     const f = $("#skuff input, #skuff textarea");
