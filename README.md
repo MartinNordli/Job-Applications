@@ -256,28 +256,51 @@ Grunnlaget står i en kolonne til venstre, og brevet står på et papir til høy
 ### Grunnlaget
 
 - **Din CV**: PDF, Word (`.docx`) eller tekst. Velg filen eller slipp den i feltet. Teksten leses lokalt og gjenbrukes på profilen din. **Se eller lim inn CV-tekst** viser nøyaktig hva som ble lest, så du kan rette kolonnerekkefølge eller manglende tekst. PDF-er må ha et tekstlag. Skannede eller passordbeskyttede dokumenter må erstattes med en lesbar fil eller innlimt tekst. Originalfilen lagres ikke.
-- **Stillingsannonse**: trykk **Hent** for å hente teksten fra lenken, eller lim den inn.
-- **Litt om deg og denne jobben**: valgfritt. Beskriv motivasjon, relevante eksempler og ønsker for brevet.
-- **Språk**: Automatisk, norsk bokmål, nynorsk, engelsk, svensk, dansk, tysk eller fransk. Et konkret valg går foran et språkønske i konteksten, som går foran annonsens krav til søknadsspråk og deretter annonsens hovedspråk. CV-ens språk bestemmer ikke brevspråket.
+- **Annonsen**: den som er lagret på søknaden, se [Annonsen tas vare på](#annonsen-tas-vare-på); mangler den, henter du den fra lenken eller limer den inn før du skriver.
+- **Søknaden**: selskap, stilling, sted, jobbtype og sektor fra listen, men ikke notatet, som ofte er private påminnelser.
+- **Språk**: Automatisk, norsk bokmål, nynorsk, engelsk, svensk, dansk, tysk eller fransk.
+- **Stilreferanse**: valgfritt, et brev du selv har skrevet og er fornøyd med, lagret én gang per profil i `stil.json` og brukt bare for tone og form, aldri for innhold.
+
+Et konkret språkvalg går foran et språkønske i instruksen til en ny versjon, som går foran annonsens krav til søknadsspråk og deretter annonsens hovedspråk.
+CV-ens språk bestemmer ikke brevspråket.
+
+Feltet «Litt om deg og denne jobben» brukes ikke lenger, og avklaringsspørsmålene er borte.
+Brevet bygger bare på det som står over.
 
 ### Slik blir brevet til
 
 Trykk **Skriv utkast**.
-Fremdriftsraden øverst viser tre steg: **Leser grunnlaget**, **Avklaring** og **Skriver brevet**.
-Raden står der før du trykker, så du vet at avklaringen kan komme.
+Appen gjør tre modellkall etter hverandre, uten at du trenger å svare på noe underveis:
 
-1. Modellen analyserer CV, annonse og kontekst.
-2. Den kan stille inntil tre valgfrie spørsmål på papiret. Svar på det du vil og velg **Skriv med svarene**, eller velg **Hopp over og skriv**. Har modellen ingen spørsmål, sier steget det og flyten går videre.
-3. Modellen skriver brevet, og en egen redaktørkontroll går gjennom det.
+1. **Analyse**: finner de viktigste kravene i annonsen, erfaringene som best viser at du oppfyller dem, og det annonsen sier om selskapet.
+2. **Skriving**: lager brevet ut fra analysen.
+3. **Kontroll**: en egen redaktørkontroll retter brevet mot kildene.
+
+Mangler grunnlaget noe vesentlig, for eksempel fordi CV-en og annonsen ser ut til å gjelde to ulike personer, stopper kjøringen med en forklaring i stedet for å gjette.
+Ble en kjøring avbrutt mellom to trinn, fortsetter neste **Skriv utkast** der den stoppet, uten å betale for analysen på nytt.
 
 Teksten strømmer inn mens den skrives, først utkastet og så kontrollens gjennomgang.
 Det du ser underveis er et forslag: det lagres ikke, erstatter aldri det du selv har skrevet, og kontrollen kan forkaste det.
-Teksten lander i brevet først når et trinn er godkjent.
+Teksten lander i brevet først når kontrollen har godkjent den.
 **Avbryt** stopper når som helst, og grunnlaget og tidligere brev beholdes.
 
-Brevet følger Oxfords veiledning for søknadsbrev: en innledning med et konkret poeng, hvorfor stillingen og virksomheten, hvorfor deg, og en avslutning.
-Sentrale krav i annonsen kobles til eksempler fra grunnlaget.
-Manglende informasjon skal gi spørsmål, ikke oppdiktede erfaringer eller motivasjon.
+### Slik ser brevet ut
+
+Brevet har fire korte avsnitt og er normalt 220 til 300 ord:
+
+1. stillingen og selskapet, utdanningen og spesialiseringen din, og én konkret grunn til å søke som står i annonsen
+2. de to eller tre mest relevante erfaringene fra CV-en, hver knyttet til et krav i annonsen, med hva du gjorde og hva det førte til (kan bli to avsnitt)
+3. noe spesifikt om selskapet fra annonsen, koblet til deg
+4. et kort ønske om å bidra, takk og hilsen
+
+Hilsenen er «Til rekrutteringsteamet i <selskap>,» på norsk og «Dear Hiring Manager,» på engelsk, eller navnet på kontaktpersonen når annonsen oppgir en.
+Brevet avsluttes med «Med vennlig hilsen», «Med venleg helsing» eller «Sincerely,» og navnet fra CV-en.
+Krever annonsen en annen lengde eller form, følges annonsen.
+
+Språket skal være konkret.
+Tomme fraser som «brenner for», «spennende mulighet», «drømmejobb», «esteemed team», «ideal candidate» og «I am excited to apply» stoppes, sammen med em dash og retoriske kontrastmaler.
+Prompten har to oppdiktede eksempelbrev som viser formen.
+Navn, tall og erfaringer fra dem, eller fra stilreferansen din, stoppes hvis de dukker opp i brevet uten å stå i CV-en, annonsen eller søknaden.
 Modellkontroll og kildehenvisninger reduserer feil, men brevet må fortsatt leses av den som skal sende det.
 
 ### Etter at brevet er skrevet
@@ -294,7 +317,15 @@ En ny versjon med samme grunnlag gjenbruker analysen og trenger to.
 Appen prøver ikke på nytt i skjul og bytter aldri leverandør av seg selv.
 En brutt forbindelse kan bety at leverandøren behandlet kallet uten at svaret kom frem, så appen starter ikke kjeden på nytt.
 
-CV-tekst, annonse, kontekst og eventuelle svar sendes til leverandøren du har valgt.
+De tre kallene begynner likt, så leverandøren kan bufre det som går igjen.
+Først kommer reglene og eksempelbrevene, som er de samme for alle brev.
+Så kommer kildene, som er de samme i alle tre trinnene for ett brev.
+Bare oppgaven for trinnet kommer etter.
+Hos Anthropic er begge de faste delene merket for hurtigbuffer, og OpenAI bufrer en lik begynnelse av seg selv.
+Bufrede tokens telles i brukstallene på hver versjon (`cache_creation_input_tokens` og `cache_read_input_tokens`).
+Hvor mye bufferen sparer i praksis, er ikke målt ennå: evalueringsrapporten oppsummerer det per tilfelle når den betalte evalueringen kjøres.
+
+CV-teksten, annonsen, søknadsfeltene og en eventuell stilreferanse sendes til leverandøren du har valgt.
 Å laste inn en CV eller eksportere et brev gjør ingen modellkall.
 
 ### Innstillinger i brevskriveren
@@ -389,13 +420,13 @@ Vil du ta en kopi av den eller flytte den, kopierer du filen.
 
 ### Sikkerhetskopi av brevene
 
-**Sikkerhetskopien** under brevskriverens innstillinger omfatter profilens CV, brev, kildegrunnlag og versjoner, også brev til søknader som senere er fjernet.
+**Sikkerhetskopien** under brevskriverens innstillinger omfatter profilens CV, stilreferanse, brev, kildegrunnlag og versjoner, også brev til søknader som senere er fjernet.
 Den har også med `jobb-<jobb-id>.json` og `radar.json`.
 Nøkler følger ikke med.
 Gjenoppretting legger inn dokumenter som mangler, men erstatter ikke en eksisterende samling.
 Den omfatter ikke søknadslisten, så kopier `jobber.json` også hvis du vil flytte alt.
-Filen har `"skjemaVersjon": 2`.
-Kopier fra før, med `"skjemaVersjon": 1`, kan fortsatt gjenopprettes og inneholder bare CV og brev.
+Filen har `"skjemaVersjon": 3`.
+Kopier fra før kan fortsatt gjenopprettes: `"skjemaVersjon": 2` har ikke stilreferansen, og `"skjemaVersjon": 1` inneholder bare CV og brev.
 
 ## Hvor dataene ligger
 
@@ -437,6 +468,7 @@ Flytt innholdet inn i katalogen over mens appen og serveren er avslått.
     nokkel.txt              Anthropic-nøkkelen, modus 0600
     nokkel-openai.txt       OpenAI-nøkkelen, modus 0600
     cv.json                 CV-teksten
+    stil.json               stilreferansen: et eget brev nye brev skal ligne i tone og form
     varsel.json             fristvarselet: på eller av, og hvor mange dager før
     varslet.json            fristene som alt er varslet
     brev-<jobb-id>.json     brev, grunnlag og versjoner for én søknad
@@ -538,7 +570,7 @@ Testen oppretter en midlertidig profil og lagrer skjermbilder og eksportfiler de
 ### Evaluering av søknadsbrev
 
 Skriveinstruksjonene og evalueringsdataene ligger i kildekoden.
-`node evals/kjor.mjs` viser 24 syntetiske testtilfeller uten nettverkskall.
+`node evals/kjor.mjs` viser 21 syntetiske testtilfeller uten nettverkskall.
 Kjøring mot betalte modeller og vurdering av skrivekvalitet er beskrevet i [`evals/README.md`](evals/README.md).
 
 ### Miljøvariabler
@@ -577,11 +609,11 @@ src/okt.js               hvem som er logget inn, i begge modi
 src/okt-app.mjs          kontoene i appmodus, over Rust og crypto.subtle
 src/innlogging.js        innloggingen
 
-src/brevlogikk.mjs       grunnlag, skrivetrinn og svarformat for brevet
-src/brevtjeneste.mjs     kjeden analyse, avklaring, skriving og kontroll
+src/brevlogikk.mjs       prompt, stileksempler, skjemaer og kontrollene for brevet
+src/brevtjeneste.mjs     kjeden analyse, skriving og kontroll, og stilreferansen
 src/brev-provider.mjs    meldingsformatet for Anthropic og OpenAI
 src/brev-strom.mjs       strømmende modellsvar
-src/brevdata.mjs         formatet for CV- og brevdokumentene
+src/brevdata.mjs         formatet for CV-, stil- og brevdokumentene
 src/brev.js              brevets transport, velger modus
 src/brevflate.js         brevskriveren
 src/annonsetekst.mjs     annonseteksten ut av en hentet side
