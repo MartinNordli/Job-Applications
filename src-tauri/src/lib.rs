@@ -248,7 +248,8 @@ pub fn run() {
             brev::brev_gjenopprett,
             brev::brev_modell,
             brev::brev_avbryt_modell,
-            brev::brev_lagre_fil
+            brev::brev_lagre_fil,
+            brev::dokument_utdrag
         ])
         .run(tauri::generate_context!())
         .expect("appen klarte ikke å starte");

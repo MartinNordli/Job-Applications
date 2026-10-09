@@ -1,9 +1,13 @@
 //! Avgrensede fil-, nøkkel- og nettoperasjoner for skriveverkstedet.
 //! Samme mkdir-lås som Node; en gammel lås stjeles aldri på tid alene.
+//! Operasjonene gjelder alle profildokumentene (cv.json, brev-<id>.json,
+//! jobb-<id>.json og radar.json), ikke bare brevene. Navneregelen og
+//! utdraget er speilet fra src/dokumentnavn.mjs og src/dokumentutdrag.mjs,
+//! og testdata/dokumenter.json holder de to sidene like.
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     fs::{self, File, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
@@ -38,24 +42,46 @@ fn profil(app: &AppHandle, bruker: &str) -> Result<PathBuf, String> {
     )
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Dokumenttype {
+    Cv,
+    Brev,
+    Jobb,
+    Radar,
+}
+
+/// Prefiksene med id. Faste navn står i `dokumenttype`.
+const MED_ID: [(&str, Dokumenttype); 2] =
+    [("brev-", Dokumenttype::Brev), ("jobb-", Dokumenttype::Jobb)];
+
+/// Bare ASCII-bokstaver, sifre, bindestrek og understrek. Ingen punktum,
+/// så kopiene (`.forrige.json`, `.odelagt-*.json`) og «..» faller utenfor.
+fn gyldig_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 64
+        && id
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_')
+}
+
+fn dokumenttype(navn: &str) -> Option<Dokumenttype> {
+    match navn {
+        "cv.json" => return Some(Dokumenttype::Cv),
+        "radar.json" => return Some(Dokumenttype::Radar),
+        _ => {}
+    }
+    MED_ID.iter().find_map(|(prefiks, type_)| {
+        navn.strip_prefix(prefiks)
+            .and_then(|s| s.strip_suffix(".json"))
+            .filter(|id| gyldig_id(id))
+            .map(|_| *type_)
+    })
+}
+
 fn dokumentnavn(navn: &str) -> Result<&str, String> {
-    if navn == "cv.json" {
-        return Ok(navn);
-    }
-    if let Some(id) = navn
-        .strip_prefix("brev-")
-        .and_then(|s| s.strip_suffix(".json"))
-    {
-        if !id.is_empty()
-            && id.len() <= 64
-            && id
-                .bytes()
-                .all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_')
-        {
-            return Ok(navn);
-        }
-    }
-    Err("ugyldig-filnavn".into())
+    dokumenttype(navn)
+        .map(|_| navn)
+        .ok_or_else(|| "ugyldig-filnavn".into())
 }
 
 fn backup(navn: &str) -> String {
@@ -86,22 +112,36 @@ fn markor(dir: &Path, navn: &str) -> Result<u64, String> {
     }
 }
 
-fn tomt_dokument(navn: &str, rev: u64) -> String {
-    let mut v = serde_json::json!({"skjemaVersjon":1,"revisjon":rev,"tekst":"","oppdatert":null});
-    if navn == "cv.json" {
-        v["navn"] = "".into();
-        v["format"] = "tekst".into();
-    } else {
-        v["jobbId"] = navn[5..navn.len() - 5].into();
-        v["leverandor"] = "anthropic".into();
-        v["versjoner"] = serde_json::json!([]);
-        v["aktivVersjon"] = Value::Null;
-        v["annonse"] = serde_json::json!({"tekst":"","url":"","hentet":null});
-        v["kontekst"] = "".into();
-        v["sprak"] = "auto".into();
-        v["kjoring"] = Value::Null;
+/// Det tomme dokumentet etter en sletting, med revisjonen fra markøren.
+/// CV og brev får hele formen, som før. Jobbdokumentet og radar.json får
+/// bare skjema, revisjon og tidsstempel: valideringen i JavaScript fyller
+/// inn resten, så formen deres står ett sted.
+fn tomt_dokument(navn: &str, rev: u64) -> Result<String, String> {
+    let mut v = serde_json::json!({"skjemaVersjon":1,"revisjon":rev,"oppdatert":null});
+    match dokumenttype(navn).ok_or("ugyldig-filnavn")? {
+        Dokumenttype::Cv => {
+            v["tekst"] = "".into();
+            v["navn"] = "".into();
+            v["format"] = "tekst".into();
+        }
+        Dokumenttype::Brev => {
+            let id = navn
+                .strip_prefix("brev-")
+                .and_then(|s| s.strip_suffix(".json"))
+                .ok_or("ugyldig-filnavn")?;
+            v["tekst"] = "".into();
+            v["jobbId"] = id.into();
+            v["leverandor"] = "anthropic".into();
+            v["versjoner"] = serde_json::json!([]);
+            v["aktivVersjon"] = Value::Null;
+            v["annonse"] = serde_json::json!({"tekst":"","url":"","hentet":null});
+            v["kontekst"] = "".into();
+            v["sprak"] = "auto".into();
+            v["kjoring"] = Value::Null;
+        }
+        Dokumenttype::Jobb | Dokumenttype::Radar => {}
     }
-    v.to_string()
+    Ok(v.to_string())
 }
 
 fn revisjon(tekst: &str) -> Result<u64, String> {
@@ -182,7 +222,7 @@ fn les_dokument(dir: &Path, navn: &str, forrige: bool) -> Result<Option<String>,
     if tekst.is_none() && !forrige {
         let n = markor(dir, navn)?;
         if n > 0 {
-            return Ok(Some(tomt_dokument(navn, n)));
+            return Ok(Some(tomt_dokument(navn, n)?));
         }
     }
     Ok(tekst)
@@ -326,9 +366,7 @@ pub fn brev_slett(
     slett_dokument(&profil(&app, &bruker)?, &navn, forventet)
 }
 
-#[tauri::command]
-pub fn brev_liste(app: AppHandle, bruker: String) -> Result<Vec<String>, String> {
-    let dir = profil(&app, &bruker)?;
+fn liste_i(dir: &Path) -> Result<Vec<String>, String> {
     let leser = match fs::read_dir(dir) {
         Ok(l) => l,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(vec![]),
@@ -349,6 +387,123 @@ pub fn brev_liste(app: AppHandle, bruker: String) -> Result<Vec<String>, String>
     }
     navn.sort();
     Ok(navn)
+}
+
+#[tauri::command]
+pub fn brev_liste(app: AppHandle, bruker: String) -> Result<Vec<String>, String> {
+    liste_i(&profil(&app, &bruker)?)
+}
+
+/* ---------- utdrag ----------
+Små verdier fra mange dokumenter, uten å sende dokumentene over IPC.
+Reglene er de samme som i src/dokumentutdrag.mjs: 1 til 4 ledd per
+sti, høyst 20 stier, bare egne nøkler, bare enkle verdier, tekst kortet
+til 300 kodepunkter, og et dokument som ikke kan leses hoppes over. */
+
+const MAKS_STIER: usize = 20;
+/// Taket på listen før duplikatene er fjernet, så en enorm liste aldri
+/// blir en kvadratisk løkke.
+const MAKS_RÅ_STIER: usize = 100;
+const MAKS_UTDRAGSTEKST: usize = 300;
+/// Alle samlingene utdraget går over har skjemaversjon 1, som i
+/// src/brevdata.mjs. Et dokument med et annet skjema forstår vi ikke.
+const SAMLINGSSKJEMA: u64 = 1;
+
+fn gyldig_sti(sti: &str) -> bool {
+    let ledd: Vec<&str> = sti.split('.').collect();
+    (1..=4).contains(&ledd.len())
+        && ledd.iter().all(|l| {
+            !l.is_empty()
+                && l.len() <= 40
+                && l.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'_')
+                && !matches!(*l, "__proto__" | "constructor" | "prototype")
+        })
+}
+
+fn tolk_stier(stier: &[String]) -> Result<Vec<String>, String> {
+    let feil = || {
+        format!("ugyldig: Utdraget kan ha 1 til {MAKS_STIER} felt, skrevet som for eksempel match.prosent.")
+    };
+    if stier.len() > MAKS_RÅ_STIER {
+        return Err(feil());
+    }
+    let mut ut: Vec<String> = Vec::new();
+    for s in stier.iter().map(|s| s.trim()) {
+        if !ut.iter().any(|x| x == s) {
+            ut.push(s.to_owned());
+        }
+    }
+    if ut.is_empty() || ut.len() > MAKS_STIER || !ut.iter().all(|s| gyldig_sti(s)) {
+        return Err(feil());
+    }
+    Ok(ut)
+}
+
+fn enkel(v: &Value) -> Option<Value> {
+    match v {
+        Value::Null | Value::Bool(_) | Value::Number(_) => Some(v.clone()),
+        Value::String(s) if s.chars().count() > MAKS_UTDRAGSTEKST => {
+            Some(Value::String(s.chars().take(MAKS_UTDRAGSTEKST).collect()))
+        }
+        Value::String(_) => Some(v.clone()),
+        _ => None,
+    }
+}
+
+fn utdrag_av(dok: &Value, stier: &[String]) -> Map<String, Value> {
+    let mut ut = Map::new();
+    for sti in stier {
+        let mut v = Some(dok);
+        for ledd in sti.split('.') {
+            v = v.and_then(Value::as_object).and_then(|o| o.get(ledd));
+        }
+        if let Some(e) = v.and_then(enkel) {
+            ut.insert(sti.clone(), e);
+        }
+    }
+    ut
+}
+
+type Utdrag = BTreeMap<String, Map<String, Value>>;
+
+fn utdrag_i(dir: &Path, prefiks: &str, stier: &[String]) -> Result<Utdrag, String> {
+    if !MED_ID.iter().any(|(p, _)| *p == prefiks) {
+        return Err("ugyldig: Ukjent dokumentsamling.".into());
+    }
+    let felt = tolk_stier(stier)?;
+    let mut ut = BTreeMap::new();
+    for navn in liste_i(dir)?.into_iter().filter(|n| n.starts_with(prefiks)) {
+        // For stort, uleselig, ikke JSON eller ukjent skjema: hoppes over.
+        let Ok(Some(tekst)) = les(&dir.join(&navn)) else {
+            continue;
+        };
+        let Ok(dok) = serde_json::from_str::<Value>(&tekst) else {
+            continue;
+        };
+        if !dok.is_object()
+            || dok.get("skjemaVersjon").and_then(Value::as_u64) != Some(SAMLINGSSKJEMA)
+        {
+            continue;
+        }
+        let utdrag = utdrag_av(&dok, &felt);
+        ut.insert(navn, utdrag);
+    }
+    Ok(ut)
+}
+
+/// Kjøres utenfor hovedtråden: å lese og tolke et par hundre filer skal
+/// ikke fryse vinduet mens listen tegnes.
+#[tauri::command]
+pub async fn dokument_utdrag(
+    app: AppHandle,
+    bruker: String,
+    prefiks: String,
+    stier: Vec<String>,
+) -> Result<Utdrag, String> {
+    let dir = profil(&app, &bruker)?;
+    tauri::async_runtime::spawn_blocking(move || utdrag_i(&dir, &prefiks, &stier))
+        .await
+        .map_err(|_| "Fikk ikke lest dokumentene.".to_string())?
 }
 
 fn leverandor(navn: &str) -> Result<(&'static str, &'static str, &'static str), String> {
@@ -711,17 +866,230 @@ mod tester {
             assert!(profil_i(Path::new("/tmp"), id).is_err());
         }
         assert!(profil_i(Path::new("/tmp"), "0123456789abcdef").is_ok());
-        for n in [
-            "nokkel.txt",
-            "brukere.json",
-            "../cv.json",
-            "brev-.json",
-            "brev-x.forrige.json",
-        ] {
-            assert!(dokumentnavn(n).is_err());
-        }
+        // Navnene selv dekkes av dokumentnavn_er_like_i_node_og_rust.
         assert!(dokumentnavn("cv.json").is_ok());
-        assert!(dokumentnavn("brev-abc-123.json").is_ok());
+    }
+    fn felles() -> Value {
+        serde_json::from_str(include_str!("../../testdata/dokumenter.json")).unwrap()
+    }
+    #[test]
+    fn dokumentnavn_er_like_i_node_og_rust() {
+        let t = felles();
+        for (navn, type_) in t["navn"]["gyldige"].as_object().unwrap() {
+            let ventet = match type_.as_str().unwrap() {
+                "cv" => Dokumenttype::Cv,
+                "brev" => Dokumenttype::Brev,
+                "jobb" => Dokumenttype::Jobb,
+                "radar" => Dokumenttype::Radar,
+                annet => panic!("ukjent type {annet}"),
+            };
+            assert_eq!(dokumenttype(navn), Some(ventet), "{navn}");
+            assert!(dokumentnavn(navn).is_ok(), "{navn}");
+        }
+        for navn in t["navn"]["ugyldige"].as_array().unwrap() {
+            let navn = navn.as_str().unwrap();
+            assert_eq!(dokumenttype(navn), None, "{navn:?} skulle vært avvist");
+            assert!(dokumentnavn(navn).is_err(), "{navn:?}");
+        }
+    }
+    #[test]
+    fn tomme_dokumenter_for_alle_fire_typer() {
+        let cv: Value = serde_json::from_str(&tomt_dokument("cv.json", 2).unwrap()).unwrap();
+        assert_eq!(cv["revisjon"], 2);
+        assert_eq!(cv["format"], "tekst");
+        let brev: Value = serde_json::from_str(&tomt_dokument("brev-j1.json", 3).unwrap()).unwrap();
+        assert_eq!(brev["jobbId"], "j1");
+        assert_eq!(brev["revisjon"], 3);
+        // Før kuttet denne navn[5..len-5] for alt som ikke var CV: «jobb-»
+        // ga feil id, og radar.json fikk et snitt som ikke finnes.
+        for navn in ["jobb-j1.json", "radar.json"] {
+            let d: Value = serde_json::from_str(&tomt_dokument(navn, 4).unwrap()).unwrap();
+            assert_eq!(
+                d,
+                serde_json::json!({"skjemaVersjon":1,"revisjon":4,"oppdatert":null}),
+                "{navn}"
+            );
+        }
+        for navn in ["nokkel.txt", "../radar.json", "jobb-.json", "x"] {
+            assert_eq!(tomt_dokument(navn, 1).unwrap_err(), "ugyldig-filnavn");
+        }
+    }
+    #[test]
+    fn jobbdokument_og_radar_har_samme_mekanikk_som_brev() {
+        let d = dir();
+        for navn in ["jobb-j1.json", "radar.json"] {
+            skriv_dokument(
+                d.path(),
+                navn,
+                r#"{"skjemaVersjon":1,"revisjon":1,"a":"først"}"#,
+                0,
+            )
+            .unwrap();
+            skriv_dokument(
+                d.path(),
+                navn,
+                r#"{"skjemaVersjon":1,"revisjon":2,"a":"så"}"#,
+                1,
+            )
+            .unwrap();
+            assert_eq!(
+                skriv_dokument(d.path(), navn, r#"{"skjemaVersjon":1,"revisjon":2}"#, 1)
+                    .unwrap_err(),
+                "konflikt"
+            );
+            assert!(les_dokument(d.path(), navn, true)
+                .unwrap()
+                .unwrap()
+                .contains("først"));
+            slett_dokument(d.path(), navn, 2).unwrap();
+            // Etter sletting lages det tomme dokumentet fra markøren. Det var
+            // her radar.json fikk appen til å panikke.
+            let tom = les_dokument(d.path(), navn, false).unwrap().unwrap();
+            assert_eq!(revisjon(&tom).unwrap(), 3);
+            fs::write(d.path().join(navn), "ødelagt").unwrap();
+            fs::write(
+                d.path().join(backup(navn)),
+                r#"{"skjemaVersjon":1,"revisjon":5}"#,
+            )
+            .unwrap();
+            assert_eq!(
+                revisjon(&gjenopprett_dokument(d.path(), navn).unwrap()).unwrap(),
+                7
+            );
+        }
+    }
+    #[test]
+    fn ingen_operasjon_slipper_ut_av_profilen() {
+        let rot = dir();
+        let profil = rot.path().join("p");
+        fs::create_dir(&profil).unwrap();
+        fs::write(
+            rot.path().join("jobb-x.json"),
+            r#"{"skjemaVersjon":1,"revisjon":1}"#,
+        )
+        .unwrap();
+        for navn in [
+            "../jobb-x.json",
+            "jobb-../x.json",
+            "jobb-x/../../jobb-x.json",
+            "../radar.json",
+            "/etc/passwd",
+        ] {
+            assert_eq!(
+                les_dokument(&profil, navn, false).unwrap_err(),
+                "ugyldig-filnavn",
+                "{navn}"
+            );
+            assert_eq!(
+                skriv_dokument(&profil, navn, r#"{"revisjon":1}"#, 0).unwrap_err(),
+                "ugyldig-filnavn",
+                "{navn}"
+            );
+            assert_eq!(
+                slett_dokument(&profil, navn, 1).unwrap_err(),
+                "ugyldig-filnavn"
+            );
+            assert_eq!(
+                gjenopprett_dokument(&profil, navn).unwrap_err(),
+                "ugyldig-filnavn"
+            );
+        }
+        assert!(rot.path().join("jobb-x.json").exists());
+        assert_eq!(fs::read_dir(&profil).unwrap().count(), 0);
+    }
+    #[test]
+    fn listen_har_alle_fire_typer_og_ingen_kopier() {
+        let d = dir();
+        for n in [
+            "cv.json",
+            "radar.json",
+            "brev-a.json",
+            "jobb-a.json",
+            "jobb-a.forrige.json",
+            "radar.forrige.json",
+            "jobb-a.odelagt-1.json",
+            "jobber.json",
+            "nokkel.txt",
+        ] {
+            fs::write(d.path().join(n), "{}").unwrap();
+        }
+        fs::create_dir(d.path().join("jobb-mappe.json")).unwrap();
+        assert_eq!(
+            liste_i(d.path()).unwrap(),
+            ["brev-a.json", "cv.json", "jobb-a.json", "radar.json"]
+        );
+    }
+    #[test]
+    fn utdrag_folger_de_felles_tilfellene() {
+        let t = felles();
+        for (i, tilfelle) in t["utdrag"].as_array().unwrap().iter().enumerate() {
+            let d = dir();
+            fs::write(d.path().join("jobb-a.json"), tilfelle["dok"].to_string()).unwrap();
+            let stier: Vec<String> = serde_json::from_value(tilfelle["stier"].clone()).unwrap();
+            let ut = utdrag_i(d.path(), "jobb-", &stier).unwrap();
+            assert_eq!(
+                Value::Object(ut["jobb-a.json"].clone()),
+                tilfelle["ventet"],
+                "tilfelle {i}: {}",
+                tilfelle["om"]
+            );
+        }
+        let d = dir();
+        for stier in t["ugyldigeStier"].as_array().unwrap() {
+            let stier: Vec<String> = serde_json::from_value(stier.clone()).unwrap();
+            assert!(utdrag_i(d.path(), "jobb-", &stier).is_err(), "{stier:?}");
+        }
+        assert!(utdrag_i(d.path(), "jobb-", &vec!["a".to_string(); MAKS_RÅ_STIER + 1]).is_err());
+    }
+    #[test]
+    fn utdrag_hopper_over_det_det_ikke_forstaar() {
+        let d = dir();
+        let p = d.path();
+        fs::write(
+            p.join("jobb-ok.json"),
+            r#"{"skjemaVersjon":1,"match":{"prosent":70}}"#,
+        )
+        .unwrap();
+        fs::write(p.join("jobb-odelagt.json"), "ikke json").unwrap();
+        fs::write(
+            p.join("jobb-nyere.json"),
+            r#"{"skjemaVersjon":2,"match":{"prosent":1}}"#,
+        )
+        .unwrap();
+        fs::write(p.join("jobb-liste.json"), "[1,2]").unwrap();
+        fs::write(
+            p.join("jobb-ok.forrige.json"),
+            r#"{"skjemaVersjon":1,"match":{"prosent":9}}"#,
+        )
+        .unwrap();
+        fs::write(
+            p.join("brev-ok.json"),
+            r#"{"skjemaVersjon":1,"match":{"prosent":9}}"#,
+        )
+        .unwrap();
+        let ut = utdrag_i(p, "jobb-", &["match.prosent".to_string()]).unwrap();
+        assert_eq!(
+            serde_json::to_value(&ut).unwrap(),
+            serde_json::json!({"jobb-ok.json":{"match.prosent":70}})
+        );
+        assert_eq!(
+            utdrag_i(p, "brev-", &["match.prosent".to_string()])
+                .unwrap()
+                .len(),
+            1
+        );
+        for prefiks in ["cv", "radar", "", "../", "jobb"] {
+            assert!(
+                utdrag_i(p, prefiks, &["a".to_string()]).is_err(),
+                "{prefiks}"
+            );
+        }
+        // En profil uten katalog ennå har ingen dokumenter, ikke en feil.
+        assert!(
+            utdrag_i(&p.join("finnes-ikke"), "jobb-", &["a".to_string()])
+                .unwrap()
+                .is_empty()
+        );
     }
     #[test]
     fn revisjoner_backup_og_konflikt() {
@@ -824,7 +1192,10 @@ mod tester {
     fn linjedeler_over_chunkgrenser_crlf_og_tak() {
         let mut d = Linjedeler::ny();
         // En linje delt over to biter settes sammen.
-        assert_eq!(d.ta(b"event: fase\ndata: {\"a\"").unwrap(), vec!["event: fase"]);
+        assert_eq!(
+            d.ta(b"event: fase\ndata: {\"a\"").unwrap(),
+            vec!["event: fase"]
+        );
         assert_eq!(
             d.ta(b":1}\n\n").unwrap(),
             vec!["data: {\"a\":1}".to_string(), String::new()]
@@ -867,8 +1238,12 @@ mod tester {
         let ok = r#"{"model":"gpt-6-astra","store":false,"stream":true}"#;
         assert!(sjekk_modellkropp("openai", "gpt-6-astra", ok).is_ok());
         assert_eq!(
-            sjekk_modellkropp("openai", "gpt-6-astra", r#"{"model":"gpt-6-astra","store":false}"#)
-                .unwrap_err(),
+            sjekk_modellkropp(
+                "openai",
+                "gpt-6-astra",
+                r#"{"model":"gpt-6-astra","store":false}"#
+            )
+            .unwrap_err(),
             "Strømming må være påslått."
         );
         assert_eq!(
@@ -890,8 +1265,12 @@ mod tester {
             "Modellagring må være avslått."
         );
         assert_eq!(
-            sjekk_modellkropp("anthropic", "claude-opus-5", r#"{"model":"feil","stream":true}"#)
-                .unwrap_err(),
+            sjekk_modellkropp(
+                "anthropic",
+                "claude-opus-5",
+                r#"{"model":"feil","stream":true}"#
+            )
+            .unwrap_err(),
             "Ukjent modell."
         );
         assert!(sjekk_modellkropp(

@@ -1,0 +1,233 @@
+{
+ "_om": "Leses av både server/jobbdokument.test.mjs og testene i src-tauri/src/brev.rs. Endres regelen på den ene siden, feiler testen på den andre til de er like igjen.",
+ "navn": {
+  "gyldige": {
+   "cv.json": "cv",
+   "radar.json": "radar",
+   "brev-abc-123.json": "brev",
+   "brev-j1.json": "brev",
+   "jobb-abc_123.json": "jobb",
+   "jobb-Z.json": "jobb",
+   "jobb-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json": "jobb"
+  },
+  "ugyldige": [
+   "nokkel.txt",
+   "nokkel-openai.txt",
+   "brukere.json",
+   "jobber.json",
+   "varsel.json",
+   "cv",
+   "radar",
+   "../cv.json",
+   "./cv.json",
+   "cv.json/",
+   "/cv.json",
+   "brev-.json",
+   "jobb-.json",
+   "brev-x.forrige.json",
+   "jobb-x.forrige.json",
+   "cv.forrige.json",
+   "radar.forrige.json",
+   "jobb-x.odelagt-1700000000000.json",
+   "radar.odelagt-1.json",
+   "jobb-../x.json",
+   "jobb-x/../y.json",
+   "jobb-..json",
+   "jobb-x.JSON",
+   "Jobb-x.json",
+   "JOBB-x.json",
+   "jobb-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json",
+   "jobb-æ.json",
+   "jobb-x y.json",
+   "jobb-x\u0000.json",
+   "radar-x.json",
+   "cv-x.json",
+   ".jobb-x.json.las",
+   ".radar.json.revisjon",
+   "jobb-x.json.tmp",
+   "brev-jobb-x.json.json"
+  ]
+ },
+ "utdrag": [
+  {
+   "om": "enkle verdier, manglende stier og objekter",
+   "dok": {
+    "skjemaVersjon": 1,
+    "revisjon": 3,
+    "annonse": {
+     "tekst": "Kort.",
+     "hentet": "2026-10-01T10:00:00.000Z",
+     "sjekksum": "0a1b2c3d"
+    },
+    "match": {
+     "prosent": 82,
+     "styrker": [
+      {
+       "krav": "x"
+      }
+     ]
+    },
+    "forberedelser": {}
+   },
+   "stier": [
+    "match.prosent",
+    "annonse.hentet",
+    "annonse.sjekksum",
+    "match.styrker",
+    "forberedelser",
+    "finnes.ikke",
+    "match.prosent.mer"
+   ],
+   "ventet": {
+    "match.prosent": 82,
+    "annonse.hentet": "2026-10-01T10:00:00.000Z",
+    "annonse.sjekksum": "0a1b2c3d"
+   }
+  },
+  {
+   "om": "null er en verdi, mens en sti gjennom null ikke finnes",
+   "dok": {
+    "skjemaVersjon": 1,
+    "revisjon": 1,
+    "match": null,
+    "annonse": {
+     "hentet": null
+    }
+   },
+   "stier": [
+    "match",
+    "match.prosent",
+    "annonse.hentet"
+   ],
+   "ventet": {
+    "match": null,
+    "annonse.hentet": null
+   }
+  },
+  {
+   "om": "sannhetsverdier og lister går ikke gjennom ledd",
+   "dok": {
+    "skjemaVersjon": 1,
+    "revisjon": 1,
+    "a": {
+     "b": true
+    },
+    "l": [
+     {
+      "x": 1
+     }
+    ]
+   },
+   "stier": [
+    "a.b",
+    "l.0.x",
+    "l"
+   ],
+   "ventet": {
+    "a.b": true
+   }
+  },
+  {
+   "om": "tekst kortes til 300 kodepunkter, også utenfor BMP",
+   "dok": {
+    "skjemaVersjon": 1,
+    "revisjon": 1,
+    "a": "ææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææ",
+    "b": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+    "c": "øøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøø"
+   },
+   "stier": [
+    "a",
+    "b",
+    "c"
+   ],
+   "ventet": {
+    "a": "ææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææææ",
+    "b": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+    "c": "øøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøøø"
+   }
+  },
+  {
+   "om": "duplikater og mellomrom rundt stiene",
+   "dok": {
+    "skjemaVersjon": 1,
+    "revisjon": 1,
+    "match": {
+     "prosent": 5
+    }
+   },
+   "stier": [
+    " match.prosent",
+    "match.prosent "
+   ],
+   "ventet": {
+    "match.prosent": 5
+   }
+  }
+ ],
+ "ugyldigeStier": [
+  [],
+  [
+   ""
+  ],
+  [
+   "a..b"
+  ],
+  [
+   ".a"
+  ],
+  [
+   "a."
+  ],
+  [
+   "a.b.c.d.e"
+  ],
+  [
+   "__proto__"
+  ],
+  [
+   "match.constructor"
+  ],
+  [
+   "a.prototype.b"
+  ],
+  [
+   "a-b"
+  ],
+  [
+   "a b"
+  ],
+  [
+   "æ"
+  ],
+  [
+   "a/b"
+  ],
+  [
+   "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  ],
+  [
+   "s0",
+   "s1",
+   "s2",
+   "s3",
+   "s4",
+   "s5",
+   "s6",
+   "s7",
+   "s8",
+   "s9",
+   "s10",
+   "s11",
+   "s12",
+   "s13",
+   "s14",
+   "s15",
+   "s16",
+   "s17",
+   "s18",
+   "s19",
+   "s20"
+  ]
+ ]
+}

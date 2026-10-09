@@ -1,9 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { Brevfeil, dokumentnavn, lesDokument, revisjon, MAKS_DOKUMENT } from "../src/brevdata.mjs";
+import { Brevfeil, dokumentnavn, lesDokument, revisjon, skjemaFor, MAKS_DOKUMENT } from "../src/brevdata.mjs";
+import { dokumenttype, PREFIKSER } from "../src/dokumentnavn.mjs";
+import { tolkStier, utdragAv } from "../src/dokumentutdrag.mjs";
 
-/* Samme eksklusive låsekatalog som Rust. Ingen lås over nettverkskall. */
+/* Samme eksklusive låsekatalog som Rust. Ingen lås over nettverkskall.
+   Lageret kjenner ikke dokumenttypene: navneregelen og valideringen
+   kommer fra src/dokumentnavn.mjs og src/brevdata.mjs, så CV, brev,
+   jobbdokumenter og radar.json får nøyaktig samme mekanikk. */
 export function lagBrevlager(katalog){
   async function medLås(navn, fn){
     dokumentnavn(navn);
@@ -64,7 +69,7 @@ export function lagBrevlager(katalog){
       // En ukjent eller skadet kopi skal heller ikke forsvinne ved vanlig lagring.
       try{lesDokument(navn,await fs.readFile(path.join(katalog,navn.replace(/\.json$/,".forrige.json")),"utf8"));}
       catch(e){if(e.code!=="ENOENT")throw e;}
-      const neste = lesDokument(navn,JSON.stringify({ ...verdi, skjemaVersjon:1, revisjon:forventet+1, oppdatert:new Date().toISOString() }));
+      const neste = lesDokument(navn,JSON.stringify({ ...verdi, skjemaVersjon:skjemaFor(navn), revisjon:forventet+1, oppdatert:new Date().toISOString() }));
       const mål = path.join(katalog,navn);
       const tmp = path.join(katalog,`.${navn}.${randomUUID()}.tmp`);
       try{
@@ -91,9 +96,27 @@ export function lagBrevlager(katalog){
       for(const n of await fs.readdir(katalog))if(n.startsWith(prefiks)&&n.endsWith(".json"))await fs.rm(path.join(katalog,n),{force:true});
     });
   }
+  /* Kopiene (.forrige.json, .odelagt-*.json) har punktum i id-en og
+     faller dermed utenfor navneregelen. Bare vanlige filer, som i Rust. */
   async function liste(){
-    try{ return (await fs.readdir(katalog)).filter(n => n === "cv.json" || /^brev-[A-Za-z0-9_-]{1,64}\.json$/.test(n)).filter(n => !n.endsWith(".forrige.json")); }
+    try{ return (await fs.readdir(katalog,{withFileTypes:true})).filter(e => e.isFile() && dokumenttype(e.name)).map(e => e.name).sort(); }
     catch(e){ if(e.code === "ENOENT") return []; throw e; }
+  }
+  /* Uten lås: hver fil byttes inn med rename, så en leser ser enten den
+     gamle eller den nye. Reglene står i src/dokumentutdrag.mjs. */
+  async function utdrag(prefiks, stier){
+    if(!PREFIKSER.includes(prefiks)) throw new Brevfeil("ugyldig","Ukjent dokumentsamling.");
+    const felt = tolkStier(stier), ut = {};
+    for(const navn of (await liste()).filter(n => n.startsWith(prefiks))){
+      try{
+        const fil = path.join(katalog, navn);
+        if((await fs.stat(fil)).size > MAKS_DOKUMENT) continue;
+        const d = JSON.parse(await fs.readFile(fil, "utf8"));
+        if(!d || typeof d !== "object" || Array.isArray(d) || d.skjemaVersjon !== skjemaFor(navn)) continue;
+        ut[navn] = utdragAv(d, felt);
+      }catch{ /* skadet eller borte siden listingen: hoppes over, se toppkommentaren i dokumentutdrag.mjs */ }
+    }
+    return ut;
   }
   async function gjenopprett(navn){
     return medLås(navn,async()=>{
@@ -118,5 +141,5 @@ export function lagBrevlager(katalog){
       return d;
     });
   }
-  return {les,skriv,slett,liste,gjenopprett};
+  return {les,skriv,slett,liste,gjenopprett,utdrag};
 }

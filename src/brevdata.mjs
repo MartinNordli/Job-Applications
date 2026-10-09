@@ -1,16 +1,23 @@
-/* Brevdata har eget lager. Jobblisten og dens format forblir små. */
+/* Brevdata har eget lager. Jobblisten og dens format forblir små.
+   Lageret har fire dokumenttyper (se src/dokumentnavn.mjs), og hver har
+   sitt skjema, sitt tomme dokument og sin validator. Det er her typen
+   velges, så lageret, sikkerhetskopien og begge transportene får samme
+   regel uten å kjenne typene selv. */
+import { Brevfeil, revisjon } from "./dokumentfeil.mjs";
+import { dokumenttype, dokumentId, erId, navnFor } from "./dokumentnavn.mjs";
+import { SKJEMA as JOBB_SKJEMA, RADAR_SKJEMA, tomtJobbdokument, tomRadar, validerJobbdokument, validerRadar,
+  harJobbinnhold, harRadarinnhold } from "./jobbdokument.mjs";
+export { Brevfeil, revisjon };
 export const SKJEMA = 1;
 export const MAKS_DOKUMENT = 32 * 1024 * 1024;
-export class Brevfeil extends Error {
-  constructor(code, message, status = 400){ super(message); this.code = code; this.melding = message; this.status = status; }
-}
 export function jobbId(id){
-  if(typeof id !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(id)) throw new Brevfeil("ugyldig", "Ugyldig jobb.");
+  if(!erId(id)) throw new Brevfeil("ugyldig", "Ugyldig jobb.");
   return id;
 }
-export const brevfil = id => `brev-${jobbId(id)}.json`;
+export const brevfil = id => navnFor("brev", jobbId(id));
+export const jobbfil = id => navnFor("jobb", jobbId(id));
 export function dokumentnavn(navn){
-  if(navn !== "cv.json" && !/^brev-[A-Za-z0-9_-]{1,64}\.json$/.test(navn)) throw new Brevfeil("ugyldig", "Ugyldig dokumentnavn.");
+  if(!dokumenttype(navn)) throw new Brevfeil("ugyldig", "Ugyldig dokumentnavn.");
   return navn;
 }
 export const tomCv = () => ({ skjemaVersjon: SKJEMA, revisjon: 0, tekst: "", navn: "", format: "tekst", oppdatert: null });
@@ -21,10 +28,6 @@ function tekst(v, maks, felt){
 }
 export function validerCv(inn){
   return { ...tomCv(), revisjon: revisjon(inn?.revisjon), tekst: tekst(inn?.tekst ?? "", 100000, "CV"), navn: tekst(inn?.navn ?? "", 255, "Filnavn"), format: ["pdf", "docx", "tekst", "txt"].includes(inn?.format) ? inn.format : "tekst", oppdatert: inn?.oppdatert ?? null };
-}
-export function revisjon(v){
-  if(!Number.isSafeInteger(v) || v < 0) throw new Brevfeil("ugyldig", "Dokumentets revisjon mangler eller er ugyldig.");
-  return v;
 }
 export function validerBrev(id, inn){
   if(!inn || typeof inn !== "object") throw new Brevfeil("ugyldig", "Brevet mangler.");
@@ -57,10 +60,26 @@ export function validerBrev(id, inn){
   if(new TextEncoder().encode(JSON.stringify(d,null,2)).byteLength > MAKS_DOKUMENT) throw new Brevfeil("for-stort", "Brevhistorikken er for stor. Eksporter og rydd historikken først.", 413);
   return d;
 }
+
+/* harInnhold svarer på om en gjenoppretting fra sikkerhetskopi ville
+   skrevet over noe. Et tømt dokument har revisjon, men ikke innhold. */
+const TYPER = {
+  cv: { skjema: SKJEMA, tom: () => tomCv(), valider: (navn, d) => validerCv(d), harInnhold: d => !!(d.tekst || d.navn) },
+  brev: { skjema: SKJEMA, tom: navn => tomtBrev(dokumentId(navn)), valider: (navn, d) => validerBrev(dokumentId(navn), d),
+    harInnhold: d => !!(d.tekst || d.annonse?.tekst || d.kontekst || d.versjoner?.length || d.kjoring) },
+  jobb: { skjema: JOBB_SKJEMA, tom: navn => tomtJobbdokument(dokumentId(navn)), valider: (navn, d) => validerJobbdokument(dokumentId(navn), d),
+    harInnhold: harJobbinnhold },
+  radar: { skjema: RADAR_SKJEMA, tom: () => tomRadar(), valider: (navn, d) => validerRadar(d), harInnhold: harRadarinnhold }
+};
+function type(navn){ return TYPER[dokumenttype(dokumentnavn(navn))]; }
+export const skjemaFor = navn => type(navn).skjema;
+export const validerDokument = (navn, d) => type(navn).valider(navn, d);
+export const harInnhold = (navn, d) => type(navn).harInnhold(d);
 export function lesDokument(navn, rå){
-  if(rå == null) return navn === "cv.json" ? tomCv() : tomtBrev(navn.slice(5,-5));
+  const t = type(navn);
+  if(rå == null) return t.tom(navn);
   let d;
   try{ d = JSON.parse(rå); }catch{ throw new Brevfeil("odelagt", "Dokumentet kunne ikke leses. Originalen er bevart. Gjenopprett fra sikkerhetskopi.", 503); }
-  if(d?.skjemaVersjon !== SKJEMA) throw new Brevfeil("versjon", "Dokumentformatet støttes ikke av denne appversjonen.", 409);
-  return navn === "cv.json" ? validerCv(d) : validerBrev(navn.slice(5,-5), d);
+  if(d?.skjemaVersjon !== t.skjema) throw new Brevfeil("versjon", "Dokumentformatet støttes ikke av denne appversjonen.", 409);
+  return t.valider(navn, d);
 }
