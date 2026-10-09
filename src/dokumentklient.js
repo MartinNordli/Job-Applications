@@ -53,6 +53,11 @@ export function lokaltLager(id){
     async gjenopprett(navn){sjekk();return lesDokument(navn,await invoke("brev_gjenopprett",{bruker:id,navn}));},
     async utdrag(prefiks,stier){sjekk();const r=await invoke("dokument_utdrag",{bruker:id,prefiks,stier});sjekk();return r;}
   };
-  const hentJobb=async jobbId=>{sjekk();const rå=await invoke("les_tekst",{bruker:id,navn:"jobber.json"});sjekk();return JSON.parse(rå||"{}").jobber?.find(j=>j.id===jobbId);};
-  return {lager,hentJobb,sjekk};
+  const hentJobber=async()=>{sjekk();const rå=await invoke("les_tekst",{bruker:id,navn:"jobber.json"});sjekk();const j=JSON.parse(rå||"{}").jobber;return Array.isArray(j)?j:[];};
+  const hentJobb=async jobbId=>(await hentJobber()).find(j=>j.id===jobbId);
+  /* Siden hentes av Rust med samme vern som importen. Profilen sjekkes
+     på begge sider av kallet, så en side hentet for én profil aldri
+     skrives til den neste. */
+  const hentSide=async url=>{sjekk();const s=await invoke("hent_side",{url});sjekk();return s;};
+  return {lager,hentJobb,hentJobber,hentSide,sjekk};
 }

@@ -35,8 +35,13 @@ const SIGNATURER = {
   brev_slett: [["bruker", "navn", "forventet"], []],
   brev_liste: [["bruker"], []],
   brev_gjenopprett: [["bruker", "navn"], []],
-  dokument_utdrag: [["bruker", "prefiks", "stier"], []]
+  dokument_utdrag: [["bruker", "prefiks", "stier"], []],
+  hent_side: [["url"], []]
 };
+/* Det falske nettet bak hent_side. En streng er en feil, slik Rust sender
+   den; alt annet er HTML. */
+const sider = new Map();
+const hentet = [];
 const kall = [];
 async function utfør(navn, a){
   const dir = profil(a.bruker);
@@ -59,6 +64,12 @@ async function utfør(navn, a){
     case "brev_liste": return lager.liste();
     case "brev_gjenopprett": return JSON.stringify(await lager.gjenopprett(a.navn));
     case "dokument_utdrag": return lager.utdrag(a.prefiks, a.stier);
+    case "hent_side": {
+      hentet.push(a.url);
+      const s = sider.get(a.url);
+      if(s?.feil) throw s.feil;
+      return { status: 200, sluttUrl: a.url, html: s ?? "" };
+    }
   }
 }
 const lagringsplass = new Map();
@@ -106,4 +117,43 @@ test("klienten går gjennom Rust-kommandoene med riktige argumenter", async () =
   assert.equal((await Jobbdokumenter.gjenopprett("j1")).annonse.tekst, "Første.");
 
   for(const navn of ["brev_les", "brev_skriv", "brev_gjenopprett", "dokument_utdrag", "les_tekst"]) assert.ok(kall.includes(navn), navn);
+});
+
+test("annonsen hentes, limes inn og flyttes fra brevet gjennom Rust-kommandoene", async () => {
+  const id = Økt.nåværendeBruker().id;
+  const dir = profil(id);
+  const lenke = l => `https://example.invalid/${l}`;
+  await fs.writeFile(path.join(dir, "jobber.json"), JSON.stringify({ versjon: 2, jobber: [
+    { id: "a1", selskap: "Eksempel AS", stilling: "Rådgiver", lenke: lenke("a1") },
+    { id: "a2", selskap: "Eksempel AS", stilling: "Analytiker", lenke: lenke("borte") },
+    { id: "a3", selskap: "Eksempel AS", stilling: "Uten lenke", lenke: "" },
+    { id: "a4", selskap: "Eksempel AS", stilling: "Fra brevet", lenke: lenke("a4") }
+  ] }));
+  sider.set(lenke("a1"), "<main><p>Eksempel AS søker en rådgiver med erfaring fra kundeservice og et godt øye for detaljer.</p></main>");
+  sider.set(lenke("borte"), { feil: "Siden svarte 404." });
+
+  const d = await Jobbdokumenter.hentAnnonse("a1");
+  assert.equal(d.annonse.kilde, "hentet");assert.match(d.annonse.tekst, /kundeservice/);assert.equal(d.revisjon, 1);
+  await assert.rejects(Jobbdokumenter.hentAnnonse("a2"), e => e.code === "dod-lenke" && /Lim inn/.test(e.message));
+  await assert.rejects(Jobbdokumenter.hentAnnonse("a3"), e => e.code === "mangler-lenke");
+  assert.ok(!hentet.includes(""));
+
+  const limt = await Jobbdokumenter.limInnAnnonse("a2", "Teksten jeg tok vare på.");
+  assert.equal(limt.annonse.kilde, "limt");assert.equal(limt.annonse.url, lenke("borte"));
+  const imp = await Jobbdokumenter.lagreAnnonse("a3", { tekst: "Fra importen.", url: lenke("a3"), kilde: "import" });
+  assert.equal(imp.annonse.kilde, "import");
+
+  const lager = lagBrevlager(dir);
+  await lager.skriv("brev-a4.json", { ...(await lager.les("brev-a4.json")), annonse: { tekst: "Fra brevet.", url: "", hentet: null } }, 0);
+  const a = await Jobbdokumenter.annonseFor("a4");
+  assert.equal(a.kilde, "brev");assert.equal(a.tekst, "Fra brevet.");
+  assert.equal((await Jobbdokumenter.annonseFor("a4")).kilde, "brev");
+  assert.equal((await lager.les("jobb-a4.json")).revisjon, 1);
+
+  // Alt har annonse nå, bortsett fra den døde lenken som fikk en limt inn.
+  hentet.length = 0;
+  const r = await Jobbdokumenter.hentManglendeAnnonser();
+  assert.deepEqual(r, { hentet: [], fraBrev: [], hadde: 4, utenLenke: [], feilet: [], gjenstar: [], stoppet: null });
+  assert.equal(hentet.length, 0);
+  assert.ok(kall.includes("hent_side"));
 });

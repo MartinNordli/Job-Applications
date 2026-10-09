@@ -6,11 +6,18 @@ import { trekkUtAnnonse } from "../src/annonsetekst.mjs";
 import { Brevfeil } from "../src/brevdata.mjs";
 import { FASE } from "../src/brevlogikk.mjs";
 import { lagBrevModell, brevNokkelStatus, settBrevNokkel, fjernBrevNokkel } from "./brev-modell.mjs";
+import { lagRatebegrenser } from "./brukere.mjs";
+import { erId } from "../src/dokumentnavn.mjs";
+
+/* Henting av annonser går ut på nettet for brukeren. Samme tak som
+   importen, 30 i timen per profil, men egen teller: å hente annonsene
+   til gamle søknader skal ikke stenge for neste import. */
+const ANNONSETAK = { tak: 30, vindu: 60 * 60_000 };
 
 /* Alt som går til profildokumentene. /api/jobber selv er listen og
    hører til server.mjs; under en søknad er brev og dokument her.
    Utdraget har egen rot, så «utdrag» aldri kan forveksles med en id. */
-export const erBrevbane = p => /^\/api\/(cv(?:\/gjenopprett)?|annonsetekst|brevdata|nokler\/[^/]+|jobbdokumenter\/utdrag|jobber\/[^/]+\/(?:brev(?:\/.*)?|dokument(?:\/gjenopprett)?))$/.test(p);
+export const erBrevbane = p => /^\/api\/(cv(?:\/gjenopprett)?|annonsetekst|brevdata|nokler\/[^/]+|jobbdokumenter\/(?:utdrag|hent-manglende)|jobber\/[^/]+\/(?:brev(?:\/.*)?|dokument(?:\/gjenopprett)?|annonse(?:\/hent)?))$/.test(p);
 function send(res,status,data){
   res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"});
   res.end(JSON.stringify(data));
@@ -33,6 +40,10 @@ export function offentligFeil(e){
   const ref=randomUUID().slice(0,8);
   console.error(`Uventet feil i profildokumentene (${ref}):`,e);
   return {status:500,feil:"intern",melding:`Noe gikk galt på serveren. Prøv igjen. Står det fast, se etter ${ref} i serverloggen.`};
+}
+function objekt(v){
+  if(!v || typeof v!=="object" || Array.isArray(v))throw new Brevfeil("ugyldig","Forespørselen har feil form.");
+  return v;
 }
 function metode(req,...lov){if(!lov.includes(req.method))throw new Brevfeil("metode","Metoden er ikke tillatt.",405);}
 
@@ -61,7 +72,7 @@ function åpneStrøm(res){
     slutt(hendelse,data){ skriv(hendelse,data); avsluttet=true; clearInterval(slag); if(!res.writableEnded)res.end(); }
   };
 }
-export function lagBrevRuter({nett,modellFor}){
+export function lagBrevRuter({nett,modellFor,annonsegrense=lagRatebegrenser(ANNONSETAK)}){
   const tjenester=new Map();
   const dokumenttjenester=new Map();
   const grenser=new Map();
@@ -76,9 +87,17 @@ export function lagBrevRuter({nett,modellFor}){
     return tjenester.get(nøkkel);
   }
   function jobbdokumenter({katalog,lager}){
+    const hentJobber=async()=>{const j=(await lager.les()).jobber;return Array.isArray(j)?j:[];};
     if(!dokumenttjenester.has(katalog))dokumenttjenester.set(katalog,lagJobbdokumenter({
       lager:lagBrevlager(katalog),
-      hentJobb:async id=>(await lager.les()).jobber?.find(j=>j.id===id)
+      hentJobb:async id=>(await hentJobber()).find(j=>j.id===id),
+      hentJobber,
+      hentSide:url=>nett.hentSide(url),
+      foranHenting(){
+        const plass=annonsegrense.sjekk(katalog);
+        if(!plass.ok)throw new Brevfeil("for-mange",`Du har hentet mange annonser den siste timen. Prøv igjen om ${Math.ceil(plass.retryEtter/60)} minutter.`,429);
+        annonsegrense.tell(katalog);
+      }
     }));
     return dokumenttjenester.get(katalog);
   }
@@ -101,6 +120,9 @@ export function lagBrevRuter({nett,modellFor}){
       }else if(bane==="/api/brevdata"){
         metode(req,"GET","POST");r=req.method==="GET"?await t.eksporter():await t.importer(await kropp(req));
       }else if(bane==="/api/annonsetekst"){
+        /* Utgått. Brevflaten henter fortsatt annonsen hit inntil den får
+           annonsen fra jobbdokumentet; da fjernes ruten og Brev.hentAnnonse.
+           Nye kall bruker POST /api/jobber/:id/annonse/hent. */
         metode(req,"POST");const {url}=await kropp(req);
         if(typeof url!=="string" || url.length>2000)throw new Brevfeil("ugyldig","Lim inn en gyldig annonselenke.");
         const side=await nett.hentSide(url);
@@ -117,6 +139,25 @@ export function lagBrevRuter({nett,modellFor}){
       }else if(bane==="/api/jobbdokumenter/utdrag"){
         metode(req,"GET");
         r=await jobbdokumenter(ktx).utdrag(new URL(req.url,"http://127.0.0.1").searchParams.get("stier")??"");
+      }else if(bane==="/api/jobbdokumenter/hent-manglende"){
+        metode(req,"POST");
+        const {ider}=objekt(await kropp(req));
+        if(ider!==undefined && !(Array.isArray(ider) && ider.length<=1000 && ider.every(erId)))
+          throw new Brevfeil("ugyldig","Listen over søknader er ugyldig.");
+        r=await jobbdokumenter(ktx).hentManglende({ider,signal:controller.signal});
+      }else if(/^\/api\/jobber\/[^/]+\/annonse(?:\/hent)?$/.test(bane)){
+        const m=bane.match(/^\/api\/jobber\/([A-Za-z0-9_-]{1,64})\/annonse(\/hent)?$/);
+        if(!m)throw new Brevfeil("ugyldig","Ugyldig jobb.");
+        const j=jobbdokumenter(ktx);
+        if(m[2]){metode(req,"POST");r=await j.hentAnnonse(m[1]);}
+        else{
+          metode(req,"GET","PUT");
+          if(req.method==="GET")r=await j.annonseFor(m[1]);
+          else{
+            const inn=objekt(await kropp(req));
+            r=await j.settAnnonse(m[1],{tekst:inn.tekst,url:inn.url,kilde:inn.kilde,hentet:inn.hentet});
+          }
+        }
       }else if(/^\/api\/jobber\/[^/]+\/dokument(?:\/gjenopprett)?$/.test(bane)){
         const m=bane.match(/^\/api\/jobber\/([A-Za-z0-9_-]{1,64})\/dokument(\/gjenopprett)?$/);
         if(!m)throw new Brevfeil("ugyldig","Ugyldig jobb.");

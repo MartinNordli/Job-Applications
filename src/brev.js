@@ -126,6 +126,9 @@ export const eksporterData=()=>I_APP?lokal().eksporter():http("/api/brevdata");
 export const importerData=d=>I_APP?lokal().importer(d):http("/api/brevdata",{method:"POST",body:d});
 export const gjenopprettCv=()=>I_APP?lokal().gjenopprettCv():http("/api/cv/gjenopprett",{method:"POST"});
 export const gjenopprettBrev=id=>I_APP?lokal().gjenopprettBrev(id):http(sti(id)+"/gjenopprett",{method:"POST"});
+/* Utgått: brevflaten bruker denne til brevet får annonsen fra
+   jobbdokumentet. Nye kall går til hentAnnonse(id) i jobbdokumenter.js,
+   som henter fra søknadens lenke og lagrer i jobb-<id>.json. */
 export async function hentAnnonse(url){
   if(!I_APP)return http("/api/annonsetekst",{method:"POST",body:{url}});
   const id=bruker();const side=await invoke("hent_side",{url});
