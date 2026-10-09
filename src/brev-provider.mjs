@@ -9,20 +9,33 @@ export function leverandorFor(navn){
   return LEVERANDORER[navn];
 }
 
-export function byggModellkropp({ leverandor, system, innhold, skjema, trinn }){
+/* Kroppen er bygd for hurtigbufferen. Rekkefølgen er system, så kildene,
+   så trinnets oppgave, og de to første er like i alle trinnene i en
+   kjøring (se src/brevlogikk.mjs). Anthropic bufrer bare det som står
+   foran et cache_control-merke, så begge de faste delene får hvert sitt:
+   systemet kan da gjenbrukes også mellom ulike søknader. OpenAI bufrer
+   en lik begynnelse av seg selv, og får samme rekkefølge uten merker.
+   kilder er valgfri, så et kall uten kildeblokk (evalenes sammenligning)
+   fortsatt er ett enkelt brukerinnhold. */
+export function byggModellkropp({ leverandor, system, kilder, innhold, skjema, trinn }){
   const { modell } = leverandorFor(leverandor);
   if(typeof system !== "string" || !system.trim()) throw new Error("Mangler skriveinstruksjoner.");
   if(!skjema || typeof skjema !== "object" || Array.isArray(skjema)) throw new Error("Mangler svarformat.");
   const tekst = typeof innhold === "string" ? innhold : JSON.stringify(innhold);
   if(typeof tekst !== "string" || !tekst.trim()) throw new Error("Mangler grunnlag.");
-  if(tekst.length > 500_000 || system.length > 40_000) throw new Error("Grunnlaget er for stort.");
+  if(kilder != null && (typeof kilder !== "string" || !kilder.trim())) throw new Error("Mangler grunnlag.");
+  const kildetekst = kilder ?? "";
+  if(tekst.length + kildetekst.length > 500_000 || system.length > 40_000) throw new Error("Grunnlaget er for stort.");
   // Begge leverandørene strømmer alltid. Én transportvei betyr én feilsemantikk.
   if(leverandor === "anthropic") return {
     model: modell,
     max_tokens: 8000,
     stream: true,
-    system,
-    messages: [{ role: "user", content: tekst }],
+    system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+    messages: [{ role: "user", content: [
+      ...(kildetekst ? [{ type: "text", text: kildetekst, cache_control: { type: "ephemeral" } }] : []),
+      { type: "text", text: tekst }
+    ] }],
     output_config: { format: { type: "json_schema", schema: skjema } }
   };
   return {
@@ -30,7 +43,10 @@ export function byggModellkropp({ leverandor, system, innhold, skjema, trinn }){
     store: false,
     stream: true,
     instructions: system,
-    input: [{ role: "user", content: [{ type: "input_text", text: tekst }] }],
+    input: [{ role: "user", content: [
+      ...(kildetekst ? [{ type: "input_text", text: kildetekst }] : []),
+      { type: "input_text", text: tekst }
+    ] }],
     max_output_tokens: 8000,
     text: { format: { type: "json_schema", name: /^[a-z][a-z0-9_-]{0,40}$/i.test(trinn || "") ? trinn : "soknadsbrev", schema: skjema, strict: true } }
   };
@@ -58,9 +74,16 @@ export function tolkModellsvar(leverandor, raa){
   try{ data = JSON.parse(tekst); }
   catch{ throw formatfeil("Modellen svarte i feil format. Prøv igjen."); }
   if(!data || typeof data !== "object" || Array.isArray(data)) throw formatfeil("Modellen svarte i feil format. Prøv igjen.");
+  /* Bufringen telles med, så kostnaden kan regnes ut og måles. Hos
+     Anthropic er input_tokens bare det som ikke kom fra bufferen. Hos
+     OpenAI er de bufrede tokenene en del av input_tokens, og står i
+     cache_read_input_tokens i tillegg. */
+  const u = raa?.usage ?? {};
   const bruk = {
-    input_tokens: Number(raa?.usage?.input_tokens) || 0,
-    output_tokens: Number(raa?.usage?.output_tokens) || 0
+    input_tokens: Number(u.input_tokens) || 0,
+    output_tokens: Number(u.output_tokens) || 0,
+    cache_creation_input_tokens: Number(u.cache_creation_input_tokens) || 0,
+    cache_read_input_tokens: Number(u.cache_read_input_tokens ?? u.input_tokens_details?.cached_tokens) || 0
   };
   return { data, bruk, modell: typeof raa.model === "string" ? raa.model : valg.modell };
 }

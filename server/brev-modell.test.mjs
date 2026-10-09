@@ -7,7 +7,7 @@ import { byggModellkropp, tolkModellsvar } from "../src/brev-provider.mjs";
 import { lagBrevModell, brevNokkelStatus, settBrevNokkel, fjernBrevNokkel } from "./brev-modell.mjs";
 
 const schema = { type: "object", properties: { tekst: { type: "string" } }, required: ["tekst"], additionalProperties: false };
-const inn = { system: "Skriv saklig.", innhold: { cv: "Eksempel", annonse: "Eksempelrolle" }, skjema: schema, trinn: "kontroll" };
+const inn = { system: "Skriv saklig.", kilder: JSON.stringify({ kilder: { cv: "Eksempel", annonse: "Eksempelrolle" } }), innhold: { oppgave: "Kontroller." }, skjema: schema, trinn: "kontroll" };
 const NOKKEL = "en-testnokkel-uten-ekte-tilgang-012345";
 async function profil(t){ const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "brev-modell-")); t.after(()=>fs.rm(katalog,{recursive:true,force:true})); return { katalog }; }
 
@@ -18,13 +18,13 @@ function sseSvar(leverandor, tekst, biter = 3){
   const deler = [];
   for(let i = 0; i < tekst.length; i += Math.ceil(tekst.length / biter)) deler.push(tekst.slice(i, i + Math.ceil(tekst.length / biter)));
   const rammer = leverandor === "anthropic"
-    ? [ramme("message_start", { type: "message_start", message: { id: "msg", type: "message", role: "assistant", model: "claude-opus-5", content: [], stop_reason: null, usage: { input_tokens: 3, output_tokens: 1 } } }),
+    ? [ramme("message_start", { type: "message_start", message: { id: "msg", type: "message", role: "assistant", model: "claude-opus-5", content: [], stop_reason: null, usage: { input_tokens: 3, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 2900 } } }),
         ramme("content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } }),
         ...deler.map(d => ramme("content_block_delta", { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: d } })),
         ramme("message_delta", { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 7 } }),
         ramme("message_stop", { type: "message_stop" })]
     : [...deler.map(d => ramme("response.output_text.delta", { type: "response.output_text.delta", delta: d })),
-        ramme("response.completed", { type: "response.completed", response: { status: "completed", output: [{ type: "message", content: [{ type: "output_text", text: tekst }] }], usage: { input_tokens: 3, output_tokens: 7 } } }),
+        ramme("response.completed", { type: "response.completed", response: { status: "completed", output: [{ type: "message", content: [{ type: "output_text", text: tekst }] }], usage: { input_tokens: 3000, input_tokens_details: { cached_tokens: 2900 }, output_tokens: 7 } } }),
         "data: [DONE]\n\n"];
   return strøm(rammer);
 }
@@ -36,12 +36,34 @@ function strøm(deler){
 
 test("begge leverandører bruker samme schema og låst modell; OpenAI lagrer ikke", () => {
   const a = byggModellkropp({ ...inn, leverandor: "anthropic" });
-  assert.equal(a.model, "claude-opus-5"); assert.equal(a.system, inn.system); assert.deepEqual(a.output_config.format.schema, schema);
+  assert.equal(a.model, "claude-opus-5"); assert.deepEqual(a.output_config.format.schema, schema);
   assert.equal(a.stream, true);
   const o = byggModellkropp({ ...inn, leverandor: "openai" });
   assert.equal(o.model, "gpt-6-astra"); assert.equal(o.store, false); assert.equal(o.text.format.strict, true); assert.equal(o.stream, true);
   assert.deepEqual(o.text.format.schema, schema); assert.equal(o.instructions, inn.system);
   assert.throws(()=>byggModellkropp({ ...inn, leverandor: "https://example.com" }));
+});
+test("system, kilder og oppgave kommer i den rekkefølgen, og de to første er merket for bufring", () => {
+  const a = byggModellkropp({ ...inn, leverandor: "anthropic" });
+  assert.deepEqual(a.system, [{ type: "text", text: inn.system, cache_control: { type: "ephemeral" } }]);
+  assert.deepEqual(a.messages, [{ role: "user", content: [
+    { type: "text", text: inn.kilder, cache_control: { type: "ephemeral" } },
+    { type: "text", text: JSON.stringify(inn.innhold) }
+  ] }]);
+  const o = byggModellkropp({ ...inn, leverandor: "openai" });
+  assert.deepEqual(o.input, [{ role: "user", content: [{ type: "input_text", text: inn.kilder }, { type: "input_text", text: JSON.stringify(inn.innhold) }] }]);
+  // Uten kildeblokk er det bare oppgaven, som før.
+  const uten = byggModellkropp({ ...inn, kilder: undefined, leverandor: "anthropic" });
+  assert.equal(uten.messages[0].content.length, 1);
+  assert.throws(() => byggModellkropp({ ...inn, kilder: " ", leverandor: "anthropic" }), /grunnlag/);
+  assert.throws(() => byggModellkropp({ ...inn, kilder: "x".repeat(500_001), leverandor: "openai" }), /for stort/);
+});
+test("bufringen telles med fra begge leverandørene", () => {
+  const svar = { content: [{ type: "text", text: '{"tekst":"x"}' }], usage: { input_tokens: 40, output_tokens: 9, cache_creation_input_tokens: 3000, cache_read_input_tokens: 0 } };
+  assert.deepEqual(tolkModellsvar("anthropic", svar).bruk, { input_tokens: 40, output_tokens: 9, cache_creation_input_tokens: 3000, cache_read_input_tokens: 0 });
+  const o = { status: "completed", output: [{ type: "message", content: [{ type: "output_text", text: '{"tekst":"x"}' }] }], usage: { input_tokens: 3040, input_tokens_details: { cached_tokens: 3000 }, output_tokens: 9 } };
+  assert.deepEqual(tolkModellsvar("openai", o).bruk, { input_tokens: 3040, output_tokens: 9, cache_creation_input_tokens: 0, cache_read_input_tokens: 3000 });
+  assert.deepEqual(tolkModellsvar("openai", { ...o, usage: undefined }).bruk, { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 });
 });
 test("nøkler holdes adskilt og returneres aldri", async t => {
   const p = await profil(t); assert.equal((await brevNokkelStatus(p, "openai")).finnes, false);
@@ -69,11 +91,17 @@ test("API-transporter sender nøkkel til fast vert, strømmer og normaliserer be
     const kall = lagBrevModell({...p,fetch:async(url,req)=>{
       assert.equal(url,leverandor==="openai"?"https://api.openai.com/v1/responses":"https://api.anthropic.com/v1/messages");
       assert.equal(leverandor==="openai"?req.headers.authorization:req.headers["x-api-key"],leverandor==="openai"?`Bearer ${NOKKEL}`:NOKKEL);
-      assert.equal(JSON.parse(req.body).stream,true);
+      const kropp=JSON.parse(req.body);
+      assert.equal(kropp.stream,true);
+      // Kildene går over nettet i sin egen blokk, og oppgaven etter dem.
+      const blokker=leverandor==="openai"?kropp.input[0].content:kropp.messages[0].content;
+      assert.equal(blokker[0].text,inn.kilder);
       return sseSvar(leverandor,JSON.stringify({tekst:"Et nøkternt brev."}));
     }});
     const r=await kall({...inn,leverandor,felt:"tekst",påDelta:t=>deltaer.push(t)});
     assert.equal(r.data.tekst,"Et nøkternt brev."); assert.equal(r.bruk.output_tokens,7);
+    // Tellingen fra starten av strømmen overlever slutthendelsens tellinger.
+    assert.equal(r.bruk.cache_read_input_tokens,2900);
     // Deltaene er dekodet tekst, aldri rå JSON, og utgjør hele feltverdien.
     assert.equal(deltaer.join(""),"Et nøkternt brev.");
     assert.ok(deltaer.length>1);

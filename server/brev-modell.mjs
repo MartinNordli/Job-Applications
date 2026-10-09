@@ -53,9 +53,9 @@ export async function fjernBrevNokkel({ katalog }, leverandor){
 }
 
 export function lagBrevModell({ katalog, tillatMiljø = false, fetch: hent = globalThis.fetch }){
-  return async ({ leverandor, system, innhold, skjema, trinn, signal, felt, påDelta }) => {
+  return async ({ leverandor, system, kilder, innhold, skjema, trinn, signal, felt, påDelta }) => {
     const valg = leverandorFor(leverandor);
-    const kropp = byggModellkropp({ leverandor, system, innhold, skjema, trinn });
+    const kropp = byggModellkropp({ leverandor, system, kilder, innhold, skjema, trinn });
     const funn = await lesNokkel({ katalog, tillatMiljø }, leverandor);
     if(!funn) throw new BrevModellfeil("mangler-nokkel", "Legg til API-nøkkelen for valgt leverandør.", 503);
     if(!validerNokkel(funn.nokkel).ok) throw new BrevModellfeil("nokkel", "API-nøkkelen har ugyldig format. Legg den inn på nytt.", 503);
