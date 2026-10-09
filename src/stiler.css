@@ -397,6 +397,9 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
          font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--blekk-3)}
 .rad__om[data-hast="naa"],.rad__om[data-hast="forbi"]{color:var(--ild-t);font-weight:500}
 .rad__om[data-hast="snart"]{color:var(--rav-t)}
+/* Et kommende intervju er en avtale, ikke en frist: det løftes med
+   blekk og vekt, aldri med hastekulør. */
+.rad__om[data-kommer]{color:var(--blekk);font-weight:500}
 .rad__verktoy{display:flex;gap:4px;align-items:center}
 /* Sidehandlingene holder plassen sin også når de er usynlige, så
    ingenting hopper når musa kommer inn over raden. */

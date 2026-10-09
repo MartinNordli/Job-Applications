@@ -10,7 +10,7 @@ import { krevØkt, krevØktIgjen, portenStår } from "./innlogging.js";
 import { åpneBrevflate } from "./brevflate.js";
 import * as Varsling from "./varsling.js";
 import { DAGVALG } from "./fristvarsel.mjs";
-import { medStatus, synkSendt } from "./hendelser.mjs";
+import { medStatus, synkSendt, tidslinje, dagerSidenSendt, medianSvartid, svartidDager, utenSvarOver } from "./hendelser.mjs";
 
 const NOKKEL = "jobbsoknader-2027";
 window.__jobbsoknaderKjorer = true;   /* se fallback-skriptet i index.html */
@@ -156,6 +156,37 @@ function datoHtml(p){
        + esc(monogram(p.selskap)) + '</span></div>';
 }
 
+/* Hva nedtellingskolonnen sier under Sendt: hvor lenge du har ventet på
+   svar, eller hvor du står med intervjuet.
+
+   - Et kommende intervju går foran alt annet. Det er en avtale, og den
+     står med dato, «i dag» eller «i morgen». `kommer` gir teksten blekkets
+     egen farge i stedet for den dempede: den er viktigere enn en
+     teller, men den er ikke en frist, så den får ingen hastekulør.
+   - Ellers teller et intervju fra dagen det ble logget.
+   - En sendt søknad teller fra sendtdatoen.
+   - Eldre søknader uten dato får ingen tekst. Kolonnen står like bred
+     uansett, så raden flytter seg ikke, og et anslag ville vært gjetning. */
+function kortDatoMnd(iso){ const d = tilDato(iso); return d.getDate() + ". " + MND_K[d.getMonth()]; }
+
+function ventetekst(p){
+  const iDag = tilIso(I_DAG);
+  const kommende = (p.intervjuer || []).find(i => i.dato >= iDag);
+  if(kommende){
+    const d = dagerTil(kommende.dato);
+    return { kommer: true, tekst: "intervju " + (d === 0 ? "i dag" : d === 1 ? "i morgen" : kortDatoMnd(kommende.dato)) };
+  }
+  if(p.status === "interview"){
+    const steg = tidslinje(p, I_DAG).filter(h => h.til === "interview" && h.dagerSiden != null).pop();
+    if(!steg) return { tekst: "" };
+    const d = steg.dagerSiden;
+    return { tekst: d <= 0 ? "intervju fra i dag" : "i intervju i " + antall(d, "dag", "dager") };
+  }
+  const d = dagerSidenSendt(p, I_DAG);
+  if(d == null || d < 0) return { tekst: "" };
+  return { tekst: d === 0 ? "sendt i dag" : "venter " + antall(d, "dag", "dager") };
+}
+
 function radHtml(p){
   const stilling = p.lenke
     ? '<a class="rad__stilling" href="' + esc(p.lenke) + '" target="_blank" rel="noopener noreferrer">' + esc(p.stilling) + '<span class="rad__pil">↗</span></a>'
@@ -184,16 +215,17 @@ function radHtml(p){
   /* Nedtellingskolonnen tegnes alltid, også når den er tom. Bredden er
      reservert i CSS, så selskapsnavnet står like langt ut i hver rad og
      ingenting flytter seg mellom rader som har og ikke har tekst her. */
-  let omTxt = "", omHast = "";
+  let omTxt = "", omHast = "", omKommer = false;
   if(p.status === "todo" && p.frist){
     omTxt = omTekst(p.frist); omHast = hast(p.frist);
   }else if(visning === "frister" && p.status === "todo"){
     omTxt = "løpende";
-  }else if(visning === "sendt" && p.sendtDato){
-    const d = -dagerTil(p.sendtDato);
-    omTxt = d === 0 ? "sendt i dag" : "venter " + d + (d === 1 ? " dag" : " dager");
+  }else if(visning === "sendt"){
+    const v = ventetekst(p);
+    omTxt = v.tekst; omKommer = v.kommer;
   }
-  const om = '<span class="rad__om"' + (omHast ? ' data-hast="' + omHast + '"' : "") + '>' + omTxt + '</span>';
+  const om = '<span class="rad__om"' + (omHast ? ' data-hast="' + omHast + '"' : "")
+           + (omKommer ? ' data-kommer=""' : "") + '>' + omTxt + '</span>';
 
   let hoved = "";
   if(p.status === "todo")           hoved = '<button class="handling" data-gjor="sent" data-id="' + p.id + '">Merk sendt</button>';
