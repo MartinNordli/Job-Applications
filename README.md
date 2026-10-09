@@ -77,7 +77,12 @@ Finnes det ingen data noe sted, starter den første kontoen med startlisten.
 
 Sidepanelet har fire visninger, med antall søknader ved siden av navnet.
 
-- **Frister**: søknader du ikke har sendt. De er gruppert i «Denne uka» (inkludert frister som har gått ut), «Løpende opptak» og én gruppe per måned. En farget stripe og teksten «i dag», «i morgen», «om N dager» eller «N dager siden» viser hastegraden.
+- **Frister**: søknader du ikke har sendt. De er gruppert i «Denne uka» (frist i dag og de neste sju dagene), «Løpende opptak» og én gruppe per måned. En farget stripe og teksten «i dag», «i morgen» eller «om N dager» viser hastegraden.
+  Frister som har gått ut, ligger i en egen sammenfoldet gruppe nederst, «Fristen har gått ut», med antallet i overskriften.
+  Klikk på overskriften eller trykk Enter for å folde den ut.
+  Der står de uten hastefarge, med «N dager siden», og den som gikk ut sist står først.
+  **Flytt alle til arkivet** markerer alle som vises der som utløpt, med én lagring og én angre som gir tilbake alt.
+  Er filtrene i bruk, flyttes bare de som passer filtrene.
 - **Sendt**: søknader som venter på svar, gruppert etter sektor.
   Hver rad viser hvor lenge du har ventet («venter 12 dager»), regnet fra sendtdatoen.
   Har søknaden et kommende intervju, står det i stedet («intervju i morgen», «intervju 14. okt»).
@@ -94,11 +99,11 @@ Et klikk hopper til søknaden og markerer den.
 - **Søknadsbrev** åpner brevskriveren.
 - Hovedknappen følger statusen: **Merk sendt** (setter sendtdato), **Fikk intervju**, **Fikk tilbud** eller **Gjenåpne**.
 - Sendte søknader og intervjuer kan markeres som **Avslag** eller **Trukket**.
-- En søknad med utgått frist kan markeres som **Utløpt**. En frist som går ut endrer aldri status av seg selv.
+- En søknad med utgått frist kan markeres som **Utløpt**, én og én eller alle på én gang fra gruppen «Fristen har gått ut». En frist som går ut endrer aldri status av seg selv.
 - **Rediger** og **Slett**.
 - Stillingstittelen lenker til annonsen. I Mac-appen åpnes lenken i systemets nettleser.
 
-Sletting, statusbytte og tilbakestilling kan angres fra varselet som dukker opp.
+Sletting, statusbytte, flytting til arkivet og tilbakestilling kan angres fra varselet som dukker opp.
 
 ### Statuser, sektorer og jobbtyper
 
@@ -500,7 +505,7 @@ Repoet er offentlig, og filene inneholder ekte søknader.
 
 ```sh
 npm test          # lagerlogikk, server, kontoer, import, brev og dokumenter
-npm run test:ui   # nettlesertester av brevflyten, innstillingene, skuffen og hendelsene
+npm run test:ui   # nettlesertester av brevflyten, innstillingene, skuffen, hendelsene og fristene
 npm run test:rust # fil-, nett-, brev- og varseloperasjonene i Mac-appen
 ```
 

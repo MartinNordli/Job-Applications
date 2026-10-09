@@ -58,7 +58,9 @@ try{
   const feil = [];
   page.on("pageerror", e => feil.push(e.message));
   await page.goto(url);
-  await page.locator(".rad").first().waitFor();
+  /* Den eneste søknaden under Frister har gått ut og ligger sammenfoldet,
+     så det er listen som ventes på, ikke en synlig rad. */
+  await page.waitForFunction(() => document.querySelector("#innhold")?.children.length > 0);
 
   /* ---------- radene under Sendt ---------- */
   await page.locator('[data-visning="sendt"]').click();
