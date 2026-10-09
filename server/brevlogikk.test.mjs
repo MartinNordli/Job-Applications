@@ -60,7 +60,7 @@ test("systemprompten har ny stil og ingen rester av spørsmålene", () => {
   assert.match(SYSTEM, /«Med vennlig hilsen»/); assert.match(SYSTEM, /«Med venleg helsing»/); assert.match(SYSTEM, /«Sincerely,»/);
   assert.match(SYSTEM, /220 til 300 ord/);
   assert.doesNotMatch(SYSTEM, /sporsmal|Oxford|valgfrie spørsmål/iu);
-  assert.equal(SYSTEM.includes("—"), false);
+  assert.equal(SYSTEM.includes("\u2014"), false);
   for(const e of STILEKSEMPLER) assert.ok(SYSTEM.includes(e.tekst));
   assert.match(SYSTEM, /oppdiktet og gjelder ikke søkeren/);
 });
@@ -118,7 +118,7 @@ test("revisjon bruker nåværende manuelle tekst, og instruksen kan gi fakta", a
   assert.ok(await kontrollerUtkast(grunnlag, analyse(), ut, { kallModell: modell(revidert) }));
 });
 test("redaktøren får stil-, struktur- og lånefunn og retter dem, uten en reparasjonssløyfe", async () => {
-  const utkast = { ...brev(), tekst: "Jeg brenner for kunder — ikke bare svar, men service. Strandviks ruter kjenner jeg godt." };
+  const utkast = { ...brev(), tekst: "Jeg brenner for kunder \u2014 ikke bare svar, men service. Strandviks ruter kjenner jeg godt." };
   let antall = 0;
   const r = await kontrollerUtkast(grunnlag, analyse(), utkast, { kallModell: async p => {
     antall++;

@@ -231,7 +231,7 @@ const helOrd = (f, flagg) => new RegExp(`(?<![\\p{L}\\p{N}])${escape(f)}(?![\\p{
 const FRASEMØNSTRE = TOMME_FRASER.map(f => [f, helOrd(f, "iu")]);
 export function finnStilbrudd(t){
   const funn = [];
-  if(/—/u.test(t)) funn.push("Brevet inneholder em dash.");
+  if(/\u2014/u.test(t)) funn.push("Brevet inneholder em dash.");
   if(/\s–\s/u.test(t)) funn.push("Brevet bruker tankestrek som setningspause.");
   if(/\b(?:ikke bare|not (?:just|only))\b[^.!?\n]{0,250}\b(?:men|but)\b/iu.test(t)
     || /(?:handler ikke om|is(?:n['’]t| not) about)[^.!?\n]{0,250}(?:handler om|it['’]s about|it is about)/iu.test(t))
