@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import {lagBrevlager} from "./brevlager.mjs";
 import {tomCv,tomtBrev} from "../src/brevdata.mjs";
-import {tomtJobbdokument,sjekksum} from "../src/jobbdokument.mjs";
+import {tomtJobbdokument,tomRadar,sjekksum} from "../src/jobbdokument.mjs";
 import {trekkUtAnnonse} from "../src/annonsetekst.mjs";
 async function oppsett(t){const dir=await fs.mkdtemp(path.join(os.tmpdir(),"brev-lager-"));t.after(()=>fs.rm(dir,{recursive:true,force:true}));return {dir,lager:lagBrevlager(dir)};}
 test("CV og brev har eget lager, privat filmodus og versjonskontroll",async t=>{
@@ -61,10 +61,10 @@ test("jobbdokument og radar.json har samme revisjon, kopi og sletting som breven
   assert.equal(JSON.parse(await fs.readFile(path.join(dir,"jobb-j1.forrige.json"),"utf8")).annonse.tekst,"Første annonse.");
   // Lagret dokument er normalisert: ukjente felt er borte, skjemaet er satt av lageret.
   assert.equal("ukjent" in await lager.skriv("jobb-j1.json",{...b,ukjent:1,skjemaVersjon:7},2),false);
-  const r=await lager.skriv("radar.json",{revisjon:0,innboks:[{id:"x"}]},0);
-  assert.deepEqual(r.innboks,[{id:"x"}]);
+  const r=await lager.skriv("radar.json",{revisjon:0,innstillinger:{pa:true,sokeord:["data"]}},0);
+  assert.equal(r.innstillinger.pa,true);assert.deepEqual(r.innstillinger.sokeord,["data"]);
   await lager.slett("radar.json",1);
-  assert.deepEqual(await lager.les("radar.json"),{skjemaVersjon:1,revisjon:2,oppdatert:null});
+  assert.deepEqual(await lager.les("radar.json"),{...tomRadar(),revisjon:2});
   await assert.rejects(lager.skriv("jobb-j1.json",{...b,annonse:{tekst:"x".repeat(100001)}},3),e=>e.code==="ugyldig");
   assert.equal((await lager.les("jobb-j1.json")).revisjon,3);
 });

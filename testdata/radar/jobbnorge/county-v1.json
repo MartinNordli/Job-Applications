@@ -1,0 +1,236 @@
+[
+  {
+    "id": 42,
+    "name": "Agder",
+    "municipality": [
+      {
+        "id": 4203,
+        "name": "Arendal"
+      },
+      {
+        "id": 4216,
+        "name": "Birkenes"
+      }
+    ]
+  },
+  {
+    "id": 32,
+    "name": "Akershus",
+    "municipality": [
+      {
+        "id": 3203,
+        "name": "Asker"
+      },
+      {
+        "id": 3226,
+        "name": "Aurskog-Høland"
+      }
+    ]
+  },
+  {
+    "id": 33,
+    "name": "Buskerud",
+    "municipality": [
+      {
+        "id": 3301,
+        "name": "Drammen"
+      },
+      {
+        "id": 3334,
+        "name": "Flesberg"
+      }
+    ]
+  },
+  {
+    "id": 56,
+    "name": "Finnmark",
+    "municipality": [
+      {
+        "id": 5601,
+        "name": "Alta"
+      },
+      {
+        "id": 5630,
+        "name": "Berlevåg"
+      }
+    ]
+  },
+  {
+    "id": 34,
+    "name": "Innlandet",
+    "municipality": [
+      {
+        "id": 3428,
+        "name": "Alvdal"
+      },
+      {
+        "id": 3431,
+        "name": "Dovre"
+      }
+    ]
+  },
+  {
+    "id": 22,
+    "name": "Jan Mayen",
+    "municipality": []
+  },
+  {
+    "id": 23,
+    "name": "Kontinentalsokkelen",
+    "municipality": [
+      {
+        "id": 2321,
+        "name": "Sokkelen nord for 62° N"
+      },
+      {
+        "id": 2311,
+        "name": "Sokkelen sør for 62° N"
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "name": "Møre og Romsdal",
+    "municipality": [
+      {
+        "id": 1547,
+        "name": "Aukra"
+      },
+      {
+        "id": 1576,
+        "name": "Aure"
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "name": "Nordland",
+    "municipality": [
+      {
+        "id": 1820,
+        "name": "Alstahaug"
+      },
+      {
+        "id": 1871,
+        "name": "Andøy"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "name": "Oslo",
+    "municipality": []
+  },
+  {
+    "id": 11,
+    "name": "Rogaland",
+    "municipality": [
+      {
+        "id": 1114,
+        "name": "Bjerkreim"
+      },
+      {
+        "id": 1145,
+        "name": "Bokn"
+      }
+    ]
+  },
+  {
+    "id": 21,
+    "name": "Svalbard",
+    "municipality": [
+      {
+        "id": 2113,
+        "name": "Barentsburg"
+      },
+      {
+        "id": 2121,
+        "name": "Bjørnøya"
+      }
+    ]
+  },
+  {
+    "id": 40,
+    "name": "Telemark",
+    "municipality": [
+      {
+        "id": 4012,
+        "name": "Bamble"
+      },
+      {
+        "id": 4016,
+        "name": "Drangedal"
+      }
+    ]
+  },
+  {
+    "id": 55,
+    "name": "Troms",
+    "municipality": [
+      {
+        "id": 5532,
+        "name": "Balsfjord"
+      },
+      {
+        "id": 5520,
+        "name": "Bardu"
+      }
+    ]
+  },
+  {
+    "id": 50,
+    "name": "Trøndelag",
+    "municipality": [
+      {
+        "id": 5049,
+        "name": "Flatanger"
+      },
+      {
+        "id": 5036,
+        "name": "Frosta"
+      }
+    ]
+  },
+  {
+    "id": 39,
+    "name": "Vestfold",
+    "municipality": [
+      {
+        "id": 3911,
+        "name": "Færder"
+      },
+      {
+        "id": 3903,
+        "name": "Holmestrand"
+      }
+    ]
+  },
+  {
+    "id": 46,
+    "name": "Vestland",
+    "municipality": [
+      {
+        "id": 4631,
+        "name": "Alver"
+      },
+      {
+        "id": 4645,
+        "name": "Askvoll"
+      }
+    ]
+  },
+  {
+    "id": 31,
+    "name": "Østfold",
+    "municipality": [
+      {
+        "id": 3124,
+        "name": "Aremark"
+      },
+      {
+        "id": 3107,
+        "name": "Fredrikstad"
+      }
+    ]
+  }
+]

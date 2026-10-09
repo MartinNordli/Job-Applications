@@ -1,0 +1,112 @@
+{
+  "jobs": [
+    {
+      "id": 309758,
+      "jobScope": "Fast prosent",
+      "jobDuration": "Fast",
+      "deadline": "25.10.2026",
+      "employer": "Universitetet i Oslo",
+      "employerID": 1741,
+      "regardDepartmentAsEmployer": false,
+      "department": "Universitetsbiblioteket",
+      "departmentID": 11262,
+      "title": "Skrivementorer - Akademisk skrivesenter",
+      "summary": "Er du glad i tekst og skriving?",
+      "logo": "https://www.jobbnorge.no/logos/1741/2f3422e4-8be8-436d-b312-078564165010.png",
+      "link": "https://www.jobbnorge.no/ledige-stillinger/stilling/309758",
+      "promoted": false,
+      "positionCount": 1,
+      "locations": [
+        {
+          "address": "Moltke Moes vei 39",
+          "area": "Oslo",
+          "municipality": "Oslo",
+          "county": "Oslo",
+          "isDomestic": true,
+          "isPrimary": true,
+          "zipCode": "0851"
+        }
+      ],
+      "publicationDate": "09.10.2026",
+      "jobType": {
+        "id": 646,
+        "name": "0389 Fagkonsulent",
+        "jobTypeGroup": {
+          "id": 1,
+          "name": "Teknisk/Administrative"
+        }
+      }
+    },
+    {
+      "id": 309828,
+      "jobScope": "Heltid",
+      "jobDuration": "Vikariat/Midlertidig",
+      "deadline": "02.11.2026",
+      "employer": "Universitetet i Oslo",
+      "employerID": 1741,
+      "regardDepartmentAsEmployer": false,
+      "department": "HISP-senter",
+      "departmentID": 20798,
+      "title": "Administrasjonsrådgiver",
+      "summary": "Vi har ledig stilling som administrasjonsrådgiver ved HISP-senteret.Ansettelsen gjelder for en periode på to år.Tiltredelse snarest.",
+      "logo": "https://www.jobbnorge.no/logos/1741/2f3422e4-8be8-436d-b312-078564165010.png",
+      "link": "https://www.jobbnorge.no/ledige-stillinger/stilling/309828",
+      "promoted": false,
+      "positionCount": 1,
+      "locations": [
+        {
+          "address": "Gaustadalléen 30",
+          "area": "Oslo",
+          "municipality": "Oslo",
+          "county": "Oslo",
+          "isDomestic": true,
+          "isPrimary": true,
+          "zipCode": "0316"
+        }
+      ],
+      "publicationDate": "09.10.2026",
+      "jobType": {
+        "id": 555,
+        "name": "1434 Rådgiver",
+        "jobTypeGroup": {
+          "id": 1,
+          "name": "Teknisk/Administrative"
+        }
+      }
+    },
+    {
+      "id": 309625,
+      "jobScope": "Heltid",
+      "jobDuration": "Fast",
+      "deadline": "29.10.2026",
+      "employer": "Klima- og miljødepartementet",
+      "employerID": 1987,
+      "regardDepartmentAsEmployer": false,
+      "department": "Seksjon for kunnskap, globalt miljøsamarbeid og sirkulær økonomi",
+      "departmentID": 6650,
+      "title": "Rådgiver - Seniorrådgiver",
+      "summary": "Vil du bidra til utviklingen av en mer sirkulær og bærekraftig framtid?",
+      "logo": "https://www.jobbnorge.no/logos/1987/7dd1c659-14f4-4fce-8a37-fff821136f72.png",
+      "link": "https://www.jobbnorge.no/ledige-stillinger/stilling/309625",
+      "promoted": false,
+      "positionCount": 1,
+      "locations": [
+        {
+          "address": "Einar Gerhardsens plass 1, ",
+          "area": "Oslo",
+          "municipality": "Oslo",
+          "county": "Oslo",
+          "isDomestic": true,
+          "isPrimary": true,
+          "zipCode": "0179"
+        }
+      ],
+      "publicationDate": "09.10.2026",
+      "jobType": {}
+    }
+  ],
+  "meta": {
+    "jobCountTotal": 13,
+    "employerCountTotal": 6
+  }
+}

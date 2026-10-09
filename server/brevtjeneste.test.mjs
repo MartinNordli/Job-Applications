@@ -161,7 +161,7 @@ test("sikkerhetskopien er versjon 3 og har med stilreferansen, jobbdokumentene o
   assert.equal((await annen.tjeneste.hentStil()).tekst,"Mitt eget brev.");
   const jobb=await annen.lager.les("jobb-j1.json");
   assert.equal(jobb.match.prosent,77);assert.equal(jobb.annonse.kilde,"limt");
-  assert.deepEqual((await annen.lager.les("radar.json")).innstillinger,{pa:true});
+  assert.equal((await annen.lager.les("radar.json")).innstillinger.pa,true);
   // Ingenting som allerede finnes erstattes, heller ikke et jobbdokument alene.
   const tredje=await oppsett(t);
   await tredje.lager.skriv("jobb-j1.json",{revisjon:0,annonse:{tekst:"Min egen annonse."}},0);

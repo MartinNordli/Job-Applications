@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:tt="https://teamtailor.com/locations">
+  <channel>
+    <title>Tibber</title>
+    <description>Open jobs</description>
+    <link>https://tibber.teamtailor.com/jobs</link>
+    <item>
+      <title>Senior Engineering Manager</title>
+      <description>&lt;p&gt;&lt;span&gt;&lt;em&gt;We're at a pivotal moment for both Tibber and the planet. When joining Tibber, you won’t just help scale a forward-thinking tech company – you’ll contribute to a real shift in how people consume electricity. With millions of smart devices connected to the Tibber platform (like electric vehicles and smart thermostats), we have one of the most unique portfolios trading energy on the market.&lt;/em&gt;&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;em&gt;We’re looking for a Senio…</description>
+      <pubDate>Mon, 05 Oct 2026 11:32:43 +0200</pubDate>
+      <link>https://jobs.tibber.com/jobs/8497810-senior-engineering-manager</link>
+      <remoteStatus>hybrid</remoteStatus>
+      <guid>d27b61b8-47b3-4c68-a3b4-da35bb7e8fde</guid>
+      <tt:locations>
+        <tt:location>
+          <tt:name>Berlin</tt:name>
+          <tt:address>Strelitzer Straße</tt:address>
+          <tt:zip>10115</tt:zip>
+          <tt:city>Berlin</tt:city>
+          <tt:country>Germany</tt:country>
+        </tt:location>
+        <tt:location>
+          <tt:name>Stockholm</tt:name>
+          <tt:address>Vattugatan 17</tt:address>
+          <tt:zip>111 52</tt:zip>
+          <tt:city>Stockholm</tt:city>
+          <tt:country>Sweden</tt:country>
+        </tt:location>
+      </tt:locations>
+      <tt:department>House of Product &amp; Engineering</tt:department>
+      <tt:role>Engineering Manager</tt:role>
+    </item>
+    <item>
+      <title>Senior Security Engineer</title>
+      <description>&lt;p&gt;&lt;em&gt;We're at a pivotal moment for both Tibber and the planet. When joining Tibber, you won’t just help scale a forward-thinking tech company - you’ll contribute to a real shift in how people consume electricity. With millions of smart devices connected to the Tibber platform (like electric vehicles and smart thermostats), we have one of the most unique energy trading portfolios on the market.&lt;/em&gt;&lt;/p&gt;&lt;p&gt;&lt;em&gt;We’re looking for a Senior Security Engineer to jo…</description>
+      <pubDate>Fri, 11 Sep 2026 12:54:15 +0200</pubDate>
+      <link>https://jobs.tibber.com/jobs/8365823-senior-security-engineer</link>
+      <remoteStatus>hybrid</remoteStatus>
+      <guid>ef147f7e-8acb-4ad7-ad55-023ff7f93e36</guid>
+      <tt:locations>
+        <tt:location>
+          <tt:name>Stockholm</tt:name>
+          <tt:address>Vattugatan 17</tt:address>
+          <tt:zip>111 52</tt:zip>
+          <tt:city>Stockholm</tt:city>
+          <tt:country>Sweden</tt:country>
+        </tt:location>
+      </tt:locations>
+      <tt:department>House of Product &amp; Engineering</tt:department>
+      <tt:role/>
+    </item>
+  </channel>
+</rss>

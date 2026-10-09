@@ -1,0 +1,101 @@
+{
+  "jobs": [
+    {
+      "id": 309687,
+      "jobScope": "Heltid",
+      "jobDuration": "Fast",
+      "deadline": "30.10.2026",
+      "employer": "Brønnøysundregistrene",
+      "employerID": 2063,
+      "regardDepartmentAsEmployer": false,
+      "department": "Virksomhetsstyring",
+      "departmentID": 14499,
+      "title": "Dataanalytiker",
+      "summary": "Vil du jobbe med data og KI i virksomhetsstyring?",
+      "logo": "https://www.jobbnorge.no/logos/2063/3a8e44ba-d75e-4c0c-ae41-deee32968a5a.png",
+      "link": "https://www.jobbnorge.no/ledige-stillinger/stilling/309687",
+      "promoted": false,
+      "positionCount": 1,
+      "locations": [
+        {
+          "address": "Havnegata 48",
+          "area": "Brønnøysund",
+          "municipality": "Brønnøy",
+          "county": "Nordland",
+          "isDomestic": true,
+          "isPrimary": true,
+          "zipCode": "8910"
+        }
+      ],
+      "publicationDate": "08.10.2026",
+      "jobType": {}
+    },
+    {
+      "id": 309584,
+      "jobScope": "Heltid",
+      "jobDuration": "Vikariat/Midlertidig",
+      "deadline": "02.11.2026",
+      "employer": "NTNU - Norges teknisk-naturvitenskapelige universitet",
+      "employerID": 688,
+      "regardDepartmentAsEmployer": false,
+      "department": "Institutt for elektrisk energi",
+      "departmentID": 11600,
+      "title": "PhD Candidate in Single-Stage Power Supply Unit for next generation AI Datacenters",
+      "summary": "The Department of Electric Energy has a vacancy for a",
+      "logo": "https://www.jobbnorge.no/logos/688/265f77fa-8d1a-4601-8147-6b263a8b1401.png",
+      "link": "https://www.jobbnorge.no/ledige-stillinger/stilling/309584",
+      "promoted": false,
+      "positionCount": 1,
+      "locations": [
+        {
+          "address": "Høgskoleringen 1",
+          "area": "Trondheim",
+          "municipality": "Trondheim",
+          "county": "Trøndelag",
+          "isDomestic": true,
+          "isPrimary": true,
+          "zipCode": "7491"
+        }
+      ],
+      "publicationDate": "07.10.2026",
+      "jobType": {
+        "id": 406,
+        "name": "1017 Stipendiat",
+        "jobTypeGroup": {
+          "id": 6,
+          "name": "Vitenskapelige"
+        }
+      }
+    },
+    {
+      "id": 308883,
+      "jobScope": "Heltid",
+      "jobDuration": "Engasjement",
+      "deadline": "27.10.2026",
+      "employer": "Stiftelsen Nansen Senter for Miljø og Fjernmåling",
+      "employerID": 1765,
+      "regardDepartmentAsEmployer": false,
+      "department": "Climate Dynamics and Prediction (CDP)",
+      "departmentID": 16017,
+      "title": "Ledig stilling som postdoktor i klimareanalyse",
+      "summary": "Nansensenteret har lang erfaring innen dataassimilering (DA) og klimaprediksjoner. Senteret introduserte allerede på 1990-tallet",
+      "logo": "https://www.jobbnorge.no/logos/1765/472aa90a-1e8c-4046-91cb-f59f597aede1.png",
+      "link": "https://www.jobbnorge.no/ledige-stillinger/stilling/308883",
+      "promoted": false,
+      "positionCount": 1,
+      "locations": [
+        {
+          "address": "Jahnebakken 3",
+          "area": "Bergen",
+          "municipality": "Bergen",
+          "county": "Vestland",
+          "isDomestic": true,
+          "isPrimary": true,
+          "zipCode": "5007"
+        }
+      ],
+      "publicationDate": "05.10.2026",
+      "jobType": {}
+    }
+  ]
+}

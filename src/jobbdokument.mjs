@@ -123,7 +123,6 @@ export function tomtJobbdokument(id){
   if(!erId(id)) throw new Brevfeil("ugyldig", "Ugyldig jobb.");
   return { skjemaVersjon: SKJEMA, revisjon: 0, jobbId: id, annonse: tomAnnonse(), match: null, forberedelser: {}, oppdatert: null };
 }
-export const tomRadar = () => ({ skjemaVersjon: RADAR_SKJEMA, revisjon: 0, oppdatert: null });
 
 /* ---------- annonsen: streng ---------- */
 
@@ -216,32 +215,204 @@ export function validerJobbdokument(id, inn){
   return d;
 }
 
-/* Radar strammer inn sin egen form når den kommer. Til da slipper
-   lageret gjennom et rent JSON-objekt med revisjon og et tak, og
-   ingenting annet. Nøkler som kan endre en prototype faller bort på
-   alle nivåer, og dybden er begrenset så en ondsinnet fil ikke kan
-   sprenge stakken. */
-const FARLIGE = new Set(["__proto__", "constructor", "prototype"]);
-function rentJson(v, dybde){
-  if(dybde > 32) throw new Brevfeil("ugyldig", "Radar-dokumentet er for dypt nøstet.");
-  if(Array.isArray(v)) return v.map(x => rentJson(x, dybde + 1));
-  if(erObjekt(v)){
-    const ut = {};
-    for(const [k, x] of Object.entries(v)) if(!FARLIGE.has(k)) ut[k] = rentJson(x, dybde + 1);
-    return ut;
-  }
-  return v;
+/* ---------- radar.json ---------- */
+/*
+   Radar skriver dette dokumentet selv, også fra bakgrunnen, og det
+   meste i det er maskinlaget: innboksen, hukommelsen og kjøringsloggen.
+   Derfor normaliseres alt tilgivende, som modellsvarene over: ukjente
+   felt faller bort, ugyldige oppføringer droppes, lister kortes til
+   taket, og det som mangler får standardverdien. Et eldre radar.json
+   med en annen form blir dermed et gyldig dokument med
+   standardinnstillinger, uten ny skjemaversjon. Prototypenøkler kan
+   ikke slippe gjennom, fordi bare kjente felt kopieres.
+
+   Nøklene er ASCII som i resten av dataformatet (sporsmal, sprak,
+   leverandor), så Rust-jobben kan lese dem uten omveier.
+
+   Hukommelsen har tak i både tid og antall: «sett» i 200 dager og
+   «avvist» i ett år. Antallstakene her er det siste vernet; selve
+   rydderegelen står i src/radarlogikk.mjs, som også holder dokumentet
+   under 4 MiB før det skrives.
+*/
+export const RADAR = Object.freeze({
+  terskel: 60, maksVurderingerPerDogn: 150,
+  innboks: 200, sett: 4000, avvist: 5000, avvistFingeravtrykk: 5000, kjoringer: 20,
+  karrieresider: 40, ord: 40, ordlengde: 80, fylker: 30, navn: 200,
+  tekst: 6000, grunner: 3, grunn: 300, lenker: 5, nokler: 4, nokkel: 2000, fingeravtrykk: 420,
+  feilRad: 5, kjoringsfeil: 10, kildelogg: 60, melding: 300
+});
+export const RADARKILDER = ["nav", "jobbnorge", "greenhouse", "lever", "teamtailor", "jsonld"];
+export const KARRIERETYPER = ["greenhouse", "lever", "teamtailor", "jsonld"];
+export const INNBOKSSTATUS = ["ny", "lagtTil"];
+
+const DATO = /^\d{4}-\d{2}-\d{2}$/;
+const dato = v => typeof v === "string" && DATO.test(v) && !Number.isNaN(Date.parse(v)) ? v : null;
+/* Brukerens egne ord. Et for langt ord droppes i stedet for å kortes:
+   et kuttet søkeord treffer noe annet enn det brukeren skrev. */
+const ord = v => [...new Set((Array.isArray(v) ? v : [])
+  .map(t => typeof t === "string" ? t.replaceAll("\0", "").replace(/\s+/gu, " ").trim() : "")
+  .filter(t => t && t.length <= RADAR.ordlengde))].slice(0, RADAR.ord);
+function lenke(v){
+  if(typeof v !== "string" || !v || v.length > 2000) return null;
+  try{ const u = new URL(v); return ["http:", "https:"].includes(u.protocol) ? v : null; }
+  catch{ return null; }
 }
+const lenker = v => [...new Set((Array.isArray(v) ? v : []).map(lenke).filter(Boolean))].slice(0, RADAR.lenker);
+const nokler = v => [...new Set((Array.isArray(v) ? v : []).map(k => valgfriTekst(k, RADAR.nokkel)).filter(Boolean))].slice(0, RADAR.nokler);
+const prosent = v => Number.isInteger(v) && v >= 0 && v <= 100 ? v : null;
+const bool = (v, ellers) => typeof v === "boolean" ? v : ellers;
+const navn = v => kort(v, RADAR.navn).trim();
+
+/* Bare objekter i lister, og hver nøkkel bare én gang. Den første
+   vinner, så rekkefølgen dokumentet ble skrevet i, avgjør. */
+function unike(v, maks, lag, nøkkel){
+  const sett = new Set(), ut = [];
+  for(const x of Array.isArray(v) ? v : []){
+    if(ut.length >= maks) break;
+    const n = erObjekt(x) ? lag(x) : null;
+    if(!n) continue;
+    if(nøkkel){
+      const k = nøkkel(n);
+      if(sett.has(k)) continue;
+      sett.add(k);
+    }
+    ut.push(n);
+  }
+  return ut;
+}
+
+export const tomeRadarinnstillinger = () => ({
+  pa: false, terskel: RADAR.terskel, maksVurderingerPerDogn: RADAR.maksVurderingerPerDogn,
+  sokeord: [], ekskluder: [], steder: [],
+  kilder: { nav: { pa: true }, jobbnorge: { pa: true, fylker: [] } },
+  karrieresider: []
+});
+
+function karriereside(k){
+  const url = lenke(k.url), type = blantt(k.type, KARRIERETYPER);
+  if(!erId(k.id) || !url || !type) return null;
+  return { id: k.id, url, type, navn: navn(k.navn), pa: bool(k.pa, true),
+    feilRad: Math.min(heltall(k.feilRad) ?? 0, 1000), sist: tid(k.sist), grunn: valgfriTekst(k.grunn, RADAR.melding) };
+}
+
+function innstillinger(v){
+  const t = tomeRadarinnstillinger();
+  if(!erObjekt(v)) return t;
+  const k = erObjekt(v.kilder) ? v.kilder : {};
+  const nav = erObjekt(k.nav) ? k.nav : {}, jn = erObjekt(k.jobbnorge) ? k.jobbnorge : {};
+  const terskel = prosent(v.terskel), tak = heltall(v.maksVurderingerPerDogn);
+  return {
+    pa: bool(v.pa, t.pa),
+    terskel: terskel ?? t.terskel,
+    maksVurderingerPerDogn: tak !== null && tak <= 1000 ? tak : t.maksVurderingerPerDogn,
+    sokeord: ord(v.sokeord), ekskluder: ord(v.ekskluder), steder: ord(v.steder),
+    kilder: {
+      nav: { pa: bool(nav.pa, true) },
+      jobbnorge: { pa: bool(jn.pa, true),
+        fylker: [...new Set((Array.isArray(jn.fylker) ? jn.fylker : [])
+          .filter(n => Number.isInteger(n) && n > 0 && n < 1000))].slice(0, RADAR.fylker) }
+    },
+    karrieresider: unike(v.karrieresider, RADAR.karrieresider, karriereside, s => s.id)
+  };
+}
+
+export const tomKildetilstand = () => ({
+  nav: { side: null, etag: null, sistEndret: null, sist: null, feil: null },
+  jobbnorge: { sisteId: null, sist: null, feil: null }
+});
+function kildetilstand(v){
+  if(!erObjekt(v)) return tomKildetilstand();
+  const n = erObjekt(v.nav) ? v.nav : {}, j = erObjekt(v.jobbnorge) ? v.jobbnorge : {};
+  return {
+    nav: { side: erId(n.side) ? n.side : null, etag: valgfriTekst(n.etag, 200), sistEndret: valgfriTekst(n.sistEndret, 64),
+      sist: tid(n.sist), feil: valgfriTekst(n.feil, RADAR.melding) },
+    jobbnorge: { sisteId: heltall(j.sisteId), sist: tid(j.sist), feil: valgfriTekst(j.feil, RADAR.melding) }
+  };
+}
+
+function innboksrad(r){
+  const id = valgfriTekst(r.id, 200), kilde = blantt(r.kilde, RADARKILDER), url = lenke(r.url), p = prosent(r.prosent);
+  if(!id || !kilde || !url || p === null) return null;
+  return {
+    id, kilde, kildeId: navn(r.kildeId), url, lenker: lenker(r.lenker),
+    selskap: navn(r.selskap), stilling: navn(r.stilling), sted: navn(r.sted),
+    frist: dato(r.frist), publisert: tid(r.publisert), tekst: kort(r.tekst, RADAR.tekst),
+    prosent: p, grunner: tekstliste(r.grunner, RADAR.grunner, RADAR.grunn),
+    status: blantt(r.status, INNBOKSSTATUS, "ny"), funnet: tid(r.funnet),
+    nokler: nokler(r.nokler), fingeravtrykk: valgfriTekst(r.fingeravtrykk, RADAR.fingeravtrykk)
+  };
+}
+
+function minne(r){
+  const d = dato(r.dato), n = nokler(r.nokler);
+  if(!d || !n.length) return null;
+  return { nokler: n, fingeravtrykk: valgfriTekst(r.fingeravtrykk, RADAR.fingeravtrykk), dato: d };
+}
+function avvistRad(r){
+  const d = dato(r.dato), n = nokler(r.nokler);
+  return d && n.length ? { nokler: n, dato: d } : null;
+}
+function avvistFingeravtrykk(r){
+  const d = dato(r.dato), f = valgfriTekst(r.fingeravtrykk, RADAR.fingeravtrykk);
+  return d && f ? { fingeravtrykk: f, dato: d } : null;
+}
+
+export const KJORINGSTELLERE = ["kandidater", "nye", "vurdert", "treff", "utenVurdering"];
+function kjoring(r){
+  const start = tid(r.start);
+  if(!start) return null;
+  const ut = { start, slutt: tid(r.slutt) };
+  for(const k of KJORINGSTELLERE) ut[k] = heltall(r[k]) ?? 0;
+  ut.kilder = unike(r.kilder, RADAR.kildelogg, k => {
+    const kilde = blantt(k.kilde, RADARKILDER);
+    return kilde ? { kilde, navn: navn(k.navn), hentet: heltall(k.hentet) ?? 0, feil: valgfriTekst(k.feil, RADAR.melding) } : null;
+  });
+  ut.bruk = bruk(r.bruk);
+  ut.feil = tekstliste(r.feil, RADAR.kjoringsfeil, RADAR.melding);
+  return ut;
+}
+
+function leie(v){
+  if(!erObjekt(v)) return null;
+  const eier = valgfriTekst(v.eier, 80), utloper = tid(v.utloper);
+  return eier && utloper ? { eier, utloper } : null;
+}
+function forbruk(v){
+  const d = erObjekt(v) ? dato(v.dato) : null;
+  return { dato: d, vurderinger: d ? heltall(v.vurderinger) ?? 0 : 0 };
+}
+
 export function validerRadar(inn){
   if(!erObjekt(inn)) throw new Brevfeil("ugyldig", "Radar-dokumentet mangler.");
-  const d = { ...rentJson(inn, 0), skjemaVersjon: RADAR_SKJEMA, revisjon: revisjon(inn.revisjon), oppdatert: tid(inn.oppdatert) };
+  const d = {
+    skjemaVersjon: RADAR_SKJEMA, revisjon: revisjon(inn.revisjon),
+    innstillinger: innstillinger(inn.innstillinger),
+    kildetilstand: kildetilstand(inn.kildetilstand),
+    innboks: unike(inn.innboks, RADAR.innboks, innboksrad, r => r.id),
+    sett: unike(inn.sett, RADAR.sett, minne),
+    avvist: unike(inn.avvist, RADAR.avvist, avvistRad),
+    avvistFingeravtrykk: unike(inn.avvistFingeravtrykk, RADAR.avvistFingeravtrykk, avvistFingeravtrykk, r => r.fingeravtrykk),
+    kjoringer: unike(inn.kjoringer, RADAR.kjoringer, kjoring),
+    forbruk: forbruk(inn.forbruk),
+    leie: leie(inn.leie),
+    oppdatert: tid(inn.oppdatert)
+  };
   if(bytes(d) > MAKS_RADAR) throw new Brevfeil("for-stort", "Radar-dokumentet er for stort.", 413);
   return d;
 }
+export const tomRadar = () => validerRadar({ revisjon: 0 });
 
 /* Om et dokument har noe en gjenoppretting ville skrevet over. */
 export const harJobbinnhold = d => !!(d?.annonse?.tekst || d?.annonse?.url || d?.match || Object.keys(d?.forberedelser ?? {}).length);
-export const harRadarinnhold = d => Object.keys(d ?? {}).some(k => !["skjemaVersjon", "revisjon", "oppdatert"].includes(k));
+/* Et radar.json med bare standardverdier er tomt, selv om alle feltene
+   står der. Leien og forbruket teller ikke: de beskriver kjøringer,
+   ikke noe brukeren har laget eller valgt. */
+export function harRadarinnhold(d){
+  if(!erObjekt(d)) return false;
+  const tom = tomRadar();
+  return ["innstillinger", "kildetilstand", "innboks", "sett", "avvist", "avvistFingeravtrykk", "kjoringer"]
+    .some(k => d[k] !== undefined && JSON.stringify(d[k]) !== JSON.stringify(tom[k]));
+}
 
 /* ---------- utdatert ---------- */
 

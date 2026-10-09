@@ -1,0 +1,102 @@
+{
+  "version": "1.0",
+  "title": "Stillingsfeeden fra arbeidsplassen.no",
+  "home_page_url": "https://arbeidsplassen.nav.no",
+  "feed_url": "/api/v1/feed/3e913ae6-eb68-4aa3-9605-dbb693c7201c",
+  "description": "Feed med stillinger fra arbeidsplassen.no - En av Norges største oversikter over utlyste stillinger",
+  "next_url": "/api/v1/feed/88748a1e-1285-4ece-87e2-9390206f7e75",
+  "id": "3e913ae6-eb68-4aa3-9605-dbb693c7201c",
+  "next_id": "88748a1e-1285-4ece-87e2-9390206f7e75",
+  "items": [
+    {
+      "id": "d11f92bd-6753-451c-a60f-9673fd6e0743",
+      "url": "/api/v1/feedentry/d11f92bd-6753-451c-a60f-9673fd6e0743",
+      "title": "CNC- operatør med stor interesse for å jobbe med industrirobot?",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-08T12:10:45.459752+02:00",
+      "_feed_entry": {
+        "uuid": "d11f92bd-6753-451c-a60f-9673fd6e0743",
+        "status": "ACTIVE",
+        "title": "CNC- operatør med stor interesse for å jobbe med industrirobot?",
+        "businessName": "Temp-Team avd. Bergen",
+        "municipal": "BERGEN",
+        "sistEndret": "2026-10-08T12:10:45.459752+02:00"
+      }
+    },
+    {
+      "id": "d11f92bd-6753-451c-a60f-9673fd6e0743",
+      "url": "/api/v1/feedentry/d11f92bd-6753-451c-a60f-9673fd6e0743",
+      "title": "CNC- operatør med stor interesse for å jobbe med industrirobot?",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-08T12:11:25.775923+02:00",
+      "_feed_entry": {
+        "uuid": "d11f92bd-6753-451c-a60f-9673fd6e0743",
+        "status": "ACTIVE",
+        "title": "CNC- operatør med stor interesse for å jobbe med industrirobot?",
+        "businessName": "Temp-Team avd. Bergen",
+        "municipal": "BERGEN",
+        "sistEndret": "2026-10-08T12:11:25.775923+02:00"
+      }
+    },
+    {
+      "id": "d11f92bd-6753-451c-a60f-9673fd6e0743",
+      "url": "/api/v1/feedentry/d11f92bd-6753-451c-a60f-9673fd6e0743",
+      "title": "CNC- operatør med stor interesse for å jobbe med industrirobot?",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-08T12:12:26.281248+02:00",
+      "_feed_entry": {
+        "uuid": "d11f92bd-6753-451c-a60f-9673fd6e0743",
+        "status": "ACTIVE",
+        "title": "CNC- operatør med stor interesse for å jobbe med industrirobot?",
+        "businessName": "Temp-Team avd. Bergen",
+        "municipal": "BERGEN",
+        "sistEndret": "2026-10-08T12:12:26.281248+02:00"
+      }
+    },
+    {
+      "id": "c0422257-d7ed-4b63-a46d-3dabb906904b",
+      "url": "/api/v1/feedentry/c0422257-d7ed-4b63-a46d-3dabb906904b",
+      "title": "...",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-08T12:12:26.284637+02:00",
+      "_feed_entry": {
+        "uuid": "c0422257-d7ed-4b63-a46d-3dabb906904b",
+        "status": "INACTIVE",
+        "title": "...",
+        "businessName": "",
+        "municipal": "?",
+        "sistEndret": "2026-10-08T12:12:26.284637+02:00"
+      }
+    },
+    {
+      "id": "c0422257-d7ed-4b63-a46d-3dabb906904b",
+      "url": "/api/v1/feedentry/c0422257-d7ed-4b63-a46d-3dabb906904b",
+      "title": "...",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-08T12:12:46.44549+02:00",
+      "_feed_entry": {
+        "uuid": "c0422257-d7ed-4b63-a46d-3dabb906904b",
+        "status": "INACTIVE",
+        "title": "...",
+        "businessName": "",
+        "municipal": "?",
+        "sistEndret": "2026-10-08T12:12:46.44549+02:00"
+      }
+    },
+    {
+      "id": "5627e52b-8629-4804-984e-883c6e0838b3",
+      "url": "/api/v1/feedentry/5627e52b-8629-4804-984e-883c6e0838b3",
+      "title": "Vil du jobbe med operativ resilienstrening i Forsvaret?",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-08T12:32:26.654698+02:00",
+      "_feed_entry": {
+        "uuid": "5627e52b-8629-4804-984e-883c6e0838b3",
+        "status": "INACTIVE",
+        "title": "Vil du jobbe med operativ resilienstrening i Forsvaret?",
+        "businessName": "Forsvarets sanitet, Forsvaret",
+        "municipal": "MÅLSELV",
+        "sistEndret": "2026-10-08T12:32:26.654698+02:00"
+      }
+    }
+  ]
+}

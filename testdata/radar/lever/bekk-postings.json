@@ -1,0 +1,54 @@
+[
+  {
+    "additional": "",
+    "additionalPlain": "",
+    "categories": {
+      "commitment": "Fast jobb",
+      "location": "Oslo",
+      "team": "Bekk",
+      "allLocations": [
+        "Oslo"
+      ]
+    },
+    "createdAt": 1552484940211,
+    "description": "",
+    "descriptionPlain": "",
+    "id": "9b001865-7ce1-4efb-a55a-9bb4e88814ad",
+    "lists": [],
+    "text": "Åpen søknad",
+    "country": "NO",
+    "workplaceType": "onsite",
+    "opening": "",
+    "openingPlain": "",
+    "descriptionBody": "",
+    "descriptionBodyPlain": "",
+    "hostedUrl": "https://jobs.lever.co/bekk/9b001865-7ce1-4efb-a55a-9bb4e88814ad",
+    "applyUrl": "https://jobs.lever.co/bekk/9b001865-7ce1-4efb-a55a-9bb4e88814ad/apply"
+  },
+  {
+    "additional": "",
+    "additionalPlain": "",
+    "categories": {
+      "commitment": "Fast jobb",
+      "location": "Oslo",
+      "team": "Oppdrag",
+      "allLocations": [
+        "Oslo"
+      ]
+    },
+    "createdAt": 1726137047944,
+    "description": "",
+    "descriptionPlain": "",
+    "id": "89ae1765-e547-4fcd-bebc-d3f3a67ea74e",
+    "lists": [],
+    "text": "Digital forretningsutvikler",
+    "country": "NO",
+    "workplaceType": "onsite",
+    "opening": "",
+    "openingPlain": "",
+    "descriptionBody": "",
+    "descriptionBodyPlain": "",
+    "hostedUrl": "https://jobs.lever.co/bekk/89ae1765-e547-4fcd-bebc-d3f3a67ea74e",
+    "applyUrl": "https://jobs.lever.co/bekk/89ae1765-e547-4fcd-bebc-d3f3a67ea74e/apply"
+  }
+]

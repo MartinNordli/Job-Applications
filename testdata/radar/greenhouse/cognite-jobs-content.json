@@ -1,0 +1,122 @@
+{
+  "jobs": [
+    {
+      "absolute_url": "https://job-boards.eu.greenhouse.io/cognite/jobs/4969944101",
+      "data_compliance": [
+        {
+          "type": "gdpr",
+          "requires_consent": false,
+          "requires_processing_consent": false,
+          "requires_retention_consent": false,
+          "retention_period": null,
+          "demographic_data_consent_applies": false
+        }
+      ],
+      "internal_job_id": 4519717101,
+      "location": {
+        "name": "India (Bengaluru)"
+      },
+      "metadata": [
+        {
+          "id": 15859694101,
+          "name": "Earliest Approved Budgeted Start Date",
+          "value": "2026-08-20",
+          "value_type": "date"
+        }
+      ],
+      "id": 4969944101,
+      "updated_at": "2026-09-30T14:12:21-04:00",
+      "requisition_id": "424",
+      "title": "Academy Engineer - (Data Scientist- Training)",
+      "company_name": "Cognite - AI for Industry",
+      "first_published": "2026-09-09T04:40:14-04:00",
+      "language": "en",
+      "application_deadline": null,
+      "content": "&lt;div class=&quot;content-intro&quot;&gt;&lt;p&gt;&lt;/p&gt;\n&lt;h1&gt;&lt;span style=&quot;font-size: 18pt;&quot;&gt;&lt;span style=&quot;color: rgb(102, 110, 153);&quot;&gt;What Cognite is:&lt;/span&gt; &lt;span style=&quot;color: rgb(0, 41, 255);&quot;&gt;Relentless&lt;/span&gt; &lt;span style=&quot;color: rgb(102, 110, 153);&quot;&gt;to achieve&lt;/span&gt;&lt;/span&gt;&lt;/h1&gt;\n&lt;p&gt;&lt;/p&gt;\n&lt;p&gt;&lt;span style=&quot;font-size: 12pt;&quot;&gt;Cognite operates at the forefront of &lt;strong&gt;industrial digitalization, building AI&lt;/strong&gt;, and data solutions that solv…",
+      "departments": [
+        {
+          "id": 4059463101,
+          "name": "Value Delivery",
+          "child_ids": [],
+          "parent_id": null
+        }
+      ],
+      "offices": [
+        {
+          "id": 4033302101,
+          "name": "India (Bengaluru)",
+          "location": null,
+          "child_ids": [],
+          "parent_id": 4033280101
+        }
+      ],
+      "ai_disclaimer": null,
+      "include_ai_disclaimer": null,
+      "ai_opt_out_request_url": "http://s101.recruiting.eu.greenhouse.io/ai_opt_out_request/job_post/4969944101/ai_opt_out"
+    },
+    {
+      "absolute_url": "https://job-boards.eu.greenhouse.io/cognite/jobs/4948187101",
+      "data_compliance": [
+        {
+          "type": "gdpr",
+          "requires_consent": false,
+          "requires_processing_consent": false,
+          "requires_retention_consent": false,
+          "retention_period": null,
+          "demographic_data_consent_applies": false
+        }
+      ],
+      "internal_job_id": 4510221101,
+      "location": {
+        "name": "USA (Houston)"
+      },
+      "metadata": [
+        {
+          "id": 15859694101,
+          "name": "Earliest Approved Budgeted Start Date",
+          "value": null,
+          "value_type": "date"
+        }
+      ],
+      "id": 4948187101,
+      "updated_at": "2026-09-30T14:12:21-04:00",
+      "requisition_id": "409",
+      "title": "Account Executive, Chemical Manufacturing",
+      "company_name": "Cognite - AI for Industry",
+      "first_published": "2026-08-10T12:40:27-04:00",
+      "language": "en",
+      "application_deadline": null,
+      "content": "&lt;div class=&quot;content-intro&quot;&gt;&lt;p&gt;&lt;/p&gt;\n&lt;h1&gt;&lt;span style=&quot;font-size: 18pt;&quot;&gt;&lt;span style=&quot;color: rgb(102, 110, 153);&quot;&gt;What Cognite is:&lt;/span&gt; &lt;span style=&quot;color: rgb(0, 41, 255);&quot;&gt;Relentless&lt;/span&gt; &lt;span style=&quot;color: rgb(102, 110, 153);&quot;&gt;to achieve&lt;/span&gt;&lt;/span&gt;&lt;/h1&gt;\n&lt;p&gt;&lt;/p&gt;\n&lt;p&gt;&lt;span style=&quot;font-size: 12pt;&quot;&gt;Cognite operates at the forefront of &lt;strong&gt;industrial digitalization, building AI&lt;/strong&gt;, and data solutions that solv…",
+      "departments": [
+        {
+          "id": 4059455101,
+          "name": "Global Revenue",
+          "child_ids": [],
+          "parent_id": null
+        }
+      ],
+      "offices": [
+        {
+          "id": 4033286101,
+          "name": "USA (Houston)",
+          "location": null,
+          "child_ids": [],
+          "parent_id": 4033278101
+        },
+        {
+          "id": 4033288101,
+          "name": "USA (remote)",
+          "location": null,
+          "child_ids": [],
+          "parent_id": 4033278101
+        }
+      ],
+      "ai_disclaimer": null,
+      "include_ai_disclaimer": null,
+      "ai_opt_out_request_url": "http://s101.recruiting.eu.greenhouse.io/ai_opt_out_request/job_post/4948187101/ai_opt_out"
+    }
+  ],
+  "meta": {
+    "total": 53
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "uuid": "e16159f0-f5b9-44f9-ae12-929ed30d1652",
+  "ad_content": {
+    "uuid": "e16159f0-f5b9-44f9-ae12-929ed30d1652",
+    "published": "2026-10-09T00:00:00+02:00",
+    "expires": "2026-10-30T00:00:00+01:00",
+    "updated": "2026-10-09T09:15:14.824004+02:00",
+    "workLocations": [
+      {
+        "country": "NORGE",
+        "address": "Haukelandsveien 28",
+        "city": "BERGEN",
+        "postalCode": "5009",
+        "county": "VESTLAND",
+        "municipal": "BERGEN"
+      }
+    ],
+    "contactList": [
+      {
+        "name": "Kari Nordmann",
+        "email": "kari.nordmann@example.no",
+        "phone": "+47 00000000",
+        "role": null,
+        "title": "Fakultetsdirektør"
+      }
+    ],
+    "title": "Seksjonssjef for forskingsseksjonen ved Det medisinske fakultet.",
+    "description": "<h2>Kunnskap som formar samfunnet</h2><p>UiB skal vere blant Europas fremste universitet, internasjonalt kjent for høg kvalitet i forsking og utdanning. Som samfunnsinstitusjon skal vi bidra til ei berekraftig og demokratisk utvikling og vere ein attraktiv og inkluderande studie- og arbeidsplass.</p>Video: <a href=\"https://youtu.be/M5n6RnScNgA\" rel=\"nofollow\">https://youtu.be/M5n6RnScNgA</a><h2>Vil du bidra til å utvikle forsking og forskarutdanning ved Det medisinske fakultet?</h2><p><a href=\"https://www4.uib.no/det-medisinske-fakultet\" rel=\"nofollow\">Det medisinske fakultet</a> søker ein engasjert og strategisk orientert seksjonssjef for forskingsseksjonen. I stillinga skal du bidra til å vidareutvikle forskingsverksemda ved fakultetet og styrke arbeidet med nasjonal og internasjonal forskingsfinansiering. </p><p>Som seksjonssjef leiar du eit kompetent fagmiljø som arbeider med forskingsstøtte, ekstern finansiering, forskarutdanning og strategiske forskingssatsingar. Du vil ha ei sentral rolle i å sikre gode tenester til institutta og at fakultetet når ambisjonane sine innan forsking, innovasjon og forskarutdanning.</p><br /><h2>Arbeidsoppgåver:</h2><ul><li>Leie og utvikle forski…",
+    "sourceurl": "https://jobbnorge.no/ledige-stillinger/stilling/309820",
+    "source": "IMPORTAPI",
+    "applicationUrl": "https://jobseeker.jobbnorge.no/apply/309820",
+    "applicationDue": "2026-10-30T00:00:00",
+    "occupationCategories": [
+      {
+        "level1": "Kontor og økonomi",
+        "level2": "Ledelse, administrasjon og rådgivning"
+      },
+      {
+        "level1": "Salg og service",
+        "level2": "Personlig tjenesteyting"
+      }
+    ],
+    "categoryList": [
+      {
+        "categoryType": "ESCO",
+        "code": "http://data.europa.eu/esco/occupation/94e0bedd-e56e-42be-a5a4-b74a260f437c",
+        "name": "Avdelingsleder",
+        "description": "",
+        "score": 1.0
+      },
+      {
+        "categoryType": "JANZZ",
+        "code": "105355",
+        "name": "Avdelingsleder",
+        "description": "",
+        "score": 1.0
+      },
+      {
+        "categoryType": "JANZZ",
+        "code": "360291",
+        "name": "Seksjonssjef (offentlig administrasjon)",
+        "description": "",
+        "score": 1.0
+      }
+    ],
+    "jobtitle": "Seksjonssjef for forskingsseksjonen",
+    "link": "https://arbeidsplassen.nav.no/stillinger/stilling/e16159f0-f5b9-44f9-ae12-929ed30d1652",
+    "employer": {
+      "name": "Universitetet i Bergen",
+      "orgnr": "974799154",
+      "description": "<p>Universitetet i Bergen er ein anerkjend utdannings- og forskingsinstitusjon, organisert i sju fakultet og omlag 54 institutt og faglege senter. Campus ligg i sentrale delar av Bergen med universitetsområde på Nygårdshøyden, Haukeland, Marineholmen, Møllendalsveien og Årstad.</p><p>Det medisinske fakultet består av fem institutt og åtte senter. <a href=\"https://www.uib.no/med\" rel=\"nofollow\">Les…",
+      "homepage": "https://www.uib.no/om/84775/ledige-stillinger-ved-uib"
+    },
+    "engagementtype": "Fast",
+    "extent": "Heltid",
+    "starttime": "",
+    "positioncount": "1",
+    "sector": "Offentlig"
+  },
+  "sistEndret": "2026-10-09T09:15:14.824+02:00",
+  "status": "ACTIVE"
+}

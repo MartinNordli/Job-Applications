@@ -1,0 +1,87 @@
+{
+  "version": "1.0",
+  "title": "Stillingsfeeden fra arbeidsplassen.no",
+  "home_page_url": "https://arbeidsplassen.nav.no",
+  "feed_url": "/api/v1/feed/53ea3e08-6a7e-4a55-9de2-c6e8cd411e14",
+  "description": "Feed med stillinger fra arbeidsplassen.no - En av Norges største oversikter over utlyste stillinger",
+  "next_url": "/api/v1/feed/0df3b500-e846-44a2-afda-18d33952fa47",
+  "id": "53ea3e08-6a7e-4a55-9de2-c6e8cd411e14",
+  "next_id": "0df3b500-e846-44a2-afda-18d33952fa47",
+  "items": [
+    {
+      "id": "14549ada-09c2-4c13-b02e-943a06f2b12f",
+      "url": "/api/v1/feedentry/14549ada-09c2-4c13-b02e-943a06f2b12f",
+      "title": "Lærer med særlig ansvar for spesialpedagogisk oppfølging - 60% vikariat ut skoleåret 2026/27",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-09T09:11:18.776245+02:00",
+      "_feed_entry": {
+        "uuid": "14549ada-09c2-4c13-b02e-943a06f2b12f",
+        "status": "ACTIVE",
+        "title": "Lærer med særlig ansvar for spesialpedagogisk oppfølging - 60% vikariat ut skoleåret 2026/27",
+        "businessName": "Bjørnemyr skole, Nesodden kommune",
+        "municipal": "NESODDEN",
+        "sistEndret": "2026-10-09T09:11:18.776245+02:00"
+      }
+    },
+    {
+      "id": "017e7926-8903-4902-8b27-f774a6ee05e6",
+      "url": "/api/v1/feedentry/017e7926-8903-4902-8b27-f774a6ee05e6",
+      "title": "Bli en del av vårt verkstedteam – bussmekaniker",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-09T09:11:49.09078+02:00",
+      "_feed_entry": {
+        "uuid": "017e7926-8903-4902-8b27-f774a6ee05e6",
+        "status": "ACTIVE",
+        "title": "Bli en del av vårt verkstedteam – bussmekaniker",
+        "businessName": "Temp-Team   avd. Bil & mekanikk",
+        "municipal": "OSLO",
+        "sistEndret": "2026-10-09T09:11:49.09078+02:00"
+      }
+    },
+    {
+      "id": "ad946147-3c1e-4a46-91d5-9acd8421773e",
+      "url": "/api/v1/feedentry/ad946147-3c1e-4a46-91d5-9acd8421773e",
+      "title": "Rådgiver - Seniorrådgiver",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-09T09:12:51.140625+02:00",
+      "_feed_entry": {
+        "uuid": "ad946147-3c1e-4a46-91d5-9acd8421773e",
+        "status": "ACTIVE",
+        "title": "Rådgiver - Seniorrådgiver",
+        "businessName": "Klima- og miljødepartementet",
+        "municipal": "OSLO",
+        "sistEndret": "2026-10-09T09:12:51.140625+02:00"
+      }
+    },
+    {
+      "id": "27fcef28-9c1d-40a6-8454-fb6c1398f11b",
+      "url": "/api/v1/feedentry/27fcef28-9c1d-40a6-8454-fb6c1398f11b",
+      "title": "Sykepleier og helsefarbeider",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-09T09:13:20.11963+02:00",
+      "_feed_entry": {
+        "uuid": "27fcef28-9c1d-40a6-8454-fb6c1398f11b",
+        "status": "ACTIVE",
+        "title": "Sykepleier og helsefarbeider",
+        "businessName": "Lindeberg hjemmesykepleie, Oslo kommune, Bydel Alna",
+        "municipal": "OSLO",
+        "sistEndret": "2026-10-09T09:13:20.11963+02:00"
+      }
+    },
+    {
+      "id": "017e7926-8903-4902-8b27-f774a6ee05e6",
+      "url": "/api/v1/feedentry/017e7926-8903-4902-8b27-f774a6ee05e6",
+      "title": "Bli en del av vårt verkstedteam – bussmekaniker",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-09T09:13:50.289926+02:00",
+      "_feed_entry": {
+        "uuid": "017e7926-8903-4902-8b27-f774a6ee05e6",
+        "status": "ACTIVE",
+        "title": "Bli en del av vårt verkstedteam – bussmekaniker",
+        "businessName": "Temp-Team   avd. Bil & mekanikk",
+        "municipal": "OSLO",
+        "sistEndret": "2026-10-09T09:13:50.289926+02:00"
+      }
+    }
+  ]
+}

@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import { dokumenttype, dokumentId, navnFor } from "../src/dokumentnavn.mjs";
 import { dokumentnavn, lesDokument, harInnhold, skjemaFor } from "../src/brevdata.mjs";
 import { sjekksum, validerJobbdokument, validerRadar, tomtJobbdokument, normaliserMatch,
-  matchUtdatert, forberedelseUtdatert, utdatert, MAKS_ANNONSE } from "../src/jobbdokument.mjs";
+  matchUtdatert, forberedelseUtdatert, utdatert, MAKS_ANNONSE, tomRadar, RADAR } from "../src/jobbdokument.mjs";
 import { tolkStier, utdragAv } from "../src/dokumentutdrag.mjs";
 
 /* Den samme filen leses av Rust-testene i src-tauri/src/brev.rs. */
@@ -74,7 +74,7 @@ test("et tomt eller minimalt dokument får hele formen", () => {
   const fraRust = lesDokument("jobb-j1.json", JSON.stringify({ skjemaVersjon: 1, revisjon: 4, oppdatert: null }));
   assert.deepEqual(fraRust, { ...tomtJobbdokument("j1"), revisjon: 4 });
   assert.deepEqual(lesDokument("radar.json", JSON.stringify({ skjemaVersjon: 1, revisjon: 2, oppdatert: null })),
-    { skjemaVersjon: 1, revisjon: 2, oppdatert: null });
+    { ...tomRadar(), revisjon: 2 });
   assert.equal(skjemaFor("jobb-j1.json"), 1);
   assert.equal(skjemaFor("radar.json"), 1);
 });
@@ -199,19 +199,75 @@ test("en forberedelse er også utdatert når brevversjonen er byttet", () => {
 
 /* ---------- radar.json ---------- */
 
-test("radar.json slipper gjennom rent JSON med revisjon og tak", () => {
-  const d = validerRadar({ skjemaVersjon: 1, revisjon: 2, innstillinger: { pa: true, terskel: 60 }, innboks: [{ id: "a" }] });
-  assert.deepEqual(d, { skjemaVersjon: 1, revisjon: 2, oppdatert: null, innstillinger: { pa: true, terskel: 60 }, innboks: [{ id: "a" }] });
-  const rå = `{"skjemaVersjon":1,"revisjon":1,"__proto__":{"x":1},"a":{"constructor":{"prototype":{"y":1}},"b":[{"__proto__":{"z":1}}]}}`;
+const rad = (over = {}) => ({ id: "nav:a1", kilde: "nav", kildeId: "a1", url: "https://arbeidsplassen.nav.no/stillinger/stilling/a1",
+  lenker: ["https://arbeidsplassen.nav.no/stillinger/stilling/a1"], selskap: "Eksempel AS", stilling: "Dataanalytiker", sted: "Oslo",
+  frist: "2026-10-30", publisert: "2026-10-09T00:00:00+02:00", tekst: "Annonse.", prosent: 82, grunner: ["Python"],
+  status: "ny", funnet: "2026-10-09T10:00:00.000Z", nokler: ["nav:a1"], fingeravtrykk: "eksempel|dataanalytiker", ...over });
+
+test("radar.json får hele formen med standardverdier", () => {
+  const d = validerRadar({ revisjon: 0 });
+  assert.deepEqual(d.innstillinger, { pa: false, terskel: 60, maksVurderingerPerDogn: 150, sokeord: [], ekskluder: [], steder: [],
+    kilder: { nav: { pa: true }, jobbnorge: { pa: true, fylker: [] } }, karrieresider: [] });
+  assert.deepEqual(d.kildetilstand, { nav: { side: null, etag: null, sistEndret: null, sist: null, feil: null },
+    jobbnorge: { sisteId: null, sist: null, feil: null } });
+  for(const k of ["innboks", "sett", "avvist", "avvistFingeravtrykk", "kjoringer"]) assert.deepEqual(d[k], []);
+  assert.deepEqual(d.forbruk, { dato: null, vurderinger: 0 });
+  assert.equal(d.leie, null);
+  // Det gamle formatet fra før Radar fantes, blir et gyldig dokument.
+  assert.equal(validerRadar({ skjemaVersjon: 1, revisjon: 2, innstillinger: { pa: true, terskel: 70 }, ukjent: 1 }).innstillinger.terskel, 70);
+});
+
+test("radar.json normaliseres tilgivende og dropper det som ikke passer", () => {
+  const d = validerRadar({ revisjon: 1,
+    innstillinger: { pa: "ja", terskel: 101, maksVurderingerPerDogn: -1, sokeord: ["data", "data", 3, " ki ", "x".repeat(81)],
+      kilder: { nav: { pa: false }, jobbnorge: { fylker: [3, 3, "4", 0, 42] } },
+      karrieresider: [{ id: "s1", url: "https://boards.greenhouse.io/cognite", type: "greenhouse", navn: "Cognite" },
+        { id: "s1", url: "https://example.no", type: "jsonld" }, { id: "../x", url: "https://example.no", type: "jsonld" },
+        { id: "s2", url: "javascript:alert(1)", type: "jsonld" }, { id: "s3", url: "https://example.no", type: "workday" }] },
+    kildetilstand: { nav: { side: "../../etc", etag: "W/\"x\"" }, jobbnorge: { sisteId: "9" } },
+    innboks: [rad(), rad(), rad({ id: "nav:a2", prosent: 101 }), rad({ id: "nav:a3", url: "file:///etc/passwd" }),
+      rad({ id: "nav:a4", status: "slettet", grunner: ["a", "b", "c", "d"], tekst: "x".repeat(7000), lenker: ["https://a.no", "ftp://b.no"] })],
+    sett: [{ nokler: ["nav:a1"], dato: "2026-10-09" }, { nokler: [], dato: "2026-10-09" }, { nokler: ["x"], dato: "i går" }],
+    avvistFingeravtrykk: [{ fingeravtrykk: "a|b", dato: "2026-10-01" }, { fingeravtrykk: "a|b", dato: "2026-10-02" }],
+    kjoringer: [{ start: "2026-10-09T10:00:00.000Z", vurdert: 3, kilder: [{ kilde: "nav", hentet: 5 }, { kilde: "finn" }], feil: ["Kilden svarte 500."] }, { start: "nå" }],
+    leie: { eier: "a", utloper: "aldri" } });
+  assert.equal(d.innstillinger.pa, false);
+  assert.equal(d.innstillinger.terskel, 60);
+  assert.equal(d.innstillinger.maksVurderingerPerDogn, 150);
+  assert.deepEqual(d.innstillinger.sokeord, ["data", "ki"]);
+  assert.deepEqual(d.innstillinger.kilder, { nav: { pa: false }, jobbnorge: { pa: true, fylker: [3, 42] } });
+  assert.deepEqual(d.innstillinger.karrieresider, [{ id: "s1", url: "https://boards.greenhouse.io/cognite", type: "greenhouse", navn: "Cognite",
+    pa: true, feilRad: 0, sist: null, grunn: null }]);
+  assert.equal(d.kildetilstand.nav.side, null);
+  assert.equal(d.kildetilstand.jobbnorge.sisteId, null);
+  assert.deepEqual(d.innboks.map(r => r.id), ["nav:a1", "nav:a4"]);
+  const a4 = d.innboks[1];
+  assert.equal(a4.status, "ny");
+  assert.equal(a4.grunner.length, 3);
+  assert.equal(a4.tekst.length, RADAR.tekst);
+  assert.deepEqual(a4.lenker, ["https://a.no"]);
+  assert.equal(d.sett.length, 1);
+  assert.equal(d.avvistFingeravtrykk.length, 1);
+  assert.equal(d.kjoringer.length, 1);
+  assert.deepEqual(d.kjoringer[0].kilder, [{ kilde: "nav", navn: "", hentet: 5, feil: null }]);
+  assert.equal(d.leie, null);
+});
+
+test("radar.json kan ikke forurense prototyper og har tak", () => {
+  const rå = `{"skjemaVersjon":1,"revisjon":1,"__proto__":{"x":1},"innstillinger":{"__proto__":{"pa":true},"constructor":{"prototype":{"y":1}}},"innboks":[{"__proto__":{"z":1}}]}`;
   const r = lesDokument("radar.json", rå);
-  assert.deepEqual(r.a, { b: [{}] });
   assert.equal(Object.hasOwn(r, "__proto__"), false);
+  assert.equal(r.innstillinger.pa, false);
+  assert.deepEqual(r.innboks, []);
   assert.equal({}.x, undefined);
+  assert.equal({}.pa, undefined);
   assert.throws(() => validerRadar({ skjemaVersjon: 1 }), e => e.code === "ugyldig");
   assert.throws(() => validerRadar([]), e => e.code === "ugyldig");
-  let dyp = {}; for(let i = 0; i < 40; i++) dyp = { d: dyp };
-  assert.throws(() => validerRadar({ revisjon: 1, dyp }), e => e.code === "ugyldig");
-  assert.throws(() => validerRadar({ revisjon: 1, s: "x".repeat(4 * 1024 * 1024) }), e => e.code === "for-stort");
+  const mange = Array.from({ length: RADAR.innboks + 50 }, (_, i) => rad({ id: `nav:${i}` }));
+  assert.equal(validerRadar({ revisjon: 1, innboks: mange }).innboks.length, RADAR.innboks);
+  const stor = Array.from({ length: RADAR.innboks }, (_, i) => rad({ id: `nav:${i}`, tekst: "ø".repeat(RADAR.tekst), lenker: Array(5).fill(0).map((_, j) => `https://e.no/${"x".repeat(1900)}${j}`) }));
+  assert.throws(() => validerRadar({ revisjon: 1, innboks: stor, sett: Array.from({ length: RADAR.sett }, (_, i) => ({ nokler: [`https://e.no/${"x".repeat(1900)}${i}`], dato: "2026-10-09" })) }),
+    e => e.code === "for-stort");
 });
 
 test("innhold betyr det en gjenoppretting ville skrevet over", () => {
@@ -221,7 +277,10 @@ test("innhold betyr det en gjenoppretting ville skrevet over", () => {
   assert.equal(harInnhold("jobb-j1.json", validerJobbdokument("j1", { revisjon: 1, match: match() })), true);
   assert.equal(harInnhold("jobb-j1.json", validerJobbdokument("j1", { revisjon: 1, forberedelser: { i1: {} } })), true);
   assert.equal(harInnhold("radar.json", { skjemaVersjon: 1, revisjon: 3, oppdatert: null }), false);
-  assert.equal(harInnhold("radar.json", { skjemaVersjon: 1, revisjon: 3, oppdatert: null, innboks: [] }), true);
+  // Standardverdiene alene er ikke innhold, og heller ikke en leie.
+  assert.equal(harInnhold("radar.json", { ...tomRadar(), revisjon: 3, leie: { eier: "a", utloper: "2026-10-09T10:00:00.000Z" } }), false);
+  assert.equal(harInnhold("radar.json", validerRadar({ revisjon: 3, innstillinger: { pa: true } })), true);
+  assert.equal(harInnhold("radar.json", validerRadar({ revisjon: 3, avvistFingeravtrykk: [{ fingeravtrykk: "a|b", dato: "2026-10-01" }] })), true);
 });
 
 /* ---------- utdrag ---------- */

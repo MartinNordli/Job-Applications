@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "title": "Stillingsfeeden fra arbeidsplassen.no",
+  "home_page_url": "https://arbeidsplassen.nav.no",
+  "feed_url": "/api/v1/feed/d9cdd92d-eae3-4807-91e1-f7965e0332a3",
+  "description": "Feed med stillinger fra arbeidsplassen.no - En av Norges største oversikter over utlyste stillinger",
+  "next_url": null,
+  "id": "d9cdd92d-eae3-4807-91e1-f7965e0332a3",
+  "next_id": null,
+  "items": [
+    {
+      "id": "0189d320-5e11-4e8e-af76-9fc4a9b4d47d",
+      "url": "/api/v1/feedentry/0189d320-5e11-4e8e-af76-9fc4a9b4d47d",
+      "title": "Sykepleier - alderspsykiatri",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-09T12:08:52.032171+02:00",
+      "_feed_entry": {
+        "uuid": "0189d320-5e11-4e8e-af76-9fc4a9b4d47d",
+        "status": "ACTIVE",
+        "title": "Sykepleier - alderspsykiatri",
+        "businessName": "Universitetssykehuset Nord-Norge HF",
+        "municipal": "TROMSØ",
+        "sistEndret": "2026-10-09T12:08:52.032171+02:00"
+      }
+    }
+  ]
+}

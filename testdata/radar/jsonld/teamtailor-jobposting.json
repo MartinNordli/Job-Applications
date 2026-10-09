@@ -1,0 +1,43 @@
+{
+  "@context": "http://schema.org/",
+  "@type": "JobPosting",
+  "title": "Senior Engineering Manager",
+  "description": "&lt;p&gt;&lt;span&gt;&lt;em&gt;We&#39;re at a pivotal moment for both Tibber and the planet. When joining Tibber, you won’t just help scale a forward-thinking tech company – you’ll contribute to a real shift in how people consume electricity. With millions of smart devices connected to the Tibber platform (like electric vehicles and smart thermostats), we have one of the most unique portfolios trading energy on the market.&lt;/em&gt;&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;em&gt;We’re looking for a Senior Engineering Manager to join us in making the energy transition happen -maybe that’s you?&lt;/e…",
+  "identifier": {
+    "@type": "PropertyValue",
+    "name": "Tibber",
+    "value": "8497810"
+  },
+  "datePosted": "2026-10-05T11:32:43+02:00",
+  "employmentType": "FULL_TIME",
+  "hiringOrganization": {
+    "@type": "Organization",
+    "name": "Tibber",
+    "logo": "https://images.teamtailor-cdn.com/images/s3/teamtailor-production/logotype-v3/image_uploads/c33d822d-453e-4e64-852a-89ea6063312b/original.png",
+    "sameAs": "https://jobs.tibber.com"
+  },
+  "jobLocation": [
+    {
+      "@type": "Place",
+      "address": {
+        "streetAddress": "Strelitzer Straße",
+        "addressLocality": "Berlin",
+        "postalCode": "10115",
+        "addressCountry": "DE",
+        "addressRegion": "Berlin",
+        "@type": "PostalAddress"
+      }
+    },
+    {
+      "@type": "Place",
+      "address": {
+        "streetAddress": "Vattugatan 17",
+        "addressLocality": "Stockholm",
+        "postalCode": "111 52",
+        "addressCountry": "SE",
+        "addressRegion": "Stockholm",
+        "@type": "PostalAddress"
+      }
+    }
+  ]
+}

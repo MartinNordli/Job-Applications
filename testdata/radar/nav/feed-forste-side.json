@@ -1,0 +1,87 @@
+{
+  "version": "1.0",
+  "title": "Stillingsfeeden fra arbeidsplassen.no",
+  "home_page_url": "https://arbeidsplassen.nav.no",
+  "feed_url": "/api/v1/feed/4c53ec06-2304-4fa2-8580-f6af9a5532a9",
+  "description": "Feed med stillinger fra arbeidsplassen.no - En av Norges største oversikter over utlyste stillinger",
+  "next_url": "/api/v1/feed/53ea3e08-6a7e-4a55-9de2-c6e8cd411e14",
+  "id": "4c53ec06-2304-4fa2-8580-f6af9a5532a9",
+  "next_id": "53ea3e08-6a7e-4a55-9de2-c6e8cd411e14",
+  "items": [
+    {
+      "id": "017e7926-8903-4902-8b27-f774a6ee05e6",
+      "url": "/api/v1/feedentry/017e7926-8903-4902-8b27-f774a6ee05e6",
+      "title": "Bli en del av vårt verkstedteam – bussmekaniker",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-09T09:09:17.131797+02:00",
+      "_feed_entry": {
+        "uuid": "017e7926-8903-4902-8b27-f774a6ee05e6",
+        "status": "ACTIVE",
+        "title": "Bli en del av vårt verkstedteam – bussmekaniker",
+        "businessName": "Temp-Team   avd. Bil & mekanikk",
+        "municipal": "OSLO",
+        "sistEndret": "2026-10-09T09:09:17.131797+02:00"
+      }
+    },
+    {
+      "id": "3887353e-d3db-4c5b-9dc9-2040907589f3",
+      "url": "/api/v1/feedentry/3887353e-d3db-4c5b-9dc9-2040907589f3",
+      "title": "Avdelingsleder fakturering og  innkreving",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-09T09:09:27.321089+02:00",
+      "_feed_entry": {
+        "uuid": "3887353e-d3db-4c5b-9dc9-2040907589f3",
+        "status": "ACTIVE",
+        "title": "Avdelingsleder fakturering og  innkreving",
+        "businessName": "Finans og regnskap, Fredrikstad kommune, 2. gangsutlysning",
+        "municipal": "FREDRIKSTAD",
+        "sistEndret": "2026-10-09T09:09:27.321089+02:00"
+      }
+    },
+    {
+      "id": "b30bea23-30b5-4524-b3ce-02695bb062da",
+      "url": "/api/v1/feedentry/b30bea23-30b5-4524-b3ce-02695bb062da",
+      "title": "IPS Jobbspesialist",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-09T09:09:47.722301+02:00",
+      "_feed_entry": {
+        "uuid": "b30bea23-30b5-4524-b3ce-02695bb062da",
+        "status": "ACTIVE",
+        "title": "IPS Jobbspesialist",
+        "businessName": "Nordland, Nav",
+        "municipal": "VESTVÅGØY",
+        "sistEndret": "2026-10-09T09:09:47.722301+02:00"
+      }
+    },
+    {
+      "id": "e16159f0-f5b9-44f9-ae12-929ed30d1652",
+      "url": "/api/v1/feedentry/e16159f0-f5b9-44f9-ae12-929ed30d1652",
+      "title": "Seksjonssjef for forskingsseksjonen ved Det medisinske fakultet.",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-09T09:10:18.019907+02:00",
+      "_feed_entry": {
+        "uuid": "e16159f0-f5b9-44f9-ae12-929ed30d1652",
+        "status": "ACTIVE",
+        "title": "Seksjonssjef for forskingsseksjonen ved Det medisinske fakultet.",
+        "businessName": "Universitetet i Bergen",
+        "municipal": "BERGEN",
+        "sistEndret": "2026-10-09T09:10:18.019907+02:00"
+      }
+    },
+    {
+      "id": "14549ada-09c2-4c13-b02e-943a06f2b12f",
+      "url": "/api/v1/feedentry/14549ada-09c2-4c13-b02e-943a06f2b12f",
+      "title": "Lærer med særlig ansvar for spesialpedagogisk oppfølging - 60% vikariat ut skoleåret 2026/27",
+      "content_text": "Stillingsannonse",
+      "date_modified": "2026-10-09T09:11:18.776245+02:00",
+      "_feed_entry": {
+        "uuid": "14549ada-09c2-4c13-b02e-943a06f2b12f",
+        "status": "ACTIVE",
+        "title": "Lærer med særlig ansvar for spesialpedagogisk oppfølging - 60% vikariat ut skoleåret 2026/27",
+        "businessName": "Bjørnemyr skole, Nesodden kommune",
+        "municipal": "NESODDEN",
+        "sistEndret": "2026-10-09T09:11:18.776245+02:00"
+      }
+    }
+  ]
+}

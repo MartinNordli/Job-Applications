@@ -1,0 +1,93 @@
+{
+  "languages": [
+    {
+      "name": "nb",
+      "id": 1
+    }
+  ],
+  "components": [
+    {
+      "sortOrder": 0,
+      "heading": "Dataanalytiker",
+      "text_1": "<p> Vil du jobbe med data og KI i virksomhetsstyring?</p>",
+      "type": "Intro"
+    },
+    {
+      "sortOrder": 1,
+      "heading": "Om stillingen",
+      "text_1": "<p>Vi søker en engasjert og fremtidsrettet dataanalytiker som skal være med og utvikle og ta i bruk data, kunstig intelligens (KI) og ny teknologi innen fagområdene våre. Du skal være en pådriver for digital utvikling og bidra til at vi utnytter data og teknologi på en måte som gir bedre beslutningsgrunnlag, mer effektive arbeidsprosesser og høyere kvalitet i tjenesteleveransene.</p><p>Stillingen …",
+      "type": "List"
+    },
+    {
+      "sortOrder": 2,
+      "heading": "Arbeidsoppgaver",
+      "text_1": "<ul><li>være pådriver for at relevante data identifiseres, tilrettelegges og gjøres tilgjengelig på vår dataplattform</li><li>identifisere områder der KI kan gi gevinster gjennom bedre analyser, økt kvalitet eller mer effektive arbeidsprosesser</li><li>initiere, koordinere og følge opp KI-relaterte utviklingstiltak</li><li>bidra til gevinstrealisering ved innføring av nye løsninger</li><li>sikre g…",
+      "text_2": "Image: bilde.jpg",
+      "type": "TextImage"
+    },
+    {
+      "sortOrder": 3,
+      "heading": "Kvalifikasjoner",
+      "text_1": "<p><strong>Du må ha</strong></p><ul><li>høyere utdanning på bachelornivå innen teknologi, informatikk, økonomi, samfunnsvitenskap eller andre relevante fagområder</li><li>god forståelse for hvordan data kan brukes til styring, analyse og forbedring</li><li>god skriftlig og muntlig fremstillingsevne på norsk</li><li>forståelse for datakvalitet, datagrunnlag og tilrettelegging av data for analyse og…",
+      "type": "List"
+    },
+    {
+      "sortOrder": 4,
+      "heading": "Personlige egenskaper",
+      "text_1": "<p>Vi søker deg som:</p><ul><li>er nysgjerrig på teknologi og hvordan den kan skape verdi</li><li>klarer å se sammenhenger mellom forretning, prosesser, data og teknologi</li><li>er analytisk og strukturert</li><li>har gjennomføringsevne og tar initiativ</li><li>er samarbeidsorientert og bygger gode relasjoner på tvers av fag</li></ul>",
+      "type": "List"
+    },
+    {
+      "sortOrder": 5,
+      "heading": "",
+      "text_1": "Bildetekst",
+      "text_2": "Source: Bildetekst",
+      "type": "Image"
+    },
+    {
+      "sortOrder": 6,
+      "heading": "Dette får du hos oss",
+      "text_1": "<ul><li>fast stilling som rådgiver med årslønn fra kr 570 000- 750 000 eller som seniorrådgiver med årslønn fra kr 700 000- 900 000, avhengig av dine kvalifikasjoner. Hvis du er spesielt godt kvalifisert, kan vi vurdere høyere lønn.</li><li>interessante og utfordrende oppgaver innen digitalisering og forenkling av Norge</li><li>et godt arbeidsmiljø med en uformell tone hvor vi alle er på hils</li>…",
+      "type": "List"
+    },
+    {
+      "sortOrder": 7,
+      "heading": "Inkludering og mangfold er viktig for oss",
+      "text_1": "<p>Vi ønsker å være en inkluderende arbeidsplass, der vi gjenspeiler mangfoldet i befolkningen. Vi trenger medarbeidere med ulik erfaring, bakgrunn, kompetanse og kvalifikasjoner for å løse samfunnsoppdraget vårt. </p><p>Har du hull i CV-en din, nedsatt funksjonsevne eller innvandrerbakgrunn oppfordrer vi deg til å krysse av for dette når du søker stillingen hos oss. Vi innkaller minst én kvalifis…",
+      "type": "List"
+    },
+    {
+      "sortOrder": 8,
+      "heading": "Bo i Brønnøysund",
+      "text_1": "<p>Brønnøysund er en trivelig liten kystby sør på Helgeland. Vi har korte avstander til det meste og masse vær – uansett årstid! Er du glad i naturopplevelser har vi et utall av muligheter. Mulighetene er mange også for deg som heller foretrekker en tur på kafe eller restaurant, er opptatt av kultur eller ulike treningsmuligheter innendørs. Har du studielån og bor i Brønnøy kommune, kan du få neds…",
+      "type": "List"
+    },
+    {
+      "sortOrder": 9,
+      "heading": "",
+      "text_1": "Bildetekst",
+      "text_2": "Source: Bildetekst",
+      "type": "Image"
+    },
+    {
+      "sortOrder": 10,
+      "heading": "Hvordan er det å jobbe hos oss sånn egentlig?",
+      "text_1": "<p>Vi vil at du skal føle deg trygg på valget når du takker ja til å jobbe hos oss. Dersom du er aktuell for stillingen, tilbyr vi deg en omvendt referansesjekk. Det betyr at du får ringe noen av våre medarbeidere og stille de spørsmålene du måtte ønske for å finne bedre ut om vi er en god match.</p>",
+      "type": "List"
+    },
+    {
+      "sortOrder": 11,
+      "heading": "Verdt å merke seg før du søker",
+      "text_1": "<p>Når du søker jobb hos oss, vil navnet ditt stå på en offentlig søkerliste. Ønsker du å bli unntatt fra den offentlige søkerlisten, må du begrunne hvorfor. Vi tar kontakt med deg dersom vi ikke tar ønsket ditt til følge, og du får mulighet til å trekke søknaden din.</p>",
+      "text_2": "<p>For å bli vurdert som søker, må du legge ved relevante attester og vitnemål. Vitnemål for utdanning tatt i Norge laster du opp fra Vitnemålsportalen. Har du utdanning fra utlandet legger du ved godkjenning fra <a href=\"https://hkdir.no/utdanning-fra-utlandet\">Direktoratet for høyere utdanning og kompetanse/NOKUT. </a></p>",
+      "type": "Text"
+    },
+    {
+      "sortOrder": 12,
+      "heading": "Om Brønnøysundregistrene",
+      "text_1": "<p>Vi satser først og fremst på folk, og det har gjort oss til etaten med best omdømme i Norge. Hos oss får du utvikle deg faglig samtidig som du har en god balanse mellom jobb og fritid. Vi vet at de beste løsningene skapes av mennesker som trives både på og utenfor jobb.",
+      "text_2": "<br>Bli med på laget som gjør det enklere å drive virksomhet i Norge og som leverer dataene som holder samfunnet i gang. Nå kan du bli en av våre 470 kolleger på Norges vakreste arbeidsplass.</p>",
+      "type": "About"
+    }
+  ]
+}
