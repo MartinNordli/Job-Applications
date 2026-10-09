@@ -129,10 +129,12 @@ function sorterFrist(a, b){
 /* ============================================================
    5. Jobbraden — datokolonne, innhold, handlinger
    ============================================================ */
+/* Tegn foran ordet teller ikke: «Abakus (Webcom og Bedcom)» skal bli
+   AW, ikke A(. */
 function monogram(navn){
-  const ord = navn.trim().split(/\s+/);
+  const ord = navn.trim().split(/\s+/).map(o => o.replace(/^[^\p{L}\p{N}]+/u, "")).filter(Boolean);
   if(ord.length > 1) return (ord[0][0] + ord[1][0]).toUpperCase();
-  return navn.slice(0, 2).toUpperCase();
+  return (ord[0] || navn.trim()).slice(0, 2).toUpperCase();
 }
 
 /* Kolonnen hver rad starter med viser det som faktisk skiller radene i
