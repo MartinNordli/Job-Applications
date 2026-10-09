@@ -1,32 +1,72 @@
 # Evaluering av søknadsbrev
 
-`node evals/kjor.mjs` viser 24 syntetiske tilfeller uten nettverk. Ordinære tester bruker modellstubber, og kjører aldri denne betalte evalueringen.
+`node evals/kjor.mjs` viser de 21 syntetiske tilfellene og validerer grunnlagene, uten nettverk.
+Vanlige tester bruker modellstubber og kjører aldri den betalte evalueringen.
+`server/evals.test.mjs` sjekker at tilfellene er gyldige og at de automatiske sjekkene gjør det de sier.
 
-Sett valgt leverandørs `ANTHROPIC_API_KEY` eller `OPENAI_API_KEY` i miljøet uten å legge nøkler i repoet. Kjør deretter eksplisitt:
+## Betalt kjøring
+
+En betalt kjøring gjøres bare når brukeren har godkjent kostnaden.
+Sett `ANTHROPIC_API_KEY` eller `OPENAI_API_KEY` i miljøet, uten å legge nøkler i repoet, og kjør eksplisitt:
 
 ```sh
 node evals/kjor.mjs --live --leverandor anthropic --repetisjoner 3 --baseline --rapport /tmp/breveval-anthropic.json
 node evals/kjor.mjs --live --leverandor openai --repetisjoner 3 --baseline --rapport /tmp/breveval-openai.json
 ```
 
-Dette koster API-bruk: 216 kall per leverandør uten baseline, inntil 288 med baseline. `--tilfelle 09 --repetisjoner 1` kjører bare ett tilfelle. Det er ingen automatisk retry. Rapporten overskriver aldri en eksisterende fil. Ubesvarte oppfølgingsspørsmål hoppes over med hensikt; spørsmål og bruk ligger i rapporten.
+Hvert tilfelle bruker tre modellkall: analyse, skriving og kontroll.
+Det blir 189 kall per leverandør med tre repetisjoner, og inntil 252 med `--baseline`.
+`--tilfelle 01 --repetisjoner 1` kjører bare ett tilfelle.
+Det er ingen automatiske nye forsøk, og rapporten overskriver aldri en eksisterende fil.
+Rapporten har med bruken per trinn og en oppsummering av hurtigbufferen (`lest`, `skrevet` og `ubufret`), så effekten av bufringen kan måles over analyse, skriving og kontroll.
 
-De automatiske kontrollene dekker format, kildehenvisninger, valgt språk, kjente stilbrudd og enkelte eksplisitte tilfellekrav. De beviser ikke at brevet er naturlig eller at en påstand er semantisk støttet. Skriveoppskriften bygger på Oxfords veiledning for søknadsbrev: fortell en målrettet historie fremfor å gjenta CV-en, følg strukturen innledning, hvorfor stillingen, hvorfor deg og avslutning, og gi bevis for alle påstander.
-For hver modell/promptendring må en person vurdere brev og baseline i tilfeldig rekkefølge uten å se hvilken variant som skrev dem. Modell-ID og promptversjon i rapporten skal følge vurderingen; et modellbytte er ikke i seg selv dokumentasjon på bedre brev.
+## Automatiske sjekker
 
-Vurder hvert brev 1–5 etter disse kriteriene. Godkjenning krever ingen oppdiktede konkrete påstander og minst 4 i hver dimensjon:
+`evals/sjekker.mjs` sjekker hvert ferdige brev:
 
-| Kriterium | Hva en god tekst viser |
+- språket er det tilfellet forventer
+- ordtallet er 220 til 300, med mindre tilfellet har en annen grense (tynt grunnlag, eller en ordgrense i annonsen)
+- hilsen og avslutning følger språket: «Til rekrutteringsteamet i …,» eller «Hei …,» og «Med vennlig hilsen» på bokmål, «Med venleg helsing» på nynorsk, «Dear …,» og «Sincerely,» på engelsk
+- hilsenen bruker kontaktpersonen når annonsen oppgir en
+- brevet har fire eller fem innholdsavsnitt mellom hilsen og avslutning, eller det tilfellet sier
+- `finnStilbrudd` finner ingen em dash, tankestrek som pause, kontrastmal, tom frase eller plassholder
+- `finnLånteFakta` finner ingen særord fra stileksemplene eller stilreferansen som ikke står i grunnlaget
+- brevet har ikke noe av det tilfellet forbyr, som spor etter et injeksjonsforsøk
+
+Sjekkene beviser ikke at brevet er godt, at en påstand er semantisk støttet eller at teksten er naturlig.
+Det avgjør den menneskelige vurderingen.
+
+## Vurderingsmal
+
+Målestokken er et kort brev i fire avsnitt: stillingen og en konkret grunn fra annonsen, de to eller tre viktigste erfaringene knyttet til kravene, noe spesifikt om selskapet fra annonsen, og en kort avslutning.
+Tilfelle 01 er gulltilfellet og viser hvor konkret et brev kan bli når grunnlaget er rikt.
+
+For hver modell- eller promptendring vurderer en person brevene og baseline i tilfeldig rekkefølge, uten å vite hvilken variant som skrev dem.
+Modell-ID og promptversjon i rapporten skal følge vurderingen.
+Et modellbytte er ikke i seg selv dokumentasjon på bedre brev.
+
+Vurder hvert brev fra 1 til 5 på hvert kriterium.
+Godkjent krever ingen oppdiktede konkrete påstander og minst 4 på hvert kriterium.
+
+| Kriterium | Hva et godt brev viser |
 | --- | --- |
-| Struktur og åpning | Brevet har hilsen, innledning, hvorfor stillingen og virksomheten, hvorfor søkeren og avslutning med riktig avslutningshilsen. Innledningen sier hvorfor søkeren skriver og tilfører samtidig et konkret poeng om personen, motivasjonen eller arbeidet. En løs «Jeg søker stillingen …» eller «I am writing to apply …» uten slikt poeng teller som svak åpning. Vurder funksjonen, ikke bare bestemte ord. |
-| Tydelig kobling til kravene | 3–5 sentrale krav er uttrykkelig koblet til konkrete eksempler, slik at recruiteren ikke må trekke slutningen selv. Hver påstand om en ferdighet har bevis. Tomme koblingsfraser uten innhold, som «dette kan jeg bruke hos dere», trekker ned. |
-| Tilpasset virksomheten | Brevet ville ikke lest likt med en annen virksomhets navn. Det som sies om virksomheten, kommer fra annonsen eller brukeren. |
-| Utdypning fremfor CV-gjengivelse | Teksten gir innblikk i en konkret situasjon, egne valg, arbeidsmåte eller oppgitt motivasjon. Den omskriver ikke bare CV-punkter til avsnitt. Utdypningen må ha dekning i kildene; manglende detaljer kan gi spørsmål, ikke nye fakta. |
-| Troverdig motivasjon og personlighet | Oppgitt interesse, glede, ambisjon eller engasjement får plass og høres ut som et menneske. Konkrete, kildebaserte uttrykk for lidenskap er velkomne; generelle superlativer og oppdiktet entusiasme er det ikke. En nøktern tekst kan få høy score når brukeren ikke har oppgitt følelser eller motivasjon. |
-| Faktastøtte | Erfaring, egne bidrag, resultater og personlige begrunnelser kan spores til grunnlaget. Et rimelig utvalg og en ny formulering er tillatt; nye årsaksforklaringer, resultater eller personlighetstrekk krever støtte. |
-| Recruiter-vennlig språk | Brevet beholder relevant faglighet og beskriver arbeid og bidrag klart. Verken teknologistakker, implementasjonsdetaljer eller pedagogiske forklaringer av åpenbare sammenhenger dominerer. |
-| Naturlig stemme og flyt | Avsnittene henger sammen og prioriterer det som betyr noe. Teksten er fri for em dash og retoriske kontrastklisjeer, samtidig som den beholder varme og personlighet. |
+| Åpning | Første avsnitt nevner stillingen og selskapet, søkerens utdanning og spesialisering eller nåværende rolle, og én konkret grunn til å søke som står i annonsen. En løs «Jeg søker stillingen …» uten grunn trekker ned. |
+| Erfaring mot krav | De to eller tre mest relevante erfaringene er hver knyttet til et krav i annonsen, med hva søkeren gjorde og hva det førte til. Resultater og tall brukes når grunnlaget har dem. En CV-gjennomgang i setninger trekker ned. |
+| Selskapet | Det som sies om selskapet, står i annonsen, og er koblet til søkeren. Når annonsen ikke sier noe, er avsnittet kort og knyttet til oppgavene. Brevet kunne ikke vært sendt til et annet selskap ved å bytte navnet. |
+| Avslutning og form | Kort ønske om å bidra med noe konkret, takk og invitasjon til en prat. Riktig hilsen og avslutningshilsen for språket, og navnet fra CV-en. |
+| Konkret språk | Korte setninger med handlinger og resultater. Ingen tomme fraser som «brenner for», «spennende mulighet», «esteemed team», «ideal candidate», «resonates with» eller «I am excited to apply». Faguttrykk er forklart så en recruiter forstår bidraget. |
+| Faktastøtte | Alt om erfaring, resultater og motivasjon kan spores til grunnlaget. Ingenting er lånt fra stileksemplene eller stilreferansen. Tynt grunnlag gir et kortere brev, ikke oppdiktede detaljer. |
+| Lengde og flyt | Omtrent 220 til 300 ord, med mindre annonsen sier noe annet. Avsnittene henger sammen og prioriterer det som betyr mest for stillingen. |
 
-Hvert tilfelle i `tilfeller.mjs` har `vurderingspunkter` for menneskelig gjennomgang. Disse er vurderingsfasit, sendes ikke til modellen og sjekkes ikke automatisk av CLI-en. Registrer vurderingene sammen med rapporten, inkludert kildepassasjene som begrunner ros eller feil. Sammenlign særlig 02, 03, 04, 05, 10, 23 og 24, som har konkret personlig kontekst, med 01, 06 og 08, som har tynt grunnlag. Et godt skriveopplegg bruker rik kontekst aktivt og holder igjen når den mangler. Ikke belønn samme følelsesnivå eller samme brevstruktur i alle tilfeller.
+Hvert tilfelle i `tilfeller.mjs` har `vurderingspunkter` for den menneskelige vurderingen.
+De sendes ikke til modellen og sjekkes ikke automatisk.
+Registrer vurderingene sammen med rapporten, med kildepassasjene som begrunner ros eller trekk.
+Sammenlign særlig gulltilfellet 01 og tilfellene med tall (15) med de tynne tilfellene (02, 07, 08 og 16).
+Et godt opplegg bruker et rikt grunnlag fullt ut og holder igjen når det mangler.
 
-Promptens korte eksempler er separate fra evalueringstilfellene. Korriger produktprompten når et mønster feiler, og vurder på nytt hele settet. Ikke legg virkelige CV-er, brev eller API-nøkler i disse filene.
+## Regler for tilfellene
+
+Alle personer, selskaper og steder er oppdiktet.
+Ikke legg virkelige CV-er, brev, annonser eller API-nøkler i disse filene, og ikke noe hentet fra brukerens egne eksempelbrev.
+Promptens stileksempler (`STILEKSEMPLER` i `src/brevlogikk.mjs`) holdes atskilt fra tilfellene, og en test sørger for at ingen av særordene deres står her.
+Feiler et mønster, rett produktprompten og vurder hele settet på nytt.
