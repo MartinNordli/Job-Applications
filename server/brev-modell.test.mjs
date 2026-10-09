@@ -56,7 +56,8 @@ test("system, kilder og oppgave kommer i den rekkefølgen, og de to første er m
   const uten = byggModellkropp({ ...inn, kilder: undefined, leverandor: "anthropic" });
   assert.equal(uten.messages[0].content.length, 1);
   assert.throws(() => byggModellkropp({ ...inn, kilder: " ", leverandor: "anthropic" }), /grunnlag/);
-  assert.throws(() => byggModellkropp({ ...inn, kilder: "x".repeat(500_001), leverandor: "openai" }), /for stort/);
+  // Den eneste feilen brukeren kan rette, og derfor en Brevfeil som når fram til flaten.
+  assert.throws(() => byggModellkropp({ ...inn, kilder: "x".repeat(500_001), leverandor: "openai" }), { code: "for-stort", status: 413, message: /for stort/ });
 });
 test("bufringen telles med fra begge leverandørene", () => {
   const svar = { content: [{ type: "text", text: '{"tekst":"x"}' }], usage: { input_tokens: 40, output_tokens: 9, cache_creation_input_tokens: 3000, cache_read_input_tokens: 0 } };

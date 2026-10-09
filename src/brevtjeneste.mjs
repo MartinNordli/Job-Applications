@@ -8,14 +8,17 @@
    da brevskriveren stilte spørsmål, så gamle dokumenter leses som før.
    «venter» betyr nå bare at analysen er ferdig og skrivingen er neste.
 
-   Annonsen hentes fra jobb-<id>.json gjennom annonseFor. Står det ingen
-   annonse der, brukes annonsen i brevdokumentet, som var stedet den lå
-   før søknaden fikk sitt eget dokument.
+   Annonsen hentes fra jobb-<id>.json gjennom annonseFor, ett sted for
+   søknaden. Har jobbdokumentet aldri hatt en annonse, flytter
+   annonseFor annonsen fra brevdokumentet over én gang (se
+   src/jobbdokumenttjeneste.mjs), så brev fra før jobbdokumentet
+   fantes, virker uten at noe gjøres.
    ============================================================ */
-import { Brevfeil, brevfil, jobbfil, validerCv, validerStil, validerBrev, validerDokument, harInnhold } from "./brevdata.mjs";
+import { Brevfeil, brevfil, validerCv, validerStil, validerBrev, validerDokument, harInnhold } from "./brevdata.mjs";
 import { dokumenttype } from "./dokumentnavn.mjs";
 import { analyserGrunnlag, skrivUtkast, kontrollerUtkast, validerGrunnlag, PROMPTVERSJON, FASE } from "./brevlogikk.mjs";
 import { SEKTORER, JOBBTYPER } from "./felles.mjs";
+import { lagJobbdokumenter } from "./jobbdokumenttjeneste.mjs";
 
 const aktive = new Set(Object.values(FASE));
 /* Ikke i gang, men heller ikke ferdig. En slik kjøring kan fortsettes. */
@@ -37,13 +40,13 @@ const TYPER_I_KOPI = { 1:["cv","brev"], 2:["cv","brev","jobb","radar"], 3:["cv",
    Den er injisert så annonsen kan komme fra et annet sted uten at
    tjenesten endres. Et objekt med tekst godtas også. */
 export function lagBrevtjeneste({lager,kallModell,hentJobb,annonseFor,lagId = () => crypto.randomUUID()}){
-  const finnAnnonse = annonseFor ?? (async id => (await lager.les(jobbfil(id))).annonse?.tekst ?? "");
+  const finnAnnonse = annonseFor ?? lagJobbdokumenter({lager,hentJobb}).annonseFor;
   async function annonsen(id){
     const a = await finnAnnonse(id);
     return typeof a === "string" ? a : (typeof a?.tekst === "string" ? a.tekst : "");
   }
   /* Kildene slik de er nå, i samme form som et grunnlag. */
-  const gjeldende = (d,{cv,jobb,fraJobb}) => ({ cv:cv.tekst,annonse:fraJobb.trim()?fraJobb:d.annonse.tekst,jobb:jobbfelt(jobb),sprak:d.sprak,leverandor:d.leverandor });
+  const gjeldende = (d,{cv,jobb,fraJobb}) => ({ cv:cv.tekst,annonse:fraJobb,jobb:jobbfelt(jobb),sprak:d.sprak,leverandor:d.leverandor });
   const avbrudd = new Map();
   const les = id => lager.les(brevfil(id));
   async function endre(id, fn){

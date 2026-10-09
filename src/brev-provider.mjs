@@ -1,4 +1,8 @@
-/* Samme meldingsformat i Node og Tauri. Ingen nøkler eller nettverk her. */
+/* Samme meldingsformat i Node og Tauri. Ingen nøkler eller nettverk her.
+   Feil brukeren kan gjøre noe med, er Brevfeil, så de når fram til
+   flaten. De andre er programmeringsfeil, og blir en generell melding
+   med en referanse i serverloggen (offentligFeil i server/brev-api.mjs). */
+import { Brevfeil } from "./dokumentfeil.mjs";
 export const LEVERANDORER = Object.freeze({
   anthropic: { modell: "claude-opus-5", url: "https://api.anthropic.com/v1/messages", nokkelfil: "nokkel.txt", miljo: "ANTHROPIC_API_KEY" },
   openai: { modell: "gpt-6-astra", url: "https://api.openai.com/v1/responses", nokkelfil: "nokkel-openai.txt", miljo: "OPENAI_API_KEY" }
@@ -25,7 +29,8 @@ export function byggModellkropp({ leverandor, system, kilder, innhold, skjema, t
   if(typeof tekst !== "string" || !tekst.trim()) throw new Error("Mangler grunnlag.");
   if(kilder != null && (typeof kilder !== "string" || !kilder.trim())) throw new Error("Mangler grunnlag.");
   const kildetekst = kilder ?? "";
-  if(tekst.length + kildetekst.length > 500_000 || system.length > 40_000) throw new Error("Grunnlaget er for stort.");
+  if(tekst.length + kildetekst.length > 500_000 || system.length > 40_000)
+    throw new Brevfeil("for-stort", "Grunnlaget er for stort. Kort ned CV-en, annonsen eller stilreferansen.", 413);
   // Begge leverandørene strømmer alltid. Én transportvei betyr én feilsemantikk.
   if(leverandor === "anthropic") return {
     model: modell,

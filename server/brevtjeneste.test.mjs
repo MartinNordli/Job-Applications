@@ -140,13 +140,15 @@ test("eksport og import inkluderer egne kilder og versjoner, men ingen aktiv kj�
   const annen=await oppsett(t);
   await annen.tjeneste.slettBrev("j1",(await annen.tjeneste.hentBrev("j1")).revisjon);
   await annen.tjeneste.slettCv((await annen.tjeneste.hentCv()).revisjon);
-  assert.equal((await annen.tjeneste.importer(eksport)).antall,2);
+  // CV, brev og jobbdokumentet annonsen ble flyttet til da brevet ble skrevet.
+  assert.equal((await annen.tjeneste.importer(eksport)).antall,3);
   assert.equal((await annen.tjeneste.hentBrev("j1")).versjoner.length,1);
   await assert.rejects(annen.tjeneste.importer(eksport),{code:"konflikt"});
 });
 test("sikkerhetskopien er versjon 3 og har med stilreferansen, jobbdokumentene og radar.json",async t=>{
   const {tjeneste,lager}=await oppsett(t);await generer(tjeneste);
-  await lager.skriv("jobb-j1.json",{revisjon:0,annonse:{tekst:"Eksempel AS søker kunderådgiver.",kilde:"limt"},match:{prosent:77}},0);
+  const jd=await lager.les("jobb-j1.json");
+  await lager.skriv("jobb-j1.json",{...jd,annonse:{tekst:"Eksempel AS søker kunderådgiver.",kilde:"limt"},match:{prosent:77}},jd.revisjon);
   await lager.skriv("radar.json",{revisjon:0,innstillinger:{pa:true}},0);
   await tjeneste.lagreStil({revisjon:0,tekst:"Mitt eget brev."});
   const eksport=await tjeneste.eksporter();
@@ -234,12 +236,16 @@ test("grunnlaget har søknadsfeltene og stilreferansen, men ikke notat, kontekst
   assert.equal(sendt.includes("Gammel kontekst"),false);assert.equal(sendt.includes("ring Per"),false);
   assert.match(sendt,/Testfirma/);
 });
-test("annonsen kommer fra jobbdokumentet, og fra brevet når jobbdokumentet ikke har noen",async t=>{
+test("annonsen kommer fra jobbdokumentet, og flyttes dit fra brevet én gang",async t=>{
   const {tjeneste,lager,kall}=await oppsett(t);
   let k=await tjeneste.opprett("j1");
   assert.equal(k.grunnlag.annonse,"Eksempel AS søker kunderådgiver.");
+  const flyttet=await lager.les("jobb-j1.json");
+  assert.equal(flyttet.annonse.kilde,"brev");assert.equal(flyttet.annonse.tekst,"Eksempel AS søker kunderådgiver.");
   await tjeneste.avbryt("j1",k.id);
-  await lager.skriv("jobb-j1.json",{revisjon:0,annonse:{tekst:"Eksempel AS søker kunderådgiver med erfaring fra bank.",kilde:"import"}},0);
+  await lager.skriv("jobb-j1.json",{...flyttet,annonse:{tekst:"Eksempel AS søker kunderådgiver med erfaring fra bank.",kilde:"import"}},flyttet.revisjon);
+  // Brevets eget annonsefelt er ikke lenger kilden.
+  await tjeneste.lagreBrev("j1",{...await tjeneste.hentBrev("j1"),annonse:{tekst:"Utdatert annonse i brevet.",url:"",hentet:null}});
   k=await tjeneste.opprett("j1");
   assert.equal(k.grunnlag.annonse,"Eksempel AS søker kunderådgiver med erfaring fra bank.");
   await tjeneste.trinn("j1",k.id,"analyse");
@@ -254,10 +260,10 @@ test("annonseFor kan injiseres, som tekst eller som objekt med tekst",async t=>{
   }
 });
 test("uten annonse eller CV starter ingen kjøring, og feilen sier hva som mangler",async t=>{
-  const {tjeneste,kall}=await oppsett(t,modell,{annonseFor:async()=>""});
-  await tjeneste.lagreBrev("j1",{...await tjeneste.hentBrev("j1"),annonse:{tekst:"",url:"",hentet:null}});
+  let annonse="";
+  const {tjeneste,kall}=await oppsett(t,modell,{annonseFor:async()=>annonse});
   await assert.rejects(tjeneste.opprett("j1"),{code:"ugyldig-grunnlag",message:/mangler annonsen/});
-  await tjeneste.lagreBrev("j1",{...await tjeneste.hentBrev("j1"),annonse:{tekst:"Eksempel AS søker kunderådgiver.",url:"",hentet:null}});
+  annonse="Eksempel AS søker kunderådgiver.";
   await tjeneste.lagreCv({...await tjeneste.hentCv(),tekst:""});
   await assert.rejects(tjeneste.opprett("j1"),{code:"ugyldig-grunnlag",message:/CV-en/});
   assert.equal((await tjeneste.hentBrev("j1")).kjoring,null);assert.equal(kall.length,0);
@@ -326,7 +332,8 @@ test("en annonse som endres mens modellen skriver, gir et nytt forslag i stedet 
   const {tjeneste,lager}=await oppsett(t,async p=>{if(p.trinn==="kontroll"){startet.slipp();await slipp.promise;}return modell(p);});
   const k=await tjeneste.opprett("j1");await tjeneste.trinn("j1",k.id,"analyse");await tjeneste.trinn("j1",k.id,"skriv");
   const arbeid=tjeneste.trinn("j1",k.id,"kontroller");await startet.promise;
-  await lager.skriv("jobb-j1.json",{revisjon:0,annonse:{tekst:"En helt annen annonse.",kilde:"limt"}},0);
+  const jd=await lager.les("jobb-j1.json");
+  await lager.skriv("jobb-j1.json",{...jd,annonse:{tekst:"En helt annen annonse.",kilde:"limt"}},jd.revisjon);
   slipp.slipp();const r=await arbeid;
   assert.equal(r.kjoring.nyttForslag,true);assert.equal(r.dokument.tekst,"");assert.equal(r.dokument.versjoner.length,1);
 });
