@@ -273,9 +273,9 @@ function fristOppdeling(apne){
   const medFrist = apne.filter(p => p.frist && dagerTil(p.frist) >= 0);
   const lopende  = apne.filter(erLopende);
   const utgatt   = apne.filter(erUtgatt);
-  let t = medFrist.length + " med frist · " + lopende.length + " løpende";
-  if(utgatt.length) t += " · " + utgatt.length + " gikk ut";
-  return { medFrist, lopende, utgatt, tekst: t };
+  const deler = [medFrist.length + " med frist", lopende.length + " løpende"];
+  if(utgatt.length) deler.push(utgatt.length + " gikk ut");
+  return { medFrist, lopende, utgatt, deler };
 }
 
 /* Båndoverskriften klistrer seg til toppen mens du blar. Antallet står
@@ -382,13 +382,21 @@ function delteStolper(rader){
     + '</div></div>').join("") + '</div>';
 }
 
-function kortListe(navn){
-  if(navn.length <= 3) return navn.join(", ");
-  return navn.slice(0, 3).join(", ") + " og " + (navn.length - 3) + " til";
+/* Én del av en underlinje, som ikke brytes inni seg selv. Uten den kunne
+   «18 gikk ut» bli delt, med «ut» alene på neste linje. */
+const del = tekst => '<span class="nokkel__del">' + tekst + '</span>';
+
+/* Høyst tre navn, så «og 2 til». Navnene får bryte som vanlig, men
+   halen holdes samlet. */
+function navneliste(navn){
+  if(navn.length <= 3) return esc(navn.join(", "));
+  return esc(navn.slice(0, 3).join(", ")) + " " + del("og " + (navn.length - 3) + " til");
 }
 
-function nokkel(merke, verdi, under, varsel){
-  return '<div class="nokkel' + (varsel ? " nokkel--varsel" : "") + '">'
+/* `tom` er en flis uten tall ennå: streken står dempet, så den ikke
+   leses som en verdi. */
+function nokkel(merke, verdi, under, varsel, tom){
+  return '<div class="nokkel' + (varsel ? " nokkel--varsel" : "") + (tom ? " nokkel--tom" : "") + '">'
     + '<p class="merkelinje nokkel__merke">' + merke + '</p>'
     + '<p class="nokkel__verdi">' + verdi + '</p>'
     + '<p class="nokkel__under">' + under + '</p></div>';
@@ -409,18 +417,40 @@ function visTall(){
   const denneUka = medFrist.filter(p => dagerTil(p.frist) <= 7);
   const neste = medFrist[0];
 
+  /* Svartiden regnes bare fra ekte hendelser, så eldre søknader uten
+     logg teller ikke. Står det ingen ennå, sier flisen hvordan den fylles
+     i stedet for å vise en null som ser ut som et svar. */
+  const median = medianSvartid(sendt);
+  const medSvartid = sendt.filter(p => svartidDager(p) !== null).length;
+  /* Den som har ventet lengst står først i navnelisten. */
+  const venter = utenSvarOver(alle, 30, I_DAG)
+    .sort((a, b) => dagerSidenSendt(b, I_DAG) - dagerSidenSendt(a, I_DAG) || a.selskap.localeCompare(b.selskap, "no"));
+  const unike = liste => liste.map(p => p.selskap).filter((v, i, a) => a.indexOf(v) === i);
+
+  /* Rekkefølgen er to rader på bred skjerm: det som ligger foran deg
+     (neste frist går over to kolonner), så det du har sendt og hva det
+     har gitt. I to kolonner står neste frist alene øverst og resten
+     parvis, så rutenettet går opp ved hver bredde. */
   let h = '<div class="fliser">'
-    + nokkel("Neste frist", neste ? omTekst(neste.frist).replace("om ", "") : "—",
-        neste ? '<b>' + esc(neste.selskap) + '</b> · ' + esc(langDato(neste.frist)) : "Ingen frister framover",
-        neste && dagerTil(neste.frist) <= 7)
-    + nokkel("Å søke på", aSoke.length, fristOppdeling(aSoke).tekst, false)
+    + nokkel("Neste frist", neste ? omTekst(neste.frist).replace("om ", "") : "–",
+        neste ? del('<b>' + esc(neste.selskap) + '</b>') + ' · ' + del(esc(langDato(neste.frist))) : "Ingen frister framover",
+        neste && dagerTil(neste.frist) <= 7, !neste)
+    + nokkel("Frister denne uka", denneUka.length,
+        denneUka.length ? navneliste(unike(denneUka)) : "Pusterom",
+        denneUka.length > 0)
+    + nokkel("Å søke på", aSoke.length, fristOppdeling(aSoke).deler.map(del).join(" · "), false)
     + nokkel("Sendt", sendt.length,
         sendt.length ? andel(svar.length) + " har svart" : "Ingen sendt ennå", false)
     + nokkel("Intervju", intervju.length,
         sendt.length ? andel(intervju.length) + " av de sendte" : "Ingen sendt ennå", false)
-    + nokkel("Frister denne uka", denneUka.length,
-        denneUka.length ? esc(kortListe(denneUka.map(p => p.selskap).filter((v, i, a) => a.indexOf(v) === i))) : "Pusterom",
-        denneUka.length > 0)
+    + (median === null
+        ? nokkel("Svartid", "–", "Måles fra du merker en søknad som sendt til den får svar.", false, true)
+        : nokkel("Svartid", antall(Math.round(median), "dag", "dager"),
+            del(medSvartid === 1 ? "Fra én søknad" : "Median av " + medSvartid + " søknader") + ", "
+            + del("fra sendt til svar"), false))
+    + nokkel("Uten svar", venter.length,
+        venter.length ? del("Over 30 dager:") + " " + navneliste(unike(venter))
+                      : "Ingen har ventet over 30 dager", false)
     + '</div>';
 
   const trinn = [

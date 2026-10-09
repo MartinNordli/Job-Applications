@@ -451,14 +451,25 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
    Diagrammene deler én kulørskala (--graf-1…4) og lar tallene stå i
    tekstfargene. En strek som bærer verdi er tynn; akser og hjelpelinjer
    trekker seg tilbake. */
-.fliser{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:16px}
-.nokkel{background:var(--kort);border-radius:var(--r);box-shadow:var(--loft);padding:17px 19px 19px}
+/* Sju fliser i fire kolonner: neste frist tar to, så første rad er det
+   som ligger foran deg og andre rad det du har sendt. */
+/* Toppmargen gir samme luft under filtrene som båndoverskriftene gir i
+   listene, i stedet for at flisene står klistret til dem. */
+.fliser{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:16px 0}
+.fliser > :first-child{grid-column:span 2}
+/* Hver flis låner tre rader fra rutenettet (etikett, tall, underlinje),
+   så tallene står på samme linje i hele raden selv om en etikett eller
+   underlinje brytes i nabofliken. */
+.nokkel{background:var(--kort);border-radius:var(--r);box-shadow:var(--loft);padding:17px 19px 19px;
+        display:grid;grid-row:span 3;grid-template-rows:subgrid;row-gap:0;align-content:start}
 .nokkel__merke{margin-bottom:11px}
 .nokkel__verdi{margin:0;font-size:29px;font-weight:600;letter-spacing:-.035em;line-height:1;
                font-variant-numeric:tabular-nums}
 .nokkel__under{margin:9px 0 0;font-size:12.5px;color:var(--blekk-2);line-height:1.45}
 .nokkel__under b{font-weight:600;color:var(--blekk)}
 .nokkel--varsel .nokkel__verdi{color:var(--ild-t)}
+.nokkel--tom .nokkel__verdi{color:var(--blekk-3);font-weight:400}
+.nokkel__del{white-space:nowrap}
 
 .kort{background:var(--kort);border-radius:var(--r);box-shadow:var(--loft);padding:20px 22px 22px;margin-bottom:16px}
 .kort__tittel{margin:0;font-size:15.5px;font-weight:600;letter-spacing:-.014em}
@@ -902,8 +913,9 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
   :root{--side:272px}
 }
 @media (max-width:1100px){
-  /* Fem fliser i to kolonner: neste frist får hele den første raden. */
-  .fliser{grid-template-columns:1fr 1fr}
+  /* Sju fliser i to kolonner: neste frist får hele den første raden,
+     og de seks andre står parvis under. */
+  .fliser{grid-template-columns:repeat(2,minmax(0,1fr))}
   .fliser > :first-child{grid-column:1/-1}
   .rutenett{grid-template-columns:1fr}
 }
@@ -979,7 +991,11 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
   .tittelrad{gap:12px}
   .sok{flex:1}
   .sok__felt{width:100%}
-  .fliser{grid-template-columns:1fr}
+  /* Parvis også på telefon: sju fliser under hverandre ville skjøvet
+     resten av tallene langt ned. Mindre luft og tall, samme oppbygging. */
+  .fliser{gap:10px}
+  .nokkel{padding:15px 15px 16px}
+  .nokkel__verdi{font-size:24px}
   .stolpe{grid-template-columns:92px 1fr}
   .trakt__trinn{grid-template-columns:76px 1fr}
 }
