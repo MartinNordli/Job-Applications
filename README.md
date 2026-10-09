@@ -231,6 +231,23 @@ Hver import føres i `importlogg.jsonl` i kontoens katalog, med én linje per im
 `GET /api/importlogg` i nettleserversjonen oppsummerer loggen: hva importen har kostet, hvor ofte modellen slapp å kjøre, og hvilke felt modellen oftest måtte fylle.
 Prisen står i `src/importlogg.mjs`.
 
+### Annonsen tas vare på
+
+Importen leser også ut selve annonseteksten fra siden den allerede har hentet.
+Når du trykker **Legg til søknad**, lagres teksten i søknadens eget dokument, `jobb-<id>.json`, sammen med adressen og tidspunktet.
+Teksten er der også etter at annonsen er tatt ned, og den er grunnlaget søknadsbrevet og vurderingene bygger på.
+Har siden for lite tekst, for eksempel fordi den bygges med JavaScript, lagres søknaden uten annonse.
+Det samme gjelder hvis annonsen ikke lot seg lagre, og da sier appen fra.
+
+Annonsen til en eldre søknad kan hentes senere fra lenken på søknaden, eller limes inn.
+Hentingen går gjennom det samme vernet som importen, og nettleserversjonen tillater 30 hentinger i timen per konto, i tillegg til importens egne 30.
+Feilmeldingen sier hva du kan gjøre: søknaden mangler lenke, annonsen er fjernet (404 eller 410), adressen er ikke en nettside, eller siden har for lite tekst.
+I de tre siste tilfellene er innliming veien videre.
+
+Søknader som fikk et brev før annonsen fikk sin egen plass, har annonsen i brevdokumentet.
+Første gang annonsen trengs, kopieres den derfra til `jobb-<id>.json` med kilden «brev», og brevdokumentet blir stående som det er.
+Det skjer bare én gang, og bare når søknaden aldri har hatt en annonse fra før.
+
 ## Søknadsbrev
 
 Velg **Søknadsbrev** på en søknad.
@@ -429,6 +446,7 @@ Flytt innholdet inn i katalogen over mens appen og serveren er avslått.
 
 `jobb-<jobb-id>.json` holder det som hører til én søknad, men er for stort for listen eller lages i bakgrunnen.
 Annonsen ligger her med en sjekksum, så en vurdering som bygde på en eldre annonse kan merkes som utdatert.
+Annonsen har tekst, adresse, tidspunkt og kilde: `import` fra importen, `hentet` fra lenken senere, `limt` når du limte den inn, `brev` når den ble flyttet fra brevdokumentet, og `radar` når Radar fant stillingen.
 Filen har et tak på 4 MiB, og den er ikke det samme som brevdokumentet: å slette brevet sletter ikke annonsen.
 
 `jobber.json` er vanlig JSON som kan leses og redigeres for hånd:
@@ -505,7 +523,7 @@ Repoet er offentlig, og filene inneholder ekte søknader.
 
 ```sh
 npm test          # lagerlogikk, server, kontoer, import, brev og dokumenter
-npm run test:ui   # nettlesertester av brevflyten, innstillingene, skuffen, hendelsene og fristene
+npm run test:ui   # nettlesertester av brevflyten, innstillingene, skuffen, hendelsene, fristene og annonsen fra importen
 npm run test:rust # fil-, nett-, brev- og varseloperasjonene i Mac-appen
 ```
 
