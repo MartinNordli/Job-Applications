@@ -74,7 +74,6 @@
   --slor:        light-dark(rgba(24,26,30,.28), rgba(8,6,4,.58));
 
   --r:14px; --r-s:9px; --r-xs:7px;
-  --brev-bredde:1120px;
   --brev-kildebredde:320px;
   --sans:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
   --mono:"Geist Mono","IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
@@ -91,6 +90,13 @@
   --om:92px;        /* nedtellingskolonnen — bredden er reservert, så
                        ingenting flytter seg når et merke dukker opp */
   --klebe:0px;      /* hvor båndoverskriftene fester seg */
+  /* Høyrekolonnen i en rad: hovedknappen er like bred i alle rader, så
+     knappene står i samme kolonne uansett om det står «Merk sendt» eller
+     «Fikk intervju», og uansett hvilket bånd raden står i. */
+  --hovedknapp:104px;
+  /* Detaljpanelet ved siden av listen. Smalere enn skuffen på en liten
+     skjerm, aldri bredere enn at listen får beholde sin skannebredde. */
+  --detalj:clamp(400px, 36vw, 580px);
 
   --loft:0 1px 2px rgba(24,26,30,.05), 0 4px 14px rgba(24,26,30,.07);
   --loft-2:0 2px 4px rgba(24,26,30,.06), 0 10px 28px rgba(24,26,30,.10);
@@ -201,6 +207,7 @@ body{margin:0;background:var(--bunn);color:var(--blekk);font-family:var(--sans);
 button,input,select,textarea{font:inherit;color:inherit}
 a{color:inherit}
 :focus-visible{outline:2px solid var(--hav);outline-offset:2px;border-radius:5px}
+.ubrutt{white-space:nowrap}
 .skjult{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
 /* Én etikettstemme i hele appen: mono, versaler, romslig sperring.
@@ -374,10 +381,14 @@ a{color:inherit}
         background:var(--kort);border-radius:var(--r);box-shadow:var(--loft);overflow:hidden}
 
 .rad{position:relative;display:grid;grid-template-columns:var(--dato) minmax(0,1fr) auto;
-     gap:0 14px;align-items:center;padding:9px 16px 9px 19px;
+     gap:0 14px;align-items:center;padding:9px 16px 9px 19px;cursor:pointer;
      transition:background .12s ease}
 .rad + .rad{box-shadow:inset 0 1px 0 var(--linje)}
 .rad:hover,.rad:focus-within{background:var(--innfelt)}
+/* Raden detaljpanelet viser. --hav er appens valgfarge, den samme som
+   valgt fane i sidepanelet; hastestripa på forkanten står urørt. */
+.rad.er-valgt,.rad.er-valgt:hover,.rad.er-valgt:focus-within{background:var(--hav-vask)}
+.rad.er-valgt .monogram{background:var(--kort)}
 
 /* Hastestripa på forkanten. Bare det som haster får den — får alt
    kulør, betyr kulør ingenting. */
@@ -405,10 +416,15 @@ a{color:inherit}
           border-radius:10px;background:var(--innfelt-2);color:var(--blekk-2);
           font-family:var(--sans);font-size:12.5px;font-weight:700;letter-spacing:.01em}
 .rad:hover .monogram,.rad:focus-within .monogram{background:var(--linje-2)}
+.rad.er-valgt:hover .monogram,.rad.er-valgt:focus-within .monogram{background:var(--kort)}
 
 .rad__hoved{min-width:0}
-.rad__selskap{font-size:14.5px;font-weight:600;letter-spacing:-.012em;line-height:1.35;
+/* Selskapsnavnet er lenken til panelet. Den er så bred som navnet, så
+   fokusringen står rundt ordet og ikke rundt hele kolonnen. */
+.rad__selskap{display:block;width:fit-content;max-width:100%;color:inherit;text-decoration:none;
+              font-size:14.5px;font-weight:600;letter-spacing:-.012em;line-height:1.35;
               white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rad__selskap:hover{text-decoration:underline;text-decoration-color:var(--linje-2);text-underline-offset:3px}
 .rad__und{display:block;font-size:13px;color:var(--blekk-2);line-height:1.35;
           white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rad__stilling{color:inherit;text-decoration:none}
@@ -427,11 +443,7 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
    blekk og vekt, aldri med hastekulør. */
 .rad__om[data-kommer]{color:var(--blekk);font-weight:500}
 .rad__verktoy{display:flex;gap:4px;align-items:center}
-/* Sidehandlingene holder plassen sin også når de er usynlige, så
-   ingenting hopper når musa kommer inn over raden. */
-.rad__mer{opacity:0;display:flex;gap:4px;transition:opacity .12s ease}
-.rad:hover .rad__mer,.rad:focus-within .rad__mer{opacity:1}
-@media (hover:none){.rad__mer{opacity:1}}
+.handling--hoved{min-width:var(--hovedknapp);text-align:center}
 
 /* Hovedhandlingen står i hver eneste rad. Den må være der, men den skal
    ikke rope: en knapt merkbar brikke i ro, som kommer fram når musa er
@@ -449,6 +461,29 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
 .rad:focus-within .handling--stille:not(:hover){background:none;color:var(--blekk-3);font-weight:500;padding:6px 9px}
 .handling--stille:hover{background:var(--innfelt-2);color:var(--blekk)}
 .handling--fare:hover{background:var(--ild-vask);color:var(--ild-t)}
+/* «⋯» står fast i hver rad, så ingenting dukker opp eller forsvinner når
+   musa går over. Den er stille som de andre sidehandlingene var. */
+.rad__meny,
+.rad:hover .rad__meny:not(:hover),
+.rad:focus-within .rad__meny:not(:hover){display:flex;align-items:center;justify-content:center;
+           width:30px;height:30px;padding:0;background:none;color:var(--blekk-3)}
+.rad__meny:hover,.rad__meny[aria-expanded="true"],
+.rad:hover .rad__meny[aria-expanded="true"]:not(:hover){background:var(--innfelt-2);color:var(--blekk)}
+.rad.er-valgt .rad__meny:hover,.rad.er-valgt .rad__meny[aria-expanded="true"]{background:var(--kort)}
+
+/* ---------- «⋯»-menyen ----------
+   Ett lag over listen, samme materiale som nedtrekksmenyen i brevet:
+   et kort løftet ett hakk, ingen ramme. Slett står for seg selv under
+   en hårstrek, og får kulør først når pekeren er på den. */
+.meny{position:fixed;z-index:45;min-width:188px;padding:5px;background:var(--kort);
+      border-radius:var(--r-s);box-shadow:var(--loft-2);animation:menyFram .12s ease-out}
+.meny__valg{display:block;width:100%;padding:8px 11px;background:none;border:0;border-radius:var(--r-xs);
+            font-size:13px;font-weight:500;text-align:left;color:var(--blekk);cursor:pointer;white-space:nowrap}
+.meny__valg:hover,.meny__valg:focus{background:var(--innfelt);outline:none}
+.meny__valg:focus-visible{box-shadow:inset 0 0 0 2px var(--hav)}
+.meny__valg--fare:hover,.meny__valg--fare:focus{background:var(--ild-vask);color:var(--ild-t)}
+.meny__skille{height:1px;margin:5px 6px;background:var(--linje)}
+@keyframes menyFram{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
 
 .merkelapp{display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 8px;border-radius:100px;
            font-size:11.5px;font-weight:600;white-space:nowrap;background:var(--innfelt-2);color:var(--blekk-2)}
@@ -652,6 +687,227 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
 .knapp--bred{width:100%;justify-content:center}
 .knapp--liten{padding:8px 13px;font-size:13px}
 
+/* ---------- detaljpanelet ----------
+   Alt om én søknad. Panelet er samme kortflate som sidepanelet, speilet
+   på den andre siden av linbunnen: to hvite skinner rammer inn listen,
+   og en hårstrek mot bunnen er det eneste skillet. Inni er det ingen
+   kort i kortet. Delene skilles av luft og en etikett, og bare det som
+   er en egen ting (vurderingen, notatfeltet) får et innfelt spor.
+
+   Kulør følger resten av appen: en frist som haster, og ingenting annet.
+   Stegraden er derfor i blekk, ikke i aksent; hvor langt søknaden har
+   kommet, sies av fylte prikker og tekst. --hav er valgt fane og fokus. */
+.detalj{display:flex;flex-direction:column;min-width:0;background:var(--kort);
+        container:detaljflate / inline-size}
+.detalj:focus{outline:none}
+@media (min-width:1100px){
+  body.har-detalj .skall{grid-template-columns:var(--side) minmax(0,1fr) var(--detalj)}
+  body.har-detalj .hoved{padding-inline:28px}
+  .detalj{position:sticky;top:0;height:100vh;box-shadow:-1px 0 0 var(--linje);animation:detaljFram .14s ease-out}
+  .detalj-slor{display:none}
+  /* Varselet står midt i listen, ikke midt i vinduet. */
+  body.har-detalj .varsel{left:calc((var(--side) + 100vw - var(--detalj)) / 2)}
+}
+/* Under 1100 px er panelet et ark over listen: samme innfelling og
+   materiale som skuffen, men under den, så «Rediger» legger skuffen
+   oppå arket. */
+@media (max-width:1099.98px){
+  .detalj{position:fixed;top:12px;right:12px;bottom:12px;z-index:36;width:min(560px, calc(100vw - 24px));
+          border-radius:var(--r);box-shadow:var(--loft-3);overflow:hidden;animation:arkFram .18s cubic-bezier(.2,0,0,1)}
+  .detalj-slor{position:fixed;inset:0;z-index:35;background:var(--slor);opacity:0;pointer-events:none;transition:opacity .18s ease}
+  .detalj-slor.er-apen{opacity:1;pointer-events:auto}
+  body.har-detalj .varsel{left:calc(100vw - 12px - min(560px, 100vw - 24px) / 2)}
+}
+@media (max-width:640px){
+  .detalj{inset:0;width:100%;border-radius:0}
+  body.har-detalj .varsel{left:50%}
+}
+@keyframes detaljFram{from{opacity:0}to{opacity:1}}
+@keyframes arkFram{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+
+.detalj__topp{flex:none;padding:26px 24px 0}
+.detalj__hode{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:0 13px;align-items:start}
+.monogram--stor{width:40px;height:40px;border-radius:12px;font-size:14px;margin-top:1px}
+.detalj__hvem{min-width:0}
+.detalj__tittel{margin:0;width:fit-content;max-width:100%;font-size:20px;font-weight:700;
+                letter-spacing:-.024em;line-height:1.22;overflow-wrap:anywhere}
+/* Overskriften tar imot fokus når panelet åpnes, så skjermlesere og
+   tastaturet starter der. Den er ikke en kontroll, og får ingen ring. */
+.detalj__tittel:focus{outline:none}
+.detalj__stilling{display:block;width:fit-content;max-width:100%;margin-top:2px;font-size:14px;line-height:1.4;
+                  color:var(--blekk-2);text-decoration:none;overflow-wrap:anywhere}
+a.detalj__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underline-offset:2px}
+.detalj__verktoy{display:flex;align-items:center;gap:2px;margin:-3px -8px 0 0}
+.detalj__lukk{display:flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;
+              background:none;border:0;border-radius:var(--r-xs);color:var(--blekk-3);cursor:pointer;
+              transition:background .12s ease,color .12s ease}
+.detalj__lukk:hover{background:var(--innfelt);color:var(--blekk)}
+.detalj__lukk:active{background:var(--innfelt-2)}
+
+/* Faktalinjen skilles av luft, ikke av prikker. Datoer i mono, som
+   overalt ellers. */
+.detalj__fakta{display:flex;flex-wrap:wrap;gap:2px 14px;margin:9px 0 0;font-size:12.5px;line-height:1.5;color:var(--blekk-2)}
+.detalj__fakta time{font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--blekk)}
+.detalj__om{font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;color:var(--blekk-3);margin-left:3px}
+.detalj__om[data-hast="naa"]{color:var(--ild-t);font-weight:500}
+.detalj__om[data-hast="snart"]{color:var(--rav-t)}
+.detalj__match{font-family:var(--mono);font-size:11px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--blekk);
+               padding:0 8px;border-radius:100px;background:var(--innfelt-2)}
+
+/* ---- stegraden ---- */
+.steg{margin-top:18px}
+.steg__lop{list-style:none;margin:0 -8px;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.steg__post{position:relative;min-width:0}
+/* Streken mellom to prikker. Den er fylt der søknaden har gått videre. */
+.steg__post:not(:last-child)::after{content:"";position:absolute;left:23px;right:-3px;top:14px;height:1px;background:var(--linje-2)}
+.steg__post[data-tilstand="ferdig"]:has(+ [data-tilstand="ferdig"], + [data-tilstand="naa"])::after{background:var(--blekk-3)}
+.steg__knapp{position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;
+             padding:6px 8px 7px;background:none;border:0;border-radius:var(--r-s);text-align:left;cursor:pointer;
+             color:var(--blekk-3);transition:background .12s ease,color .12s ease}
+.steg__knapp:hover{background:var(--innfelt);color:var(--blekk)}
+.steg__knapp[aria-disabled="true"]{cursor:default}
+.steg__knapp[aria-disabled="true"]:hover{background:none}
+.steg__prikk{width:9px;height:9px;margin:4px 0 6px;border-radius:50%;background:var(--kort);box-shadow:inset 0 0 0 1.5px var(--linje-2)}
+.steg__navn{max-width:100%;font-size:12.5px;font-weight:500;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.steg__dato{display:block;min-height:15px;font-family:var(--mono);font-size:10.5px;line-height:15px;
+            font-variant-numeric:tabular-nums;color:var(--blekk-3);white-space:nowrap}
+.steg__post[data-tilstand="ferdig"] .steg__knapp{color:var(--blekk-2)}
+.steg__post[data-tilstand="ferdig"] .steg__prikk{background:var(--blekk-3);box-shadow:none}
+.steg__post[data-tilstand="naa"] .steg__knapp{color:var(--blekk)}
+.steg__post[data-tilstand="naa"] .steg__navn{font-weight:600}
+.steg__post[data-tilstand="naa"] .steg__prikk{background:var(--blekk);box-shadow:0 0 0 3px var(--innfelt-2)}
+.steg__knapp:hover .steg__prikk{box-shadow:inset 0 0 0 1.5px var(--blekk-3)}
+.steg__post[data-tilstand="ferdig"] .steg__knapp:hover .steg__prikk{box-shadow:none;background:var(--blekk-2)}
+.steg__post[data-tilstand="naa"] .steg__knapp:hover .steg__prikk{box-shadow:0 0 0 3px var(--innfelt-2)}
+.steg__utganger{display:flex;flex-wrap:wrap;gap:2px;margin:4px -8px 0}
+.steg__utgang{padding:6px 8px;background:none;border:0;border-radius:var(--r-xs);font-size:12.5px;font-weight:500;
+              color:var(--blekk-3);cursor:pointer;transition:background .12s ease,color .12s ease}
+.steg__utgang:hover{background:var(--innfelt);color:var(--blekk)}
+.steg__utfall{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:8px 0 0}
+.steg__utfall .steg__dato{min-height:0}
+.steg__hint{font-size:12px;color:var(--blekk-3)}
+
+/* ---- fanene ---- */
+.detalj__faner{flex:none;display:flex;gap:14px;margin-top:12px;padding:0 24px;box-shadow:inset 0 -1px 0 var(--linje);
+               overflow-x:auto;scrollbar-width:none}
+.detalj__faner::-webkit-scrollbar{display:none}
+.detalj__fane{flex:none;padding:10px 4px 11px;margin:0 -4px;background:none;border:0;border-radius:0;cursor:pointer;
+              font-size:13.5px;font-weight:600;color:var(--blekk-3);white-space:nowrap;
+              box-shadow:inset 0 -2px 0 transparent;transition:color .12s ease,box-shadow .12s ease}
+.detalj__fane:hover{color:var(--blekk)}
+.detalj__fane[aria-selected="true"]{color:var(--blekk);box-shadow:inset 0 -2px 0 var(--hav)}
+.detalj__fane:focus-visible{outline-offset:-2px;border-radius:var(--r-xs)}
+
+.detalj__flate{flex:1;min-height:0;overflow-y:auto;padding:22px 24px 32px}
+.detalj__flate:focus-visible{outline-offset:-3px}
+.detalj__flate.skuff__kropp--brev{padding:0;overflow:hidden}
+.detalj__bunn{flex:none;display:flex;gap:9px;justify-content:flex-end;align-items:center;padding:12px 24px;border-top:1px solid var(--linje)}
+/* Brevet er et arbeidsrom. Der trengs høyden mer enn stegraden. */
+.detalj[data-fane="brev"] .steg{display:none}
+.detalj[data-fane="brev"] .detalj__topp{padding-bottom:2px}
+
+/* ---- Oversikt ---- */
+.detalj__del + .detalj__del{margin-top:28px}
+.detalj__deltittel{display:block;margin:0 0 10px}
+.detalj__tomt{margin:0;font-size:13px;line-height:1.5;color:var(--blekk-3)}
+.detalj__fotnote{margin:8px 0 0;font-size:12px;line-height:1.5;color:var(--blekk-3)}
+
+.match{padding:14px 16px 15px;background:var(--innfelt);border-radius:var(--r-s)}
+.match__tall{display:flex;align-items:baseline;gap:12px;margin:0}
+.match__prosent{flex:none;font-family:var(--mono);font-size:22px;font-weight:500;letter-spacing:-.03em;
+                font-variant-numeric:tabular-nums;line-height:1}
+.match__sammendrag{font-size:13px;line-height:1.5;color:var(--blekk-2)}
+.match__del{margin-top:13px}
+.match__deltittel{margin:0 0 4px;font-size:12px;font-weight:600;color:var(--blekk-2)}
+.match__liste{margin:0;padding-left:16px;font-size:13px;line-height:1.5}
+.match__liste li + li{margin-top:3px}
+.match__liste li::marker{color:var(--blekk-3)}
+.match__liste b{font-weight:600}
+.match__liste span{color:var(--blekk-2)}
+.match__alvor{font-family:var(--mono);font-size:10.5px;color:var(--blekk-3)!important}
+
+.tidslinje{list-style:none;margin:0;padding:0}
+.tidslinje__post{position:relative;display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+                 padding:5px 0 5px 20px;font-size:13.5px;line-height:1.45}
+.tidslinje__post::before{content:"";position:absolute;left:2px;top:11px;width:7px;height:7px;border-radius:50%;background:var(--blekk-3)}
+.tidslinje__post:not(:last-child)::after{content:"";position:absolute;left:5px;top:21px;bottom:-8px;width:1px;background:var(--linje-2)}
+.tidslinje__hva{min-width:0;color:var(--blekk-2)}
+.tidslinje__post--siste .tidslinje__hva{color:var(--blekk);font-weight:500}
+.tidslinje__post--siste::before{background:var(--blekk)}
+/* Et anslag er en hul prikk: det har skjedd, men datoen er gjettet. */
+.tidslinje__post--anslått::before{background:var(--kort);box-shadow:inset 0 0 0 1.5px var(--blekk-3)}
+.tidslinje__post--siste.tidslinje__post--anslått::before{box-shadow:inset 0 0 0 1.5px var(--blekk)}
+.tidslinje__post--frist::before{background:var(--kort);box-shadow:inset 0 0 0 1.5px var(--linje-2)}
+.tidslinje__post--frist[data-hast="naa"]::before{box-shadow:inset 0 0 0 1.5px var(--ild)}
+.tidslinje__om{margin-left:4px;font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;color:var(--blekk-3)}
+.tidslinje__post--frist[data-hast="naa"] .tidslinje__om{color:var(--ild-t);font-weight:500}
+.tidslinje__post--frist[data-hast="snart"] .tidslinje__om{color:var(--rav-t)}
+.tidslinje__kilde{font-size:12px;color:var(--blekk-3)}
+.tidslinje__når{flex:none;font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;color:var(--blekk-3);white-space:nowrap}
+
+.detalj__notat{display:block;width:100%;min-height:86px;padding:10px 12px;background:var(--innfelt);
+               border:1px solid transparent;border-radius:var(--r-s);font-size:14px;line-height:1.55;
+               color:var(--blekk);resize:vertical;transition:background .12s ease,border-color .12s ease}
+.detalj__notat::placeholder{color:var(--blekk-3)}
+.detalj__notat:hover{border-color:var(--linje)}
+.detalj__notat:focus{background:var(--kort);border-color:var(--hav);outline-offset:1px}
+.detalj__notatlinje{display:flex;justify-content:space-between;gap:12px;min-height:15px;margin:6px 0 0;
+                    font-family:var(--mono);font-size:10.5px;line-height:15px;color:var(--blekk-3)}
+.detalj__notatlinje .er-feil{color:var(--ild-t)}
+.detalj__fot{margin-top:32px;padding-top:12px;border-top:1px solid var(--linje)}
+.detalj__fot .knapp{margin-left:-13px;color:var(--blekk-3)}
+.detalj__fot .knapp:hover{background:var(--ild-vask);color:var(--ild-t)}
+
+/* ---- tomme flater, feil og handlinger ---- */
+.detalj__plass,.annonse--tom{max-width:46ch;padding:14px 0 4px}
+.detalj__tomtittel{margin:0 0 6px;font-size:15.5px;font-weight:600;letter-spacing:-.014em}
+.detalj__tomtekst{margin:0 0 16px;font-size:13.5px;line-height:1.55;color:var(--blekk-2)}
+.detalj__handlinger{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.detalj__feil{margin:0 0 16px;padding:12px 14px;background:var(--ild-vask);border-radius:var(--r-s);
+              font-size:13px;line-height:1.5;color:var(--blekk-2)}
+.detalj__feil p{margin:0}
+.detalj__feiltittel{color:var(--ild-t);font-weight:600}
+.detalj__feil .detalj__handlinger{margin-top:10px}
+.detalj__feil .knapp{background:var(--kort)}
+.detalj__feil .knapp--stille{background:none}
+.detalj__feil .knapp--stille:hover{background:rgba(255,255,255,.5)}
+
+/* ---- Annonse ---- */
+.annonse__topp{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;margin:-6px 0 2px}
+.annonse__kilde{margin:0;font-size:12.5px;color:var(--blekk-2)}
+.annonse__vert{margin-left:5px;font-family:var(--mono);font-size:11px;color:var(--blekk-3)}
+.annonse__topp .detalj__handlinger{gap:0;margin-right:-13px}
+a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
+.annonse__original{color:var(--blekk-2)}
+.annonse__status{margin:4px 0 6px}
+.annonse__status:empty{margin:0;min-height:0}
+.annonse__tekst{padding-top:16px;border-top:1px solid var(--linje);max-width:68ch;
+                font-size:14px;line-height:1.65;color:var(--blekk)}
+.annonse__tekst > :first-child{margin-top:0}
+.annonse__tekst p{margin:0 0 .85em}
+.annonse__tekst h4{margin:1.35em 0 .35em;font-size:14px;font-weight:600;letter-spacing:-.01em}
+.annonse__tekst ul{margin:0 0 .85em;padding-left:1.2em}
+.annonse__tekst li + li{margin-top:.25em}
+.annonse__tekst li::marker{color:var(--blekk-3)}
+.annonse__lim .felt__merke{margin-bottom:8px}
+.annonse__felt{min-height:300px;font-family:var(--sans);font-size:13.5px;line-height:1.6}
+.annonse__lim .felt__hjelp{margin:7px 0 14px}
+.annonse__lim .detalj__handlinger{margin-top:4px}
+.annonse .henter{margin-top:0}
+
+/* Tellingen på «Hent manglende annonser» kommer etter at knappen er
+   tegnet. Plassen er derfor alltid der. */
+.knapp__tall{display:inline-block;min-width:3.2ch;font-family:var(--mono);font-size:12px;font-weight:500;
+             font-variant-numeric:tabular-nums;text-align:left}
+.oppsummering{margin-top:10px;padding:12px 14px;background:var(--innfelt);border-radius:var(--r-s);
+              font-size:12.5px;line-height:1.5;color:var(--blekk-2)}
+.oppsummering p{margin:0}
+.oppsummering p + p{margin-top:4px}
+.oppsummering ul{margin:4px 0 0;padding-left:16px}
+.oppsummering li + li{margin-top:3px}
+.oppsummering b{font-weight:600;color:var(--blekk)}
+.felt__notat{min-height:74px;resize:vertical;line-height:1.5}
+
 /* ---------- søknadsbrevet ----------
    Brevet er hovedflaten. Kildene ligger i en rolig marg, og de lange
    tekstene foldes ut bare når man trenger dem. Samme Lin/Sot-materiale,
@@ -659,9 +915,6 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
 .handling--brev{color:var(--hav-t);background:var(--hav-vask)}
 .handling--brev:hover{background:var(--hav-vask);box-shadow:inset 0 0 0 1px var(--hav)}
 .brev__inngang{margin-top:23px;padding-top:20px;border-top:1px solid var(--linje)}
-.skuff--brev{width:min(var(--brev-bredde),calc(100vw - 24px))}
-.skuff--brev .skuff__topp{padding:22px 28px 3px}
-.skuff--brev .skuff__tittel{font-size:23px;letter-spacing:-.03em}
 .skuff__kropp--brev{padding:0;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .brev__topprad{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:0 28px 13px}
 .brev__jobb{font-size:14px;margin:0;font-weight:500;line-height:1.45;overflow-wrap:anywhere;min-width:0}
@@ -831,17 +1084,21 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
 .brev__meny button:disabled{opacity:.45;cursor:default}
 .brev .knapp:disabled,.skuff__bunn--brev .knapp:disabled{opacity:.45;cursor:default;box-shadow:none}
 .brev__faner{display:none}
-@media (max-width:800px){
-  .skuff--brev{top:0;right:0;bottom:0;width:100vw;border-radius:0}
-  .skuff--brev .skuff__topp{padding:18px 20px 3px}
-  .brev__topprad{padding:0 20px 10px}
-  .brev__flytrad{padding:0 20px 9px}
+/* Brevflaten står i detaljpanelet. Er panelet smalere enn 800 px, og
+   det er det nesten alltid, blir grunnlaget og brevet to faner i stedet
+   for to kolonner. Spørringen går mot panelet, ikke vinduet. Jobben
+   står allerede i panelets overskrift og gjentas ikke. */
+.detalj .brev__jobb{display:none}
+.detalj .brev__topprad{justify-content:flex-end;padding-top:10px}
+@container detaljflate (max-width:800px){
+  .brev__topprad{padding:10px 24px 6px}
+  .brev__flytrad{padding:0 24px 9px}
   .brev__steg__navn{font-size:11.5px}
-  .brev__tilbakemelding{padding:0 20px 8px;min-height:29px}
-  .brev__faner{display:flex;margin:0 20px 13px;flex:none}
+  .brev__tilbakemelding{padding:0 24px 8px;min-height:29px}
+  .brev__faner{display:flex;margin:0 24px 13px;flex:none}
   .brev{display:flex;flex-direction:column;border-top:0}
-  .brev__grunnlag{padding:5px 20px 25px;flex:1}
-  .brev__innstillinger:not([hidden]){padding:5px 20px 25px;flex:1}
+  .brev__grunnlag{padding:5px 24px 25px;flex:1}
+  .brev__innstillinger:not([hidden]){padding:5px 24px 25px;flex:1}
   /* Panelet hører til grunnlagsfanen; brevfanen skal vise papiret. */
   .brev[data-fane="brev"] .brev__innstillinger{display:none}
   .brev__skriveflate{padding:12px 16px 18px;flex:1;overflow-y:auto;gap:10px}
@@ -863,7 +1120,7 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
   .skuff__bunn--brev .knapp{font-size:13px;padding:11px 13px;min-height:44px}
   .skuff__bunn--brev.har-brev .brev__generer{order:3;flex-basis:100%;margin:2px 0 0}
   .brev__kopistatus:empty{display:none}
-  .brev__feil,.brev__lukkevalg{margin:0 16px 10px}
+  .brev__feil,.brev__lukkevalg{margin:0 24px 10px}
 }
 @media (pointer:coarse){
   .brev input,.brev textarea,.brev select{font-size:16px}
@@ -890,9 +1147,6 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
 @media (min-width:1101px){
   .skuff.er-apen ~ .varsel{bottom:26px;left:calc((var(--side) + 100vw - 456px) / 2)}
 }
-/* Brevflaten fyller nesten hele vinduet. Der hører varselet hjemme over
-   dens egen fot, midt på flaten. */
-.skuff--brev.er-apen ~ .varsel{bottom:96px;left:calc(100vw - 12px - min(var(--brev-bredde), 100vw - 24px) / 2)}
 .varsel__angre{background:none;border:0;color:var(--varsel-lenke);font-weight:600;cursor:pointer;padding:5px 9px;border-radius:6px}
 .varsel__angre:hover{background:rgba(255,255,255,.12)}
 
@@ -963,12 +1217,23 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
   .rad{--dato:48px;padding:11px 14px 12px 17px}
   .rad__selskap,.rad__und{white-space:normal;overflow:visible;text-overflow:clip}
   .rad__hoyre{flex-wrap:wrap;gap:6px 8px;padding-left:0}
-  /* Verktøyene må også få bryte. Ellers ble «Rediger» og «Slett»
-     skjøvet ut over kanten og klippet bort av kortet. */
-  .rad__verktoy,.rad__mer{flex-wrap:wrap}
-  /* Her står sidehandlingene på en egen linje. Skjult ville den linja
-     bare vært et tomt hull i raden, så de vises alltid. */
-  .rad__mer{opacity:1}
+  /* Verktøyene må også få bryte, så ingenting skyves ut over kanten
+     og klippes bort av kortet. */
+  .rad__verktoy{flex-wrap:wrap}
+}
+/* Med detaljpanelet ved siden av er listen en navigator: panelet har
+   alle handlingene, så radene viser bare hvem, hva og når, på én linje
+   hver. Knappene tas ut først når listen er for smal til å bære dem
+   ved siden av teksten; på en bred skjerm blir de stående. */
+@media (min-width:1100px){
+  @container liste (max-width:760px){
+    .har-detalj .rad{--dato:48px;grid-template-columns:var(--dato) minmax(0,1fr) auto;row-gap:0;padding:9px 14px 9px 17px}
+    .har-detalj .rad__verktoy{display:none}
+    .har-detalj .rad__hoyre{grid-column:auto;padding-left:0;flex-wrap:nowrap;gap:8px}
+    .har-detalj .rad__om{min-width:0;text-align:right}
+    .har-detalj .rad__selskap,.har-detalj .rad__und{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .har-detalj .rad__selskap{overflow:hidden}
+  }
 }
 /* Berøringsmål hører til pekeren, ikke til bredden: en trang liste på en
    mus-skjerm trenger ikke 44px, en bred liste på nettbrett gjør det. */
@@ -976,6 +1241,9 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
   .handling,.handling--stille{min-height:44px;padding:10px 13px}
   .handling--stille{padding:10px 11px}
   .nav__post,.nyknapp,.sidelenke{min-height:44px}
+  .rad__meny,.rad:hover .rad__meny:not(:hover),.rad:focus-within .rad__meny:not(:hover){width:44px;height:44px}
+  .meny__valg,.steg__utgang,.detalj__fane{min-height:44px}
+  .detalj__lukk{width:44px;height:44px}
   .bruker__ut{width:44px;height:44px}
   /* Knappene i skuffen er de eneste igjen som ikke nådde fingermålet. */
   .knapp,.modus__knapp{min-height:44px}

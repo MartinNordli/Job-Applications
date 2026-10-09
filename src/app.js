@@ -8,10 +8,13 @@ import { importerFraLenke, TRINN } from "./import.js";
 import * as Jobbdokumenter from "./jobbdokumenter.js";
 import * as Økt from "./okt.js";
 import { krevØkt, krevØktIgjen, portenStår } from "./innlogging.js";
-import { åpneBrevflate } from "./brevflate.js";
 import * as Varsling from "./varsling.js";
 import { DAGVALG } from "./fristvarsel.mjs";
 import { medStatus, synkSendt, tidslinje, dagerSidenSendt, medianSvartid, svartidDager, utenSvarOver } from "./hendelser.mjs";
+import * as F from "./formater.js";
+import { esc, MND, MND_K, tilDato, tilIso, antall, monogram, langDato, kortDatoMnd } from "./formater.js";
+import { lagDetaljpanel } from "./detaljpanel.js";
+import { lagMeny } from "./radmeny.js";
 
 const NOKKEL = "jobbsoknader-2027";
 window.__jobbsoknaderKjorer = true;   /* se fallback-skriptet i index.html */
@@ -36,7 +39,6 @@ let angre = null, angreTid = null;
 
 const $  = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
-const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 const nyId = () => "s" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
 
@@ -61,36 +63,36 @@ function fraNettleser(){
    opp raske endringer og skriver hele dokumentet til kontoens jobber.json. */
 function lagre(){ Lagring.lagre(data); }
 
+/* Detaljpanelet og «⋯»-menyen eier sin egen DOM og sine egne taster.
+   Alt de trenger fra listen, får de her, så de aldri leser modultilstanden
+   direkte. Funksjonene er hoistet, så rekkefølgen i filen spiller ingen rolle. */
+let lastet = false;
+const panel = lagDetaljpanel({
+  jobb: id => data.find(p => p.id === id) || null,
+  harData: () => lastet,
+  iDag: () => I_DAG,
+  settStatus: (id, ny) => settStatus(id, ny),
+  lagreNotat: (id, tekst) => lagreNotat(id, tekst),
+  rediger: id => apneSkuff("rediger", id),
+  slett: id => slett(id),
+  varsle: (tekst, angreFn) => varsle(tekst, angreFn),
+  brukernavn: () => brukeren?.navn || "",
+  skuffErÅpen: () => $("#skuff").classList.contains("er-apen"),
+  påLagring: fn => Lagring.påTilstand(fn),
+  etterEndring: () => oppdaterInert(),
+  tilListen: () => $("#sidetittel")
+});
+const meny = lagMeny({ valg: id => menyvalg(id) });
+
 /* ============================================================
    3. Datohjelpere
    ============================================================ */
-const DAGER  = ["søn.","man.","tir.","ons.","tor.","fre.","lør."];
-const MND    = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
-const MND_K  = ["jan","feb","mar","apr","mai","jun","jul","aug","sep","okt","nov","des"];
-
-const tilDato = iso => { const [a,m,d] = iso.split("-").map(Number); return new Date(a, m-1, d); };
-const tilIso  = dt  => dt.getFullYear() + "-" + String(dt.getMonth()+1).padStart(2,"0") + "-" + String(dt.getDate()).padStart(2,"0");
-const dagerTil = iso => Math.round((tilDato(iso) - I_DAG) / 86400000);
-
-function hast(iso){
-  if(!iso) return "ingen";
-  const d = dagerTil(iso);
-  if(d < 0)  return "forbi";
-  if(d <= 7) return "naa";
-  if(d <= 21) return "snart";
-  return "senere";
-}
-function kortDato(iso){ const d = tilDato(iso); return String(d.getDate()).padStart(2,"0") + "." + String(d.getMonth()+1).padStart(2,"0"); }
-function ukedag(iso){ return DAGER[tilDato(iso).getDay()]; }
-function omTekst(iso){
-  const d = dagerTil(iso);
-  if(d === 0) return "i dag";
-  if(d === 1) return "i morgen";
-  if(d === -1) return "i går";
-  if(d < 0) return Math.abs(d) + " dager siden";
-  return "om " + d + " dager";
-}
-function langDato(iso){ const d = tilDato(iso); return d.getDate() + ". " + MND[d.getMonth()]; }
+/* Hjelperne står i formater.js og tar dagen inn. Her bindes de til
+   appens egen klokke, som byttes ved midnatt. */
+const dagerTil = iso => F.dagerTil(iso, I_DAG);
+const hast     = iso => F.hast(iso, I_DAG);
+const omTekst  = iso => F.omTekst(iso, I_DAG);
+const ukedag   = F.ukedag;
 
 /* ISO-ukenummer, mandag som ukestart */
 function ukeStart(dt){ const d = new Date(dt); const v = (d.getDay() + 6) % 7; d.setDate(d.getDate() - v); return d; }
@@ -130,13 +132,6 @@ function sorterFrist(a, b){
 /* ============================================================
    5. Jobbraden — datokolonne, innhold, handlinger
    ============================================================ */
-/* Tegn foran ordet teller ikke: «Abakus (Webcom og Bedcom)» skal bli
-   AW, ikke A(. */
-function monogram(navn){
-  const ord = navn.trim().split(/\s+/).map(o => o.replace(/^[^\p{L}\p{N}]+/u, "")).filter(Boolean);
-  if(ord.length > 1) return (ord[0][0] + ord[1][0]).toUpperCase();
-  return (ord[0] || navn.trim()).slice(0, 2).toUpperCase();
-}
 
 /* Kolonnen hver rad starter med viser det som faktisk skiller radene i
    visningen du står i: fristen under Frister, selskapet under Sendt og
@@ -170,7 +165,6 @@ function datoHtml(p){
    - En sendt søknad teller fra sendtdatoen.
    - Eldre søknader uten dato får ingen tekst. Kolonnen står like bred
      uansett, så raden flytter seg ikke, og et anslag ville vært gjetning. */
-function kortDatoMnd(iso){ const d = tilDato(iso); return d.getDate() + ". " + MND_K[d.getMonth()]; }
 
 function ventetekst(p){
   const iDag = tilIso(I_DAG);
@@ -230,42 +224,64 @@ function radHtml(p){
   const om = '<span class="rad__om"' + (omHast ? ' data-hast="' + omHast + '"' : "")
            + (omKommer ? ' data-kommer=""' : "") + '>' + omTxt + '</span>';
 
-  let hoved = "";
-  if(p.status === "todo")           hoved = '<button class="handling" data-gjor="sent" data-id="' + p.id + '">Merk sendt</button>';
-  else if(p.status === "sent")      hoved = '<button class="handling" data-gjor="interview" data-id="' + p.id + '">Fikk intervju</button>';
-  else if(p.status === "interview") hoved = '<button class="handling" data-gjor="accepted" data-id="' + p.id + '">Fikk tilbud</button>';
-  else                              hoved = '<button class="handling" data-gjor="todo" data-id="' + p.id + '">Gjenåpne</button>';
+  const hoved = '<button class="handling handling--hoved" data-gjor="' + HOVEDSTEG[p.status].til + '" data-id="' + p.id + '">'
+              + HOVEDSTEG[p.status].tekst + '</button>';
 
-  /* Sideveier ut av løpet. Vises bare der de gir mening, så raden
-     ikke fylles opp med knapper som ikke angår den. */
-  const sidevei = [];
-  if(p.status === "sent" || p.status === "interview"){
-    sidevei.push('<button class="handling handling--stille handling--fare" data-gjor="rejected" data-id="' + p.id + '">Avslag</button>');
-    sidevei.push('<button class="handling handling--stille" data-gjor="trukket" data-id="' + p.id + '">Trukket</button>');
-  }
-  if(p.status === "todo" && p.frist && dagerTil(p.frist) < 0){
-    sidevei.push('<button class="handling handling--stille" data-gjor="expired" data-id="' + p.id + '">Marker som utløpt</button>');
-  }
-  const avslag = sidevei.join("");
+  /* Den valgte raden er den detaljpanelet viser. */
+  const valgt = panel.valgtId() === p.id;
 
-  return '<article class="rad" data-id="' + p.id + '"'
+  /* Selskapsnavnet er en ekte lenke til panelet, så Enter, midtklikk og
+     «åpne i ny fane» virker som venter. Resten av raden åpner det samme
+     med et vanlig klikk (se klikklytteren). Sidehandlingene ligger bak
+     «⋯»: de brukes sjelden, og en knapperad som dukker opp ved hover
+     flyttet både blikket og raden. Høyrekolonnen har faste bredder, så
+     knappene står i samme kolonne i alle rader og alle bånd. */
+  return '<article class="rad' + (valgt ? ' er-valgt' : '') + '" data-id="' + p.id + '"'
+    + (valgt ? ' aria-current="true"' : '')
     + (radHast ? ' data-hast="' + radHast + '"' : '') + '>'
     + datoHtml(p)
     + '<div class="rad__hoved">'
-      + '<div class="rad__selskap">' + esc(p.selskap) + '</div>'
+      + '<a class="rad__selskap" href="#jobb/' + p.id + '/oversikt">' + esc(p.selskap) + '</a>'
       + '<span class="rad__und">' + stilling + metaHtml + '</span>'
     + '</div>'
-    + '<div class="rad__hoyre">' + om + merke
+    + '<div class="rad__hoyre">' + merke + om
       + '<div class="rad__verktoy"><button class="handling handling--brev" data-gjor="brev" data-id="' + p.id + '">Søknadsbrev</button>' + hoved
-        + '<div class="rad__mer">' + avslag
-          + '<button class="handling handling--stille" data-gjor="rediger" data-id="' + p.id + '">Rediger</button>'
-          + '<button class="handling handling--stille handling--fare" data-gjor="slett" data-id="' + p.id + '">Slett</button>'
-        + '</div>'
+        + '<button class="handling rad__meny" type="button" data-meny="' + p.id + '" aria-haspopup="menu" aria-expanded="false"'
+        + ' aria-label="Flere valg for ' + esc(p.selskap) + '">' + PRIKKER + '</button>'
       + '</div>'
     + '</div></article>';
 }
 
-const antall = (n, ent, fl) => n + " " + (n === 1 ? ent : fl);
+/* Hovedhandlingen følger statusen. */
+const HOVEDSTEG = {
+  todo:      { til: "sent",      tekst: "Merk sendt" },
+  sent:      { til: "interview", tekst: "Fikk intervju" },
+  interview: { til: "accepted",  tekst: "Fikk tilbud" },
+  accepted:  { til: "todo",      tekst: "Gjenåpne" },
+  rejected:  { til: "todo",      tekst: "Gjenåpne" },
+  trukket:   { til: "todo",      tekst: "Gjenåpne" },
+  expired:   { til: "todo",      tekst: "Gjenåpne" }
+};
+const PRIKKER = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">'
+  + '<circle cx="3.5" cy="8" r="1.35" fill="currentColor"/><circle cx="8" cy="8" r="1.35" fill="currentColor"/>'
+  + '<circle cx="12.5" cy="8" r="1.35" fill="currentColor"/></svg>';
+
+/* Valgene bak «⋯», i den rekkefølgen de står. Sideveiene ut av løpet
+   vises bare der de gir mening. */
+function menyvalg(id){
+  const p = data.find(x => x.id === id);
+  if(!p) return [];
+  const valg = [{ gjor: "rediger", tekst: "Rediger" }];
+  if(p.status === "sent" || p.status === "interview"){
+    valg.push({ gjor: "rejected", tekst: "Fikk avslag" });
+    valg.push({ gjor: "trukket",  tekst: "Trakk søknaden" });
+  }
+  if(p.status === "todo" && p.frist && dagerTil(p.frist) < 0)
+    valg.push({ gjor: "expired", tekst: "Marker som utløpt" });
+  valg.push({ gjor: "slett", tekst: "Slett", fare: true, skille: true });
+  return valg;
+}
+
 
 /* «Løpende» betyr opptak uten frist. En frist som har gått ut er noe
    helt annet, og skal ikke telles som løpende. */
@@ -649,6 +665,10 @@ function tegn(){
   const steder = Array.from(new Set(data.flatMap(p => (p.sted || "").split("/").map(s => s.trim()).filter(Boolean))))
     .sort((a, b) => a.localeCompare(b, "no"));
   fyllVelg("#filtSted", steder.map(s => [s, s]), filtSted, "Alle steder");
+
+  /* Står panelet åpent, følger det søknaden: ny status, nytt notat eller
+     endringer fra skuffen. Er søknaden slettet, lukker det seg. */
+  panel.oppdater();
 }
 
 function fyllVelg(sel, par, valgt, forste){
@@ -689,7 +709,6 @@ const SKUFFTITTEL = {
 
 /* Hva skuffen skal gjøre når den lukkes, og hvor fokus skal tilbake. */
 let bekreftelse = null, fokusFor = null, fokusTid = null;
-let brevflate = null;
 
 const FOKUSERBARE = 'a[href],summary,button:not([disabled]):not([tabindex="-1"]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 /* Listen er kommaseparert, og «#skuff » foran hele strengen ville bare
@@ -705,28 +724,41 @@ function synligFokus(el){
   return getComputedStyle(el).visibility !== "hidden";
 }
 
-/* Alt utenom dialogen og sløret settes inert mens skuffen står åpen.
-   Det holder ikke å bare ta skallet: varselet ligger utenfor det, og
-   angreknappen i det kunne ellers stjele fokus ut av dialogen. */
-function baksideInert(pa){
+/* Hva som er inert, regnes ut ett sted, fra to modale lag: skuffen
+   over alt, og detaljpanelet når det står som ark over listen. Lå
+   regelen hos hver av dem, ville skuffen som lukkes over arket ha
+   gjort listen bak arket levende igjen.
+
+   Mens skuffen står, er alt utenom den, sløret og varselet inert.
+   Varselet også: angreknappen i det kunne ellers stjele fokus ut av
+   dialogen. Står arket alene, er det sidepanelet og listen som sover,
+   mens arket, varselet og skuffen (lukket og usynlig) er utenfor. */
+function oppdaterInert(){
+  const skuff = $("#skuff").classList.contains("er-apen");
+  const ark = !skuff && panel.erModal();
+  const sett = (el, på) => { if(på) el.setAttribute("inert", ""); else el.removeAttribute("inert"); };
   Array.from(document.body.children).forEach(el => {
-    if(el.id === "skuff" || el.id === "slor" || el.id === "varsel") return;
-    if(pa) el.setAttribute("inert", ""); else el.removeAttribute("inert");
+    if(["skuff", "slor", "varsel"].includes(el.id)) return;
+    if(el.classList.contains("skall")){
+      sett(el, skuff);
+      if(!skuff) Array.from(el.children).forEach(barn => sett(barn, ark && barn.id !== "detalj"));
+      return;
+    }
+    sett(el, skuff || (ark && el.id !== "detaljSlor" && el.id !== "port"));
   });
   const v = $("#varsel");
-  if(pa) v.setAttribute("inert", "");
+  if(skuff) v.setAttribute("inert", "");
   else if(v.classList.contains("er-apen")) v.removeAttribute("inert");
 }
 
 function apneSkuff(hva, id){
-  if(brevflate){ brevflate.rydd(); brevflate = null; }
-  $("#skuff").classList.toggle("skuff--brev", hva === "brev");
+  meny.lukk();
   redigerer = id ? data.find(p => p.id === id) : null;
   if(hva === "rediger")   skuffModus = "skjema";
   else if(hva === "ny")   skuffModus = nyModus;
   else                    skuffModus = hva;
 
-  $("#skuffTittel").textContent = hva === "brev" ? "Søknadsbrev" : redigerer ? "Rediger søknad"
+  $("#skuffTittel").textContent = redigerer ? "Rediger søknad"
     : skuffModus === "gjenopprett" ? (filErOdelagt ? "Datafilen kan ikke leses" : "Datafilen mangler")
     : (SKUFFTITTEL[skuffModus] || "Legg til søknad");
   tegnSkuff();
@@ -735,7 +767,7 @@ function apneSkuff(hva, id){
   $("#skuff").classList.add("er-apen");
   $("#skuff").setAttribute("aria-hidden", "false");
   $("#slor").classList.add("er-apen");
-  baksideInert(true);
+  oppdaterInert();
   /* Lukkes skuffen før dette rekker å kjøre, skal fokus bli der
      brukeren satte det — ikke hoppe inn i en skjult dialog. */
   clearTimeout(fokusTid);
@@ -746,15 +778,8 @@ function apneSkuff(hva, id){
   }, 60);
 }
 
-function lukkSkuff(tvang = false){
+function lukkSkuff(){
   if(!$("#skuff").classList.contains("er-apen")) return;
-  if(brevflate && tvang !== true){
-    const denne = brevflate;
-    denne.lukk().then(ok => { if(ok && brevflate === denne) lukkSkuff(true); });
-    return;
-  }
-  if(brevflate){ brevflate.rydd(); brevflate = null; }
-  $("#skuff").classList.remove("skuff--brev");
   clearTimeout(fokusTid);
   /* Lukkes et valg uten at det ble tatt, står lagringen fortsatt sperret.
      Da må det stå noe på skjermen — ellers ser en tom app helt normal ut. */
@@ -762,14 +787,17 @@ function lukkSkuff(tvang = false){
   $("#skuff").classList.remove("er-apen");
   $("#skuff").setAttribute("aria-hidden", "true");
   $("#slor").classList.remove("er-apen");
-  baksideInert(false);
+  oppdaterInert();
   redigerer = null;
   utkast = null;
   /* Et importsvar som kommer etter dette skal ikke fylle en lukket skuff. */
   hentenr++;
   bekreftelse = null;
-  /* Fokus tilbake dit brukeren kom fra. */
+  /* Fokus tilbake dit brukeren kom fra. Ble det tegnet på nytt mens
+     skuffen sto, og står panelet åpent, er overskriften der det
+     naturlige stedet å lande. */
   if(fokusFor && document.contains(fokusFor)) fokusFor.focus();
+  else if(panel.erÅpen()) panel.fokuser();
   fokusFor = null;
 }
 
@@ -785,16 +813,16 @@ function fokusfelle(e){
 
 function tegnSkuff(){
   const k = $("#skuffKropp"), b = $("#skuffBunn");
-  if(skuffModus === "brev" && redigerer){
-    brevflate = åpneBrevflate({ jobb: redigerer, navn: brukeren?.navn || "", kropp: k, bunn: b, påLukk: () => lukkSkuff(true) });
-    return;
-  }
   if(skuffModus === "eksport"){
     k.innerHTML = '<p class="felt__hjelp" style="margin:0 0 16px">'
       + antall(data.length, "søknad ligger", "søknader ligger") + ' i <code>jobber.json</code> i kontoens katalog.</p>'
+      + annonserHtml()
+      + '<section class="innst" aria-labelledby="startTittel">'
+      + '<p class="merkelinje innst__tittel" id="startTittel">Startlisten</p>'
       + '<div class="felt"><button class="knapp knapp--bred knapp--fare" data-gjor="tilbakestill">Tilbakestill til startlisten</button>'
-      + '<p class="felt__hjelp">Erstatter alt du har lagt inn med de 55 søknadene appen startet med.</p></div>';
+      + '<p class="felt__hjelp">Erstatter alt du har lagt inn med de 55 søknadene appen startet med.</p></div></section>';
     b.innerHTML = '<button class="knapp" data-gjor="lukk">Lukk</button>';
+    tellManglendeAnnonser();
     return;
   }
 
@@ -929,7 +957,11 @@ function tegnSkuff(){
              så tallene husker at søknaden ga intervju. */
           + '<label class="avkrys avkrys--felt"><input type="checkbox" id="fintervju"' + (p.intervju ? " checked" : "") + '> Fikk intervju</label>'
         : "")
-    + felt("notat", "Notat", p.notat, "text", "f.eks. frist kl. 12:00")
+    /* Flere linjer, som i detaljpanelet. Et vanlig tekstfelt ville
+       stille fjernet linjeskiftene derfra ved neste lagring. */
+    + '<div class="felt"><label class="felt__merke" for="fnotat">Notat</label>'
+      + '<textarea class="felt__inn felt__notat" id="fnotat" rows="3" maxlength="1000" placeholder="f.eks. frist kl. 12:00">'
+      + esc(p.notat || "") + '</textarea></div>'
     + (redigerer ? '<div class="brev__inngang"><button class="knapp knapp--bred" type="button" data-gjor="brevFraSkjema" data-id="' + esc(p.id) + '">Skriv søknadsbrev</button><p class="felt__hjelp">Lagre endringene og skriv et brev med CV-en og annonsen som grunnlag.</p></div>' : "");
 }
 
@@ -995,6 +1027,112 @@ function slett(id){
   const [p] = data.splice(i, 1);
   lagre(); tegn();
   varsle("Slettet " + p.selskap + " · " + p.stilling, () => { data.splice(i, 0, p); lagre(); tegn(); });
+}
+/* Notatet fra detaljpanelet, gjennom samme regler og samme lagring som
+   skjemaet. Gir tilbake feilmeldingen når teksten ikke kan lagres. */
+function lagreNotat(id, tekst){
+  const p = data.find(x => x.id === id);
+  if(!p) return "Søknaden finnes ikke lenger.";
+  const sjekk = validerSoknad({ ...p, notat: tekst });
+  if(!sjekk.ok) return sjekk.feil[0].melding;
+  if(p.notat === sjekk.verdi.notat) return null;
+  p.notat = sjekk.verdi.notat;
+  lagre(); tegn();
+  return null;
+}
+
+/* ---- annonsene som mangler ----
+
+   Én stille handling i «Dataene dine», ikke en knapp i listen: den
+   brukes en gang eller to, og den går ut på nettet for mange søknader
+   på én gang. Antallet hentes fra utdraget, så knappen sier hva den
+   vil gjøre før den gjør det. Plassen til tallet står avsatt, så
+   knappen ikke vokser når svaret kommer. */
+let annonsehenting = null;
+function annonserHtml(){
+  return '<section class="innst" aria-labelledby="annonseTittel">'
+    + '<p class="merkelinje innst__tittel" id="annonseTittel">Stillingsannonser</p>'
+    + '<button class="knapp knapp--bred" type="button" id="hentManglende" data-gjor="hentManglende" disabled>'
+      + 'Hent manglende annonser <span class="knapp__tall" id="manglendeTall" aria-hidden="true"></span></button>'
+    + '<p class="henter" id="manglendeTilstand" role="status" aria-live="polite"></p>'
+    + '<p class="felt__hjelp" id="manglendeHjelp">Henter annonsen fra lenken til hver søknad som ikke har en lagret. '
+      + 'Annonser som ligger i et søknadsbrev, flyttes over først.'
+      + (Lagring.I_APP ? '' : ' Nettleserversjonen henter høyst 30 i timen.') + '</p>'
+    + '<div class="oppsummering" id="manglendeSvar" hidden></div></section>';
+}
+
+/* Søknader uten lagret annonse. Utdraget har bare dokumentene som
+   finnes, så en søknad som ikke står der, mangler også. */
+async function manglendeAnnonser(){
+  const utdrag = await Jobbdokumenter.utdrag(["annonse.sjekksum"]);
+  return data.filter(p => !utdrag["jobb-" + p.id + ".json"]?.["annonse.sjekksum"]);
+}
+
+async function tellManglendeAnnonser(){
+  const knapp = $("#hentManglende"), tall = $("#manglendeTall"), tilstand = $("#manglendeTilstand");
+  if(!knapp) return;
+  if(annonsehenting){
+    knapp.disabled = true;
+    tilstand.textContent = annonsehenting;
+    return;
+  }
+  try{
+    const mangler = await manglendeAnnonser();
+    if(!knapp.isConnected) return;
+    tall.textContent = mangler.length ? "(" + mangler.length + ")" : "";
+    knapp.setAttribute("aria-label", "Hent manglende annonser, " + antall(mangler.length, "søknad", "søknader"));
+    knapp.disabled = !mangler.length;
+    if(!mangler.length) $("#manglendeHjelp").textContent = "Alle søknadene har en lagret annonse.";
+  }catch(e){
+    if(!knapp.isConnected || e?.code === "utlogget") return;
+    tilstand.textContent = "Fikk ikke sjekket hvilke annonser som mangler";
+  }
+}
+
+async function hentManglende(){
+  const knapp = $("#hentManglende");
+  if(!knapp || annonsehenting) return;
+  const profil = brukeren?.id;
+  let mangler;
+  try{ mangler = await manglendeAnnonser(); }
+  catch(e){ if(e?.code !== "utlogget") varsle("Fikk ikke sjekket hvilke annonser som mangler"); return; }
+  if(!mangler.length) return tellManglendeAnnonser();
+  annonsehenting = "Henter " + antall(mangler.length, "annonse", "annonser") + ". Det kan ta et minutt.";
+  knapp.disabled = true;
+  $("#manglendeTilstand").textContent = annonsehenting;
+  $("#manglendeSvar").hidden = true;
+  let svar = null, feil = null;
+  try{ svar = await Jobbdokumenter.hentManglendeAnnonser({ ider: mangler.map(p => p.id) }); }
+  catch(e){ feil = e; }
+  annonsehenting = null;
+  if(profil !== brukeren?.id || feil?.code === "utlogget") return;
+  const st = $("#manglendeTilstand");
+  if(st) st.textContent = "";
+  if(feil){
+    varsle(feil.melding || "Fikk ikke hentet annonsene");
+    return tellManglendeAnnonser();
+  }
+  const navn = id => esc(data.find(p => p.id === id)?.selskap || "Slettet søknad");
+  const deler = [];
+  if(svar.hentet.length)  deler.push("hentet " + svar.hentet.length);
+  if(svar.fraBrev.length) deler.push(svar.fraBrev.length + " fra brevet");
+  if(svar.feilet.length)  deler.push(svar.feilet.length + " feilet");
+  varsle(deler.length ? "Annonser: " + deler.join(", ") : "Ingen nye annonser");
+  panel.oppdaterDokument();
+  const el = $("#manglendeSvar");
+  if(!el) return;
+  const linjer = [];
+  if(svar.hentet.length)  linjer.push('<p>' + antall(svar.hentet.length, "annonse hentet", "annonser hentet") + ' fra lenken.</p>');
+  if(svar.fraBrev.length) linjer.push('<p>' + antall(svar.fraBrev.length, "annonse flyttet", "annonser flyttet") + ' fra søknadsbrevet.</p>');
+  if(svar.utenLenke.length) linjer.push('<p>' + antall(svar.utenLenke.length, "søknad har", "søknader har")
+    + ' ingen lenke. Lim inn annonsen fra søknaden.</p>');
+  if(svar.stoppet === "for-mange") linjer.push('<p>Stoppet ved taket på 30 i timen. '
+    + antall(svar.gjenstar.length, "søknad gjenstår", "søknader gjenstår") + '. Prøv igjen senere.</p>');
+  if(svar.feilet.length) linjer.push('<p>Disse lot seg ikke hente:</p><ul>'
+    + svar.feilet.map(f => '<li><b>' + navn(f.id) + '</b> ' + esc(f.melding) + '</li>').join("") + '</ul>');
+  el.innerHTML = linjer.join("") || '<p>Ingen nye annonser å hente.</p>';
+  el.hidden = false;
+  tellManglendeAnnonser();
 }
 /* Hvilket felt en feilmelding hører til, så fokus havner riktig sted. */
 const FELT_TIL_INN = {
@@ -1349,6 +1487,23 @@ if(Lagring.I_APP){
   });
 }
 
+/* Raden åpner detaljpanelet. Knapper, lenker og menyen i raden gjør
+   sitt eget, og den som drar for å merke tekst, skal få merke den.
+   Selskapsnavnet er en ekte lenke: et vanlig klikk tas her, så panelet
+   får styre historikken selv, mens midtklikk og Cmd-klikk åpner en
+   direktelenke i ny fane som før. */
+document.addEventListener("click", e => {
+  const rad = e.target.closest && e.target.closest("#innhold .rad");
+  if(!rad || e.defaultPrevented) return;
+  const lenke = e.target.closest("a");
+  if(lenke && !lenke.classList.contains("rad__selskap")) return;
+  if(e.target.closest("button,input,select,textarea,summary")) return;
+  if(lenke && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0)) return;
+  if(!lenke && String(getSelection?.() || "").trim() && rad.contains(getSelection().anchorNode)) return;
+  e.preventDefault();
+  panel.åpne(rad.dataset.id, { fra: rad.querySelector(".rad__selskap") });
+});
+
 document.addEventListener("click", e => {
   const t = e.target.closest("[data-gjor],[data-modus],[data-visning],#neste,#apneNy,#lukkSkuff,#apneEksport,#apneInnstillinger,#nullstill,#lagreSkjema,#hentLenke,#loggUt");
   if(!t) return;
@@ -1374,7 +1529,7 @@ document.addEventListener("click", e => {
 
   const g = t.dataset.gjor, id = t.dataset.id;
   if(g === "lukk") lukkSkuff();
-  else if(g === "brev") apneSkuff("brev", id);
+  else if(g === "brev") panel.åpne(id, { fane: "brev", fra: t });
   else if(g === "brevFraSkjema"){
     lagreSkjema();
     if(!$("#skuff").classList.contains("er-apen")){
@@ -1382,10 +1537,11 @@ document.addEventListener("click", e => {
       Lagring.nåMedEnGang().then(() => {
         if(profil !== brukeren?.id || $("#skuff").classList.contains("er-apen")) return;
         if(Lagring.harUlagret()) return varsle("Jobbendringene er ikke lagret ennå. Prøv igjen når lagringen er ferdig.");
-        apneSkuff("brev", id);
+        panel.åpne(id, { fane: "brev" });
       });
     }
   }
+  else if(g === "hentManglende") hentManglende();
   else if(g === "rediger") apneSkuff("rediger", id);
   else if(g === "slett") slett(id);
   else if(g === "arkiverUtgatte") arkiverUtgatte();
@@ -1450,10 +1606,14 @@ document.addEventListener("keydown", e => {
   /* Porten eier tastaturet mens den står. Uten dette ville «n» åpnet
      skuffen og «/» flyttet fokus ut i en app brukeren ikke er inne i. */
   if(portenStår()) return;
-  if(e.key === "Escape"){ lukkSkuff(); return; }
-  /* Brevflaten har egne native knapper og flerlinjefelt. Enter skal
-     aldri falle gjennom til lagring av et vanlig jobbskjema. */
-  if(skuffModus === "brev" && $("#skuff").classList.contains("er-apen")) return;
+  /* Esc lukker det øverste laget og bare det: menyen tar sin egen
+     (se radmeny.js), så skuffen, og til sist detaljpanelet. */
+  if(e.key === "Escape"){
+    if(e.defaultPrevented) return;
+    if($("#skuff").classList.contains("er-apen")) lukkSkuff();
+    else if(panel.erÅpen()) panel.lukk();
+    return;
+  }
   const iFelt = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
   if(iFelt){
     /* Enter gjør det modusen handler om. Uten dette ville Enter i
@@ -1468,7 +1628,8 @@ document.addEventListener("keydown", e => {
   if(e.metaKey || e.ctrlKey || e.altKey) return;
   if($("#skuff").classList.contains("er-apen")) return;   /* dialogen eier tastaturet */
   if(e.key === "n"){ e.preventDefault(); apneSkuff("ny"); }
-  if(e.key === "/"){ e.preventDefault(); $("#sok").focus(); }
+  /* Søkefeltet ligger bak arket på smal skjerm. */
+  if(e.key === "/" && !panel.erModal()){ e.preventDefault(); $("#sok").focus(); }
 });
 
 /* ============================================================
@@ -1701,7 +1862,8 @@ function loggUt(){
    bortfall, ikke én gang per kall — det er okt.js som passer på det. */
 Økt.påUtlogget(async melding => {
   if(portenStår()) return;
-  lukkSkuff(true);
+  lukkSkuff();
+  panel.lukk({ tvang: true });
   /* Et varsel med «Angre» skal ikke bli stående bak låsen: knappen er
      inert, og en handling du ikke kan ta er verre enn ingen. */
   clearTimeout(angreTid);
@@ -1772,6 +1934,8 @@ async function hentData(){
       data = svar.jobber || [];
       if(svar.advarsel) varsle(svar.advarsel);
     }
+    /* Først nå vet panelet om en direktelenke peker på noe som finnes. */
+    lastet = true;
   }catch(e){
     data = [];
     /* I begge tilfellene vet vi ikke hva som ligger på disk. Da skal
