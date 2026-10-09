@@ -1,13 +1,19 @@
 /* ============================================================
-   Nett — de to utgående operasjonene importen trenger, i Node.
+   Nett: de utgående operasjonene i Node. Siden importen henter,
+   modellen, og JSON-en Radar henter fra kjente kilder.
 
-   Speiles av src-tauri/src/lib.rs for appmodus. Alt over dette
-   laget er rene regler i src/importlogikk.mjs; her nede finnes
-   bare henting, og vernet som må følge med den.
+   Speiles av src-tauri/src/nett.rs for appmodus. Alt over dette
+   laget er rene regler i src/importlogikk.mjs og src/radarnett.mjs;
+   her nede finnes bare henting, og vernet som må følge med den.
    ============================================================ */
 
 import dns from "node:dns/promises";
+import fs from "node:fs/promises";
+import https from "node:https";
+import path from "node:path";
 import { sjekkLenke } from "../src/felles.mjs";
+import { sjekkJsonAdresse, erJsonType, hodeverdi, tolkNavToken, tidsgrenseFor,
+         MAKS_JSON, MAKS_TOKEN, NAV_TOKENFIL, NAV_TOKENURL } from "../src/radarnett.mjs";
 import { NOKKELFIL, lesEgenNokkel, miljønokkel } from "./nokkel.mjs";
 
 const MAKS_SIDE   = 2 * 1024 * 1024;
@@ -164,11 +170,162 @@ export async function lesNokkel({ katalog, tillatMiljø = false } = {}){
     `Ingen API-nøkkel. Legg inn din egen under «Dataene dine», eller legg den i ${NOKKELFIL} i din egen katalog.`);
 }
 
-/* Samler de to operasjonene slik lagLager samler filoperasjonene.
-   Katalogen følger nå kallet og ikke modulen: hvilken bruker som
-   importerer avgjøres per forespørsel, ikke ved oppstart. */
+/* ---------- hent JSON for Radar ---------- */
+/*
+   Reglene står i src/radarnett.mjs og gjelder både her og i Rust.
+   Her er bare det som må gjøres med en ekte tilkobling.
+
+   DNS låses: vertsnavnet slås opp én gang, alle adressene sjekkes, og
+   tilkoblingen får den sjekkede adressen gjennom `lookup`. Uten det
+   kunne et nytt oppslag mellom sjekken og koblingen gitt et annet
+   svar. Det er samme grep som .resolve() i nett.rs. Uten
+   videresendinger er det ett oppslag per kall.
+
+   NAV-tokenet: et privat token i nav-token.txt i profilens katalog
+   brukes hvis filen finnes, og ellers det offentlige, som hentes ved
+   behov og holdes i minnet. Det offentlige roterer etter rundt 86
+   minutter uten at exp sier fra, så et 401 gir ett nytt token og ett
+   nytt forsøk. Et privat token som avvises, gir en feil og ikke et
+   stille bytte til det offentlige: da ville brukeren aldri fått vite
+   at tokenet de registrerte, har sluttet å virke.
+*/
+async function standardOppslag(vert){
+  return dns.lookup(vert, { all: true });
+}
+
+async function låsAdresse(vert, slåOpp){
+  let treff;
+  try{ treff = await slåOpp(vert); }
+  catch{ throw new Error("Fant ikke serveren for den adressen."); }
+  if(!Array.isArray(treff) || !treff.length) throw new Error("Fant ikke serveren for den adressen.");
+  if(treff.some(t => erIntern(t?.address))) throw new Error("Adressen peker til et internt nett.");
+  return { address: treff[0].address, family: treff[0].family === 6 ? 6 : 4 };
+}
+
+/* Én GET til en låst adresse. Svaret kommer med en kropp som leses i
+   biter, så taket gjelder det som faktisk kommer inn. */
+function httpsForespørsel({ url, hoder, adresse, signal }){
+  return new Promise((ok, feil) => {
+    const req = https.request(url, {
+      method: "GET", headers: hoder, signal,
+      lookup: (_vert, valg, svar) => valg?.all
+        ? svar(null, [adresse])
+        : svar(null, adresse.address, adresse.family)
+    }, res => ok({ status: res.statusCode, hoder: res.headers, kropp: res }));
+    req.on("error", feil);
+    req.end();
+  });
+}
+
+class Takfeil extends Error {}
+async function lesMedHardtTak(kropp, tak, melding){
+  const biter = [];
+  let n = 0;
+  for await (const bit of kropp ?? []){
+    n += bit.length;
+    if(n > tak){ kast(kropp); throw new Takfeil(melding); }
+    biter.push(Buffer.from(bit));
+  }
+  return Buffer.concat(biter).toString("utf8");
+}
+function kast(kropp){ try{ kropp?.destroy?.(); }catch{ /* ingenting å rydde */ } }
+
+/* slåOpp og forespør er injisert, så testene kan prøve hver regel
+   uten å gå ut på nettet. */
+export function lagHentJson({ slåOpp = standardOppslag, forespør = httpsForespørsel } = {}){
+  let offentligToken = null;
+  const forSent = kilde => `Kilden svarte ikke innen ${tidsgrenseFor(kilde) / 1000} sekunder.`;
+
+  async function send(u, kilde, hoder){
+    const adresse = await låsAdresse(u.hostname, slåOpp);
+    const signal = AbortSignal.timeout(tidsgrenseFor(kilde));
+    try{
+      const svar = await forespør({ url: u, hoder: { "Accept": "application/json", "User-Agent": AGENT, ...hoder }, adresse, signal });
+      return { ...svar, signal };
+    }catch(e){
+      throw new Error(signal.aborted || e?.name === "TimeoutError" ? forSent(kilde) : "Fikk ikke kontakt med kilden.");
+    }
+  }
+
+  async function lesKropp(svar, tak, melding, kilde){
+    try{ return await lesMedHardtTak(svar.kropp, tak, melding); }
+    catch(e){
+      if(e instanceof Takfeil) throw new Error(e.message);
+      throw new Error(svar.signal?.aborted ? forSent(kilde) : "Mistet forbindelsen mens svaret ble lest.");
+    }
+  }
+
+  async function nyttOffentligToken(){
+    offentligToken = null;
+    const svar = await send(sjekkJsonAdresse(NAV_TOKENURL, "nav"), "nav", { "Accept": "text/plain" });
+    if(svar.status === 404){ kast(svar.kropp); throw new Error("NAV har ikke et offentlig token akkurat nå. Radar prøver igjen senere."); }
+    if(svar.status !== 200){ kast(svar.kropp); throw new Error(`NAV svarte ${svar.status} på tokenet.`); }
+    const token = tolkNavToken(await lesKropp(svar, MAKS_TOKEN, "Tokenet fra NAV var for langt.", "nav"));
+    if(!token) throw new Error("NAV svarte ikke med et gyldig token.");
+    return (offentligToken = token);
+  }
+
+  /* null: ingen fil. Finnes filen uten et gyldig token, stopper vi
+     heller enn å bruke et annet enn det brukeren la der. */
+  async function privatToken(katalog){
+    if(!katalog) return null;
+    let tekst;
+    try{ tekst = await fs.readFile(path.join(katalog, NAV_TOKENFIL), "utf8"); }
+    catch(e){ if(e?.code === "ENOENT") return null; throw new Error(`Kunne ikke lese ${NAV_TOKENFIL}.`); }
+    const token = tolkNavToken(tekst.slice(0, MAKS_TOKEN));
+    if(!token) throw new Error(`${NAV_TOKENFIL} har ikke et gyldig token.`);
+    return token;
+  }
+
+  return async function hentJson(url, { kilde, etag = null, sistEndret = null, katalog = null } = {}){
+    const u = sjekkJsonAdresse(url, kilde);
+    const hoder = {};
+    const e = hodeverdi(etag), s = hodeverdi(sistEndret, 64);
+    if(e) hoder["If-None-Match"] = e;
+    if(s) hoder["If-Modified-Since"] = s;
+
+    let svar;
+    if(kilde === "nav"){
+      const privat = await privatToken(katalog);
+      const token = privat ?? offentligToken ?? await nyttOffentligToken();
+      svar = await send(u, kilde, { ...hoder, "Authorization": `Bearer ${token}` });
+      if(svar.status === 401){
+        kast(svar.kropp);
+        if(privat) throw new Error(`NAV avviste tokenet i ${NAV_TOKENFIL}.`);
+        svar = await send(u, kilde, { ...hoder, "Authorization": `Bearer ${await nyttOffentligToken()}` });
+        if(svar.status === 401){
+          kast(svar.kropp); offentligToken = null;
+          throw new Error("NAV avviste tokenet. Radar prøver igjen senere.");
+        }
+      }
+    }else{
+      svar = await send(u, kilde, hoder);
+    }
+
+    const h = svar.hoder ?? {};
+    const nyEtag = hodeverdi(h.etag), nySist = hodeverdi(h["last-modified"], 64);
+    if(svar.status === 304){
+      kast(svar.kropp);
+      return { status: 304, json: null, etag: nyEtag ?? e, sistEndret: nySist ?? s };
+    }
+    if(svar.status >= 300 && svar.status < 400){ kast(svar.kropp); throw new Error("Kilden sendte oss videre. Det følger ikke Radar."); }
+    if(svar.status !== 200){ kast(svar.kropp); throw new Error(`Kilden svarte ${svar.status}.`); }
+    if(!erJsonType(h["content-type"])){ kast(svar.kropp); throw new Error("Kilden svarte ikke med JSON."); }
+
+    const tekst = await lesKropp(svar, MAKS_JSON, "Svaret fra kilden er større enn 5 MiB.", kilde);
+    let json;
+    try{ json = JSON.parse(tekst); }catch{ throw new Error("Kilden svarte med ugyldig JSON."); }
+    return { status: 200, json, etag: nyEtag, sistEndret: nySist };
+  };
+}
+
+/* Samler operasjonene slik lagLager samler filoperasjonene.
+   Katalogen følger kallet og ikke modulen: hvilken bruker som
+   importerer avgjøres per forespørsel, ikke ved oppstart. Hver
+   lagNett() har sitt eget minne for NAV-tokenet. */
 export function lagNett(){
-  return { hentSide, spørModell: (kropp, valg) => spørModell(kropp, valg) };
+  const hentJson = lagHentJson();
+  return { hentSide, hentJson, spørModell: (kropp, valg) => spørModell(kropp, valg) };
 }
 
 /* Verdt ett nytt forsøk: køen er full, eller noe er nede et øyeblikk.

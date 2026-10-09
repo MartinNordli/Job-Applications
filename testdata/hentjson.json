@@ -1,0 +1,45 @@
+{
+  "om": "Reglene for hentJson. Leses av server/hentjson.test.mjs og av testene i src-tauri/src/nett.rs, så Node og Rust ikke glir fra hverandre.",
+  "adresser": [
+    { "url": "https://pam-stilling-feed.nav.no/api/v1/feed?last", "kilde": "nav", "ok": true },
+    { "url": "https://pam-stilling-feed.nav.no/api/v1/feedentry/017e7926-8903-4902-8b27-f774a6ee05e6", "kilde": "nav", "ok": true },
+    { "url": "https://PAM-STILLING-FEED.NAV.NO/api/v1/feed", "kilde": "nav", "ok": true },
+    { "url": "https://publicapi.jobbnorge.no/v3/jobs?orderby=Published&period=Day&results=50&page=0", "kilde": "jobbnorge", "ok": true },
+    { "url": "https://boards-api.greenhouse.io/v1/boards/cognite/jobs", "kilde": "greenhouse", "ok": true },
+    { "url": "https://api.lever.co/v0/postings/bekk?mode=json", "kilde": "lever", "ok": true },
+    { "url": "http://pam-stilling-feed.nav.no/api/v1/feed", "kilde": "nav", "ok": false, "om": "bare https" },
+    { "url": "https://publicapi.jobbnorge.no/v3/jobs", "kilde": "nav", "ok": false, "om": "verten hører til en annen kilde" },
+    { "url": "https://pam-stilling-feed.nav.no.example.com/api", "kilde": "nav", "ok": false, "om": "verten som prefiks" },
+    { "url": "https://evil.pam-stilling-feed.nav.no/api", "kilde": "nav", "ok": false, "om": "underdomene" },
+    { "url": "https://pam-stilling-feed.nav.no:8443/api", "kilde": "nav", "ok": false, "om": "annen port" },
+    { "url": "https://bruker:passord@api.lever.co/v0/postings/bekk", "kilde": "lever", "ok": false, "om": "brukernavn i adressen" },
+    { "url": "https://127.0.0.1/api", "kilde": "nav", "ok": false, "om": "rå IP" },
+    { "url": "https://api.lever.co/v0/postings/bekk", "kilde": "teamtailor", "ok": false, "om": "ukjent kilde" },
+    { "url": "https://api.lever.co/v0/postings/bekk", "kilde": "__proto__", "ok": false, "om": "prototypenøkkel som kilde" },
+    { "url": "file:///etc/passwd", "kilde": "nav", "ok": false, "om": "fil" },
+    { "url": "ikke en adresse", "kilde": "nav", "ok": false, "om": "tull" }
+  ],
+  "typer": [
+    { "type": "application/json", "ok": true },
+    { "type": "application/json; charset=utf-8", "ok": true },
+    { "type": "Application/JSON;charset=UTF-8", "ok": true },
+    { "type": "", "ok": false },
+    { "type": "text/html", "ok": false },
+    { "type": "text/plain;charset=utf-8", "ok": false },
+    { "type": "application/json-seq", "ok": false },
+    { "type": "application/jsonp", "ok": false },
+    { "type": "text/json", "ok": false },
+    { "type": "application/rss+xml; charset=utf-8", "ok": false }
+  ],
+  "tokens": [
+    { "tekst": "Current public token for Nav Job Vacancy Feed:\neyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJuYXYtbm8ifQ.FALSK-SIGNATUR\n", "token": "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJuYXYtbm8ifQ.FALSK-SIGNATUR" },
+    { "tekst": "Current public token for Nav Job Vacancy Feed:\r\n  eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJuYXYtbm8ifQ.FALSK_SIGNATUR  \r\n\r\n", "token": "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJuYXYtbm8ifQ.FALSK_SIGNATUR" },
+    { "tekst": "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJuYXYtbm8ifQ.FALSK", "token": "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJuYXYtbm8ifQ.FALSK" },
+    { "tekst": "Public token is not currently available", "token": null },
+    { "tekst": "", "token": null },
+    { "tekst": "Current public token:\nabc.def.ghi\r\nX-Injisert: ja", "token": null },
+    { "tekst": "Current public token:\nabc.def", "token": null },
+    { "tekst": "Current public token:\nabc.def.ghi jkl", "token": null },
+    { "tekst": "Current public token:\nabc.d+f.ghi", "token": null }
+  ]
+}
