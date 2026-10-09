@@ -941,6 +941,9 @@ code{font-family:var(--mono);font-size:.86em;background:var(--innfelt-2);
   /* Verktøyene må også få bryte. Ellers ble «Rediger» og «Slett»
      skjøvet ut over kanten og klippet bort av kortet. */
   .rad__verktoy,.rad__mer{flex-wrap:wrap}
+  /* Her står sidehandlingene på en egen linje. Skjult ville den linja
+     bare vært et tomt hull i raden, så de vises alltid. */
+  .rad__mer{opacity:1}
 }
 /* Berøringsmål hører til pekeren, ikke til bredden: en trang liste på en
    mus-skjerm trenger ikke 44px, en bred liste på nettbrett gjør det. */
