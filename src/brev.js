@@ -126,6 +126,12 @@ export const eksporterData=()=>I_APP?lokal().eksporter():http("/api/brevdata");
 export const importerData=d=>I_APP?lokal().importer(d):http("/api/brevdata",{method:"POST",body:d});
 export const gjenopprettCv=()=>I_APP?lokal().gjenopprettCv():http("/api/cv/gjenopprett",{method:"POST"});
 export const gjenopprettBrev=id=>I_APP?lokal().gjenopprettBrev(id):http(sti(id)+"/gjenopprett",{method:"POST"});
+/* Stilreferansen: et brev brukeren selv har skrevet, som nye brev skal
+   ligne i tone og form. Ett per profil, i stil.json. */
+export const hentStil=()=>I_APP?lokal().hentStil():http("/api/stil");
+export const lagreStil=d=>I_APP?lokal().lagreStil(d):http("/api/stil",{method:"PUT",body:d});
+export const slettStil=revisjon=>I_APP?lokal().slettStil(revisjon):http("/api/stil",{method:"DELETE",body:{revisjon}});
+export const gjenopprettStil=()=>I_APP?lokal().gjenopprettStil():http("/api/stil/gjenopprett",{method:"POST"});
 /* Utgått: brevflaten bruker denne til brevet får annonsen fra
    jobbdokumentet. Nye kall går til hentAnnonse(id) i jobbdokumenter.js,
    som henter fra søknadens lenke og lagrer i jobb-<id>.json. */
@@ -139,37 +145,56 @@ const opprett=async(id,inn,signal)=>I_APP?lokal().opprett(id,inn):(await http(st
 /* Fasehendelsen eies av transporten på begge sider. Over HTTP sender serveren
    den; i appen er det ingen strøm foran oss, så den lages her. Begge veier
    gjelder det samme: fase alltid først, også når trinnet gjenopptas. */
-function trinn(id,kid,trinnnavn,svar,{signal,melder}){
-  if(!I_APP) return strøm(sti(id)+`/kjoringer/${kid}/trinn`,{body:{trinn:trinnnavn,svar},signal,
+function trinn(id,kid,trinnnavn,{signal,melder}){
+  if(!I_APP) return strøm(sti(id)+`/kjoringer/${kid}/trinn`,{body:{trinn:trinnnavn},signal,
     påFase:d=>melder.fase(d),påDelta:(tekst,om)=>melder.delta(tekst,om)});
   melder.fase({trinn:trinnnavn,fase:FASE[trinnnavn],nullstill:true});
-  return lokal().trinn(id,kid,trinnnavn,svar,{signal,påDelta:tekst=>melder.delta(tekst,{trinn:trinnnavn})});
+  return lokal().trinn(id,kid,trinnnavn,undefined,{signal,påDelta:tekst=>melder.delta(tekst,{trinn:trinnnavn})});
+}
+/* Resten av en kjøring, fra der den står. Et trinn som allerede er gjort
+   koster ikke et nytt modellkall: tjenesten svarer med det lagrede
+   resultatet, og fasen meldes likevel, så flaten kan merke steget ferdig. */
+async function fullfør(id,k,{signal,melder}){
+  if(!k.analyse)await trinn(id,k.id,"analyse",{signal,melder});
+  if(signal?.aborted)throw new Brevfeil("avbrutt","Skrivingen ble avbrutt.");
+  await trinn(id,k.id,"skriv",{signal,melder});
+  if(signal?.aborted)throw new Brevfeil("avbrutt","Skrivingen ble avbrutt.");
+  return (await trinn(id,k.id,"kontroller",{signal,melder})).dokument;
 }
 export const avbryt=(id,kid)=>I_APP?lokal().avbryt(id,kid):http(sti(id)+`/kjoringer/${kid}/avbryt`,{method:"POST",body:{}});
-export async function analyser(id,{signal,...meldinger}={}){
+/* Skriv utkast: analyse, skriving og kontroll i ett kall. Fasene kommer
+   i påFase ({trinn, fase, nullstill}) og teksten underveis i påDelta
+   (tekst, {trinn}). Svaret er det ferdige brevdokumentet. Står det en
+   kjøring som ble avbrutt mellom trinnene, fortsetter den der den
+   stoppet i stedet for å starte på nytt. */
+export async function lagUtkast(id,{signal,...meldinger}={}){
   const v=vakt(signal,meldinger);
   let k;
-  try{k=await opprett(id,{},signal);const r=await trinn(id,k.id,"analyse",{},{signal,melder:v});return {id:k.id,analyse:r.kjoring.analyse,dokument:r.dokument};}
+  try{k=await opprett(id,{},signal);return await fullfør(id,k,{signal,melder:v});}
   catch(e){if(signal?.aborted&&k)await avbryt(id,k.id).catch(()=>{});throw e;}
   finally{v.steng();}
 }
-export async function skriv(id,kid,svar={}, {signal,...meldinger}={}){
-  const v=vakt(signal,meldinger);
-  try{
-    await trinn(id,kid,"skriv",svar,{signal,melder:v});
-    if(signal?.aborted)throw new Brevfeil("avbrutt","Skrivingen ble avbrutt.");
-    const r=await trinn(id,kid,"kontroller",{},{signal,melder:v});return r.dokument;
-  }catch(e){if(signal?.aborted)await avbryt(id,kid).catch(()=>{});throw e;}
-  finally{v.steng();}
-}
+/* Lag ny versjon ut fra teksten som står nå og brukerens instruks. */
 export async function forbedre(id,instruks,{signal,...meldinger}={}){
   const v=vakt(signal,meldinger);
   let k;
-  try{
-    k=await opprett(id,{instruks},signal);
-    if(!k.analyse)await trinn(id,k.id,"analyse",{},{signal,melder:v});
-    return await skriv(id,k.id,k.svar||{},{signal,...meldinger});
-  }catch(e){if(signal?.aborted&&k)await avbryt(id,k.id).catch(()=>{});throw e;}
+  try{k=await opprett(id,{instruks},signal);return await fullfør(id,k,{signal,melder:v});}
+  catch(e){if(signal?.aborted&&k)await avbryt(id,k.id).catch(()=>{});throw e;}
+  finally{v.steng();}
+}
+/** @deprecated Bruk lagUtkast. Står til brevflaten er skrevet om. */
+export async function analyser(id,{signal,...meldinger}={}){
+  const v=vakt(signal,meldinger);
+  let k;
+  try{k=await opprett(id,{},signal);const r=await trinn(id,k.id,"analyse",{signal,melder:v});return {id:k.id,analyse:r.kjoring.analyse,dokument:r.dokument};}
+  catch(e){if(signal?.aborted&&k)await avbryt(id,k.id).catch(()=>{});throw e;}
+  finally{v.steng();}
+}
+/** @deprecated Bruk lagUtkast. Svarene brukes ikke lenger. Står til brevflaten er skrevet om. */
+export async function skriv(id,kid,_svar={}, {signal,...meldinger}={}){
+  const v=vakt(signal,meldinger);
+  try{return await fullfør(id,{id:kid,analyse:true},{signal,melder:v});}
+  catch(e){if(signal?.aborted)await avbryt(id,kid).catch(()=>{});throw e;}
   finally{v.steng();}
 }
 export const nokkelStatus=leverandor=>I_APP?invoke("brev_nokkel_status",{bruker:bruker(),leverandor}):http(`/api/nokler/${leverandor}`);

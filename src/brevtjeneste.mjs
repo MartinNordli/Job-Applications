@@ -1,18 +1,49 @@
-import { Brevfeil, brevfil, validerCv, validerBrev, validerDokument, harInnhold } from "./brevdata.mjs";
+/* ============================================================
+   Brevtjenesten: CV, stilreferanse, brev og kjøringene som skriver
+   dem. HTTP-rutene og appen bruker den samme kjeden.
+
+   En kjøring går gjennom tre trinn: analyse (klar → analyserer →
+   venter), skriving (venter → skriver → skrevet) og kontroll
+   (skrevet → kontrollerer → ferdig). Tilstandsnavnene er de samme som
+   da brevskriveren stilte spørsmål, så gamle dokumenter leses som før.
+   «venter» betyr nå bare at analysen er ferdig og skrivingen er neste.
+
+   Annonsen hentes fra jobb-<id>.json gjennom annonseFor. Står det ingen
+   annonse der, brukes annonsen i brevdokumentet, som var stedet den lå
+   før søknaden fikk sitt eget dokument.
+   ============================================================ */
+import { Brevfeil, brevfil, jobbfil, validerCv, validerStil, validerBrev, validerDokument, harInnhold } from "./brevdata.mjs";
 import { dokumenttype } from "./dokumentnavn.mjs";
 import { analyserGrunnlag, skrivUtkast, kontrollerUtkast, validerGrunnlag, PROMPTVERSJON, FASE } from "./brevlogikk.mjs";
+import { SEKTORER, JOBBTYPER } from "./felles.mjs";
 
 const aktive = new Set(Object.values(FASE));
+/* Ikke i gang, men heller ikke ferdig. En slik kjøring kan fortsettes. */
+const VENTENDE = new Set(["klar","venter","skrevet"]);
 const klon = v => structuredClone(v);
 const tidspunkt = () => new Date().toISOString();
-const kildefelt = d => ({ annonse:d.annonse.tekst,kontekst:d.kontekst,sprak:d.sprak,leverandor:d.leverandor });
-const sammeKilder = (a,b) => ["cv","annonse","kontekst","sprak","leverandor"].every(k => String(a?.[k]??"").trim() === String(b?.[k]??"").trim());
+/* Det modellen får vite om søknaden fra listen. Kodene blir til ord. */
+const jobbfelt = j => ({ selskap:j?.selskap??"",stilling:j?.stilling??"",sted:j?.sted??"",
+  jobbtype:Object.hasOwn(JOBBTYPER,j?.jobbtype??"")?JOBBTYPER[j.jobbtype]:"",
+  sektor:Object.hasOwn(SEKTORER,j?.sektor??"")?SEKTORER[j.sektor]:"" });
+const likt = (a,b) => JSON.stringify(a??null) === JSON.stringify(b??null);
+const sammeKilder = (a,b) => ["cv","annonse","sprak","leverandor"].every(k => String(a?.[k]??"").trim() === String(b?.[k]??"").trim())
+  && likt(a?.jobb,b?.jobb);
 
-const SIKKERHETSKOPI = 2;
-const TYPER_I_KOPI = { 1:["cv","brev"], 2:["cv","brev","jobb","radar"] };
+const SIKKERHETSKOPI = 3;
+const TYPER_I_KOPI = { 1:["cv","brev"], 2:["cv","brev","jobb","radar"], 3:["cv","stil","brev","jobb","radar"] };
 
-/* Kjøringene lagres sammen med brevet. HTTP og Tauri bruker denne kjeden. */
-export function lagBrevtjeneste({lager,kallModell,hentJobb,lagId = () => crypto.randomUUID()}){
+/* annonseFor(jobbId) gir annonseteksten for søknaden, eller tom tekst.
+   Den er injisert så annonsen kan komme fra et annet sted uten at
+   tjenesten endres. Et objekt med tekst godtas også. */
+export function lagBrevtjeneste({lager,kallModell,hentJobb,annonseFor,lagId = () => crypto.randomUUID()}){
+  const finnAnnonse = annonseFor ?? (async id => (await lager.les(jobbfil(id))).annonse?.tekst ?? "");
+  async function annonsen(id){
+    const a = await finnAnnonse(id);
+    return typeof a === "string" ? a : (typeof a?.tekst === "string" ? a.tekst : "");
+  }
+  /* Kildene slik de er nå, i samme form som et grunnlag. */
+  const gjeldende = (d,{cv,jobb,fraJobb}) => ({ cv:cv.tekst,annonse:fraJobb.trim()?fraJobb:d.annonse.tekst,jobb:jobbfelt(jobb),sprak:d.sprak,leverandor:d.leverandor });
   const avbrudd = new Map();
   const les = id => lager.les(brevfil(id));
   async function endre(id, fn){
@@ -30,6 +61,8 @@ export function lagBrevtjeneste({lager,kallModell,hentJobb,lagId = () => crypto.
   }
   async function hentCv(){ return lager.les("cv.json"); }
   async function lagreCv(d){ return lager.skriv("cv.json",validerCv(d),d.revisjon); }
+  async function hentStil(){ return lager.les("stil.json"); }
+  async function lagreStil(d){ return lager.skriv("stil.json",validerStil(d),d?.revisjon); }
   async function hentBrev(id){ await sjekkJobb(id); return les(id); }
   async function lagreBrev(id,inn){
     await sjekkJobb(id);
@@ -39,20 +72,32 @@ export function lagBrevtjeneste({lager,kallModell,hentJobb,lagId = () => crypto.
     d.kjoring = før.kjoring;
     return lager.skriv(brevfil(id),d,inn.revisjon);
   }
+  /* Uten instruks er dette «Skriv utkast», med instruks «Lag ny versjon».
+     Står det en ventende kjøring for den samme forespørselen, fortsetter
+     den i stedet for å starte på nytt: en kjøring som ble stående i
+     «venter» går da rett til skriving, og ingen betaler for analysen
+     to ganger. En kjøring som er i gang, eller som ble startet for en
+     annen forespørsel, må avbrytes først. */
   async function opprett(id,{instruks=""}={}){
     const jobb = await sjekkJobb(id);
     if(typeof instruks!=="string" || instruks.length>4000) throw new Brevfeil("ugyldig","Forbedringsinstruksjonen kan ha høyst 4 000 tegn.");
-    const cv = await hentCv();
+    // Å fortsette endrer ingenting, så det skrives heller ingenting.
+    const før = (await les(id)).kjoring;
+    if(VENTENDE.has(før?.status) && (før.instruks||"")===instruks) return klon(før);
+    const [cv,stil,fraJobb] = await Promise.all([hentCv(),hentStil(),annonsen(id)]);
     let kjørt;
     await endre(id,d => {
-      if(aktive.has(d.kjoring?.status) || ["klar","venter","skrevet"].includes(d.kjoring?.status)) throw new Brevfeil("opptatt","Et utkast er allerede under arbeid. Avbryt det før du starter på nytt.",409);
+      const k = d.kjoring;
+      if(aktive.has(k?.status) || VENTENDE.has(k?.status)) throw new Brevfeil("opptatt","Et utkast er allerede under arbeid. Avbryt det før du starter på nytt.",409);
+      const kilder = gjeldende(d,{cv,jobb,fraJobb});
+      if(!kilder.cv.trim()) throw new Brevfeil("ugyldig-grunnlag","Legg til CV-en din før du skriver brevet.");
+      if(!kilder.annonse.trim()) throw new Brevfeil("ugyldig-grunnlag","Søknaden mangler annonsen. Hent den eller lim den inn før du skriver brevet.");
       const aktivVersjon=d.versjoner.find(v=>v.id===d.aktivVersjon);
       const historikk=instruks?(aktivVersjon?.historikk||[]):[];
-      const grunnlag = validerGrunnlag({cv:cv.tekst,...kildefelt(d),stilling:jobb.stilling,selskap:jobb.selskap,historikk});
-      const avstamning=aktivVersjon?.analyse?aktivVersjon:(d.kjoring?.resultatId===d.aktivVersjon?d.kjoring:null);
+      const grunnlag = validerGrunnlag({...kilder,historikk,stilreferanse:stil.tekst});
+      const avstamning=aktivVersjon?.analyse?aktivVersjon:(k?.resultatId===d.aktivVersjon?k:null);
       const gjenbruk = !!instruks && avstamning?.analyse && sammeKilder(avstamning.grunnlag,grunnlag);
-      const forrigeSvar = instruks ? (avstamning?.svar || {}) : {};
-      kjørt = {id:lagId(),status:gjenbruk?"venter":"klar",opprettet:tidspunkt(),grunnlag,cvRevisjon:cv.revisjon,utgangspunkt:d.tekst,instruks,analyse:gjenbruk?avstamning.analyse:null,svar:forrigeSvar,utkast:null};
+      kjørt = {id:lagId(),status:gjenbruk?"venter":"klar",opprettet:tidspunkt(),grunnlag,cvRevisjon:cv.revisjon,utgangspunkt:d.tekst,instruks,analyse:gjenbruk?avstamning.analyse:null,utkast:null};
       d.kjoring = kjørt;
       return d;
     });
@@ -65,7 +110,9 @@ export function lagBrevtjeneste({lager,kallModell,hentJobb,lagId = () => crypto.
       return d;
     });
   }
-  async function trinn(id,kid,trinnnavn,svar={}, {signal,påDelta}={}){
+  /* Det fjerde argumentet var svarene på avklaringsspørsmålene. Det
+     tas fortsatt imot, så en eldre klient ikke feiler, men brukes ikke. */
+  async function trinn(id,kid,trinnnavn,_svar, {signal,påDelta}={}){
     await sjekkJobb(id);
     const ventet = {analyse:"klar",skriv:"venter",kontroller:"skrevet"};
     const status = FASE;
@@ -81,11 +128,6 @@ export function lagBrevtjeneste({lager,kallModell,hentJobb,lagId = () => crypto.
     await endre(id,d => {
       if(d.kjoring?.id!==kid || d.kjoring.status!==ventet[trinnnavn]) throw new Brevfeil("opptatt","Dette skrivetrinnet er allerede startet eller avbrutt.",409);
       d.kjoring.status=status[trinnnavn];
-      if(trinnnavn==="skriv"){
-        if(!svar || typeof svar!=="object" || Array.isArray(svar) || JSON.stringify(svar).length>6000) throw new Brevfeil("ugyldig","Svarene kan til sammen ha høyst 6 000 tegn.");
-        for(const v of Object.values(svar)) if(typeof v!=="string" || v.length>6000) throw new Brevfeil("ugyldig","Hvert svar kan ha høyst 6 000 tegn.");
-        d.kjoring.svar={...d.kjoring.svar,...svar};
-      }
       k=klon(d.kjoring); return d;
     });
     const controller = new AbortController();
@@ -99,10 +141,11 @@ export function lagBrevtjeneste({lager,kallModell,hentJobb,lagId = () => crypto.
       // kontrollen kan forkaste en tekst som allerede er strømmet ferdig.
       const valg = {kallModell,signal:controller.signal,...(typeof påDelta==="function"?{påDelta}:{})};
       if(trinnnavn==="analyse") resultat=await analyserGrunnlag(k.grunnlag,valg);
-      if(trinnnavn==="skriv") resultat=await skrivUtkast(k.grunnlag,k.analyse,k.svar,{...valg,tekst:k.utgangspunkt,instruks:k.instruks});
-      if(trinnnavn==="kontroller") resultat=await kontrollerUtkast(k.grunnlag,k.analyse,k.svar,k.utkast,valg);
+      if(trinnnavn==="skriv") resultat=await skrivUtkast(k.grunnlag,k.analyse,{...valg,tekst:k.utgangspunkt,instruks:k.instruks});
+      if(trinnnavn==="kontroller") resultat=await kontrollerUtkast(k.grunnlag,k.analyse,k.utkast,valg);
       if(controller.signal.aborted) throw new Brevfeil("avbrutt","Skrivingen ble avbrutt.",409);
-      const cv = await hentCv();
+      // Kildene slik de er nå, for å se om brukeren har endret noe mens modellen skrev.
+      const nå = trinnnavn==="kontroller" ? {cv:await hentCv(),jobb:await hentJobb(id),fraJobb:await annonsen(id)} : null;
       const dokument = await endre(id,d => {
         if(d.kjoring?.id!==kid || d.kjoring.status!==status[trinnnavn]) throw new Brevfeil("avbrutt","Kjøringen er avbrutt. Eksisterende brev er beholdt.",409);
         if(trinnnavn==="analyse"){ d.kjoring.analyse=resultat; d.kjoring.status="venter"; }
@@ -111,9 +154,9 @@ export function lagBrevtjeneste({lager,kallModell,hentJobb,lagId = () => crypto.
           if(d.versjoner.length>=99) throw new Brevfeil("for-mange","Eksporter og rydd historikken før du lager flere versjoner.");
           // Bevar den manuelle teksten også når ingen generert versjon inneholder den.
           if(d.tekst && !d.versjoner.some(v=>v.tekst===d.tekst)) d.versjoner.push({...d.versjoner.find(v=>v.id===d.aktivVersjon),id:lagId(),tekst:d.tekst,opprettet:tidspunkt(),sprak:d.kjoring.analyse.sprak,manuell:true});
-          const v={id:lagId(),tekst:resultat.tekst,sprak:resultat.sprak,opprettet:tidspunkt(),grunnlag:k.grunnlag,analyse:k.analyse,svar:k.svar,instruks:k.instruks,historikk:[...(k.grunnlag.historikk||[]),...(k.instruks?[k.instruks]:[])],leverandor:k.grunnlag.leverandor,modell:resultat.modell || k.analyse.modell,promptversjon:PROMPTVERSJON,merknader:resultat.merknader || [],bruk:[k.analyse.bruk,k.utkast.bruk,resultat.bruk].filter(Boolean)};
+          const v={id:lagId(),tekst:resultat.tekst,sprak:resultat.sprak,opprettet:tidspunkt(),grunnlag:k.grunnlag,analyse:k.analyse,instruks:k.instruks,historikk:[...(k.grunnlag.historikk||[]),...(k.instruks?[k.instruks]:[])],leverandor:k.grunnlag.leverandor,modell:resultat.modell || k.analyse.modell,promptversjon:PROMPTVERSJON,merknader:resultat.merknader || [],bruk:[k.analyse.bruk,k.utkast.bruk,resultat.bruk].filter(Boolean)};
           d.versjoner.push(v);
-          const uendret=d.tekst===k.utgangspunkt && sammeKilder({...kildefelt(d),cv:cv.tekst},k.grunnlag);
+          const uendret=d.tekst===k.utgangspunkt && sammeKilder(gjeldende(d,nå),k.grunnlag);
           if(uendret){d.tekst=v.tekst;d.aktivVersjon=v.id;}
           d.kjoring.status="ferdig";d.kjoring.resultatId=v.id;d.kjoring.nyttForslag=!uendret;
           d.kjoring.utkast=null;
@@ -132,10 +175,10 @@ export function lagBrevtjeneste({lager,kallModell,hentJobb,lagId = () => crypto.
       throw e;
     }finally{avbrudd.delete(kid);signal?.removeEventListener("abort",av);}
   }
-  /* Sikkerhetskopien. Versjon 2 har med jobbdokumentene og radar.json,
-     versjon 1 bare CV og brev. Begge kan gjenopprettes, men en fil som
-     sier versjon 1 og har andre dokumenter i seg, er ikke det den sier
-     den er, og avvises. */
+  /* Sikkerhetskopien. Versjon 3 har med stilreferansen, versjon 2
+     jobbdokumentene og radar.json, og versjon 1 bare CV og brev. Alle
+     kan gjenopprettes, men en fil som sier en versjon og har dokumenter
+     den versjonen ikke kjenner, er ikke det den sier den er, og avvises. */
   async function eksporter(){
     const dokumenter={};
     for(const n of await lager.liste()){
@@ -163,5 +206,6 @@ export function lagBrevtjeneste({lager,kallModell,hentJobb,lagId = () => crypto.
     catch(e){for(const [n,r] of lagret) await lager.slett(n,r).catch(()=>{});throw e;}
     return {antall:lagret.length};
   }
-  return {hentCv,lagreCv,slettCv:r=>lager.slett("cv.json",r),hentBrev,lagreBrev,opprett,trinn,avbryt,eksporter,importer,slettBrev:(id,r)=>lager.slett(brevfil(id),r),gjenopprettCv:()=>lager.gjenopprett("cv.json"),gjenopprettBrev:id=>lager.gjenopprett(brevfil(id))};
+  return {hentCv,lagreCv,slettCv:r=>lager.slett("cv.json",r),gjenopprettCv:()=>lager.gjenopprett("cv.json"),
+    hentStil,lagreStil,slettStil:r=>lager.slett("stil.json",r),gjenopprettStil:()=>lager.gjenopprett("stil.json"),hentBrev,lagreBrev,opprett,trinn,avbryt,eksporter,importer,slettBrev:(id,r)=>lager.slett(brevfil(id),r),gjenopprettBrev:id=>lager.gjenopprett(brevfil(id))};
 }

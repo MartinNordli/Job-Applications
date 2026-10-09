@@ -9,8 +9,9 @@ import { delSse } from "../src/brev-strom.mjs";
 import { lagBrevlager } from "./brevlager.mjs";
 import { sjekksum } from "../src/jobbdokument.mjs";
 
-const analyse = () => ({sprak:"nb",begrunnelse:"Bokmål i annonsen.",sporsmal:[{id:"q1",tekst:"Hva ved stillingen motiverer deg?"}],krav:[],bevis:[],uklarheter:[],maAvklares:false});
-const brev = () => ({tekst:"Jeg søker stillingen som rådgiver.",sprak:"nb",merknader:[],pastander:[],maAvklares:false});
+const analyse = () => ({sprak:"nb",begrunnelse:"Bokmål i annonsen.",kontaktperson:"",krav:[],bevis:[],virksomhet:[],uklarheter:[],merknader:[],maAvklares:false});
+const BREV = "Til rekrutteringsteamet i Eksempelbedrift,\n\nJeg søker stillingen som rådgiver.\n\nMed vennlig hilsen\nAlfa Eksempel";
+const brev = () => ({tekst:BREV,sprak:"nb",merknader:[],pastander:[],maAvklares:false});
 const rad = {id:"j1",selskap:"Eksempelbedrift",stilling:"Rådgiver",lenke:"https://example.invalid/jobb",sted:"Oslo",frist:null,status:"todo",sektor:"annet",notat:"",sendtDato:null};
 const sti="/api/jobber/j1/brev";
 async function start(t,callback){
@@ -67,7 +68,7 @@ async function start(t,callback){
 async function grunnlag(api,navn="Alfa"){
   let r=await api("/api/jobber","PUT",{versjon:0,jobber:[rad]});assert.equal(r.status,200);
   r=await api("/api/cv");r=await api("/api/cv","PUT",{...r.data,tekst:`${navn} Eksempel. Erfaring fra kundeservice.`});assert.equal(r.status,200);
-  r=await api(sti);r=await api(sti,"PUT",{...r.data,kontekst:`Kontekst for ${navn}.`,annonse:{tekst:"Eksempelbedrift søker rådgiver.",url:"",hentet:null}});assert.equal(r.status,200);
+  r=await api(sti);r=await api(sti,"PUT",{...r.data,annonse:{tekst:"Eksempelbedrift søker rådgiver.",url:"",hentet:null}});assert.equal(r.status,200);
   return r.data;
 }
 async function steg(api,kid,trinn,svar){return api.strøm(`${sti}/kjoringer/${kid}/trinn`,{trinn,...(svar?{svar}:{})});}
@@ -90,13 +91,13 @@ test("to profiler har separate CV-er, brev, kjøringer, eksport og nøkkelstatus
   const fremmed=await steg(beta,k.id,"analyse");assert.equal(fremmed.status,409);assert.equal(kall.length,0);
   assert.equal(fremmed.data.feil,"konflikt");
   assert.equal((await steg(api,k.id,"analyse")).status,200);assert.equal(kall.length,1);
-  assert.match(JSON.parse(kall[0].innhold).grunnlag.cv,/Alfa/);
+  assert.match(JSON.parse(kall[0].kilder).kilder.cv,/Alfa/);
   const eksport=await beta("/api/brevdata");const serialisert=JSON.stringify(eksport.data);
   assert.match(serialisert,/Beta/);assert.doesNotMatch(serialisert,/Alfa/);assert.equal(serialisert.includes(nokkel),false);
   assert.equal((await api("/api/nokler/openai","DELETE",{})).status,200);
   assert.equal((await api("/api/nokler/openai")).data.finnes,false);
 });
-test("HTTP-kjeden tåler gjenhenting, valgfrie svar, redigering og revisjon",async t=>{
+test("HTTP-kjeden tåler gjenhenting, redigering og revisjon",async t=>{
   const {api,kall}=await start(t);await grunnlag(api);
   const k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
   assert.equal((await steg(api,k.id,"skriv")).status,409);
@@ -145,7 +146,7 @@ test("trinn-endepunktet er en strøm: fase først, så deltaer, så én avslutni
   assert.deepEqual(kt.faser,[{trinn:"kontroller",fase:"kontrollerer",nullstill:true}]);
   assert.equal(kt.data.dokument.versjoner.length,1);
   // Deltaene blir aldri brevtekst. Bare det ferdige dokumentet er teksten.
-  assert.equal(kt.data.dokument.tekst,"Jeg søker stillingen som rådgiver.");
+  assert.equal(kt.data.dokument.tekst,BREV);
   assert.equal(kall.length,3);
 });
 test("et gjenopptatt trinn gir fase uten deltaer og koster ikke et nytt kall",async t=>{
@@ -174,7 +175,7 @@ test("en modellfeil midt i strømmen lar brevet stå urørt",async t=>{
   let k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
   await steg(api,k.id,"analyse");await steg(api,k.id,"skriv",{});await steg(api,k.id,"kontroller");
   const før=(await api(sti)).data;
-  assert.equal(før.tekst,"Jeg søker stillingen som rådgiver.");
+  assert.equal(før.tekst,BREV);
   feile=true;
   k=(await api(`${sti}/kjoringer`,"POST",{instruks:"Kortere."})).data.kjoring;
   const r=await steg(api,k.id,"skriv",{});
@@ -300,11 +301,13 @@ test("utdraget svarer med de stiene det ble bedt om, for alle jobbdokumentene",a
   assert.equal((await api("/api/jobbdokumenter")).status,404);
   assert.equal((await api("/api/jobbdokumenter/annet")).status,404);
 });
-test("sikkerhetskopien over HTTP er versjon 2 og har med jobbdokumentet",async t=>{
+test("sikkerhetskopien over HTTP er versjon 3 og har med jobbdokumentet og stilreferansen",async t=>{
   const {api}=await start(t);await grunnlag(api);
   await api(dsti,"PUT",{...(await api(dsti)).data,annonse:{tekst:"Annonse til kopien."}});
+  assert.equal((await api("/api/stil","PUT",{revisjon:0,tekst:"Et eget brev."})).status,200);
   const r=await api("/api/brevdata");
-  assert.equal(r.data.skjemaVersjon,2);
+  assert.equal(r.data.skjemaVersjon,3);
+  assert.equal(r.data.dokumenter["stil.json"].tekst,"Et eget brev.");
   assert.equal(r.data.dokumenter["jobb-j1.json"].annonse.tekst,"Annonse til kopien.");
   const konflikt=await api("/api/brevdata","POST",r.data);
   assert.equal(konflikt.status,409);
@@ -333,4 +336,49 @@ test("en uventet filsystemfeil gir en generell melding uten sti, og en referanse
   const konflikt=await api(dsti,"PUT",{revisjon:0,annonse:{tekst:"Gammel."}});
   assert.equal(konflikt.status,409);assert.equal(konflikt.data.feil,"konflikt");
   assert.match(konflikt.data.melding,/endret i et annet vindu/);
+});
+/* ---------- stilreferansen ---------- */
+
+test("stilreferansen krever økt, hører til én profil og følger revisjonen",async t=>{
+  const {api,registrer,utenOkt,kall}=await start(t);const beta=await registrer("beta@example.no");
+  for(const p of ["/api/stil","/api/stil/gjenopprett"]) assert.equal((await utenOkt(p)).status,401,p);
+  const tom=(await api("/api/stil")).data;
+  assert.deepEqual({tekst:tom.tekst,revisjon:tom.revisjon},{tekst:"",revisjon:0});
+  let r=await api("/api/stil","PUT",{...tom,tekst:"Til rekrutteringsteamet i Testfirma,\n\nKort og konkret.",ukjent:"faller bort"});
+  assert.equal(r.status,200);assert.equal(r.data.revisjon,1);assert.equal(Object.hasOwn(r.data,"ukjent"),false);
+  assert.equal((await beta("/api/stil")).data.tekst,"");
+  const gammel=await api("/api/stil","PUT",{...tom,tekst:"Fra en gammel fane."});
+  assert.equal(gammel.status,409);assert.equal(gammel.data.feil,"konflikt");
+  assert.equal((await api("/api/stil","PUT",{...r.data,tekst:"x".repeat(16001)})).status,400);
+  assert.equal((await api("/api/stil","PUT",{...r.data,tekst:42})).status,400);
+  assert.equal((await api.rå("/api/stil","PUT","{ikke json")).status,400);
+  assert.equal((await api("/api/stil","POST",{})).status,405);
+  assert.equal((await api("/api/stil/gjenopprett","GET")).status,405);
+  // Stilreferansen går med i kildeblokken, aldri som noe modellen kan sitere.
+  await grunnlag(api);
+  const k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
+  assert.equal((await steg(api,k.id,"analyse")).status,200);
+  assert.match(JSON.parse(kall.at(-1).kilder).kilder.stilreferanse,/Testfirma/);
+  assert.equal((await api("/api/stil","DELETE",{revisjon:1})).status,200);
+  const etter=(await api("/api/stil")).data;assert.equal(etter.tekst,"");assert.ok(etter.revisjon>1);
+});
+test("et trinn kjører uten svar i kroppen, og et svar fra en eldre klient ignoreres",async t=>{
+  const {api,kall}=await start(t);await grunnlag(api);
+  const k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
+  assert.equal((await steg(api,k.id,"analyse")).status,200);
+  assert.equal((await steg(api,k.id,"skriv",{q1:"Svar fra en eldre flate."})).status,200);
+  assert.equal((await steg(api,k.id,"kontroller")).status,200);
+  assert.equal(JSON.stringify((await api(sti)).data).includes("eldre flate"),false);
+  assert.equal(kall.some(p=>p.innhold.includes("eldre flate")),false);
+});
+test("en kjøring som ble stående i venter, fortsetter når et nytt utkast startes",async t=>{
+  const {api,kall}=await start(t);await grunnlag(api);
+  const k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
+  assert.equal((await steg(api,k.id,"analyse")).status,200);
+  const igjen=await api(`${sti}/kjoringer`,"POST",{});
+  assert.equal(igjen.status,200);assert.equal(igjen.data.kjoring.id,k.id);assert.equal(igjen.data.kjoring.status,"venter");
+  assert.equal((await api(`${sti}/kjoringer`,"POST",{instruks:"Kortere."})).status,409);
+  assert.equal((await steg(api,k.id,"skriv")).status,200);
+  assert.equal((await steg(api,k.id,"kontroller")).status,200);
+  assert.deepEqual(kall.map(p=>p.trinn),["analyse","skriv","kontroll"]);
 });

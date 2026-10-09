@@ -17,7 +17,7 @@ const ANNONSETAK = { tak: 30, vindu: 60 * 60_000 };
 /* Alt som går til profildokumentene. /api/jobber selv er listen og
    hører til server.mjs; under en søknad er brev og dokument her.
    Utdraget har egen rot, så «utdrag» aldri kan forveksles med en id. */
-export const erBrevbane = p => /^\/api\/(cv(?:\/gjenopprett)?|annonsetekst|brevdata|nokler\/[^/]+|jobbdokumenter\/(?:utdrag|hent-manglende)|jobber\/[^/]+\/(?:brev(?:\/.*)?|dokument(?:\/gjenopprett)?|annonse(?:\/hent)?))$/.test(p);
+export const erBrevbane = p => /^\/api\/(cv(?:\/gjenopprett)?|stil(?:\/gjenopprett)?|annonsetekst|brevdata|nokler\/[^/]+|jobbdokumenter\/(?:utdrag|hent-manglende)|jobber\/[^/]+\/(?:brev(?:\/.*)?|dokument(?:\/gjenopprett)?|annonse(?:\/hent)?))$/.test(p);
 function send(res,status,data){
   res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"});
   res.end(JSON.stringify(data));
@@ -110,6 +110,13 @@ export function lagBrevRuter({nett,modellFor,annonsegrense=lagRatebegrenser(ANNO
       let r;
       if(bane==="/api/cv/gjenopprett"){
         metode(req,"POST");r=await t.gjenopprettCv();
+      }else if(bane==="/api/stil/gjenopprett"){
+        metode(req,"POST");r=await t.gjenopprettStil();
+      }else if(bane==="/api/stil"){
+        metode(req,"GET","PUT","DELETE");
+        if(req.method==="GET")r=await t.hentStil();
+        else if(req.method==="PUT")r=await t.lagreStil(await kropp(req));
+        else {await t.slettStil((await kropp(req)).revisjon);r={ok:true};}
       }else if(/\/brev\/gjenopprett$/.test(bane)){
         metode(req,"POST");r=await t.gjenopprettBrev(bane.split("/")[3]);
       }else if(bane==="/api/cv"){

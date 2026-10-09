@@ -9,16 +9,17 @@ import {lagServer} from "../server/server.mjs";
 const dir=await fs.mkdtemp(path.join(os.tmpdir(),"brev-nettleser-"));
 const cv="Astrid Eksempel. To års erfaring med kundeoppfølging. På biblioteket hjalp jeg besøkende med selvbetjening. Jeg har laget automatiserte kontroller av data i Python.";
 const annonse="Eksempel AS søker kunderådgiver i Oslo. Du skal følge opp bedriftskunder, veilede dem og samarbeide med kollegaer om datakvalitet. Vi ønsker relevant erfaring og tydelig skriftlig formidling. Skriv søknaden på norsk.";
-const brev="Jeg søker stillingen som kunderådgiver hos Eksempel AS med to års erfaring fra kundeoppfølging. Oppgavene dere beskriver gir meg anledning til å bruke denne erfaringen i direkte kontakt med bedriftskundene deres.\n\nPå biblioteket hjalp jeg besøkende med selvbetjeningsløsninger. Arbeidet krevde at jeg tok utgangspunkt i hva den enkelte lurte på og forklarte fremgangsmåten slik at de kunne komme videre. Den erfaringen kan jeg bruke når kundene deres trenger veiledning.\n\nJeg har også laget automatiserte kontroller av data i Python. Dette er relevant for arbeidet med datakvalitet, og gir meg et nyttig grunnlag for å forstå problemene kundene møter og samarbeide med kollegaene som løser dem.\n\nJeg stiller gjerne til en samtale om hvordan bakgrunnen min passer til behovene deres.";
+const brev="Til rekrutteringsteamet i Eksempel AS,\n\nJeg søker stillingen som kunderådgiver hos Eksempel AS med to års erfaring fra kundeoppfølging. Oppgavene dere beskriver gir meg anledning til å bruke denne erfaringen i direkte kontakt med bedriftskundene deres.\n\nPå biblioteket hjalp jeg besøkende med selvbetjeningsløsninger. Arbeidet krevde at jeg tok utgangspunkt i hva den enkelte lurte på og forklarte fremgangsmåten slik at de kunne komme videre. Den erfaringen kan jeg bruke når kundene deres trenger veiledning.\n\nJeg har også laget automatiserte kontroller av data i Python. Dette er relevant for arbeidet med datakvalitet, og gir meg et nyttig grunnlag for å forstå problemene kundene møter og samarbeide med kollegaene som løser dem.\n\nJeg stiller gjerne til en samtale om hvordan bakgrunnen min passer til behovene deres.\n\nMed vennlig hilsen\nAstrid Eksempel";
+const engelsk="Dear Hiring Manager,\n\nI am applying for the customer adviser position with two years of customer support experience.\n\nSincerely,\nAstrid Eksempel";
 let modellfeil=false;
 const kall=[];
 const deltaer=[];
-const server=lagServer({katalog:path.join(dir,"data"),nett:{hentSide:async url=>({html:`<main>${annonse}</main>`,sluttUrl:url})},brevModellFor:()=>async ({trinn,innhold,signal,felt,påDelta})=>{
+const server=lagServer({katalog:path.join(dir,"data"),nett:{hentSide:async url=>({html:`<main>${annonse}</main>`,sluttUrl:url})},brevModellFor:()=>async ({trinn,kilder,signal,felt,påDelta})=>{
   kall.push(trinn);
   // Den syntetiske modellen strømmer feltet i biter, slik den ekte gjør,
   // så forhåndsvisningen i flaten faktisk får noe å vise.
-  const g=JSON.parse(innhold).grunnlag,sprak=g.sprak==="en"?"en":"nb";
-  const strømmes=trinn==="analyse"?"Norsk, som annonsen ber om.":(sprak==="en"?"I am applying for the customer adviser position with two years of customer support experience.":brev);
+  const g=JSON.parse(kilder).kilder,sprak=g.sprakvalg==="en"?"en":"nb";
+  const strømmes=trinn==="analyse"?"Norsk, som annonsen ber om.":(sprak==="en"?engelsk:brev);
   for(let i=0;i<strømmes.length;i+=Math.ceil(strømmes.length/6)){
     await new Promise(r=>setTimeout(r,75));signal?.throwIfAborted();
     const bit=strømmes.slice(i,i+Math.ceil(strømmes.length/6));
@@ -26,7 +27,7 @@ const server=lagServer({katalog:path.join(dir,"data"),nett:{hentSide:async url=>
   }
   signal?.throwIfAborted();
   if(modellfeil)throw new Error("Modelltjenesten er midlertidig utilgjengelig.");
-  return {data:trinn==="analyse"?{sprak,begrunnelse:"Norsk, som annonsen ber om.",sporsmal:[{id:"q1",tekst:"Hva tiltrekker deg ved arbeidet med bedriftskunder?"}],krav:[],bevis:[],uklarheter:[],maAvklares:false}:{tekst:sprak==="en"?"I am applying for the customer adviser position with two years of customer support experience.":brev,sprak,merknader:[],pastander:[],maAvklares:false},bruk:{input_tokens:100,output_tokens:250},modell:"syntetisk-testmodell"};
+  return {data:trinn==="analyse"?{sprak,begrunnelse:"Norsk, som annonsen ber om.",kontaktperson:"",krav:[],bevis:[],virksomhet:[],uklarheter:[],merknader:[],maAvklares:false}:{tekst:sprak==="en"?engelsk:brev,sprak,merknader:[],pastander:[],maAvklares:false},bruk:{input_tokens:100,output_tokens:250},modell:"syntetisk-testmodell"};
 }});
 await new Promise(r=>server.listen(0,"127.0.0.1",r));
 const url=`http://127.0.0.1:${server.address().port}`;
@@ -54,12 +55,7 @@ try{
   await page.waitForFunction(()=>document.querySelector("#brevAnnonseTekst").value.length>80&&!document.querySelector("#brevGrunnlagsfelter").disabled);
   await page.locator("#brevKontekst").fill("Jeg ønsker en rolle med tett kundekontakt.");
   await page.getByRole("button",{name:"Skriv utkast",exact:true}).click();
-  await page.locator("#brevSvar0").waitFor({state:"visible"});
-  // Analysen er ferdig, avklaringen er stedet vi står, skrivingen gjenstår.
-  assert.deepEqual(await page.$$eval(".brev__steg",e=>e.map(s=>s.dataset.tilstand)),["ferdig","aktiv","kommende"]);
-  await page.screenshot({path:path.join(dir,"02-sporsmal.png"),fullPage:true});
-  await page.locator("#brevSvar0").fill("Jeg vil bruke erfaringen min til å hjelpe kunder i hverdagen.");
-  await page.getByRole("button",{name:"Skriv med svarene",exact:true}).click();
+  // Brevskriveren stiller ingen spørsmål lenger: analysen går rett over i skrivingen.
   // Teksten skal synes mens den blir skrevet, ikke først når den er ferdig.
   await page.waitForFunction(()=>{const s=document.querySelector("#brevStrom");return !s.hidden&&s.textContent.trim().length>0;});
   await page.screenshot({path:path.join(dir,"02b-strommer.png"),fullPage:true});
