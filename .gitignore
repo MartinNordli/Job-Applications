@@ -21,3 +21,12 @@ src-tauri/gen/
 .claude/
 data.sikkerhetskopi-*/
 src-tauri/icons/master.png
+
+# Ekte søknadsbrev brukt som stilforbilde. De har navn og erfaringer i seg,
+# og repoet er offentlig.
+examples/
+
+# Skjermbilder av temaene, tatt lokalt under arbeidet.
+/blush.png
+/ink_elfenben.png
+/midnatt.png
