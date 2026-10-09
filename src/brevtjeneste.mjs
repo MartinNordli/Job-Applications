@@ -1,4 +1,5 @@
-import { Brevfeil, brevfil, validerCv, validerBrev } from "./brevdata.mjs";
+import { Brevfeil, brevfil, validerCv, validerBrev, validerDokument, harInnhold } from "./brevdata.mjs";
+import { dokumenttype } from "./dokumentnavn.mjs";
 import { analyserGrunnlag, skrivUtkast, kontrollerUtkast, validerGrunnlag, PROMPTVERSJON, FASE } from "./brevlogikk.mjs";
 
 const aktive = new Set(Object.values(FASE));
@@ -6,6 +7,9 @@ const klon = v => structuredClone(v);
 const tidspunkt = () => new Date().toISOString();
 const kildefelt = d => ({ annonse:d.annonse.tekst,kontekst:d.kontekst,sprak:d.sprak,leverandor:d.leverandor });
 const sammeKilder = (a,b) => ["cv","annonse","kontekst","sprak","leverandor"].every(k => String(a?.[k]??"").trim() === String(b?.[k]??"").trim());
+
+const SIKKERHETSKOPI = 2;
+const TYPER_I_KOPI = { 1:["cv","brev"], 2:["cv","brev","jobb","radar"] };
 
 /* Kjøringene lagres sammen med brevet. HTTP og Tauri bruker denne kjeden. */
 export function lagBrevtjeneste({lager,kallModell,hentJobb,lagId = () => crypto.randomUUID()}){
@@ -128,26 +132,30 @@ export function lagBrevtjeneste({lager,kallModell,hentJobb,lagId = () => crypto.
       throw e;
     }finally{avbrudd.delete(kid);signal?.removeEventListener("abort",av);}
   }
+  /* Sikkerhetskopien. Versjon 2 har med jobbdokumentene og radar.json,
+     versjon 1 bare CV og brev. Begge kan gjenopprettes, men en fil som
+     sier versjon 1 og har andre dokumenter i seg, er ikke det den sier
+     den er, og avvises. */
   async function eksporter(){
     const dokumenter={};
     for(const n of await lager.liste()){
       const d=await lager.les(n);
-      if(n!=="cv.json")d.kjoring=null;
+      if(dokumenttype(n)==="brev")d.kjoring=null;
       dokumenter[n]=d;
     }
-    return {format:"jobbsoknader-brev",skjemaVersjon:1,eksportert:tidspunkt(),dokumenter};
+    return {format:"jobbsoknader-brev",skjemaVersjon:SIKKERHETSKOPI,eksportert:tidspunkt(),dokumenter};
   }
   async function importer(data){
-    if(data?.format!=="jobbsoknader-brev" || data.skjemaVersjon!==1 || !data.dokumenter || Array.isArray(data.dokumenter)) throw new Brevfeil("ugyldig","Filen er ikke en sikkerhetskopi av brevdata.");
+    const v=data?.skjemaVersjon,typer=Number.isInteger(v)&&Object.hasOwn(TYPER_I_KOPI,v)?TYPER_I_KOPI[v]:null;
+    if(data?.format!=="jobbsoknader-brev" || !typer || !data.dokumenter || typeof data.dokumenter!=="object" || Array.isArray(data.dokumenter)) throw new Brevfeil("ugyldig","Filen er ikke en sikkerhetskopi av brevdata.");
     const inn=[];
     // Valider alt før første skriving. Eksisterende dokumenter erstattes aldri ved import.
     for(const [navn,d] of Object.entries(data.dokumenter)){
-      if(navn!=="cv.json" && !/^brev-[A-Za-z0-9_-]{1,64}\.json$/.test(navn)) throw new Brevfeil("ugyldig","Sikkerhetskopien inneholder et ukjent dokument.");
-      const verdi=navn==="cv.json"?validerCv(d):validerBrev(navn.slice(5,-5),d);
-      if(navn!=="cv.json")verdi.kjoring=null;
+      if(!typer.includes(dokumenttype(navn))) throw new Brevfeil("ugyldig","Sikkerhetskopien inneholder et ukjent dokument.");
+      const verdi=validerDokument(navn,d);
+      if(dokumenttype(navn)==="brev")verdi.kjoring=null;
       const før=await lager.les(navn);
-      const innhold=navn==="cv.json"?(før.tekst||før.navn):(før.tekst||før.annonse?.tekst||før.kontekst||før.versjoner?.length||før.kjoring);
-      if(innhold) throw new Brevfeil("konflikt","Sikkerhetskopien inneholder dokumenter som allerede finnes. Eksporter nåværende data og fjern de aktuelle brevdataene før gjenoppretting.",409);
+      if(harInnhold(navn,før)) throw new Brevfeil("konflikt","Sikkerhetskopien inneholder dokumenter som allerede finnes. Eksporter nåværende data og fjern de aktuelle brevdataene før gjenoppretting.",409);
       inn.push([navn,verdi,før.revisjon]);
     }
     const lagret=[];

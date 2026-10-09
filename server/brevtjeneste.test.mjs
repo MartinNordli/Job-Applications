@@ -139,6 +139,55 @@ test("eksport og import inkluderer egne kilder og versjoner, men ingen aktiv kj�
   assert.equal((await annen.tjeneste.hentBrev("j1")).versjoner.length,1);
   await assert.rejects(annen.tjeneste.importer(eksport),{code:"konflikt"});
 });
+test("sikkerhetskopien er versjon 2 og har med jobbdokumentene og radar.json",async t=>{
+  const {tjeneste,lager}=await oppsett(t);await generer(tjeneste);
+  await lager.skriv("jobb-j1.json",{revisjon:0,annonse:{tekst:"Eksempel AS søker kunderådgiver.",kilde:"limt"},match:{prosent:77}},0);
+  await lager.skriv("radar.json",{revisjon:0,innstillinger:{pa:true}},0);
+  const eksport=await tjeneste.eksporter();
+  assert.equal(eksport.skjemaVersjon,2);
+  assert.deepEqual(Object.keys(eksport.dokumenter),["brev-j1.json","cv.json","jobb-j1.json","radar.json"]);
+  const annen=await oppsett(t);
+  await annen.tjeneste.slettBrev("j1",(await annen.tjeneste.hentBrev("j1")).revisjon);
+  await annen.tjeneste.slettCv((await annen.tjeneste.hentCv()).revisjon);
+  assert.equal((await annen.tjeneste.importer(eksport)).antall,4);
+  const jobb=await annen.lager.les("jobb-j1.json");
+  assert.equal(jobb.match.prosent,77);assert.equal(jobb.annonse.kilde,"limt");
+  assert.deepEqual((await annen.lager.les("radar.json")).innstillinger,{pa:true});
+  // Ingenting som allerede finnes erstattes, heller ikke et jobbdokument alene.
+  const tredje=await oppsett(t);
+  await tredje.lager.skriv("jobb-j1.json",{revisjon:0,annonse:{tekst:"Min egen annonse."}},0);
+  await assert.rejects(tredje.tjeneste.importer({...eksport,dokumenter:{"jobb-j1.json":eksport.dokumenter["jobb-j1.json"]}}),{code:"konflikt"});
+  assert.equal((await tredje.lager.les("jobb-j1.json")).annonse.tekst,"Min egen annonse.");
+  // radar.json finnes ikke der ennå og legges inn. Andre gang finnes den.
+  const bareRadar={...eksport,dokumenter:{"radar.json":eksport.dokumenter["radar.json"]}};
+  assert.equal((await tredje.tjeneste.importer(bareRadar)).antall,1);
+  await assert.rejects(tredje.tjeneste.importer(bareRadar),{code:"konflikt"});
+});
+test("versjon 1 kan fortsatt gjenopprettes, men bare med CV og brev",async t=>{
+  const {tjeneste}=await oppsett(t);await generer(tjeneste);
+  const v2=await tjeneste.eksporter();
+  const v1={format:"jobbsoknader-brev",skjemaVersjon:1,eksportert:v2.eksportert,dokumenter:{"cv.json":v2.dokumenter["cv.json"],"brev-j1.json":v2.dokumenter["brev-j1.json"]}};
+  const annen=await oppsett(t);
+  await annen.tjeneste.slettBrev("j1",(await annen.tjeneste.hentBrev("j1")).revisjon);
+  await annen.tjeneste.slettCv((await annen.tjeneste.hentCv()).revisjon);
+  for(const [navn,d] of [["jobb-j1.json",{skjemaVersjon:1,revisjon:1}],["radar.json",{skjemaVersjon:1,revisjon:1}]])
+    await assert.rejects(annen.tjeneste.importer({...v1,dokumenter:{...v1.dokumenter,[navn]:d}}),{code:"ugyldig"});
+  // Avvist før første skriving: ingenting er lagt inn.
+  assert.equal((await annen.tjeneste.hentCv()).tekst,"");
+  assert.equal((await annen.tjeneste.importer(v1)).antall,2);
+  assert.match((await annen.tjeneste.hentCv()).tekst,/Kari/);
+});
+test("ukjente versjoner, navn og former i sikkerhetskopien avvises",async t=>{
+  const {tjeneste}=await oppsett(t);
+  const grunn={format:"jobbsoknader-brev",skjemaVersjon:2,dokumenter:{}};
+  for(const data of [null,[],{...grunn,format:"annet"},{...grunn,skjemaVersjon:3},{...grunn,skjemaVersjon:"2"},{...grunn,skjemaVersjon:"constructor"},
+    {...grunn,skjemaVersjon:"__proto__"},{...grunn,dokumenter:[]},{...grunn,dokumenter:null}])
+    await assert.rejects(tjeneste.importer(data),{code:"ugyldig"},JSON.stringify(data));
+  for(const navn of ["nokkel.txt","jobber.json","../cv.json","jobb-x.forrige.json","jobb-../x.json"])
+    await assert.rejects(tjeneste.importer({...grunn,dokumenter:{[navn]:{skjemaVersjon:1,revisjon:1}}}),{code:"ugyldig"},navn);
+  await assert.rejects(tjeneste.importer({...grunn,dokumenter:JSON.parse('{"__proto__":{"skjemaVersjon":1,"revisjon":1}}')}),{code:"ugyldig"});
+  await assert.rejects(tjeneste.importer({...grunn,dokumenter:{"jobb-x.json":{skjemaVersjon:1,revisjon:1,annonse:{tekst:"x",url:"javascript:1"}}}}),{code:"ugyldig"});
+});
 test("faktakorrigeringer følger valgt versjon til neste revisjon uten å bli dagens stilinstruks",async t=>{
   const {tjeneste,kall}=await oppsett(t);await generer(tjeneste);
   const første=await tjeneste.opprett("j1",{instruks:"Maks 100 ord. Korrigering: Jeg vant en servicepris."});
