@@ -309,3 +309,28 @@ test("sikkerhetskopien over HTTP er versjon 2 og har med jobbdokumentet",async t
   const konflikt=await api("/api/brevdata","POST",r.data);
   assert.equal(konflikt.status,409);
 });
+
+/* ---------- feilmeldinger ---------- */
+
+test("en uventet filsystemfeil gir en generell melding uten sti, og en referanse i loggen",async t=>{
+  const {api,katalog}=await start(t);
+  assert.equal((await api("/api/jobber","PUT",{versjon:0,jobber:[rad]})).status,200);
+  const dir=await profilkatalog(api,katalog);
+  await api(dsti,"PUT",{...(await api(dsti)).data,annonse:{tekst:"Annonse."}});
+  const fil=path.join(dir,"jobb-j1.json");
+  await fs.chmod(fil,0o000);
+  t.after(()=>fs.chmod(fil,0o600).catch(()=>{}));
+  const logg=[];const før=console.error;console.error=(...a)=>logg.push(a.map(String).join(" "));
+  let r;try{r=await api(dsti);}finally{console.error=før;}
+  assert.equal(r.status,500);assert.equal(r.data.feil,"intern");
+  assert.ok(!r.data.melding.includes(katalog),r.data.melding);
+  assert.ok(!/EACCES|\//.test(r.data.melding),r.data.melding);
+  const ref=r.data.melding.match(/se etter ([0-9a-f]{8})/)?.[1];
+  assert.ok(ref,r.data.melding);
+  assert.ok(logg.some(l=>l.includes(ref)&&l.includes("EACCES")),"detaljen skal stå i serverloggen");
+  // De bevisste meldingene går fortsatt ut som før.
+  await fs.chmod(fil,0o600);
+  const konflikt=await api(dsti,"PUT",{revisjon:0,annonse:{tekst:"Gammel."}});
+  assert.equal(konflikt.status,409);assert.equal(konflikt.data.feil,"konflikt");
+  assert.match(konflikt.data.melding,/endret i et annet vindu/);
+});

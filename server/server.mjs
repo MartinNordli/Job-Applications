@@ -28,6 +28,7 @@
 import http from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { lagNett, ManglerNokkel } from "./nett.mjs";
 import { lagBrukere, lagRatebegrenser, tolkCookies,
@@ -578,8 +579,14 @@ export function lagServer(valg = {}){
 
       await statisk(req, res, bane);
     }catch(e){
+      /* Det som havner her er uventet, og en filsystemfeil bærer hele
+         stien i meldingen. Detaljene blir i loggen, klienten får en
+         referanse å lete etter der. */
+      const ref = randomUUID().slice(0, 8);
+      console.error(`Uventet feil (${ref}):`, e);
       if(res.headersSent) return res.destroy();
-      svar(res, 500, { feil: "serverfeil", melding: String(e && e.message || e) });
+      svar(res, 500, { feil: "serverfeil",
+        melding: `Noe gikk galt på serveren. Prøv igjen. Står det fast, se etter ${ref} i serverloggen.` });
     }
   });
 }

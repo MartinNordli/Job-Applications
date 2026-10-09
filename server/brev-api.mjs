@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { lagBrevlager } from "./brevlager.mjs";
 import { lagBrevtjeneste } from "../src/brevtjeneste.mjs";
 import { lagJobbdokumenter } from "../src/jobbdokumenttjeneste.mjs";
@@ -19,6 +20,19 @@ async function kropp(req){
   for await(const bit of req){størrelse+=bit.length;if(størrelse>32*1024*1024)throw new Brevfeil("for-stort","Forespørselen er for stor.",413);b.push(bit);}
   try{return b.length?JSON.parse(Buffer.concat(b).toString("utf8")):{};}
   catch{throw new Brevfeil("ugyldig","Forespørselen er ikke gyldig JSON.");}
+}
+/* Bare feil vi selv har formulert, går ut til klienten: Brevfeil, og
+   feil med et eget navn (modellfeilene). Alt annet er uventet, og en
+   filsystemfeil har den fulle stien til profilkatalogen i meldingen.
+   Den blir i serverloggen, og klienten får en kort referanse å lete
+   etter der. */
+export function offentligFeil(e){
+  if(e instanceof Brevfeil) return {status:e.status||400,feil:e.code,melding:e.melding};
+  if(typeof e?.navn==="string" && /^[a-z-]{1,40}$/.test(e.navn) && typeof e.message==="string")
+    return {status:e.status||400,feil:e.navn,melding:e.message};
+  const ref=randomUUID().slice(0,8);
+  console.error(`Uventet feil i profildokumentene (${ref}):`,e);
+  return {status:500,feil:"intern",melding:`Noe gikk galt på serveren. Prøv igjen. Står det fast, se etter ${ref} i serverloggen.`};
 }
 function metode(req,...lov){if(!lov.includes(req.method))throw new Brevfeil("metode","Metoden er ikke tillatt.",405);}
 
@@ -133,7 +147,7 @@ export function lagBrevRuter({nett,modellFor}){
       }
       if(!res.destroyed)send(res,200,r);
     }catch(e){
-      if(!res.destroyed)send(res,e.status||400,{feil:e.code||e.navn||"brevfeil",melding:e.melding||e.message||"Kunne ikke behandle brevet."});
+      if(!res.destroyed){const f=offentligFeil(e);send(res,f.status,{feil:f.feil,melding:f.melding});}
     }finally{res.off("close",stopp);}
   };
 }
@@ -151,7 +165,7 @@ async function kjørTrinn(t,res,id,kid,inn,controller){
       påDelta:tekst=>strøm.delta({trinn:inn.trinn,tekst})});
     strøm.slutt("ferdig",r);
   }catch(e){
-    strøm.slutt("feil",{feil:e.code||e.navn||"brevfeil",
-      melding:e.melding||e.message||"Kunne ikke behandle brevet.",status:e.status||400});
+    const f=offentligFeil(e);
+    strøm.slutt("feil",{feil:f.feil,melding:f.melding,status:f.status});
   }
 }

@@ -205,3 +205,22 @@ test("/src/felles.mjs serveres som javascript", async t => {
   assert.equal(r.headers.get("content-type"), "text/javascript; charset=utf-8");
   assert.match(await r.text(), /validerSamling/);
 });
+
+test("en uventet feil gir 500 uten sti i meldingen, og detaljen i loggen", async t => {
+  const { api, minKatalog, stopp } = await start();
+  t.after(stopp);
+  assert.equal((await put(api, { versjon: 0, jobber: [rad()] })).status, 200);
+  const fil = path.join(minKatalog, "jobber.json");
+  await fs.chmod(fil, 0o000);
+  t.after(() => fs.chmod(fil, 0o600).catch(() => {}));
+  const logg = [];
+  const før = console.error;
+  console.error = (...a) => logg.push(a.map(String).join(" "));
+  let r, j;
+  try{ r = await api("/api/jobber"); j = await r.json(); }finally{ console.error = før; }
+  assert.equal(r.status, 500);
+  assert.equal(j.feil, "serverfeil");
+  assert.ok(!j.melding.includes(minKatalog) && !j.melding.includes("EACCES"), j.melding);
+  const ref = j.melding.match(/se etter ([0-9a-f]{8})/)?.[1];
+  assert.ok(ref && logg.some(l => l.includes(ref)), "referansen skal stå i loggen");
+});
