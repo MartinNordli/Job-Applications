@@ -17,9 +17,13 @@
      flytt(fra, til)                    → gi filen et nytt navn
      stiTil(navn)                       → full sti, kun til meldinger
      katalog                            → full sti til mappa
+
+   `nå` er klokken, injisert av samme grunn som `filer`: testene skal
+   kunne styre hvilken dag sikkerhetsnettet for hendelser daterer med.
    ============================================================ */
 
-import { validerSamling } from "./felles.mjs";
+import { validerSamling, validerHendelser } from "./felles.mjs";
+import { lagHendelse, lokalDato } from "./hendelser.mjs";
 
 export const FILNAVN = "jobber.json";
 export const FORRIGE = "jobber.forrige.json";
@@ -27,11 +31,61 @@ export const FORRIGE = "jobber.forrige.json";
 /* Feltene som avgjør om en rad faktisk er endret. Tidsstemplene
    teller ikke med — ellers ville hver lagring sett ut som en endring. */
 const INNHOLD = ["id", "selskap", "stilling", "lenke", "sted",
-                 "frist", "status", "sektor", "jobbtype", "notat", "sendtDato"];
+                 "frist", "status", "sektor", "jobbtype", "notat", "sendtDato",
+                 "hendelser", "intervjuer"];
 
-const likeRader = (a, b) => !!a && !!b && INNHOLD.every(f => a[f] === b[f]);
+/* Listene sammenlignes som JSON. Begge er allerede normalisert av
+   validatoren (faste nøkler i fast rekkefølge, sortert), så lik JSON
+   betyr likt innhold. */
+const likVerdi = (a, b) => a === b
+  || (typeof a === "object" && typeof b === "object" && JSON.stringify(a) === JSON.stringify(b));
+const likeRader = (a, b) => !!a && !!b && INNHOLD.every(f => likVerdi(a[f], b[f]));
 
-export function lagLager({ filer, lagId }){
+/* Listene på raden som en eldre klient ikke kjenner. Mangler nøkkelen
+   helt i det som kommer inn, er det ikke et ønske om å tømme listen:
+   det er en fane eller app fra før feltet fantes. Da beholdes det som
+   står i filen, i stedet for at historikken forsvinner stille. */
+const BEVARES_NÅR_DE_MANGLER = ["hendelser", "intervjuer"];
+
+/* Sikkerhetsnettet for hendelsesloggen.
+
+   Klienten logger selv statusskift med medStatus. Gjør den ikke det
+   (en vei som ikke er koblet til ennå, eller en eldre klient), legger
+   lageret til hendelsen med kilde «lager», så loggen ikke får hull.
+
+   - Ny rad uten hendelser får én, men bare i en liste som er i bruk
+     (versjon over 0). Første lagring i en tom fil og en gjenoppretting
+     er hele lister med ukjent historikk. Å datere dem til i dag ville
+     vært feil, og tidslinje() anslår dem bedre fra opprettet og
+     sendtDato.
+   - Statusen er endret, og klienten sendte de samme hendelsene som
+     står i filen: klienten har ikke logget skiftet, så lageret gjør det.
+   - Klienten har endret hendelsene: den har logget selv, eller den
+     angrer. Da stoles det på den. Det er dette som gjør at angre ikke
+     etterlater en hendelse om gjenåpning.
+   - Unntak: statusen er den samme, og klienten mangler bare hendelser
+     lageret selv la til på slutten. Klienten får ikke radene tilbake
+     etter lagring, så den kjenner dem ikke, og neste lagring av noe
+     annet skal ikke viske dem ut. */
+function sikreHendelser(gammel, rad, { iDag, tid, listeIBruk }){
+  const hendelser = rad.hendelser;
+  const ny = til => [...hendelser, lagHendelse(til, { iDag, nå: tid, kilde: "lager" })];
+
+  if(!gammel) return !hendelser.length && listeIBruk ? ny(rad.status) : hendelser;
+
+  const før = gammel.hendelser || [];
+  if(likVerdi(hendelser, før))
+    return rad.status !== gammel.status ? ny(rad.status) : hendelser;
+
+  if(rad.status === gammel.status && hendelser.length < før.length
+     && likVerdi(hendelser, før.slice(0, hendelser.length))
+     && før.slice(hendelser.length).every(h => h.kilde === "lager"))
+    return før;
+
+  return hendelser;
+}
+
+export function lagLager({ filer, lagId, nå: klokke = () => new Date() }){
   const sti        = filer.stiTil(FILNAVN);
   const forrigeSti = filer.stiTil(FORRIGE);
 
@@ -145,9 +199,21 @@ export function lagLager({ filer, lagId }){
 
     /* Tidsstempler settes her, ikke av den som ber om lagringen. */
     const før = new Map((nå.jobber ?? []).map(r => [r.id, r]));
-    const tid = new Date().toISOString();
-    const rader = gyldige.map(rad => {
-      const gammel = før.get(rad.id);
+    const øyeblikk = klokke();
+    const tid = øyeblikk.toISOString();
+    const iDag = lokalDato(øyeblikk);
+    const listeIBruk = versjon > 0 && !nå.karantene;
+
+    /* Ingen rad ble forkastet, så gyldige[i] er jobber[i] validert. */
+    const rader = gyldige.map((validert, i) => {
+      const gammel = før.get(validert.id);
+      const rå = jobber[i];
+      let rad = validert;
+      if(gammel){
+        for(const felt of BEVARES_NÅR_DE_MANGLER)
+          if(!Object.hasOwn(rå, felt)) rad = { ...rad, [felt]: gammel[felt] ?? [] };
+      }
+      rad = { ...rad, hendelser: validerHendelser(sikreHendelser(gammel, rad, { iDag, tid, listeIBruk })) };
       if(!gammel)               return { ...rad, opprettet: tid, oppdatert: tid };
       if(likeRader(gammel, rad)) return { ...rad, opprettet: gammel.opprettet ?? tid,
                                                   oppdatert: gammel.oppdatert ?? tid };

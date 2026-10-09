@@ -80,7 +80,8 @@ export function lagFiler(katalog){
 export function lagLager(valg = {}){
   const katalog = valg.katalog;
   if(!katalog) throw new Error("lagLager krever en katalog.");
-  const lager   = lagLogikk({ filer: lagFiler(katalog), lagId: randomUUID });
+  const lager   = lagLogikk({ filer: lagFiler(katalog), lagId: randomUUID,
+                              ...(valg.nå ? { nå: valg.nå } : {}) });
   return { ...lager, tmpSti: path.join(katalog, tmpNavn(FILNAVN)) };
 }
 

@@ -61,6 +61,21 @@ export const ER_ARKIV = s => s === "rejected" || s === "expired"
 /* Feltgrenser — holder filen lesbar og stopper utilsiktet svær input. */
 export const MAKS = { selskap: 200, stilling: 200, sted: 200, notat: 1000, lenke: 2000, id: 64 };
 
+/* Hvem som la inn en hendelse. «lager» er sikkerhetsnettet i
+   lagerlogikk.mjs, som merker statusskift klienten ikke loggførte. */
+export const HENDELSE_KILDER = ["bruker", "lager", "radar"];
+
+/* Hele listen skrives ved hver lagring, så taket holder raden liten.
+   60 statusskift på én søknad er langt over det noen faktisk gjør. */
+export const MAKS_HENDELSER = 60;
+
+export const INTERVJUTYPER = {
+  fysisk:  "Fysisk",
+  video:   "Video",
+  telefon: "Telefon"
+};
+export const MAKS_INTERVJU = { antall: 20, varighet: 600, sted: 200, runde: 80, notat: 1000 };
+
 /* ---------- små byggeklosser ---------- */
 
 /* Ekte kalenderdato, ikke bare rett form: 2026-02-31 skal falle. */
@@ -129,6 +144,115 @@ export function sjekkLenke(v){
 }
 
 const tekst = v => (v == null ? "" : String(v)).trim();
+const erObjekt = v => !!v && typeof v === "object" && !Array.isArray(v);
+
+/* ---------- hendelser ---------- */
+/*
+   Statusloggen på en søknad: [{ til, dato, tid?, kilde? }].
+
+   Tilgivende som sektor, fordi loggen er historikk og ikke noe brukeren
+   skriver inn: en oppføring vi ikke forstår droppes, og resten av raden
+   lagres som før. Å avvise hele raden for én rar hendelse ville gjort
+   brukerens egne søknader ulagrelige.
+
+   `tid` sjekkes strengere enn erIsoTid, fordi Date.parse godtar «1» og
+   annet rusk. Er tiden ugyldig, mister hendelsen bare tiden, ikke datoen.
+*/
+const ISO_TIDSPUNKT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+function renHendelse(h){
+  if(!erObjekt(h)) return null;
+  const til = tekst(h.til);
+  if(!Object.hasOwn(STATUSER, til) || !erIsoDato(h.dato)) return null;
+  const ut = { til, dato: h.dato };
+  if(typeof h.tid === "string" && ISO_TIDSPUNKT.test(h.tid) && !Number.isNaN(Date.parse(h.tid)))
+    ut.tid = h.tid;
+  if(HENDELSE_KILDER.includes(h.kilde)) ut.kilde = h.kilde;
+  return ut;
+}
+
+/* Sortert på dato og så tid. Tidene sammenlignes som tidspunkt, ikke
+   som tekst, fordi to klokker kan skrive med ulik sone. Uten tid står
+   hendelsen først den dagen. Sorteringen er stabil, så to like holder
+   rekkefølgen de kom i. */
+const tidsverdi = h => (h.tid ? Date.parse(h.tid) : -Infinity);
+export function sorterHendelser(liste){
+  return liste.slice().sort((a, b) =>
+    a.dato < b.dato ? -1 : a.dato > b.dato ? 1 : tidsverdi(a) - tidsverdi(b));
+}
+
+/* Går listen over taket, beholdes den første hendelsen (da søknaden ble
+   lagt til) og de nyeste. Midten er den minst nyttige delen av loggen. */
+export function validerHendelser(inn){
+  if(!Array.isArray(inn)) return [];
+  const rene = sorterHendelser(inn.map(renHendelse).filter(Boolean));
+  if(rene.length <= MAKS_HENDELSER) return rene;
+  return [rene[0], ...rene.slice(rene.length - (MAKS_HENDELSER - 1))];
+}
+
+/* ---------- intervjuer ---------- */
+/*
+   Ett intervju: { id, dato, tid, varighet, sted, type, lenke, runde, notat }.
+   validerIntervju er streng og gir meldinger, til skjemaet som legger
+   inn et intervju. validerIntervjuer er listeversjonen på raden, og den
+   er tilgivende: et intervju som ikke består droppes, resten blir med.
+*/
+export function validerIntervju(inn){
+  const feil = [];
+  if(!erObjekt(inn))
+    return { ok: false, feil: [{ felt: null, melding: "Intervjuet må være et objekt." }], verdi: null };
+
+  const id = tekst(inn.id);
+  if(!/^[A-Za-z0-9_-]{1,32}$/.test(id)) feil.push({ felt: "id", melding: "Intervjuet mangler en gyldig id." });
+
+  if(!erIsoDato(inn.dato)) feil.push({ felt: "dato", melding: "Velg en gyldig dato for intervjuet." });
+
+  let tid = inn.tid;
+  if(tid === "" || tid === undefined) tid = null;
+  if(tid !== null && !(typeof tid === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(tid)))
+    feil.push({ felt: "tid", melding: "Skriv klokkeslettet som TT:MM." });
+
+  let varighet = inn.varighet;
+  if(varighet === "" || varighet === undefined) varighet = null;
+  if(typeof varighet === "string" && /^\d{1,4}$/.test(varighet)) varighet = Number(varighet);
+  if(varighet !== null && !(Number.isInteger(varighet) && varighet > 0 && varighet <= MAKS_INTERVJU.varighet))
+    feil.push({ felt: "varighet", melding: `Varigheten må være hele minutter, høyst ${MAKS_INTERVJU.varighet}.` });
+
+  const sted = tekst(inn.sted);
+  if(sted.length > MAKS_INTERVJU.sted) feil.push({ felt: "sted", melding: `Maks ${MAKS_INTERVJU.sted} tegn.` });
+
+  const runde = tekst(inn.runde);
+  if(runde.length > MAKS_INTERVJU.runde) feil.push({ felt: "runde", melding: `Maks ${MAKS_INTERVJU.runde} tegn.` });
+
+  const notat = tekst(inn.notat);
+  if(notat.length > MAKS_INTERVJU.notat) feil.push({ felt: "notat", melding: `Maks ${MAKS_INTERVJU.notat} tegn.` });
+
+  const l = sjekkLenke(inn.lenke);
+  if(!l.ok) feil.push({ felt: "lenke", melding: l.melding });
+
+  /* Mild som jobbtype: ukjent type blir tom, ikke en feil. */
+  const type = Object.hasOwn(INTERVJUTYPER, tekst(inn.type)) ? tekst(inn.type) : "";
+
+  if(feil.length) return { ok: false, feil, verdi: null };
+  return { ok: true, feil: [],
+           verdi: { id, dato: inn.dato, tid, varighet, sted, type, lenke: l.verdi, runde, notat } };
+}
+
+/* Sortert på dato og klokkeslett. Over taket beholdes de 20 seneste,
+   fordi det er de kommende intervjuene varslene trenger. */
+export function validerIntervjuer(inn){
+  if(!Array.isArray(inn)) return [];
+  const sett = new Set(), rene = [];
+  for(const i of inn){
+    const r = validerIntervju(i);
+    if(!r.ok || sett.has(r.verdi.id)) continue;
+    sett.add(r.verdi.id);
+    rene.push(r.verdi);
+  }
+  rene.sort((a, b) => a.dato < b.dato ? -1 : a.dato > b.dato ? 1
+                    : (a.tid ?? "") < (b.tid ?? "") ? -1 : (a.tid ?? "") > (b.tid ?? "") ? 1 : 0);
+  return rene.slice(Math.max(0, rene.length - MAKS_INTERVJU.antall));
+}
 
 /* ---------- én søknad ---------- */
 /*
@@ -198,6 +322,10 @@ export function validerSoknad(inn, valg = {}){
      Står den på intervju eller videre, har den åpenbart fått et. */
   const intervju = o.intervju === true || FIKK_INTERVJU(status);
 
+  /* Begge listene er tilgivende: rusk i dem koster oppføringen, ikke raden. */
+  const hendelser  = validerHendelser(o.hendelser);
+  const intervjuer = validerIntervjuer(o.intervjuer);
+
   if(feil.length) return { ok: false, feil, verdi: null };
 
   return {
@@ -208,6 +336,7 @@ export function validerSoknad(inn, valg = {}){
       selskap, stilling,
       lenke: l.verdi,
       sted, frist, status, sektor, jobbtype, notat, sendtDato, intervju,
+      hendelser, intervjuer,
       opprettet: erIsoTid(o.opprettet) ? o.opprettet : null,
       oppdatert: erIsoTid(o.oppdatert) ? o.oppdatert : null
     }
