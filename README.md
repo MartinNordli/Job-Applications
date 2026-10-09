@@ -438,12 +438,28 @@ Filen har et tak på 4 MiB, og den er ikke det samme som brevdokumentet: å slet
       "notat": "",
       "sendtDato": null,
       "intervju": false,
+      "hendelser": [
+        { "til": "todo", "dato": "2026-08-20", "tid": "2026-08-20T09:12:04.120Z", "kilde": "bruker" }
+      ],
+      "intervjuer": [],
       "opprettet": "…",
       "oppdatert": "…"
     }
   ]
 }
 ```
+
+`hendelser` er statusloggen: hvilken status søknaden fikk, og hvilken dag.
+`tid` og `kilde` er valgfrie, og `kilde` er `bruker`, `lager` eller `radar`.
+Loggen holdes sortert på dato og har plass til 60 hendelser.
+Endres statusen uten at appen har logget det, legger lageret selv til en hendelse med `kilde: "lager"`.
+Eldre søknader uten logg skrives ikke om, og tidslinjen anslår da stegene fra `opprettet` og `sendtDato`.
+`sendtDato` er fortsatt datoen du kan rette, og sendt-hendelsen følger den.
+
+`intervjuer` er en liste med opptil 20 intervjuer med `id`, `dato`, `tid` (`TT:MM` eller `null`), `varighet` i minutter (høyst 600), `sted`, `type` (`fysisk`, `video`, `telefon` eller tom), `lenke`, `runde` og `notat`.
+
+Begge listene er tilgivende: en oppføring som ikke kan leses, droppes, mens resten av søknaden lagres.
+Sender en eldre fane eller app en søknad uten listene, beholdes de som står i filen.
 
 ### Slik går ingenting tapt
 
