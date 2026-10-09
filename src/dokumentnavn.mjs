@@ -1,7 +1,7 @@
 /* ============================================================
    Hvilke dokumenter en profil kan ha, og hva de heter.
 
-   Fire typer, og ingen andre: cv.json, brev-<id>.json,
+   Fem typer, og ingen andre: cv.json, stil.json, brev-<id>.json,
    jobb-<id>.json og radar.json. Navnet er hele adressen til en fil
    i profilkatalogen, så regelen er også vernet mot å gå ut av den:
    en id har bare bokstaver, sifre, bindestrek og understrek, aldri
@@ -17,11 +17,11 @@ export const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 /* Rekkefølgen er bare for lesbarhet. Prefiksene overlapper ikke. */
 const MED_ID = { brev: "brev-", jobb: "jobb-" };
-const FASTE = { "cv.json": "cv", "radar.json": "radar" };
+const FASTE = { "cv.json": "cv", "stil.json": "stil", "radar.json": "radar" };
 
 export const erId = id => typeof id === "string" && ID.test(id);
 
-/* "cv" | "brev" | "jobb" | "radar", eller null for alt annet. */
+/* "cv" | "stil" | "brev" | "jobb" | "radar", eller null for alt annet. */
 export function dokumenttype(navn){
   if(typeof navn !== "string") return null;
   if(Object.hasOwn(FASTE, navn)) return FASTE[navn];

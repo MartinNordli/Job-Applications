@@ -1,7 +1,7 @@
 //! Avgrensede fil-, nøkkel- og nettoperasjoner for skriveverkstedet.
 //! Samme mkdir-lås som Node; en gammel lås stjeles aldri på tid alene.
-//! Operasjonene gjelder alle profildokumentene (cv.json, brev-<id>.json,
-//! jobb-<id>.json og radar.json), ikke bare brevene. Navneregelen og
+//! Operasjonene gjelder alle profildokumentene (cv.json, stil.json,
+//! brev-<id>.json, jobb-<id>.json og radar.json), ikke bare brevene. Navneregelen og
 //! utdraget er speilet fra src/dokumentnavn.mjs og src/dokumentutdrag.mjs,
 //! og testdata/dokumenter.json holder de to sidene like.
 use serde::Serialize;
@@ -45,6 +45,7 @@ fn profil(app: &AppHandle, bruker: &str) -> Result<PathBuf, String> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Dokumenttype {
     Cv,
+    Stil,
     Brev,
     Jobb,
     Radar,
@@ -67,6 +68,7 @@ fn gyldig_id(id: &str) -> bool {
 fn dokumenttype(navn: &str) -> Option<Dokumenttype> {
     match navn {
         "cv.json" => return Some(Dokumenttype::Cv),
+        "stil.json" => return Some(Dokumenttype::Stil),
         "radar.json" => return Some(Dokumenttype::Radar),
         _ => {}
     }
@@ -113,7 +115,7 @@ fn markor(dir: &Path, navn: &str) -> Result<u64, String> {
 }
 
 /// Det tomme dokumentet etter en sletting, med revisjonen fra markøren.
-/// CV og brev får hele formen, som før. Jobbdokumentet og radar.json får
+/// CV, stilreferanse og brev får hele formen. Jobbdokumentet og radar.json får
 /// bare skjema, revisjon og tidsstempel: valideringen i JavaScript fyller
 /// inn resten, så formen deres står ett sted.
 fn tomt_dokument(navn: &str, rev: u64) -> Result<String, String> {
@@ -123,6 +125,9 @@ fn tomt_dokument(navn: &str, rev: u64) -> Result<String, String> {
             v["tekst"] = "".into();
             v["navn"] = "".into();
             v["format"] = "tekst".into();
+        }
+        Dokumenttype::Stil => {
+            v["tekst"] = "".into();
         }
         Dokumenttype::Brev => {
             let id = navn
@@ -878,6 +883,7 @@ mod tester {
         for (navn, type_) in t["navn"]["gyldige"].as_object().unwrap() {
             let ventet = match type_.as_str().unwrap() {
                 "cv" => Dokumenttype::Cv,
+                "stil" => Dokumenttype::Stil,
                 "brev" => Dokumenttype::Brev,
                 "jobb" => Dokumenttype::Jobb,
                 "radar" => Dokumenttype::Radar,
@@ -893,10 +899,15 @@ mod tester {
         }
     }
     #[test]
-    fn tomme_dokumenter_for_alle_fire_typer() {
+    fn tomme_dokumenter_for_alle_typer() {
         let cv: Value = serde_json::from_str(&tomt_dokument("cv.json", 2).unwrap()).unwrap();
         assert_eq!(cv["revisjon"], 2);
         assert_eq!(cv["format"], "tekst");
+        let stil: Value = serde_json::from_str(&tomt_dokument("stil.json", 5).unwrap()).unwrap();
+        assert_eq!(
+            stil,
+            serde_json::json!({"skjemaVersjon":1,"revisjon":5,"oppdatert":null,"tekst":""})
+        );
         let brev: Value = serde_json::from_str(&tomt_dokument("brev-j1.json", 3).unwrap()).unwrap();
         assert_eq!(brev["jobbId"], "j1");
         assert_eq!(brev["revisjon"], 3);
@@ -998,10 +1009,12 @@ mod tester {
         assert_eq!(fs::read_dir(&profil).unwrap().count(), 0);
     }
     #[test]
-    fn listen_har_alle_fire_typer_og_ingen_kopier() {
+    fn listen_har_alle_typer_og_ingen_kopier() {
         let d = dir();
         for n in [
             "cv.json",
+            "stil.json",
+            "stil.forrige.json",
             "radar.json",
             "brev-a.json",
             "jobb-a.json",
@@ -1016,7 +1029,13 @@ mod tester {
         fs::create_dir(d.path().join("jobb-mappe.json")).unwrap();
         assert_eq!(
             liste_i(d.path()).unwrap(),
-            ["brev-a.json", "cv.json", "jobb-a.json", "radar.json"]
+            [
+                "brev-a.json",
+                "cv.json",
+                "jobb-a.json",
+                "radar.json",
+                "stil.json"
+            ]
         );
     }
     #[test]
@@ -1277,6 +1296,13 @@ mod tester {
             "anthropic",
             "claude-opus-5",
             r#"{"model":"claude-opus-5","stream":true}"#
+        )
+        .is_ok());
+        // Kroppen med hurtigbuffer: systemet og kildene er blokker med cache_control.
+        assert!(sjekk_modellkropp(
+            "anthropic",
+            "claude-opus-5",
+            r#"{"model":"claude-opus-5","stream":true,"system":[{"type":"text","text":"Regler.","cache_control":{"type":"ephemeral"}}],"messages":[{"role":"user","content":[{"type":"text","text":"{}","cache_control":{"type":"ephemeral"}},{"type":"text","text":"{}"}]}]}"#
         )
         .is_ok());
         assert_eq!(

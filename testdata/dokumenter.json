@@ -3,6 +3,7 @@
  "navn": {
   "gyldige": {
    "cv.json": "cv",
+   "stil.json": "stil",
    "radar.json": "radar",
    "brev-abc-123.json": "brev",
    "brev-j1.json": "brev",
@@ -41,6 +42,10 @@
    "jobb-x y.json",
    "jobb-x\u0000.json",
    "radar-x.json",
+   "stil-x.json",
+   "stil.forrige.json",
+   "stil",
+   "Stil.json",
    "cv-x.json",
    ".jobb-x.json.las",
    ".radar.json.revisjon",

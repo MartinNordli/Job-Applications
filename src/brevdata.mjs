@@ -1,5 +1,5 @@
 /* Brevdata har eget lager. Jobblisten og dens format forblir små.
-   Lageret har fire dokumenttyper (se src/dokumentnavn.mjs), og hver har
+   Lageret har fem dokumenttyper (se src/dokumentnavn.mjs), og hver har
    sitt skjema, sitt tomme dokument og sin validator. Det er her typen
    velges, så lageret, sikkerhetskopien og begge transportene får samme
    regel uten å kjenne typene selv. */
@@ -21,6 +21,13 @@ export function dokumentnavn(navn){
   return navn;
 }
 export const tomCv = () => ({ skjemaVersjon: SKJEMA, revisjon: 0, tekst: "", navn: "", format: "tekst", oppdatert: null });
+/* Stilreferansen er et brev brukeren selv har skrevet og godkjent.
+   Den brukes bare for tone og form i nye brev. Den ligger i eget
+   dokument og ikke i cv.json: en ny CV skal ikke slette den, og en
+   endret stilreferanse skal ikke gi CV-en ny revisjon og dermed gjøre
+   alle vurderinger som bygger på CV-en utdatert. */
+export const MAKS_STIL = 16000;
+export const tomStil = () => ({ skjemaVersjon: SKJEMA, revisjon: 0, tekst: "", oppdatert: null });
 export const tomtBrev = id => ({ skjemaVersjon: SKJEMA, revisjon: 0, jobbId: jobbId(id), annonse: { tekst: "", url: "", hentet: null }, kontekst: "", sprak: "auto", leverandor: "anthropic", tekst: "", aktivVersjon: null, versjoner: [], kjoring: null, oppdatert: null });
 function tekst(v, maks, felt){
   if(typeof v !== "string" || v.length > maks || v.includes("\0")) throw new Brevfeil("ugyldig", `${felt} må være tekst på høyst ${maks.toLocaleString("nb-NO")} tegn.`);
@@ -28,6 +35,9 @@ function tekst(v, maks, felt){
 }
 export function validerCv(inn){
   return { ...tomCv(), revisjon: revisjon(inn?.revisjon), tekst: tekst(inn?.tekst ?? "", 100000, "CV"), navn: tekst(inn?.navn ?? "", 255, "Filnavn"), format: ["pdf", "docx", "tekst", "txt"].includes(inn?.format) ? inn.format : "tekst", oppdatert: inn?.oppdatert ?? null };
+}
+export function validerStil(inn){
+  return { ...tomStil(), revisjon: revisjon(inn?.revisjon), tekst: tekst(inn?.tekst ?? "", MAKS_STIL, "Stilreferansen"), oppdatert: inn?.oppdatert ?? null };
 }
 export function validerBrev(id, inn){
   if(!inn || typeof inn !== "object") throw new Brevfeil("ugyldig", "Brevet mangler.");
@@ -65,6 +75,7 @@ export function validerBrev(id, inn){
    skrevet over noe. Et tømt dokument har revisjon, men ikke innhold. */
 const TYPER = {
   cv: { skjema: SKJEMA, tom: () => tomCv(), valider: (navn, d) => validerCv(d), harInnhold: d => !!(d.tekst || d.navn) },
+  stil: { skjema: SKJEMA, tom: () => tomStil(), valider: (navn, d) => validerStil(d), harInnhold: d => !!d.tekst },
   brev: { skjema: SKJEMA, tom: navn => tomtBrev(dokumentId(navn)), valider: (navn, d) => validerBrev(dokumentId(navn), d),
     harInnhold: d => !!(d.tekst || d.annonse?.tekst || d.kontekst || d.versjoner?.length || d.kjoring) },
   jobb: { skjema: JOBB_SKJEMA, tom: navn => tomtJobbdokument(dokumentId(navn)), valider: (navn, d) => validerJobbdokument(dokumentId(navn), d),
