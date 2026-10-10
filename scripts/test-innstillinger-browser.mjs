@@ -100,12 +100,12 @@ try{
   await page.locator("#varselDager").selectOption("3");
   await page.waitForFunction(() => window.__varsler.length > 0);
   assert.deepEqual(await varsler(), ["Frist om 3 dager: Equinor"]);
-  assert.deepEqual(await innstilling(), { på: true, dagerFør: 3 });
+  assert.deepEqual(await innstilling(), { på: true, dagerFør: 3, intervju: true });
 
   await page.locator("#varselPa").uncheck();
   await page.waitForFunction(() => document.querySelector("#varselDager").disabled);
   await page.waitForFunction(() => !document.querySelector("#varselPa").disabled);
-  assert.deepEqual(await innstilling(), { på: false, dagerFør: 3 });
+  assert.deepEqual(await innstilling(), { på: false, dagerFør: 3, intervju: true });
   assert.match(await page.locator("#varselHjelp").textContent(), /Ingen varsler/);
   await page.screenshot({ path: path.join(dir, "varsel-av.png") });
 
