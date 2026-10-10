@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { lagBrevlager } from "./brevlager.mjs";
 import { lagBrevtjeneste } from "../src/brevtjeneste.mjs";
+import { lagMatchtjeneste } from "../src/matchtjeneste.mjs";
 import { lagJobbdokumenter } from "../src/jobbdokumenttjeneste.mjs";
 import { Brevfeil } from "../src/brevdata.mjs";
 import { FASE } from "../src/brevlogikk.mjs";
@@ -12,11 +13,14 @@ import { erId } from "../src/dokumentnavn.mjs";
    importen, 30 i timen per profil, men egen teller: å hente annonsene
    til gamle søknader skal ikke stenge for neste import. */
 const ANNONSETAK = { tak: 30, vindu: 60 * 60_000 };
+/* Hver vurdering er et modellkall som koster penger. 60 i timen rommer
+   en hel import av gamle søknader, men stopper en løkke som går løpsk. */
+const MATCHTAK = { tak: 60, vindu: 60 * 60_000 };
 
 /* Alt som går til profildokumentene. /api/jobber selv er listen og
    hører til server.mjs; under en søknad er brev og dokument her.
    Utdraget har egen rot, så «utdrag» aldri kan forveksles med en id. */
-export const erBrevbane = p => /^\/api\/(cv(?:\/gjenopprett)?|stil(?:\/gjenopprett)?|brevdata|nokler\/[^/]+|jobbdokumenter\/(?:utdrag|hent-manglende)|jobber\/[^/]+\/(?:brev(?:\/.*)?|dokument(?:\/gjenopprett)?|annonse(?:\/hent)?))$/.test(p);
+export const erBrevbane = p => /^\/api\/(cv(?:\/gjenopprett)?|stil(?:\/gjenopprett)?|brevdata|nokler\/[^/]+|jobbdokumenter\/(?:utdrag|hent-manglende)|jobber\/[^/]+\/(?:brev(?:\/.*)?|dokument(?:\/gjenopprett)?|annonse(?:\/hent)?|match))$/.test(p);
 function send(res,status,data){
   res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"});
   res.end(JSON.stringify(data));
@@ -71,8 +75,9 @@ function åpneStrøm(res){
     slutt(hendelse,data){ skriv(hendelse,data); avsluttet=true; clearInterval(slag); if(!res.writableEnded)res.end(); }
   };
 }
-export function lagBrevRuter({nett,modellFor,annonsegrense=lagRatebegrenser(ANNONSETAK)}){
+export function lagBrevRuter({nett,modellFor,annonsegrense=lagRatebegrenser(ANNONSETAK),matchgrense=lagRatebegrenser(MATCHTAK)}){
   const tjenester=new Map();
+  const matchtjenester=new Map();
   const dokumenttjenester=new Map();
   const grenser=new Map();
   function tjeneste(ktx){
@@ -84,6 +89,22 @@ export function lagBrevRuter({nett,modellFor,annonsegrense=lagRatebegrenser(ANNO
       hentJobb:async id=>(await lager.les()).jobber?.find(j=>j.id===id)
     }));
     return tjenester.get(nøkkel);
+  }
+  function matchtjeneste(ktx){
+    const {katalog,tillatMiljø,lager}=ktx;
+    const nøkkel=katalog+":"+tillatMiljø;
+    if(!matchtjenester.has(nøkkel))matchtjenester.set(nøkkel,lagMatchtjeneste({
+      lager:lagBrevlager(katalog),
+      jobbdokumenter:jobbdokumenter(ktx),
+      kallModell:modellFor?modellFor(ktx):lagBrevModell({katalog,tillatMiljø}),
+      hentJobb:async id=>(await lager.les()).jobber?.find(j=>j.id===id),
+      foranKall(){
+        const plass=matchgrense.sjekk(katalog);
+        if(!plass.ok)throw new Brevfeil("for-mange",`Du har bedt om mange vurderinger den siste timen. Prøv igjen om ${Math.ceil(plass.retryEtter/60)} minutter.`,429);
+        matchgrense.tell(katalog);
+      }
+    }));
+    return matchtjenester.get(nøkkel);
   }
   function jobbdokumenter({katalog,lager}){
     const hentJobber=async()=>{const j=(await lager.les()).jobber;return Array.isArray(j)?j:[];};
@@ -156,6 +177,13 @@ export function lagBrevRuter({nett,modellFor,annonsegrense=lagRatebegrenser(ANNO
             r=await j.settAnnonse(m[1],{tekst:inn.tekst,url:inn.url,kilde:inn.kilde,hentet:inn.hentet});
           }
         }
+      }else if(/^\/api\/jobber\/[^/]+\/match$/.test(bane)){
+        const m=bane.match(/^\/api\/jobber\/([A-Za-z0-9_-]{1,64})\/match$/);
+        if(!m)throw new Brevfeil("ugyldig","Ugyldig jobb.");
+        metode(req,"POST");
+        const inn=objekt(await kropp(req));
+        if(inn.leverandor!==undefined && !["anthropic","openai"].includes(inn.leverandor))throw new Brevfeil("ugyldig","Velg en støttet leverandør.");
+        r=await matchtjeneste(ktx).vurder(m[1],{tving:inn.tving===true,leverandor:inn.leverandor,signal:controller.signal});
       }else if(/^\/api\/jobber\/[^/]+\/dokument(?:\/gjenopprett)?$/.test(bane)){
         const m=bane.match(/^\/api\/jobber\/([A-Za-z0-9_-]{1,64})\/dokument(\/gjenopprett)?$/);
         if(!m)throw new Brevfeil("ugyldig","Ugyldig jobb.");

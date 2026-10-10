@@ -181,7 +181,7 @@ function sprakKode(t){
   const n = String(t).trim().toLowerCase();
   return ({ norsk: "nb", bokmål: "nb", "norsk bokmål": "nb", norwegian: "nb", no: "nb", nynorsk: "nn", "norsk nynorsk": "nn", engelsk: "en", english: "en" })[n] || n;
 }
-function sjekkSchema(data, schema, sti = "svar"){
+export function sjekkSchema(data, schema, sti = "svar"){
   if(schema.type === "object"){
     if(!data || typeof data !== "object" || Array.isArray(data)) feil("modellformat", `Modellen ga ugyldig ${sti}.`);
     if(Object.keys(data).some(k => !Object.hasOwn(schema.properties, k))) feil("modellformat", `Modellen ga ukjente felt i ${sti}.`);
@@ -200,7 +200,7 @@ function kildetekst(v){
   if(v && typeof v === "object") return Object.values(v).join("\n");
   return typeof v === "string" ? v : "";
 }
-function sjekkKilder(pastander, kilder){
+export function sjekkKilder(pastander, kilder){
   for(const p of pastander){
     if(!p.tekst.trim() || !p.kilder.length) feil("kildefeil", "En faktapåstand mangler kildegrunnlag.");
     for(const k of p.kilder){
