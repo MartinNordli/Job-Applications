@@ -27,17 +27,16 @@ const KILDE = {
 };
 
 /* Hva hver feil fra hentingen betyr, og hva man kan gjøre i stedet.
-   `lim` gir en «Lim inn»-knapp ved meldingen, `rediger` en vei til
-   skjemaet der lenken står. Meldingen fra tjenesten brukes der den er
+   `rediger` gir en vei til skjemaet der lenken står. Meldingen fra tjenesten brukes der den er
    mer presis enn vår (statuskoden, ventetiden ved taket). */
 const FEIL = {
-  "mangler-lenke": { tittel: "Søknaden har ingen lenke.", hjelp: "Legg inn lenken under Rediger, eller lim inn annonsen.", lim: true, rediger: true },
-  "dod-lenke":     { tittel: "Annonsen ligger ikke lenger på adressen.", hjelp: "Den er antakelig tatt ned. Har du teksten et annet sted, kan du lime den inn.", lim: true },
-  "ikke-nettside": { tittel: "Lenken peker ikke til en nettside.", hjelp: "Den kan gå til en PDF eller en fil. Åpne originalen, kopier teksten og lim den inn.", lim: true },
-  "tom-annonse":   { tittel: "Fant for lite tekst på siden.", hjelp: "Siden bygges antakelig med JavaScript. Åpne originalen, kopier annonsen og lim den inn.", lim: true },
-  "for-lang":      { tittel: "Siden har mer enn 100 000 tegn tekst.", hjelp: "Lim inn bare selve annonsen i stedet.", lim: true },
-  "henting":       { hjelp: "Prøv igjen om litt, eller lim inn annonsen.", lim: true },
-  "for-mange":     { hjelp: "Du kan fortsatt lime inn annonsen.", lim: true },
+  "mangler-lenke": { tittel: "Søknaden har ingen lenke.", hjelp: "Legg inn lenken under Rediger, eller lim inn annonsen.", rediger: true },
+  "dod-lenke":     { tittel: "Annonsen ligger ikke lenger på adressen.", hjelp: "Den er antakelig tatt ned. Har du teksten et annet sted, kan du lime den inn." },
+  "ikke-nettside": { tittel: "Lenken peker ikke til en nettside.", hjelp: "Den kan gå til en PDF eller en fil. Åpne originalen, kopier teksten og lim den inn." },
+  "tom-annonse":   { tittel: "Fant for lite tekst på siden.", hjelp: "Siden bygges antakelig med JavaScript. Åpne originalen, kopier annonsen og lim den inn." },
+  "for-lang":      { tittel: "Siden har mer enn 100 000 tegn tekst.", hjelp: "Lim inn bare selve annonsen i stedet." },
+  "henting":       { hjelp: "Prøv igjen om litt, eller lim inn annonsen." },
+  "for-mange":     { hjelp: "Du kan fortsatt lime inn annonsen." },
   "finnes-ikke":   { tittel: "Søknaden finnes ikke lenger.", hjelp: "Den kan være slettet i et annet vindu." },
   "frakoblet":     { tittel: "Fikk ikke kontakt med appen.", hjelp: "Sjekk at serveren kjører, og prøv igjen." },
   "tom-tekst":     { tittel: "Lim inn teksten fra annonsen først." }
@@ -47,7 +46,7 @@ export function feilmelding(e){
   return {
     tittel: kjent.tittel || e?.melding || e?.message || "Fikk ikke hentet annonsen.",
     hjelp: kjent.hjelp || "",
-    lim: !!kjent.lim, rediger: !!kjent.rediger
+    rediger: !!kjent.rediger
   };
 }
 
@@ -126,12 +125,9 @@ export function monterAnnonse(flate, ktx, api){
     if(!feil) return "";
     return '<div class="detalj__feil" role="alert"><p class="detalj__feiltittel">' + esc(feil.tittel) + '</p>'
       + (feil.hjelp ? '<p>' + esc(feil.hjelp) + '</p>' : "")
-      + ((feil.lim && modus !== "lim") || feil.rediger
-          ? '<div class="detalj__handlinger">'
-            + (feil.lim && modus !== "lim" ? '<button class="knapp knapp--liten" type="button" data-annonse="lim">Lim inn</button>' : "")
-            + (feil.rediger ? '<button class="knapp knapp--liten knapp--stille" type="button" data-annonse="rediger">Rediger søknaden</button>' : "")
-            + '</div>'
-          : "")
+      /* «Lim inn» står alltid ved siden av, så meldingen gjentar den ikke.
+         Lenken rettes bare i skjemaet, og dit går det en vei herfra. */
+      + (feil.rediger ? '<div class="detalj__handlinger"><button class="knapp knapp--liten" type="button" data-annonse="rediger">Rediger søknaden</button></div>' : "")
       + '</div>';
   }
 

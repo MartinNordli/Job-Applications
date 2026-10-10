@@ -480,7 +480,9 @@ export function lagDetaljpanel(deps){
     return iKø(async () => {
       if(!deps.jobb(nyId)) return;
       const varÅpen = erÅpen();
-      const nyFane = ønsket || (varÅpen && nyId === id ? fane : "oversikt");
+      /* Fanen blir stående når man går fra søknad til søknad, så man kan
+         lese annonsene eller tidslinjene etter hverandre. */
+      const nyFane = ønsket || (varÅpen ? fane : "oversikt");
       if(!varÅpen) fokusFor = fra || document.activeElement;
       const ok = await vis(nyId, nyFane, { push: !varÅpen, erstatt: varÅpen });
       if(!ok) return;
@@ -544,7 +546,15 @@ export function lagDetaljpanel(deps){
     iKø(async () => {
       const varÅpen = erÅpen();
       if(!varÅpen) fokusFor = document.activeElement;
-      if(await vis(nyId, f || "oversikt", { erstatt: true }) && !varÅpen) fokuserTittel();
+      if(!(await vis(nyId, f || "oversikt", { erstatt: true }))) return;
+      /* En direktelenke kan peke på en søknad listen ikke viser nå. Da
+         byttes visningen, så den valgte raden står der ved siden av. */
+      if(!varÅpen){
+        deps.visRad(nyId);
+        const rad = merkRad();
+        if(rad) rad.scrollIntoView({ block: "center" });
+        fokuserTittel();
+      }
     });
   }
 

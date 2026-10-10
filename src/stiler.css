@@ -93,7 +93,7 @@
   /* Høyrekolonnen i en rad: hovedknappen er like bred i alle rader, så
      knappene står i samme kolonne uansett om det står «Merk sendt» eller
      «Fikk intervju», og uansett hvilket bånd raden står i. */
-  --hovedknapp:104px;
+  --hovedknapp:96px;
   /* Detaljpanelet ved siden av listen. Smalere enn skuffen på en liten
      skjerm, aldri bredere enn at listen får beholde sin skannebredde. */
   --detalj:clamp(400px, 36vw, 580px);
@@ -622,6 +622,8 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
 .innst{margin:0 0 26px}
 .innst + .innst{padding-top:20px;border-top:1px solid var(--linje)}
 .innst__tittel{margin:0 0 12px}
+.innst .felt__hjelp.innst__forklaring{margin:0 0 12px}
+.innst .henter{margin-top:8px}
 .temaer{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0;padding:0;border:0}
 .tema{position:relative;display:flex;flex-direction:column;gap:3px;padding:11px 12px 12px;
       background:var(--innfelt);border-radius:var(--r-s);cursor:pointer;
@@ -748,6 +750,7 @@ a.detalj__stilling:hover{color:var(--hav-t);text-decoration:underline;text-under
    overalt ellers. */
 .detalj__fakta{display:flex;flex-wrap:wrap;gap:2px 14px;margin:9px 0 0;font-size:12.5px;line-height:1.5;color:var(--blekk-2)}
 .detalj__fakta time{font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--blekk)}
+.detalj__fakta time,.detalj__om,.detalj__frist{white-space:nowrap}
 .detalj__om{font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;color:var(--blekk-3);margin-left:3px}
 .detalj__om[data-hast="naa"]{color:var(--ild-t);font-weight:500}
 .detalj__om[data-hast="snart"]{color:var(--rav-t)}
@@ -1114,14 +1117,14 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
   .brev__avklaring h3{font-size:16px}
   .brev__forbedringsrad{flex-direction:column}
   .brev__forbedringsrad .knapp{align-self:flex-end}
-  .brev__kildetekst,.brev__kontekst,.brev__svar,.brev__avsnitt--smal .felt__inn,.brev__lenkerad .felt__inn,.brev__forbedringsrad .felt__omr{font-size:16px}
   .brev__detaljer > summary{min-height:40px;font-size:13px}
-  .skuff__bunn--brev{padding:12px 16px;flex-wrap:wrap;gap:8px;padding-bottom:max(12px,env(safe-area-inset-bottom))}
+  .skuff__bunn--brev{padding:12px 24px;flex-wrap:wrap;gap:8px;padding-bottom:max(12px,env(safe-area-inset-bottom))}
   .skuff__bunn--brev .knapp{font-size:13px;padding:11px 13px;min-height:44px}
   .skuff__bunn--brev.har-brev .brev__generer{order:3;flex-basis:100%;margin:2px 0 0}
   .brev__kopistatus:empty{display:none}
   .brev__feil,.brev__lukkevalg{margin:0 24px 10px}
 }
+/* 16 px i feltene hindrer at iOS zoomer inn når man trykker i dem. */
 @media (pointer:coarse){
   .brev input,.brev textarea,.brev select{font-size:16px}
   .brev__detaljer > summary,.brev__meny button,.brev__importvalg{min-height:44px}

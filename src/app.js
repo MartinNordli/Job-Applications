@@ -80,6 +80,7 @@ const panel = lagDetaljpanel({
   skuffErÅpen: () => $("#skuff").classList.contains("er-apen"),
   påLagring: fn => Lagring.påTilstand(fn),
   etterEndring: () => oppdaterInert(),
+  visRad: id => visRad(id),
   tilListen: () => $("#sidetittel")
 });
 const meny = lagMeny({ valg: id => menyvalg(id) });
@@ -814,13 +815,13 @@ function fokusfelle(e){
 function tegnSkuff(){
   const k = $("#skuffKropp"), b = $("#skuffBunn");
   if(skuffModus === "eksport"){
-    k.innerHTML = '<p class="felt__hjelp" style="margin:0 0 16px">'
+    k.innerHTML = '<p class="felt__hjelp" style="margin:0 0 24px">'
       + antall(data.length, "søknad ligger", "søknader ligger") + ' i <code>jobber.json</code> i kontoens katalog.</p>'
       + annonserHtml()
       + '<section class="innst" aria-labelledby="startTittel">'
       + '<p class="merkelinje innst__tittel" id="startTittel">Startlisten</p>'
-      + '<div class="felt"><button class="knapp knapp--bred knapp--fare" data-gjor="tilbakestill">Tilbakestill til startlisten</button>'
-      + '<p class="felt__hjelp">Erstatter alt du har lagt inn med de 55 søknadene appen startet med.</p></div></section>';
+      + '<p class="felt__hjelp innst__forklaring">Erstatter alt du har lagt inn med de 55 søknadene appen startet med. Du kan angre etterpå.</p>'
+      + '<button class="knapp knapp--bred knapp--fare" data-gjor="tilbakestill">Tilbakestill til startlisten</button></section>';
     b.innerHTML = '<button class="knapp" data-gjor="lukk">Lukk</button>';
     tellManglendeAnnonser();
     return;
@@ -1052,12 +1053,12 @@ let annonsehenting = null;
 function annonserHtml(){
   return '<section class="innst" aria-labelledby="annonseTittel">'
     + '<p class="merkelinje innst__tittel" id="annonseTittel">Stillingsannonser</p>'
-    + '<button class="knapp knapp--bred" type="button" id="hentManglende" data-gjor="hentManglende" disabled>'
-      + 'Hent manglende annonser <span class="knapp__tall" id="manglendeTall" aria-hidden="true"></span></button>'
-    + '<p class="henter" id="manglendeTilstand" role="status" aria-live="polite"></p>'
-    + '<p class="felt__hjelp" id="manglendeHjelp">Henter annonsen fra lenken til hver søknad som ikke har en lagret. '
+    + '<p class="felt__hjelp innst__forklaring" id="manglendeHjelp">Henter annonsen fra lenken til hver søknad som ikke har en lagret. '
       + 'Annonser som ligger i et søknadsbrev, flyttes over først.'
       + (Lagring.I_APP ? '' : ' Nettleserversjonen henter høyst 30 i timen.') + '</p>'
+    + '<button class="knapp knapp--bred" type="button" id="hentManglende" data-gjor="hentManglende" disabled aria-describedby="manglendeHjelp">'
+      + 'Hent manglende annonser <span class="knapp__tall" id="manglendeTall" aria-hidden="true"></span></button>'
+    + '<p class="henter" id="manglendeTilstand" role="status" aria-live="polite"></p>'
     + '<div class="oppsummering" id="manglendeSvar" hidden></div></section>';
 }
 
@@ -1570,6 +1571,18 @@ document.addEventListener("click", e => {
 
 function settNav(){
   $$("#faner .nav__post").forEach(f => f.setAttribute("aria-selected", String(f.dataset.visning === visning)));
+}
+
+/* Sørger for at raden til en søknad står i listen: bytter til visningen
+   den hører til, og tar bort filtrene bare hvis de skjuler den. */
+function visRad(id){
+  const p = data.find(x => x.id === id);
+  if(!p || $('#innhold .rad[data-id="' + id + '"]')) return;
+  const hjem = ["frister", "sendt", "arkiv"].find(v => iVisning(p, v));
+  if(hjem && hjem !== visning){ visning = hjem; settNav(); }
+  if(!passererFilter(p)){ sok = ""; filtSektor = ""; filtSted = ""; $("#sok").value = ""; }
+  if(p.status === "todo" && erUtgatt(p)) utgattApen = true;
+  tegn();
 }
 
 /* «Neste frist» i sidepanelet regnes ut uten filtre — det er den
