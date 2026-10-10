@@ -74,7 +74,6 @@
   --slor:        light-dark(rgba(24,26,30,.28), rgba(8,6,4,.58));
 
   --r:14px; --r-s:9px; --r-xs:7px;
-  --brev-kildebredde:320px;
   --sans:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
   --mono:"Geist Mono","IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
   --side:236px;
@@ -912,44 +911,48 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .felt__notat{min-height:74px;resize:vertical;line-height:1.5}
 
 /* ---------- søknadsbrevet ----------
-   Brevet er hovedflaten. Kildene ligger i en rolig marg, og de lange
-   tekstene foldes ut bare når man trenger dem. Samme Lin/Sot-materiale,
-   mer luft rundt sammenhengende prosa enn rundt liste- og datafeltene. */
+   Brevet står i detaljpanelets Brev-fane, og panelet er aldri bredere
+   enn 580 px. Flaten er derfor stablet: fremdriften og statusen øverst,
+   så grunnlaget som tre korte linjer på kortet, og under det papiret i
+   et innfelt spor, som får resten av høyden. Grunnlaget er data, ikke
+   et skjema: én linje per kilde, med navnet, hva som er lagret, og det
+   man kan gjøre med det. De lange tekstene foldes ut bare når man ber
+   om dem. Samme Lin/Sot-materiale, mer luft rundt sammenhengende prosa
+   enn rundt data. */
 .handling--brev{color:var(--hav-t);background:var(--hav-vask)}
 .handling--brev:hover{background:var(--hav-vask);box-shadow:inset 0 0 0 1px var(--hav)}
 .brev__inngang{margin-top:23px;padding-top:20px;border-top:1px solid var(--linje)}
 .skuff__kropp--brev{padding:0;display:flex;flex-direction:column;min-height:0;overflow:hidden}
-.brev__topprad{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:0 28px 13px}
-.brev__jobb{font-size:14px;margin:0;font-weight:500;line-height:1.45;overflow-wrap:anywhere;min-width:0}
-.brev__jobb span{color:var(--blekk-3);font-weight:400}
-.brev__panelknapp{flex:none;font-size:12px;padding:5px 9px}
 
 /* ---------- fremdriftsraden ----------
    Huset avviser spinneren med rette: en lenkeimport haster ikke, den tar
    bare litt tid. Et modellkall er en annen sak. Det varer i titalls
-   sekunder, det har navngitte trinn, og ett av trinnene kan kreve noe av
-   brukeren. Da er det ikke ventingen som skal vises, men hvor i flyten vi
-   er, og hva som gjenstår. Raden står derfor fremme hele tiden, også før
-   man trykker: da vet man at avklaringen kan komme, i stedet for å bli
-   overrasket av den midt i det man tror er en generering.
+   sekunder og har tre navngitte faser. Da er det ikke ventingen som skal
+   vises, men hvor i flyten vi er, og hva som gjenstår. Raden står fremme
+   hele tiden, også før man trykker, så den sier hva «Skriv utkast» gjør
+   og ingenting flytter seg når skrivingen starter.
 
    Tilstanden bæres av tekst og av prikkens form, aldri av bevegelse
    alene. Prikken puster mens et steg er i arbeid, men den er fullt synlig
    i utgangspunktet, så raden er like leselig når bevegelsen er skrudd av.
-   Mikrolinjen under navnet er mono, som resten av husets mikrostatus. */
-.brev__flytrad{display:flex;align-items:flex-start;gap:14px;padding:0 28px 11px}
-.brev__flyt{flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+   Mikrolinjen under navnet er mono, som resten av husets mikrostatus.
+
+   Kolonnene er aldri smalere enn navnet, så hvert navn står på én linje
+   også i et 390 px vindu. Plassen som er til overs, går til hårstrekene
+   mellom de to første stegene; det siste står inntil høyrekanten. */
+.brev__flytrad{flex:none;padding:16px 24px 2px}
+.brev__flyt{display:grid;grid-template-columns:minmax(max-content,1fr) minmax(max-content,1fr) max-content;
             list-style:none;margin:0;padding:0}
 /* Prikken og hårstreken ligger på sin egen linje over navnet. Legges de
    på samme linje, streker streken ut teksten den skal binde sammen. */
-.brev__steg{position:relative;min-width:0;padding:13px 0 0;color:var(--blekk-3)}
+.brev__steg{position:relative;min-width:0;padding:13px 16px 0 0;color:var(--blekk-3)}
+.brev__steg:last-child{padding-right:0}
 .brev__steg::before{content:"";position:absolute;left:0;top:3px;width:7px;height:7px;border-radius:50%;
                     background:currentColor;opacity:.32}
-/* Hårstreken binder stegene til én rad. Den deler rader inni én flate,
-   som er det hårstreker gjør her, og stopper før neste prikk. */
-.brev__steg:not(:last-child)::after{content:"";position:absolute;left:11px;top:6px;right:7px;
+/* Hårstreken binder stegene til én rad og stopper før neste prikk. */
+.brev__steg:not(:last-child)::after{content:"";position:absolute;left:13px;top:6px;right:6px;
                                     height:1px;background:var(--linje-2)}
-.brev__steg__navn{display:block;font-size:12px;line-height:1.35;color:inherit;overflow-wrap:anywhere}
+.brev__steg__navn{display:block;font-size:12px;line-height:1.35;color:inherit;white-space:nowrap}
 .brev__steg__mikro{display:block;min-height:15px;margin-top:2px;font-family:var(--mono);
                    font-size:10.5px;line-height:1.4;color:var(--blekk-3)}
 .brev__steg[data-tilstand="ferdig"]{color:var(--blekk-2)}
@@ -961,54 +964,67 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .brev__steg[data-tilstand="stoppet"]::before{opacity:1}
 .brev__steg[data-tilstand="stoppet"] .brev__steg__mikro{color:var(--ild-t)}
 @keyframes brevPuls{0%,100%{opacity:1}50%{opacity:.3}}
-.brev__avbryt{flex:none;font-size:12px;padding:3px 8px;min-height:26px}
-.brev__tilbakemelding{margin:0;min-height:28px;padding:0 28px 9px;color:var(--blekk-3);font-size:12px;line-height:1.45}
-.brev__feil,.brev__lukkevalg{flex:none;margin:0 24px 12px;padding:12px 15px;background:var(--ild-vask);border-radius:var(--r-s);color:var(--ild-t);font-size:13px;max-height:160px;overflow:auto}
+/* Statuslinjen har plassen sin også når den er tom, og «Avbryt» står i
+   den, så raden over aldri må dele bredden med en knapp. */
+.brev__statusrad{flex:none;display:flex;align-items:center;gap:12px;min-height:30px;padding:0 24px 4px}
+.brev__tilbakemelding{flex:1;min-width:0;margin:0;color:var(--blekk-3);font-size:12px;line-height:1.45}
+.brev__avbryt{flex:none;font-size:12px;padding:5px 9px;margin-right:-9px}
+.brev__feil,.brev__lukkevalg{flex:none;margin:0 24px 12px;padding:12px 15px;background:var(--ild-vask);border-radius:var(--r-s);color:var(--ild-t);font-size:13px;line-height:1.5;max-height:160px;overflow:auto}
 .brev__feil p,.brev__lukkevalg p{margin:0 0 9px}
+.brev__feil p:last-child{margin-bottom:0}
 .brev__gjenoppretting{margin:0 24px 15px;flex:none}
 .brev__lukkevalg{background:var(--rav-vask);color:var(--blekk-2)}
 .brev__lukkevalg .knapp + .knapp{margin-left:6px}
-.brev{flex:1;min-height:0;display:grid;grid-template-columns:var(--brev-kildebredde) minmax(0,1fr);border-top:1px solid var(--linje)}
-.brev__grunnlag{padding:23px 23px 26px 28px;overflow-y:auto;min-height:0;scrollbar-gutter:stable}
-.brev__felter{border:0;margin:0;padding:0;min-width:0}
-.brev__felter:disabled{opacity:.7}
-.brev__avsnitt{margin-bottom:23px}
-.brev__avsnitt h3,.brev__innstillinger h3{font-size:14px;margin:0 0 10px;letter-spacing:-.012em;font-weight:600}
-.brev__seksjonsrad{margin-bottom:10px}
-.brev__seksjonsrad h3{margin-bottom:3px}
-.brev__sekundar{display:block;color:var(--blekk-3);font-size:11.5px;font-weight:400;line-height:1.5}
-.brev__filvalg{display:block;position:relative;border-radius:var(--r-s);background:var(--innfelt);padding:12px;cursor:pointer;transition:background .15s ease}
-.brev__filvalg:hover,.brev__filvalg.er-over{background:var(--innfelt-2)}
-.brev__filvalg:focus-within{outline:2px solid var(--hav);outline-offset:2px}
-.brev__filvalg input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
-.brev__filnavn{display:block;margin-bottom:3px;font-size:13px;font-weight:500;overflow-wrap:anywhere}
-.brev__detaljer{margin-top:9px}
-.brev__detaljer > summary{font-size:12px;color:var(--blekk-2);cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;padding:4px 0;width:fit-content}
-.brev__detaljer > summary::before{content:"›";font-size:17px;line-height:1;transition:transform .15s ease}
-.brev__detaljer[open] > summary::before{transform:rotate(90deg)}
-.brev__detaljer > summary::-webkit-details-marker{display:none}
-.brev__detaljer[open] > summary{margin-bottom:8px}
-.brev__kildetekst{min-height:220px;max-height:420px;font-family:var(--sans);font-size:13px;line-height:1.6}
-.brev__lenkerad{display:flex;gap:6px;align-items:center}
-.brev__lenkerad .felt__inn{min-width:0;font-size:12px;padding:9px 10px}
-.brev__lenkerad .knapp{font-size:12px;padding:9px 12px;flex:none}
-.brev__felttittel{display:block;font-size:14px;font-weight:600;letter-spacing:-.012em;line-height:1.45;margin-bottom:10px}
-.brev__felttittel span{display:block;margin-top:3px;font-size:11.5px;color:var(--blekk-3);font-weight:400;letter-spacing:0}
-.brev__kontekst{min-height:118px;font-family:var(--sans);font-size:13px;line-height:1.6}
-.brev__avsnitt--smal .felt__inn{padding:9px 8px;font-size:12px}
-.brev__avsnitt--smal .felt__merke{font-size:12px}
+.brev{flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto;border-top:1px solid var(--linje)}
+
+/* ---------- grunnlaget ----------
+   Tre kolonner deles av alle linjene (subgrid), så navnene, verdiene og
+   handlingene står i hver sin loddrette linje. Det som mangler, sies med
+   ord, «Mangler», og knappene ved siden av er veien videre. Kulør er
+   forbeholdt det som haster, og en manglende annonse haster ikke.
+   Mangler API-nøkkelen, får den en fjerde linje av samme slag, med
+   veien til innstillingene der den legges inn. */
+.brev__kilder{flex:none;display:grid;grid-template-columns:max-content minmax(0,1fr) auto;column-gap:16px;padding:6px 24px 16px}
+.brev__kilde{grid-column:1/-1;display:grid;grid-template-columns:subgrid;align-items:baseline;min-height:36px;
+             border-radius:var(--r-xs);transition:background .12s ease,box-shadow .12s ease}
+.brev__kilde[hidden]{display:none}
+.brev__kilde.er-over{background:var(--innfelt);box-shadow:0 0 0 6px var(--innfelt)}
+.brev__kildenavn{font-size:12px;font-weight:500;color:var(--blekk-3);line-height:1.4}
+.brev__kildeverdi{min-width:0;font-size:13px;font-weight:500;color:var(--blekk);line-height:1.4;
+                  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brev__kildeverdi.er-tom{color:var(--blekk-2);font-weight:400}
+/* Knappeteksten står optisk i kant med høyremargen, ikke polstringen. */
+.brev__kildehandlinger{display:flex;justify-content:flex-end;align-items:center;gap:2px;margin-right:-9px}
+.brev__lenkeknapp{display:inline-flex;align-items:center;min-height:30px;padding:5px 9px;font-size:12.5px;white-space:nowrap}
+.brev__filknapp{position:relative;overflow:hidden}
+.brev__filknapp input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.brev__filknapp:has(input:focus-visible){outline:2px solid var(--hav);outline-offset:2px}
+.brev__filknapp.er-av{opacity:.45;pointer-events:none}
+.brev__velger{max-width:100%;font-family:var(--sans);font-size:13px;font-weight:500;color:var(--blekk);
+              border:0;background:transparent;padding:4px 0;cursor:pointer}
+.brev__velger:disabled{cursor:default;opacity:.6}
+.brev__cvpanel{grid-column:1/-1;padding:6px 0 12px}
+.brev__kildetekst{min-height:180px;max-height:360px;font-family:var(--sans);font-size:13px;line-height:1.6}
 
 /* ---------- innstillingspanelet ----------
-   Nøkkel, sikkerhetskopi og de to slettehandlingene sto tidligere i
-   kildemargen, mellom CV-en og annonsen. Det er innstillinger og
-   irreversible handlinger midt i skrivestien. De bytter nå ut margen i
-   stedet for å ligge i den: nøkkelen er fortsatt én knapp unna, siden man
-   ikke kan skrive uten den, men papiret til høyre blir stående, så man
-   ser hva man kom fra. */
-.brev__innstillinger:not([hidden]){padding:23px 23px 26px 28px;overflow-y:auto;min-height:0;scrollbar-gutter:stable}
-.brev[data-panel="innstillinger"] .brev__grunnlag{display:none}
+   Leverandør, nøkkel, stilreferanse, sikkerhetskopi og de to
+   slettehandlingene er ikke en del av skrivestien. De bytter ut
+   grunnlaget og papiret når de er åpne, i stedet for å ligge i dem, og
+   er én knapp unna begge veier. */
+.brev[data-panel="innstillinger"] .brev__kilder,
+.brev[data-panel="innstillinger"] .brev__skriveflate{display:none}
+.brev__innstillinger:not([hidden]){padding:4px 24px 28px}
+.brev__innstillingstopp{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.brev__innstillingstopp h3{font-size:14px;margin:0;letter-spacing:-.012em;font-weight:600}
+.brev__innstillingstopp .brev__lenkeknapp{margin-right:-9px}
+.brev__avsnitt{margin-bottom:23px}
+.brev__avsnitt--smal .felt__inn{padding:9px 8px;font-size:12px}
 .brev__innstillinger .felt__merke{font-size:12px}
 .brev__innstillinger .felt__hjelp{margin-top:6px}
+.brev__stilhjelp{margin:0 0 9px!important}
+.brev__stil .brev__kildetekst{min-height:200px}
+.brev__stilrad{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:6px;min-height:16px}
+.brev__teller{font-family:var(--mono);font-size:10.5px;color:var(--blekk-3);white-space:nowrap;margin-left:auto}
 /* Samme merkelinje som ellers i huset, så bolken leses som en etikett og
    ikke som enda en overskrift. */
 .brev__innstillinger h4{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.11em;
@@ -1020,64 +1036,60 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .brev__importvalg{display:block;position:relative;font-size:12px;color:var(--blekk-2);padding:8px 0;cursor:pointer}
 .brev__importvalg input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
 .brev__importvalg:focus-within{outline:2px solid var(--hav);outline-offset:2px}
-/* ---------- lagene over papiret ----------
-   Både teksten som strømmer og avklaringen legger seg oppå papiret i
-   stedet for i margen. Det er dit blikket går når man har bedt om et
-   brev, og det er der begge hører hjemme: strømmen er brevet under
-   arbeid, avklaringen er det siste som står mellom brukeren og teksten.
-   Begge er hvite kort over kortet, så ingen ny flate innføres. */
-.brev__strom,.brev__avklaring{position:absolute;inset:0;background:var(--kort);
-                              border-radius:var(--r-s);overflow-y:auto;scrollbar-gutter:stable}
+
+/* ---------- papiret ----------
+   Det innfelte sporet tar resten av høyden, og papiret i det vokser med
+   brevet (høyden settes fra brevflate.js). Grunnlaget og papiret ruller
+   da som ett dokument, i stedet for at et 200 px høyt papir ruller inni
+   et panel som også ruller. Versjonslinjen fester seg øverst, så
+   versjonen og «Lagret» står synlig mens man skriver langt nede. */
+.brev__skriveflate{flex:1 0 auto;display:flex;flex-direction:column;min-width:0;background:var(--innfelt);padding:0 16px 16px;gap:10px}
+.brev__verktoylinje{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;
+                    min-height:24px;margin:0 -16px -4px;padding:10px 24px 6px;background:var(--innfelt)}
+.brev__versjon{font-family:var(--sans);font-size:12px;color:var(--blekk-2);border:0;background:transparent;max-width:65%;padding:3px 0;cursor:pointer}
+.brev__lagret{font-family:var(--mono);font-size:10.5px;color:var(--blekk-3);white-space:nowrap;text-align:right}
+.brev__papir{position:relative;flex:1 0 auto;min-height:340px;background:var(--kort);border-radius:var(--r-s);box-shadow:var(--loft);display:flex;scroll-margin-top:48px}
+.brev__tekst{display:block;flex:1;width:100%;min-width:0;padding:26px 28px;border:0;resize:none;overflow:hidden;background:transparent;font-family:var(--sans);font-size:16px;line-height:1.8;color:var(--blekk)}
+.brev__tekst::placeholder{color:var(--blekk-3);opacity:1}
+.brev__tekst:disabled{opacity:1;-webkit-text-fill-color:var(--blekk-2)}
+.brev__tekst:focus-visible{outline-offset:-3px;border-radius:var(--r-s)}
+.brev__endret{font-size:12px;color:var(--blekk-3);margin:0;padding:0 4px;line-height:1.5}
+/* ---------- laget over papiret ----------
+   Teksten som strømmer, legger seg oppå papiret, der blikket går når man
+   har bedt om et brev. Det er et hvitt kort over kortet, så ingen ny
+   flate innføres. */
+/* Laget ruller med hjulet, men uten synlig rullefelt: feltet under har
+   ingen, og et rullefelt ville gjort linjene smalere enn i brevet. */
+.brev__strom{position:absolute;inset:0;background:var(--kort);border-radius:var(--r-s);overflow-y:auto;scrollbar-width:none}
+.brev__strom::-webkit-scrollbar{display:none}
 /* Nøyaktig samme typografi og innrykk som selve brevfeltet. Det er hele
    poenget: når det ferdige brevet lander, skal ikke én linje flytte seg. */
-.brev__strom{padding:30px 34px;font-family:var(--sans);font-size:16px;line-height:1.8;
+.brev__strom{padding:26px 28px;font-family:var(--sans);font-size:16px;line-height:1.8;
              color:var(--blekk);white-space:pre-wrap;overflow-wrap:anywhere}
 .brev__markor{display:inline-block;width:2px;height:1.05em;margin-left:2px;
                vertical-align:-.18em;background:var(--blekk-2);animation:brevMarkor 1.1s step-end infinite}
 /* Markøren står synlig i utgangspunktet, så den er der også når
    bevegelsen er skrudd av. */
 @keyframes brevMarkor{0%,100%{opacity:1}50%{opacity:0}}
-.brev__avklaring{padding:26px 30px 28px}
-.brev__avklaring h3{font-size:17px;margin:0 0 9px;letter-spacing:-.02em;font-weight:600;line-height:1.3}
-.brev__avklaring > .felt__hjelp{margin:0 0 17px}
-.brev__begrunnelse{margin:0 0 13px;padding:10px 13px;background:var(--innfelt);border-radius:var(--r-xs);
-                   font-size:12.5px;line-height:1.55;color:var(--blekk-2)}
-.brev__avklaring .felt + .felt{margin-top:15px}
-.brev__avklaring .brev__småhandlinger{margin-top:19px}
-/* Forbedringsraden hører til et ferdig brev, ikke til et steg som står
-   foran det. */
-.brev.avklarer .brev__forbedring{display:none}
-.brev__svar{min-height:82px;font-family:var(--sans);font-size:13.5px;line-height:1.55}
+.brev__forbedring{flex:none;margin-top:2px}
+.brev__forbedring .felt__merke{padding:0 4px;font-size:12px}
+/* Én linje som vokser med teksten, så papiret beholder høyden. */
+.brev__forbedringsrad{display:flex;gap:8px;align-items:flex-end}
+.brev__forbedringsrad .felt__omr{flex:1;min-width:0;font-family:var(--sans);font-size:13px;line-height:1.5;min-height:40px;max-height:120px;padding:9px 11px;background:var(--kort);resize:none;field-sizing:content}
+.brev__forbedringsrad .knapp{flex:none;font-size:12px;padding:0 13px;height:40px}
 
-.brev__skriv{margin-top:20px}
-/* Nøkkelen ligger i panelet, men mangler den, stopper skrivingen. Det er
-   en advarsel om noe man må ordne, ikke et varsel om at noe er galt. */
-.brev__mangler{margin-bottom:13px;padding:12px 14px;background:var(--rav-vask);
-               border-radius:var(--r-s);color:var(--blekk-2);font-size:12.5px;line-height:1.5}
-.brev__mangler p{margin:0 0 10px}
-.brev__mangler .knapp{font-size:12px;padding:8px 11px}
-.brev__skriv .felt__hjelp{font-size:11.5px;margin-top:10px}
-.brev__skriveflate{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--innfelt);padding:19px 24px 20px;gap:12px}
-.brev__verktoylinje{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:24px}
-.brev__versjon{font-family:var(--sans);font-size:12px;color:var(--blekk-2);border:0;background:transparent;max-width:65%;padding:3px 0;cursor:pointer}
-.brev__lagret{font-family:var(--mono);font-size:10.5px;color:var(--blekk-3);white-space:nowrap;text-align:right}
-.brev__papir{position:relative;min-height:150px;flex:1;background:var(--kort);border-radius:var(--r-s);box-shadow:var(--loft);display:flex;overflow:hidden}
-.brev__tekst{display:block;flex:1;width:100%;min-width:0;min-height:0;padding:30px 34px;border:0;resize:none;background:transparent;font-family:var(--sans);font-size:16px;line-height:1.8;color:var(--blekk);scrollbar-gutter:stable}
-.brev__tekst::placeholder{color:var(--blekk-3);opacity:1}
-.brev__tekst:disabled{opacity:1;-webkit-text-fill-color:var(--blekk-2)}
-.brev__tekst:focus-visible{outline-offset:-3px;border-radius:var(--r-s)}
-.brev__endret{font-size:12px;color:var(--blekk-3);margin:0;line-height:1.5}
-.brev__forbedring{flex:none;margin-top:3px}
-.brev__forbedringsrad{display:flex;gap:9px;align-items:stretch}
-.brev__forbedringsrad .felt__omr{font-family:var(--sans);font-size:13px;line-height:1.5;min-height:59px;max-height:120px;padding:9px 11px;background:var(--kort);resize:vertical}
-.brev__forbedringsrad .knapp{flex:none;font-size:12px;padding:10px 13px}
-.brev__forbedring .felt__hjelp{font-size:11.5px;margin-top:6px}
-.skuff__bunn--brev{align-items:center;padding:14px 25px;background:var(--kort);border-top:1px solid var(--linje);flex:none}
+/* ---------- foten ----------
+   Grunnen til at «Skriv utkast» ikke kan trykkes, står rett ved knappen,
+   der blikket er når man prøver. */
+.skuff__bunn--brev{align-items:center;padding:12px 24px;background:var(--kort);border-top:1px solid var(--linje);flex:none;flex-wrap:wrap;gap:8px}
+.skuff__bunn--brev .knapp{font-size:13px;padding:10px 13px}
+.brev__grunn{font-size:12px;color:var(--blekk-2);line-height:1.4}
+.brev__grunn:empty{display:none}
 .brev__ord{margin-right:auto;font-family:var(--mono);font-size:11px;color:var(--blekk-3);white-space:nowrap}
-.brev__generer{margin-right:5px}
 .skuff__bunn--brev:not(.har-brev) .brev__nedlasting{display:none}
 .skuff__bunn--brev:not(.har-brev) [data-brev="kopier"]{display:none}
 .brev__kopistatus{font-size:12px;color:var(--blekk-3)}
+.brev__kopistatus:empty{display:none}
 .brev__nedlasting{position:relative}
 .brev__nedlasting > summary{list-style:none;display:flex;align-items:center;gap:14px}
 .brev__nedlasting > summary::-webkit-details-marker{display:none}
@@ -1086,48 +1098,25 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .brev__meny button:hover{background:var(--innfelt)}
 .brev__meny button:disabled{opacity:.45;cursor:default}
 .brev .knapp:disabled,.skuff__bunn--brev .knapp:disabled{opacity:.45;cursor:default;box-shadow:none}
-.brev__faner{display:none}
-/* Brevflaten står i detaljpanelet. Er panelet smalere enn 800 px, og
-   det er det nesten alltid, blir grunnlaget og brevet to faner i stedet
-   for to kolonner. Spørringen går mot panelet, ikke vinduet. Jobben
-   står allerede i panelets overskrift og gjentas ikke. */
-.detalj .brev__jobb{display:none}
-.detalj .brev__topprad{justify-content:flex-end;padding-top:10px}
-@container detaljflate (max-width:800px){
-  .brev__topprad{padding:10px 24px 6px}
-  .brev__flytrad{padding:0 24px 9px}
-  .brev__steg__navn{font-size:11.5px}
-  .brev__tilbakemelding{padding:0 24px 8px;min-height:29px}
-  .brev__faner{display:flex;margin:0 24px 13px;flex:none}
-  .brev{display:flex;flex-direction:column;border-top:0}
-  .brev__grunnlag{padding:5px 24px 25px;flex:1}
-  .brev__innstillinger:not([hidden]){padding:5px 24px 25px;flex:1}
-  /* Panelet hører til grunnlagsfanen; brevfanen skal vise papiret. */
-  .brev[data-fane="brev"] .brev__innstillinger{display:none}
-  .brev__skriveflate{padding:12px 16px 18px;flex:1;overflow-y:auto;gap:10px}
-  .brev[data-fane="grunnlag"] .brev__skriveflate{display:none}
-  .brev[data-fane="brev"] .brev__grunnlag{display:none}
-  .brev__seksjonsrad{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-  .brev__seksjonsrad h3{margin:0}
-  .brev__filvalg{padding:14px}
-  .brev__papir{flex:none;min-height:330px;height:52dvh}
-  .brev__tekst{padding:22px;font-size:16px;line-height:1.75}
-  .brev__strom{padding:22px;font-size:16px;line-height:1.75}
-  .brev__avklaring{padding:20px}
-  .brev__avklaring h3{font-size:16px}
-  .brev__forbedringsrad{flex-direction:column}
-  .brev__forbedringsrad .knapp{align-self:flex-end}
-  .brev__detaljer > summary{min-height:40px;font-size:13px}
-  .skuff__bunn--brev{padding:12px 24px;flex-wrap:wrap;gap:8px;padding-bottom:max(12px,env(safe-area-inset-bottom))}
-  .skuff__bunn--brev .knapp{font-size:13px;padding:11px 13px;min-height:44px}
-  .skuff__bunn--brev.har-brev .brev__generer{order:3;flex-basis:100%;margin:2px 0 0}
-  .brev__kopistatus:empty{display:none}
-  .brev__feil,.brev__lukkevalg{margin:0 24px 10px}
+/* Smalt panel: papiret får mer av bredden. Under 440 px går «Skriv nytt
+   utkast» ned på sin egen linje i stedet for å presse kopier og last
+   ned sammen. */
+@container detaljflate (max-width:520px){
+  .brev__skriveflate{padding:10px 12px 14px}
+  .brev__tekst,.brev__strom{padding:20px 22px;line-height:1.75}
 }
-/* 16 px i feltene hindrer at iOS zoomer inn når man trykker i dem. */
+@container detaljflate (max-width:440px){
+  .skuff__bunn--brev.har-brev .brev__generer{order:3;flex-basis:100%;margin:2px 0 0}
+}
+/* Berøring: 44 px mål, og 16 px i feltene hindrer at iOS zoomer inn når
+   man trykker i dem. */
+@media (pointer:coarse), (max-width:640px){
+  .skuff__bunn--brev .knapp,.brev__lenkeknapp,.brev__avbryt{min-height:44px}
+  .brev__kilde{min-height:46px}
+  .brev__meny button,.brev__importvalg{min-height:44px}
+}
 @media (pointer:coarse){
   .brev input,.brev textarea,.brev select{font-size:16px}
-  .brev__detaljer > summary,.brev__meny button,.brev__importvalg{min-height:44px}
 }
 /* Mens noe pågår blir knappen stående der den står, men slutter å svare. */
 .knapp:disabled{cursor:default;opacity:.5}

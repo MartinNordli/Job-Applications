@@ -269,14 +269,14 @@ try{
 
   /* ---------- brevet monteres, og rydder etter seg ---------- */
   await page.locator("#detaljFane-brev").click();
-  await page.locator("#brevKontekst").waitFor({ state: "attached" });
-  await page.waitForFunction(() => !document.querySelector("#brevGrunnlagsfelter")?.disabled);
+  await page.locator("#brevTekst").waitFor({ state: "attached" });
+  await page.waitForFunction(() => document.querySelector(".brev")?.getAttribute("aria-busy") === "false");
   assert.equal(await page.locator("#detaljBunn").isVisible(), true);
   assert.equal(await page.locator(".detalj__fane[aria-selected=true]").textContent(), "Brev");
   await page.screenshot({ animations: "disabled", path: path.join(dir, "07-brev.png") });
   await page.locator("#detaljFane-oversikt").click();
   await page.locator(".oversikt").waitFor();
-  assert.equal(await page.locator("#brevKontekst").count(), 0, "brevflaten er borte");
+  assert.equal(await page.locator("#brevTekst").count(), 0, "brevflaten er borte");
   assert.equal(await page.locator("#detaljBunn").isHidden(), true);
   /* Med panelet ved siden av en smal liste er radknappene tatt ut:
      panelet har dem alle. */
@@ -287,12 +287,12 @@ try{
      venter på at brevet er lagret. */
   await page.locator('.rad[data-id="snart"] [data-gjor="brev"]').click();
   await page.waitForFunction(() => location.hash === "#jobb/snart/brev");
-  await page.waitForFunction(() => !document.querySelector("#brevGrunnlagsfelter")?.disabled);
-  await page.locator("#brevKontekst").fill("Jeg vil jobbe med kraftmarkedet.");
+  await page.waitForFunction(() => document.querySelector(".brev")?.getAttribute("aria-busy") === "false");
+  await page.locator("#brevTekst").fill("Jeg vil jobbe med kraftmarkedet.");
   await page.keyboard.press("Escape");
   await panel.waitFor({ state: "hidden" });
   const brev = await (await context.request.get(url + "/api/jobber/snart/brev")).json();
-  assert.equal(brev.kontekst, "Jeg vil jobbe med kraftmarkedet.", "brevet ble lagret før panelet lukket seg");
+  assert.equal(brev.tekst, "Jeg vil jobbe med kraftmarkedet.", "brevet ble lagret før panelet lukket seg");
 
   /* ---------- en slettet søknad lukker panelet ---------- */
   await page.locator('.rad[data-id="utgatt"]').click({ position: { x: 30, y: 20 } });
