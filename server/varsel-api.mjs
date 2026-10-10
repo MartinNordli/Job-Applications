@@ -1,9 +1,9 @@
 /* ============================================================
    Fristvarsel over HTTP: innstillingen og runden for nettleseren.
 
-   GET  /api/varsel        → { på, dagerFør }
-   PUT  /api/varsel        ← { på, dagerFør }  → 200 med det lagrede
-   POST /api/varsel/sjekk  → { varsler: [{ id, dager, tittel, tekst }] }
+   GET  /api/varsel        → { på, dagerFør, intervju }
+   PUT  /api/varsel        ← { på, dagerFør, intervju? }  → 200 med det lagrede
+   POST /api/varsel/sjekk  → { varsler: [{ id, art, dager?, iid?, type?, tittel, tekst }] }
 
    Sjekken fører det den returnerer i varslet.json, den samme loggen
    Mac-appens bakgrunnsjobb bruker, så en frist varsles én gang selv
@@ -32,7 +32,7 @@ async function lesFil(filer, navn){
   try{ return await filer.lesTekst(navn); }catch{ return null; }
 }
 
-const utenVersjon = ({ på, dagerFør }) => ({ på, dagerFør });
+const utenVersjon = ({ på, dagerFør, intervju }) => ({ på, dagerFør, intervju });
 
 export function lagVarselRuter({ svar, lesJson, ikkeTillatt, nå = () => new Date() }){
   async function innstilling(req, res, { filer }){
@@ -58,7 +58,7 @@ export function lagVarselRuter({ svar, lesJson, ikkeTillatt, nå = () => new Dat
       if(!Array.isArray(data.jobber)) return [];
       const tid = nå();
       const logg = lesLogg(await lesFil(filer, LOGGFIL));
-      const r = runde({ jobber: data.jobber, iDag: isoDato(tid), logg, nå: tid.toISOString(),
+      const r = runde({ jobber: data.jobber, iDag: isoDato(tid), logg, nå: tid,
                         innstilling: lesInnstilling(await lesFil(filer, INNSTILLINGSFIL)) });
       /* Ingenting å varsle og ingenting å rydde: filen står urørt. */
       if(r.varsler.length || Object.keys(logg).length !== Object.keys(r.logg).length)

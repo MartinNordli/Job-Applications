@@ -8,7 +8,7 @@ import { forfalne, runde, ryddLogg, varseltekst, validerInnstilling, lesInnstill
    src-tauri/src/varsel.rs, med de samme tilfellene som tester. */
 
 const I_DAG = "2026-10-04";            /* en søndag */
-const PÅ = { versjon: 1, på: true, dagerFør: 1 };
+const PÅ = { versjon: 2, på: true, dagerFør: 1, intervju: true };
 const jobb = (o = {}) => ({ id: "a1", selskap: "Aker BP", stilling: "ML Engineer",
                             frist: "2026-10-05", status: "todo", ...o });
 const ider = l => l.map(f => f.jobb.id);
@@ -64,7 +64,7 @@ test("ordene i varselet", () => {
 
 test("innstillingen valideres strengt inn og leses raust fra disk", () => {
   assert.deepEqual(validerInnstilling({ på: false, dagerFør: 7 }),
-                   { ok: true, verdi: { versjon: 1, på: false, dagerFør: 7 } });
+                   { ok: true, verdi: { versjon: 2, på: false, dagerFør: 7, intervju: true } });
   for(const ugyldig of [{ på: "ja", dagerFør: 1 }, { på: true, dagerFør: 0 },
                         { på: true, dagerFør: 15 }, { på: true, dagerFør: 1.5 }, null, []])
     assert.equal(validerInnstilling(ugyldig).ok, false, JSON.stringify(ugyldig));
@@ -73,7 +73,7 @@ test("innstillingen valideres strengt inn og leses raust fra disk", () => {
   assert.deepEqual(lesInnstilling("{ikke json"), standardInnstilling());
   assert.deepEqual(lesInnstilling('{"på":true,"dagerFør":99}'), standardInnstilling());
   assert.deepEqual(lesInnstilling('{"versjon":1,"på":false,"dagerFør":3}'),
-                   { versjon: 1, på: false, dagerFør: 3 });
+                   { versjon: 2, på: false, dagerFør: 3, intervju: true });
   assert.deepEqual(lesLogg("[1,2]"), {});
   assert.deepEqual(lesLogg('{"a|2026-10-05":"t","rar":5}'), { "a|2026-10-05": "t" });
 });
@@ -83,4 +83,48 @@ test("datoregningen bryr seg ikke om sommertid eller klokkeslett", () => {
   assert.equal(dagerMellom("2026-03-28", "2026-03-30"), 2);   /* og til sommertid */
   assert.equal(isoDato(new Date(2026, 0, 5, 23, 59)), "2026-01-05");
   assert.equal(dagerMellom("2026-10-04", "ikke en dato"), null);
+});
+
+/* ---------- felles tilfeller (leses også av Rust) ---------- */
+
+import { readFileSync } from "node:fs";
+import { intervjuvarsler, VERSJON } from "../src/fristvarsel.mjs";
+
+const TILFELLER = JSON.parse(readFileSync(new URL("../testdata/varseltilfeller.json", import.meta.url), "utf8"));
+const lokal = s => { const [d, t] = s.split("T"); const [å, m, dd] = d.split("-").map(Number);
+                     const [h, mi] = t.split(":").map(Number); return new Date(å, m - 1, dd, h, mi); };
+
+for(const t of TILFELLER.intervju){
+  test("intervjuvarsel: " + t.navn, () => {
+    const ut = intervjuvarsler(t.jobber, lokal(t.nå), t.innstilling, t.logg)
+      .map(v => ({ nøkkel: v.nøkkel, tittel: v.tittel, tekst: v.tekst }));
+    assert.deepEqual(ut, t.forventet);
+  });
+}
+
+for(const t of TILFELLER.frist){
+  test("fristvarsel: " + t.navn, () => {
+    const ut = forfalne(t.jobber, t.iDag, t.innstilling, t.logg)
+      .map(f => ({ nøkkel: f.nøkkel, ...varseltekst(f.jobb, f.dager) }))
+      .map(v => ({ nøkkel: v.nøkkel, tittel: v.tittel, tekst: v.tekst }));
+    assert.deepEqual(ut, t.forventet);
+  });
+}
+
+test("runde fører intervjuvarsler i loggen og rydder intervjuer som er forbi", () => {
+  const t = TILFELLER.intervju[0];
+  const gammel = { "intervju:a1:i0:1000:dag|2026-09-01": "x" };
+  const r = runde({ jobber: t.jobber, innstilling: t.innstilling, logg: gammel, nå: lokal(t.nå) });
+  assert.deepEqual(Object.keys(r.logg), [t.forventet[0].nøkkel]);
+  assert.equal(r.varsler.length, 1);
+  assert.deepEqual([r.varsler[0].art, r.varsler[0].type, r.varsler[0].iid], ["intervju", "dag", "i1"]);
+  assert.equal(runde({ jobber: t.jobber, innstilling: t.innstilling, logg: r.logg, nå: lokal(t.nå) }).varsler.length, 0);
+});
+
+test("innstillingen: versjon 2 med intervju, versjon 1 leses som på", () => {
+  assert.equal(VERSJON, 2);
+  assert.equal(standardInnstilling().intervju, true);
+  assert.equal(lesInnstilling('{"versjon":1,"på":true,"dagerFør":2}').intervju, true);
+  assert.equal(lesInnstilling('{"versjon":2,"på":true,"dagerFør":2,"intervju":false}').intervju, false);
+  assert.equal(validerInnstilling({ på: true, dagerFør: 1, intervju: "ja" }).ok, false);
 });

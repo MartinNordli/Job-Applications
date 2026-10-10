@@ -15,7 +15,7 @@
 
    Ingen av funksjonene kaster.
 
-   hentInnstilling()  → { ok: true, på, dagerFør } | { ok: false, melding }
+   hentInnstilling()  → { ok: true, på, dagerFør, intervju } | { ok: false, melding }
    settInnstilling(i) → samme form
    sjekk()            → antall varsler som ble vist (0 ved feil)
    tillatelse()       → "app" | "granted" | "denied" | "default" | "ustøttet"
@@ -36,7 +36,7 @@ async function appFiler(){
   return lagTauriFiler({ bruker });
 }
 
-const utenVersjon = ({ på, dagerFør }) => ({ ok: true, på, dagerFør });
+const utenVersjon = ({ på, dagerFør, intervju }) => ({ ok: true, på, dagerFør, intervju: intervju !== false });
 const feil = (melding) => ({ ok: false, melding });
 
 async function http(sti, valg){
@@ -55,8 +55,8 @@ export async function hentInnstilling(){
   }catch(e){ return feil("Fikk ikke lest varselinnstillingen. " + (e?.message || e)); }
 }
 
-export async function settInnstilling({ på, dagerFør }){
-  const v = validerInnstilling({ versjon: VERSJON, på, dagerFør });
+export async function settInnstilling({ på, dagerFør, intervju = true }){
+  const v = validerInnstilling({ versjon: VERSJON, på, dagerFør, intervju });
   if(!v.ok) return feil(v.feil[0].melding);
   try{
     if(I_APP){
@@ -64,7 +64,7 @@ export async function settInnstilling({ på, dagerFør }){
       return utenVersjon(v.verdi);
     }
     return utenVersjon(await http("/api/varsel", { method: "PUT",
-      headers: { "content-type": "application/json" }, body: JSON.stringify({ på, dagerFør }) }));
+      headers: { "content-type": "application/json" }, body: JSON.stringify({ på, dagerFør, intervju }) }));
   }catch(e){ return feil("Innstillingen ble ikke lagret. " + (e?.message || e)); }
 }
 
@@ -95,7 +95,8 @@ async function sjekkNå(){
     if(tillatelse() !== "granted") return 0;
     const { varsler = [] } = await http("/api/varsel/sjekk", { method: "POST" });
     for(const v of varsler)
-      new Notification(v.tittel, { body: v.tekst, tag: "frist-" + v.id, icon: "src/ikon.png", lang: "no" });
+      new Notification(v.tittel, { body: v.tekst, icon: "src/ikon.png", lang: "no",
+        tag: v.art === "intervju" ? `intervju-${v.id}-${v.iid}-${v.type}` : "frist-" + v.id });
     return varsler.length;
   }catch{ return 0; }   /* et varsel som uteblir er ikke verdt å forstyrre flaten for */
 }

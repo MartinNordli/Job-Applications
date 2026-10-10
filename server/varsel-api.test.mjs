@@ -49,18 +49,18 @@ test("innstillingen har en standard, lagres per profil og avviser ugyldige verdi
   const ola = await konto(s.base, "ola@example.no");
   const kari = await konto(s.base, "kari@example.no");
 
-  assert.deepEqual(await (await ola.kall("/api/varsel")).json(), { på: true, dagerFør: 1 });
+  assert.deepEqual(await (await ola.kall("/api/varsel")).json(), { på: true, dagerFør: 1, intervju: true });
 
   const r = await ola.kall("/api/varsel", "PUT", { på: false, dagerFør: 3 });
   assert.equal(r.status, 200);
-  assert.deepEqual(await r.json(), { på: false, dagerFør: 3 });
-  assert.deepEqual(await (await ola.kall("/api/varsel")).json(), { på: false, dagerFør: 3 });
+  assert.deepEqual(await r.json(), { på: false, dagerFør: 3, intervju: true });
+  assert.deepEqual(await (await ola.kall("/api/varsel")).json(), { på: false, dagerFør: 3, intervju: true });
   assert.deepEqual(JSON.parse(await fs.readFile(
     path.join(s.katalog, BRUKERKATALOG, ola.id, "varsel.json"), "utf8")),
-    { versjon: 1, på: false, dagerFør: 3 });
+    { versjon: 2, på: false, dagerFør: 3, intervju: true });
 
   /* Kari ser ikke Olas valg. */
-  assert.deepEqual(await (await kari.kall("/api/varsel")).json(), { på: true, dagerFør: 1 });
+  assert.deepEqual(await (await kari.kall("/api/varsel")).json(), { på: true, dagerFør: 1, intervju: true });
 
   const feil = await ola.kall("/api/varsel", "PUT", { på: true, dagerFør: 30 });
   assert.equal(feil.status, 400);
@@ -80,7 +80,7 @@ test("sjekken varsler en frist én gang og fører den i loggen", async t => {
   await leggInn(ola, [jobb(), jobb({ id: "b2", frist: "2026-10-09" }), jobb({ id: "c3", status: "sent" })]);
 
   const første = await (await ola.kall("/api/varsel/sjekk", "POST")).json();
-  assert.deepEqual(første.varsler, [{ id: "a1", dager: 1, tittel: "Frist i morgen: Aker BP",
+  assert.deepEqual(første.varsler, [{ id: "a1", art: "frist", dager: 1, tittel: "Frist i morgen: Aker BP",
                                       tekst: "ML Engineer · søknadsfristen er mandag 5. oktober." }]);
   const logg = JSON.parse(await fs.readFile(path.join(s.katalog, BRUKERKATALOG, ola.id, "varslet.json"), "utf8"));
   assert.deepEqual(Object.keys(logg), ["a1|2026-10-05"]);

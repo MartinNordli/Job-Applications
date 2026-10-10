@@ -1,0 +1,1219 @@
+{
+ "intervju": [
+  {
+   "navn": "dagen før, første sjekk etter 09:00",
+   "nå": "2026-10-04T09:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": [
+    {
+     "nøkkel": "intervju:a1:i1:1000:dag|2026-10-05",
+     "tittel": "Intervju i morgen: Aker BP",
+     "tekst": "ML Engineer · kl. 10:00 · Teams"
+    }
+   ]
+  },
+  {
+   "navn": "dagen før, men før kl. 09",
+   "nå": "2026-10-04T08:59",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": []
+  },
+  {
+   "navn": "dagen før sent på kvelden",
+   "nå": "2026-10-04T22:30",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": [
+    {
+     "nøkkel": "intervju:a1:i1:1000:dag|2026-10-05",
+     "tittel": "Intervju i morgen: Aker BP",
+     "tekst": "ML Engineer · kl. 10:00 · Teams"
+    }
+   ]
+  },
+  {
+   "navn": "to dager før gir ingenting",
+   "nå": "2026-10-03T12:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": []
+  },
+  {
+   "navn": "to timer før",
+   "nå": "2026-10-05T08:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": [
+    {
+     "nøkkel": "intervju:a1:i1:1000:timer|2026-10-05",
+     "tittel": "Intervju om 2 timer: Aker BP",
+     "tekst": "ML Engineer · kl. 10:00 · Teams"
+    }
+   ]
+  },
+  {
+   "navn": "akkurat 180 minutter før",
+   "nå": "2026-10-05T07:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": [
+    {
+     "nøkkel": "intervju:a1:i1:1000:timer|2026-10-05",
+     "tittel": "Intervju om 3 timer: Aker BP",
+     "tekst": "ML Engineer · kl. 10:00 · Teams"
+    }
+   ]
+  },
+  {
+   "navn": "181 minutter før",
+   "nå": "2026-10-05T06:59",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": []
+  },
+  {
+   "navn": "en time og et kvarter før",
+   "nå": "2026-10-05T08:45",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": [
+    {
+     "nøkkel": "intervju:a1:i1:1000:timer|2026-10-05",
+     "tittel": "Intervju om 1 t 15 min: Aker BP",
+     "tekst": "ML Engineer · kl. 10:00 · Teams"
+    }
+   ]
+  },
+  {
+   "navn": "en time før",
+   "nå": "2026-10-05T09:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": [
+    {
+     "nøkkel": "intervju:a1:i1:1000:timer|2026-10-05",
+     "tittel": "Intervju om 1 time: Aker BP",
+     "tekst": "ML Engineer · kl. 10:00 · Teams"
+    }
+   ]
+  },
+  {
+   "navn": "tjue minutter før",
+   "nå": "2026-10-05T09:40",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": [
+    {
+     "nøkkel": "intervju:a1:i1:1000:timer|2026-10-05",
+     "tittel": "Intervju om 20 min: Aker BP",
+     "tekst": "ML Engineer · kl. 10:00 · Teams"
+    }
+   ]
+  },
+  {
+   "navn": "ved start og etter start",
+   "nå": "2026-10-05T10:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": []
+  },
+  {
+   "navn": "heldag varsles bare dagen før",
+   "nå": "2026-10-04T10:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": null,
+       "varighet": 60,
+       "sted": "",
+       "type": "",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": [
+    {
+     "nøkkel": "intervju:a1:i1:heldag:dag|2026-10-05",
+     "tittel": "Intervju i morgen: Aker BP",
+     "tekst": "ML Engineer · hele dagen"
+    }
+   ]
+  },
+  {
+   "navn": "heldag gir ikke timevarsel",
+   "nå": "2026-10-05T08:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": null,
+       "varighet": 60,
+       "sted": "",
+       "type": "",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": []
+  },
+  {
+   "navn": "sted går foran type, type brukes ellers",
+   "nå": "2026-10-04T10:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "",
+       "type": "telefon",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      },
+      {
+       "id": "i2",
+       "dato": "2026-10-05",
+       "tid": "11:30",
+       "varighet": 60,
+       "sted": "Oslo",
+       "type": "fysisk",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": [
+    {
+     "nøkkel": "intervju:a1:i1:1000:dag|2026-10-05",
+     "tittel": "Intervju i morgen: Aker BP",
+     "tekst": "ML Engineer · kl. 10:00 · Telefon"
+    },
+    {
+     "nøkkel": "intervju:a1:i2:1130:dag|2026-10-05",
+     "tittel": "Intervju i morgen: Aker BP",
+     "tekst": "ML Engineer · kl. 11:30 · Oslo"
+    }
+   ]
+  },
+  {
+   "navn": "uten sted og type, uten stilling",
+   "nå": "2026-10-04T10:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "",
+       "type": "",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": [
+    {
+     "nøkkel": "intervju:a1:i1:1000:dag|2026-10-05",
+     "tittel": "Intervju i morgen: Aker BP",
+     "tekst": "kl. 10:00"
+    }
+   ]
+  },
+  {
+   "navn": "avslått, akseptert og trukket varsles ikke",
+   "nå": "2026-10-04T10:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "r",
+     "selskap": "R",
+     "stilling": "ML Engineer",
+     "status": "rejected",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    },
+    {
+     "id": "r",
+     "selskap": "R",
+     "stilling": "ML Engineer",
+     "status": "accepted",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    },
+    {
+     "id": "r",
+     "selskap": "R",
+     "stilling": "ML Engineer",
+     "status": "trukket",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    },
+    {
+     "id": "r",
+     "selskap": "R",
+     "stilling": "ML Engineer",
+     "status": "expired",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": []
+  },
+  {
+   "navn": "sendt og todo med intervju varsles",
+   "nå": "2026-10-04T10:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "b",
+     "selskap": "B",
+     "stilling": "ML Engineer",
+     "status": "todo",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    },
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "sent",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": [
+    {
+     "nøkkel": "intervju:a1:i1:1000:dag|2026-10-05",
+     "tittel": "Intervju i morgen: Aker BP",
+     "tekst": "ML Engineer · kl. 10:00 · Teams"
+    },
+    {
+     "nøkkel": "intervju:b:i1:1000:dag|2026-10-05",
+     "tittel": "Intervju i morgen: B",
+     "tekst": "ML Engineer · kl. 10:00 · Teams"
+    }
+   ]
+  },
+  {
+   "navn": "avslått i innstillingen",
+   "nå": "2026-10-04T10:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": false
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": []
+  },
+  {
+   "navn": "hele varselet av",
+   "nå": "2026-10-04T10:00",
+   "innstilling": {
+    "på": false,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": []
+  },
+  {
+   "navn": "loggført dagvarsel varsles ikke igjen, timevarselet kommer",
+   "nå": "2026-10-05T08:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {
+    "intervju:a1:i1:1000:dag|2026-10-05": "2026-10-04T08:00:00.000Z"
+   },
+   "forventet": [
+    {
+     "nøkkel": "intervju:a1:i1:1000:timer|2026-10-05",
+     "tittel": "Intervju om 2 timer: Aker BP",
+     "tekst": "ML Engineer · kl. 10:00 · Teams"
+    }
+   ]
+  },
+  {
+   "navn": "loggført varsel hindrer gjentakelse",
+   "nå": "2026-10-05T08:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {
+    "intervju:a1:i1:1000:timer|2026-10-05": "x"
+   },
+   "forventet": []
+  },
+  {
+   "navn": "flyttet klokkeslett varsler på nytt",
+   "nå": "2026-10-05T08:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "09:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {
+    "intervju:a1:i1:1000:timer|2026-10-05": "x"
+   },
+   "forventet": [
+    {
+     "nøkkel": "intervju:a1:i1:0900:timer|2026-10-05",
+     "tittel": "Intervju om 1 time: Aker BP",
+     "tekst": "ML Engineer · kl. 09:00 · Teams"
+    }
+   ]
+  },
+  {
+   "navn": "nærmeste først",
+   "nå": "2026-10-05T07:30",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "b",
+     "selskap": "B",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    },
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-10-05",
+       "tid": "09:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": [
+    {
+     "nøkkel": "intervju:a1:i1:0900:timer|2026-10-05",
+     "tittel": "Intervju om 1 t 30 min: Aker BP",
+     "tekst": "ML Engineer · kl. 09:00 · Teams"
+    },
+    {
+     "nøkkel": "intervju:b:i1:1000:timer|2026-10-05",
+     "tittel": "Intervju om 2 t 30 min: B",
+     "tekst": "ML Engineer · kl. 10:00 · Teams"
+    }
+   ]
+  },
+  {
+   "navn": "intervju over månedsskiftet",
+   "nå": "2026-10-31T12:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-11-01",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": [
+    {
+     "nøkkel": "intervju:a1:i1:1000:dag|2026-11-01",
+     "tittel": "Intervju i morgen: Aker BP",
+     "tekst": "ML Engineer · kl. 10:00 · Teams"
+    }
+   ]
+  },
+  {
+   "navn": "rad uten intervjuer og rar dato hoppes over",
+   "nå": "2026-10-04T10:00",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "x",
+     "status": "todo",
+     "selskap": "X"
+    },
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "interview",
+     "frist": null,
+     "intervjuer": [
+      {
+       "id": "i1",
+       "dato": "2026-13-45",
+       "tid": "10:00",
+       "varighet": 60,
+       "sted": "Teams",
+       "type": "video",
+       "lenke": "",
+       "runde": "",
+       "notat": ""
+      }
+     ]
+    }
+   ],
+   "logg": {},
+   "forventet": []
+  }
+ ],
+ "frist": [
+  {
+   "navn": "frist i morgen",
+   "iDag": "2026-10-04",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "todo",
+     "frist": "2026-10-05"
+    }
+   ],
+   "logg": {},
+   "forventet": [
+    {
+     "nøkkel": "a1|2026-10-05",
+     "tittel": "Frist i morgen: Aker BP",
+     "tekst": "ML Engineer · søknadsfristen er mandag 5. oktober."
+    }
+   ]
+  },
+  {
+   "navn": "frist i dag",
+   "iDag": "2026-10-05",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "todo",
+     "frist": "2026-10-05"
+    }
+   ],
+   "logg": {},
+   "forventet": [
+    {
+     "nøkkel": "a1|2026-10-05",
+     "tittel": "Frist i dag: Aker BP",
+     "tekst": "ML Engineer · søknadsfristen er mandag 5. oktober."
+    }
+   ]
+  },
+  {
+   "navn": "frist om tre dager med tre dagers varsel",
+   "iDag": "2026-10-04",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 3,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "todo",
+     "frist": "2026-10-07"
+    }
+   ],
+   "logg": {},
+   "forventet": [
+    {
+     "nøkkel": "a1|2026-10-07",
+     "tittel": "Frist om 3 dager: Aker BP",
+     "tekst": "ML Engineer · søknadsfristen er onsdag 7. oktober."
+    }
+   ]
+  },
+  {
+   "navn": "utenfor vinduet, passert, sendt og uten frist",
+   "iDag": "2026-10-04",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "todo",
+     "frist": "2026-10-08"
+    },
+    {
+     "id": "b",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "todo",
+     "frist": "2026-10-03"
+    },
+    {
+     "id": "c",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "sent",
+     "frist": "2026-10-05"
+    },
+    {
+     "id": "d",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "todo",
+     "frist": null
+    }
+   ],
+   "logg": {},
+   "forventet": []
+  },
+  {
+   "navn": "allerede varslet",
+   "iDag": "2026-10-04",
+   "innstilling": {
+    "på": true,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "todo",
+     "frist": "2026-10-05"
+    }
+   ],
+   "logg": {
+    "a1|2026-10-05": "x"
+   },
+   "forventet": []
+  },
+  {
+   "navn": "avslått",
+   "iDag": "2026-10-04",
+   "innstilling": {
+    "på": false,
+    "dagerFør": 1,
+    "intervju": true
+   },
+   "jobber": [
+    {
+     "id": "a1",
+     "selskap": "Aker BP",
+     "stilling": "ML Engineer",
+     "status": "todo",
+     "frist": "2026-10-05"
+    }
+   ],
+   "logg": {},
+   "forventet": []
+  }
+ ]
+}

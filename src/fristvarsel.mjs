@@ -8,6 +8,14 @@
    jobben kjører uten JavaScript. Endres regelen eller ordene her,
    må de endres der også; testene på begge sider holder dem like.
 
+   Intervjuvarsel (samme fil, samme loggen): ett dagen før, ved første
+   sjekk etter kl. 09 lokal tid, og ett når det er mellom 0 og 180
+   minutter til start. Et intervju uten klokkeslett («heldag») får bare
+   det første. Loggnøkkelen ender på intervjudatoen, så ryddLogg
+   fjerner den når dagen er forbi, akkurat som for frister. Klokken
+   sendes inn som en Date i lokal tid, og testene deler
+   testdata/varseltilfeller.json med Rust.
+
    Regelen: en søknad som ikke er sendt, og som har frist om mellom
    0 og `dagerFør` dager, varsles én gang. Dag 0 er med, så en Mac
    som var slått av i går likevel sier fra i dag. Loggen er nøklet
@@ -20,16 +28,19 @@
    bakgrunnsjobben må kunne lese den når appen er lukket.
    ============================================================ */
 
+import { ER_ARKIV, INTERVJUTYPER } from "./felles.mjs";
+
 export const INNSTILLINGSFIL = "varsel.json";
 export const LOGGFIL = "varslet.json";
-export const VERSJON = 1;
+/* Versjon 2 la til `intervju`. Versjon 1 leses som intervju: true. */
+export const VERSJON = 2;
 
 export const MIN_DAGER = 1;
 export const MAKS_DAGER = 14;
 /* Valgene flaten tilbyr. Alt mellom MIN og MAKS er gyldig på disk. */
 export const DAGVALG = [1, 2, 3, 5, 7, 14];
 
-export const standardInnstilling = () => ({ versjon: VERSJON, på: true, dagerFør: 1 });
+export const standardInnstilling = () => ({ versjon: VERSJON, på: true, dagerFør: 1, intervju: true });
 
 /* Det brukeren sender inn. Streng: en ugyldig verdi skal avvises
    med en melding, ikke stille bli noe annet. */
@@ -41,8 +52,12 @@ export function validerInnstilling(inn){
     feil.push({ felt: "på", melding: "«på» må være true eller false." });
   if(!Number.isInteger(inn.dagerFør) || inn.dagerFør < MIN_DAGER || inn.dagerFør > MAKS_DAGER)
     feil.push({ felt: "dagerFør", melding: `Velg mellom ${MIN_DAGER} og ${MAKS_DAGER} dager.` });
+  /* Mangler feltet (versjon 1, eldre klient), er intervjuvarsel på. */
+  if(inn.intervju !== undefined && typeof inn.intervju !== "boolean")
+    feil.push({ felt: "intervju", melding: "«intervju» må være true eller false." });
   if(feil.length) return { ok: false, feil };
-  return { ok: true, verdi: { versjon: VERSJON, på: inn.på, dagerFør: inn.dagerFør } };
+  return { ok: true, verdi: { versjon: VERSJON, på: inn.på, dagerFør: inn.dagerFør,
+                              intervju: inn.intervju ?? true } };
 }
 
 /* Det som ligger på disk. Raus: en fil som mangler eller ikke kan
@@ -95,6 +110,61 @@ export function forfalne(jobber, iDag, innstilling, logg = {}){
     .sort((a, b) => a.dager - b.dager || String(a.jobb.selskap).localeCompare(String(b.jobb.selskap), "no"));
 }
 
+/* ---------- intervjuer ---------- */
+
+const MIN_FØR_TIMER = 180;
+const FØRSTE_TIME = 9;
+const MIN_TID = /^(\d{2}):(\d{2})$/;
+
+const intervjuTekst = (jobb, iv, når) => {
+  const sted = String(iv.sted || "").trim() || INTERVJUTYPER[iv.type] || "";
+  return [String(jobb.stilling || "").trim(), når, sted].filter(Boolean).join(" · ");
+};
+
+function omTid(min){
+  if(min < 60) return `om ${min} min`;
+  const t = Math.floor(min / 60), r = min % 60;
+  return r ? `om ${t} t ${r} min` : t === 1 ? "om 1 time" : `om ${t} timer`;
+}
+
+/* Intervjuene som skal varsles nå, tidligst først. `nå` er en Date;
+   dag og klokkeslett leses i lokal tid, fordi «kl. 09» og «i morgen»
+   er det brukeren ser på klokken. Et intervju på en arkivert søknad
+   varsles ikke, men status ellers er likegyldig: et intervju er et
+   intervju også om søknaden står på «sendt». */
+export function intervjuvarsler(jobber, nå, innstilling, logg = {}){
+  if(!innstilling?.på || innstilling.intervju === false || !Array.isArray(jobber)) return [];
+  const iDag = isoDato(nå);
+  const ut = [];
+  for(const j of jobber){
+    if(!j || typeof j.id !== "string" || ER_ARKIV(j.status) || !Array.isArray(j.intervjuer)) continue;
+    for(const iv of j.intervjuer){
+      if(!iv || typeof iv.id !== "string" || !ISO.test(iv.dato)) continue;
+      const tid = MIN_TID.exec(iv.tid ?? "");
+      const hhmm = tid ? tid[1] + tid[2] : "heldag";
+      const start = tid ? new Date(+iv.dato.slice(0, 4), +iv.dato.slice(5, 7) - 1, +iv.dato.slice(8, 10), +tid[1], +tid[2]) : null;
+      const rad = (type, tittel, når) => ({
+        nøkkel: `intervju:${j.id}:${iv.id}:${hhmm}:${type}|${iv.dato}`,
+        id: j.id, iid: iv.id, art: "intervju", type,
+        tittel: tittel + ": " + String(j.selskap || "").trim(),
+        tekst: intervjuTekst(j, iv, når),
+        start: start ? start.getTime() : Date.parse(iv.dato + "T00:00:00Z")
+      });
+      const når = tid ? "kl. " + iv.tid : "hele dagen";
+      if(dagerMellom(iDag, iv.dato) === 1 && nå.getHours() >= FØRSTE_TIME)
+        ut.push(rad("dag", "Intervju i morgen", når));
+      if(start){
+        const sek = (start.getTime() - nå.getTime()) / 1000;
+        if(sek > 0 && sek <= MIN_FØR_TIMER * 60)
+          ut.push(rad("timer", "Intervju " + omTid(Math.ceil(sek / 60)), når));
+      }
+    }
+  }
+  return ut.filter(v => !Object.hasOwn(logg, v.nøkkel))
+           .sort((a, b) => a.start - b.start || a.tittel.localeCompare(b.tittel, "no"))
+           .map(({ start, ...v }) => v);
+}
+
 /* Rader for frister som er passert, trengs ikke lenger. */
 export function ryddLogg(logg, iDag){
   return Object.fromEntries(Object.entries(logg).filter(([n]) => {
@@ -120,13 +190,23 @@ export function varseltekst(jobb, dager){
 }
 
 /* Hele runden for én profil, uten I/O: hva som skal varsles, og
-   loggen slik den skal skrives etterpå. */
+   loggen slik den skal skrives etterpå. `nå` er en Date (lokal tid
+   avgjør dag og klokkeslett) eller et ISO-tidspunkt; `iDag` utledes
+   av den hvis den ikke er gitt. */
 export function runde({ jobber, iDag, innstilling, logg, nå }){
-  const liste = forfalne(jobber, iDag, innstilling, logg);
-  const nyLogg = ryddLogg({ ...logg }, iDag);
-  for(const f of liste) nyLogg[f.nøkkel] = nå;
+  const tid = nå instanceof Date ? nå : new Date(nå ?? Date.now());
+  const dag = iDag ?? isoDato(tid);
+  const stempel = typeof nå === "string" ? nå : tid.toISOString();
+  const frister = forfalne(jobber, dag, innstilling, logg);
+  const intervjuer = intervjuvarsler(jobber, tid, innstilling, logg);
+  const nyLogg = ryddLogg({ ...logg }, dag);
+  for(const f of frister) nyLogg[f.nøkkel] = stempel;
+  for(const v of intervjuer) nyLogg[v.nøkkel] = stempel;
   return {
-    varsler: liste.map(f => ({ id: f.jobb.id, dager: f.dager, ...varseltekst(f.jobb, f.dager) })),
+    varsler: [
+      ...frister.map(f => ({ id: f.jobb.id, art: "frist", dager: f.dager, ...varseltekst(f.jobb, f.dager) })),
+      ...intervjuer.map(({ nøkkel, ...v }) => v)
+    ],
     logg: nyLogg
   };
 }
