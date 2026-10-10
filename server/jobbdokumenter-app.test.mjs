@@ -36,8 +36,15 @@ const SIGNATURER = {
   brev_liste: [["bruker"], []],
   brev_gjenopprett: [["bruker", "navn"], []],
   dokument_utdrag: [["bruker", "prefiks", "stier"], []],
-  hent_side: [["url"], []]
+  hent_side: [["url"], []],
+  brev_modell: [["bruker", "leverandor", "kropp", "kjoringId"], ["kanal"]],
+  brev_avbryt_modell: [["bruker", "kjoringId"], []]
 };
+/* Kroppene brev_modell fikk, så testen kan se hvilken modell som ble bedt om. */
+const modellkropper = [];
+const ramme = (hendelse, data) => `event: ${hendelse}\ndata: ${JSON.stringify(data)}\n\n`;
+const FALSK_MATCH = { prosent: 81, oppsummering: "Kravene er dekket.", sprak: "nb", mangler: [],
+  styrker: [{ krav: "Kundeservice", bevis: "Fem år", kilder: [{ kilde: "cv", sitat: "Fem år i kundeservice" }] }] };
 /* Det falske nettet bak hent_side. En streng er en feil, slik Rust sender
    den; alt annet er HTML. */
 const sider = new Map();
@@ -64,6 +71,17 @@ async function utfør(navn, a){
     case "brev_liste": return lager.liste();
     case "brev_gjenopprett": return JSON.stringify(await lager.gjenopprett(a.navn));
     case "dokument_utdrag": return lager.utdrag(a.prefiks, a.stier);
+    case "brev_modell": {
+      const kropp = JSON.parse(a.kropp);
+      modellkropper.push(kropp);
+      return ramme("message_start", { type: "message_start", message: { id: "m", type: "message", role: "assistant", model: kropp.model, content: [], stop_reason: null, usage: { input_tokens: 10, output_tokens: 1 } } })
+        + ramme("content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } })
+        + ramme("content_block_delta", { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: JSON.stringify(FALSK_MATCH) } })
+        + ramme("content_block_stop", { type: "content_block_stop", index: 0 })
+        + ramme("message_delta", { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 20 } })
+        + ramme("message_stop", { type: "message_stop" });
+    }
+    case "brev_avbryt_modell": return null;
     case "hent_side": {
       hentet.push(a.url);
       const s = sider.get(a.url);
@@ -156,4 +174,31 @@ test("annonsen hentes, limes inn og flyttes fra brevet gjennom Rust-kommandoene"
   assert.deepEqual(r, { hentet: [], fraBrev: [], hadde: 4, utenLenke: [], feilet: [], gjenstar: [], stoppet: null });
   assert.equal(hentet.length, 0);
   assert.ok(kall.includes("hent_side"));
+});
+
+test("vurderingen av hvor godt stillingen passer går gjennom brev_modell med vurderingsmodellen", async () => {
+  const id = Økt.nåværendeBruker().id;
+  const dir = profil(id);
+  await fs.writeFile(path.join(dir, "jobber.json"), JSON.stringify({ versjon: 2, jobber: [{ id: "m1", selskap: "Eksempel AS", stilling: "Rådgiver" }] }));
+  const lager = lagBrevlager(dir);
+  await assert.rejects(Jobbdokumenter.vurderMatch("m1"), e => e.code === "mangler-cv");
+  await lager.skriv("cv.json", { tekst: "Kari. Fem år i kundeservice.", navn: "", format: "tekst", oppdatert: null }, 0);
+  await assert.rejects(Jobbdokumenter.vurderMatch("m1"), e => e.code === "mangler-annonse");
+  await Jobbdokumenter.limInnAnnonse("m1", "Rådgiver søkes med erfaring fra kundeservice.");
+
+  const d = await Jobbdokumenter.vurderMatch("m1");
+  assert.equal(d.match.prosent, 81);
+  assert.equal(d.match.cvRevisjon, 1);
+  assert.equal(d.match.leverandor, "anthropic");
+  assert.equal(modellkropper.at(-1).model, "claude-sonnet-5-5");
+  assert.equal(modellkropper.at(-1).stream, true);
+  assert.equal((await lager.les("jobb-m1.json")).match.prosent, 81);
+  assert.equal((await Jobbdokumenter.utdrag(["match.prosent"]))["jobb-m1.json"]["match.prosent"], 81);
+
+  const antall = modellkropper.length;
+  await Jobbdokumenter.vurderMatch("m1");
+  assert.equal(modellkropper.length, antall, "uendret grunnlag bruker den lagrede vurderingen");
+  await Jobbdokumenter.vurderMatch("m1", { tving: true });
+  assert.equal(modellkropper.length, antall + 1);
+  assert.ok(kall.includes("brev_modell"));
 });

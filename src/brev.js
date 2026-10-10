@@ -93,24 +93,28 @@ function forhåndsvisning(valg){
   return {kanal};
 }
 
+/* Modellkallet over Rust for én profil. Brevtjenesten og vurderingen av
+   hvor godt stillingen passer bruker det samme, så nøkkelen, avbrytingen
+   og profilvernet står bare her. */
+export function lokalKallModell(id,sjekk){
+  return async valg=>{
+    sjekk();const kjoringId=crypto.randomUUID();
+    const av=()=>{invoke("brev_avbryt_modell",{bruker:id,kjoringId}).catch(()=>{});};
+    if(valg.signal?.aborted)throw new Brevfeil("avbrutt","Skrivingen ble avbrutt.");
+    valg.signal?.addEventListener("abort",av,{once:true});
+    try{
+      const rå=await invoke("brev_modell",{bruker:id,leverandor:valg.leverandor,
+        kropp:JSON.stringify(byggModellkropp(valg)),kjoringId,...forhåndsvisning(valg)});
+      sjekk();if(valg.signal?.aborted)throw new Brevfeil("avbrutt","Skrivingen ble avbrutt.");
+      return tolkModellsvar(valg.leverandor,settSammen(valg.leverandor,rå));
+    }finally{valg.signal?.removeEventListener("abort",av);}
+  };
+}
 function lokal(){
   const id=bruker();
   if(!tjenestene.has(id)){
     const {lager,hentJobb,sjekk}=lokaltLager(id);
-    tjenestene.set(id,lagBrevtjeneste({lager,hentJobb,
-      kallModell:async valg=>{
-        sjekk();const kjoringId=crypto.randomUUID();
-        const av=()=>{invoke("brev_avbryt_modell",{bruker:id,kjoringId}).catch(()=>{});};
-        if(valg.signal?.aborted)throw new Brevfeil("avbrutt","Skrivingen ble avbrutt.");
-        valg.signal?.addEventListener("abort",av,{once:true});
-        try{
-          const rå=await invoke("brev_modell",{bruker:id,leverandor:valg.leverandor,
-            kropp:JSON.stringify(byggModellkropp(valg)),kjoringId,...forhåndsvisning(valg)});
-          sjekk();if(valg.signal?.aborted)throw new Brevfeil("avbrutt","Skrivingen ble avbrutt.");
-          return tolkModellsvar(valg.leverandor,settSammen(valg.leverandor,rå));
-        }finally{valg.signal?.removeEventListener("abort",av);}
-      }
-    }));
+    tjenestene.set(id,lagBrevtjeneste({lager,hentJobb,kallModell:lokalKallModell(id,sjekk)}));
   }
   return tjenestene.get(id);
 }

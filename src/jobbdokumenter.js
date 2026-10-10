@@ -26,6 +26,10 @@
    limInnAnnonse(id, tekst)    kilde "limt"
    lagreAnnonse(id, annonse)   { tekst, url?, kilde: "import"|"limt",
                                hentet? }, det importen bruker
+   vurderMatch(id, {tving?})   vurderer hvor godt stillingen passer CV-en
+                               og gir dokumentet med dok.match. Feilkoder:
+                               mangler-cv, mangler-annonse, mangler-nokkel,
+                               for-mange (bare i nettleseren)
    hentManglendeAnnonser({ider?})
                                henter alt som mangler, én om gangen, og
                                gir { hentet, fraBrev, hadde, utenLenke,
@@ -34,6 +38,8 @@
 import { I_APP, bruker, http, lokaltLager } from "./dokumentklient.js";
 import { lagJobbdokumenter } from "./jobbdokumenttjeneste.mjs";
 import { tolkStier } from "./dokumentutdrag.mjs";
+import { lagMatchtjeneste } from "./matchtjeneste.mjs";
+import { lokalKallModell } from "./brev.js";
 
 const tjenestene=new Map();
 function lokal(){
@@ -43,6 +49,22 @@ function lokal(){
     tjenestene.set(id,lagJobbdokumenter({lager,hentJobb,hentJobber,hentSide}));
   }
   return tjenestene.get(id);
+}
+/* Vurderingen går over modellkallet i Rust i appen, og over serveren i
+   nettleseren, der taket på 60 i timen gjelder. */
+const matchtjenestene=new Map();
+function lokalMatch(){
+  const id=bruker();
+  if(!matchtjenestene.has(id)){
+    const {lager,hentJobb,sjekk}=lokaltLager(id);
+    matchtjenestene.set(id,lagMatchtjeneste({lager,jobbdokumenter:lokal(),hentJobb,kallModell:lokalKallModell(id,sjekk)}));
+  }
+  return matchtjenestene.get(id);
+}
+/* Leverandøren brukeren sist valgte i brevskriveren, ellers Anthropic. */
+function valgtLeverandør(){
+  try{return window.localStorage.getItem(`jobbsoknader-brev-leverandor-${bruker()}`)==="openai"?"openai":"anthropic";}
+  catch{return "anthropic";}
 }
 const sti=id=>`/api/jobber/${encodeURIComponent(id)}/dokument`;
 const asti=id=>`/api/jobber/${encodeURIComponent(id)}/annonse`;
@@ -65,3 +87,11 @@ export const limInnAnnonse=(id,tekst)=>lagreAnnonse(id,{tekst,kilde:"limt"});
    flere profiler. I appen er det ingen andre å dele nettet med. */
 export const hentManglendeAnnonser=({ider}={})=>I_APP?lokal().hentManglende({ider})
   :http("/api/jobbdokumenter/hent-manglende",{method:"POST",body:ider?{ider}:{}});
+
+/* Gir hele jobbdokumentet med den nye vurderingen. Uendret grunnlag
+   gir den lagrede vurderingen uten nytt kall, med mindre tving er satt. */
+export const vurderMatch=(id,{tving=false}={})=>{
+  const leverandor=valgtLeverandør();
+  return I_APP?lokalMatch().vurder(id,{tving,leverandor})
+    :http(`/api/jobber/${encodeURIComponent(id)}/match`,{method:"POST",body:{tving,leverandor}});
+};
