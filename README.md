@@ -275,34 +275,53 @@ Det skjer bare én gang, og bare når søknaden aldri har hatt en annonse fra f�
 
 ## Søknadsbrev
 
-Velg **Søknadsbrev** på en søknad.
-Grunnlaget står i en kolonne til venstre, og brevet står på et papir til høyre.
+Velg **Søknadsbrev** på en søknad, eller fanen **Brev** i detaljpanelet.
+Øverst står fremdriften for et utkast.
+Under den står grunnlaget, én linje per kilde, og under det brevet på et papir som vokser med teksten.
+Grunnlaget og brevet ruller sammen som ett dokument.
 
 ### Grunnlaget
 
-- **Din CV**: PDF, Word (`.docx`) eller tekst. Velg filen eller slipp den i feltet. Teksten leses lokalt og gjenbrukes på profilen din. **Se eller lim inn CV-tekst** viser nøyaktig hva som ble lest, så du kan rette kolonnerekkefølge eller manglende tekst. PDF-er må ha et tekstlag. Skannede eller passordbeskyttede dokumenter må erstattes med en lesbar fil eller innlimt tekst. Originalfilen lagres ikke.
-- **Annonsen**: den som er lagret på søknaden, se [Annonsen tas vare på](#annonsen-tas-vare-på); mangler den, henter du den fra lenken eller limer den inn før du skriver.
-- **Søknaden**: selskap, stilling, sted, jobbtype og sektor fra listen, men ikke notatet, som ofte er private påminnelser.
-- **Språk**: Automatisk, norsk bokmål, nynorsk, engelsk, svensk, dansk, tysk eller fransk.
-- **Stilreferanse**: valgfritt, et brev du selv har skrevet og er fornøyd med, lagret én gang per profil i `stil.json` og brukt bare for tone og form, aldri for innhold.
+- **CV**: navnet på CV-en som er lagret på profilen din, eller «Mangler».
+  **Velg fil** (eller **Bytt fil**) tar PDF, Word (`.docx`) eller tekst, og du kan også slippe filen på linjen.
+  Teksten leses lokalt og gjenbrukes på profilen din.
+  **Se teksten** (eller **Lim inn** når CV-en mangler) folder ut nøyaktig hva som ble lest, så du kan rette kolonnerekkefølge eller manglende tekst.
+  PDF-er må ha et tekstlag.
+  Skannede eller passordbeskyttede dokumenter må erstattes med en lesbar fil eller innlimt tekst.
+  Originalfilen lagres ikke.
+- **Annonse**: annonsen som er lagret på søknaden, se [Annonsen tas vare på](#annonsen-tas-vare-på).
+  Linjen sier «Lagret» og datoen, og **Se annonsen** går til Annonse-fanen.
+  Mangler den, sier linjen «Mangler».
+  **Hent** henter den fra søknadens lenke, med de samme feilmeldingene som i Annonse-fanen.
+  **Lim inn** går til Annonse-fanen, rett i innlimingen.
+  Uten lenke vises bare **Lim inn**.
+- **Språk**: Som annonsen, norsk bokmål, nynorsk, engelsk, svensk, dansk, tysk eller fransk.
+- **Nøkkel**: vises bare når API-nøkkelen for valgt leverandør mangler, med **Legg til nøkkel**, som åpner innstillingene.
+
+Brevet bygger også på søknaden (selskap, stilling, sted, jobbtype og sektor fra listen, men ikke notatet, som ofte er private påminnelser) og på stilreferansen, hvis du har lagt inn en under [Innstillinger i brevskriveren](#innstillinger-i-brevskriveren).
+
+**Skriv utkast** kan ikke trykkes før både CV-en og annonsen er på plass.
+Grunnen står ved knappen, for eksempel «Legg til annonsen først».
 
 Et konkret språkvalg går foran et språkønske i instruksen til en ny versjon, som går foran annonsens krav til søknadsspråk og deretter annonsens hovedspråk.
 CV-ens språk bestemmer ikke brevspråket.
 
-Feltet «Litt om deg og denne jobben» brukes ikke lenger, og avklaringsspørsmålene er borte.
+Feltet «Litt om deg og denne jobben», lenkefeltet for annonsen og avklaringsspørsmålene er borte.
 Brevet bygger bare på det som står over.
 
 ### Slik blir brevet til
 
 Trykk **Skriv utkast**.
-Appen gjør tre modellkall etter hverandre, uten at du trenger å svare på noe underveis:
+Appen gjør tre modellkall etter hverandre, uten at du trenger å svare på noe underveis.
+Fremdriften øverst viser dem som **Leser annonsen og CV-en**, **Skriver** og **Leser gjennom**:
 
 1. **Analyse**: finner de viktigste kravene i annonsen, erfaringene som best viser at du oppfyller dem, og det annonsen sier om selskapet.
 2. **Skriving**: lager brevet ut fra analysen.
 3. **Kontroll**: en egen redaktørkontroll retter brevet mot kildene.
 
 Mangler grunnlaget noe vesentlig, for eksempel fordi CV-en og annonsen ser ut til å gjelde to ulike personer, stopper kjøringen med en forklaring i stedet for å gjette.
-Ble en kjøring avbrutt mellom to trinn, fortsetter neste **Skriv utkast** der den stoppet, uten å betale for analysen på nytt.
+Ble en kjøring avbrutt mellom to trinn, fortsetter den der den stoppet neste gang brevet åpnes, uten å betale for trinnene som er gjort.
+Står et trinn fortsatt i arbeid fra et annet vindu, sier brevet fra og tilbyr **Avbryt forrige kjøring**.
 
 Teksten strømmer inn mens den skrives, først utkastet og så kontrollens gjennomgang.
 Det du ser underveis er et forslag: det lagres ikke, erstatter aldri det du selv har skrevet, og kontrollen kan forkaste det.
@@ -332,8 +351,11 @@ Modellkontroll og kildehenvisninger reduserer feil, men brevet må fortsatt lese
 
 - Brevet kan redigeres direkte og lagres etter en kort skrivepause.
 - **Lag ny versjon** bruker teksten du ser og instruksjonen din under **Hva vil du forbedre?**.
-- Tidligere versjoner og manuelle endringer beholdes, og du kan bytte mellom dem. Appen sier fra når grunnlaget er endret siden en versjon ble skrevet. Oppdatert CV eller annonse endrer ikke grunnlaget til gamle versjoner.
-- **Kopier brev** og **Last ned** som Word (`.docx`) eller PDF bruker den synlige teksten. Filene lages lokalt, uten modellkall.
+- Tidligere versjoner og manuelle endringer beholdes, og du kan bytte mellom dem.
+  Appen sier fra når grunnlaget er endret siden en versjon ble skrevet.
+  Oppdatert CV eller annonse endrer ikke grunnlaget til gamle versjoner.
+- **Kopier brev** og **Last ned** som Word (`.docx`) eller PDF bruker den synlige teksten.
+  Filene lages lokalt, uten modellkall.
 
 ### Kostnad og nettverk
 
@@ -355,11 +377,21 @@ CV-teksten, annonsen, søknadsfeltene og en eventuell stilreferanse sendes til l
 
 ### Innstillinger i brevskriveren
 
-**Innstillinger** øverst i brevskriveren bytter ut grunnlagskolonnen, mens brevet blir stående.
+**Innstillinger** står på språklinjen i grunnlaget.
+Den bytter ut grunnlaget og brevet med innstillingene, og **Lukk innstillinger** eller Esc tar deg tilbake.
 
-- **Skriv med**: Claude (`claude-opus-5`) eller OpenAI (`gpt-6-astra`). Valget huskes på profilen.
-- **API-nøkkel for valgt leverandør**: legg til eller fjern. Mangler nøkkelen, sier grunnlagskolonnen fra og tar deg dit.
-- **Last ned sikkerhetskopi** og **Gjenopprett fra sikkerhetskopi**, se [Sikkerhetskopi av brevene](#sikkerhetskopi-av-brevene).
+- **Skriv med**: Claude (`claude-opus-5`) eller OpenAI (`gpt-6-astra`).
+  Valget huskes på profilen.
+- **API-nøkkel for valgt leverandør**: legg til eller fjern.
+  Mangler nøkkelen, sier grunnlaget fra og tar deg dit.
+- **Stilreferanse**: lim inn et søknadsbrev du har skrevet selv og er fornøyd med, på inntil 16 000 tegn.
+  En teller under feltet viser hvor mye du har brukt.
+  Nye utkast får samme tone og form, men ingenting av innholdet brukes som fakta.
+  Den lagres bare på denne maskinen, i `stil.json` på profilen, og sendes til leverandøren sammen med CV-en og annonsen når et utkast skrives.
+  **Lagre stilreferansen** lagrer, og **Slett** fjerner den.
+  Har et annet vindu lagret en annen stilreferanse i mellomtiden, blir teksten din stående i feltet, og et nytt trykk på **Lagre stilreferansen** erstatter den andre.
+  En stilreferanse som er skrevet inn, men ikke lagret, lagres når du går fra brevet.
+- **Last ned sikkerhetskopi** og **Gjenopprett fra sikkerhetskopi**: kopien har med CV-en, stilreferansen, brevene, det som er lagret om hver søknad (annonse, vurdering og forberedelser) og Radar, se [Sikkerhetskopi av brevene](#sikkerhetskopi-av-brevene).
 - **Slett CV fra profilen** og **Slett brevet og versjonene**.
 
 ## API-nøkler
