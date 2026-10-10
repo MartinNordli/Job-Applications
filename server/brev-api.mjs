@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { lagBrevlager } from "./brevlager.mjs";
 import { lagBrevtjeneste } from "../src/brevtjeneste.mjs";
 import { lagJobbdokumenter } from "../src/jobbdokumenttjeneste.mjs";
-import { trekkUtAnnonse, hentefeil } from "../src/annonsetekst.mjs";
 import { Brevfeil } from "../src/brevdata.mjs";
 import { FASE } from "../src/brevlogikk.mjs";
 import { lagBrevModell, brevNokkelStatus, settBrevNokkel, fjernBrevNokkel } from "./brev-modell.mjs";
@@ -17,7 +16,7 @@ const ANNONSETAK = { tak: 30, vindu: 60 * 60_000 };
 /* Alt som går til profildokumentene. /api/jobber selv er listen og
    hører til server.mjs; under en søknad er brev og dokument her.
    Utdraget har egen rot, så «utdrag» aldri kan forveksles med en id. */
-export const erBrevbane = p => /^\/api\/(cv(?:\/gjenopprett)?|stil(?:\/gjenopprett)?|annonsetekst|brevdata|nokler\/[^/]+|jobbdokumenter\/(?:utdrag|hent-manglende)|jobber\/[^/]+\/(?:brev(?:\/.*)?|dokument(?:\/gjenopprett)?|annonse(?:\/hent)?))$/.test(p);
+export const erBrevbane = p => /^\/api\/(cv(?:\/gjenopprett)?|stil(?:\/gjenopprett)?|brevdata|nokler\/[^/]+|jobbdokumenter\/(?:utdrag|hent-manglende)|jobber\/[^/]+\/(?:brev(?:\/.*)?|dokument(?:\/gjenopprett)?|annonse(?:\/hent)?))$/.test(p);
 function send(res,status,data){
   res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"});
   res.end(JSON.stringify(data));
@@ -126,15 +125,6 @@ export function lagBrevRuter({nett,modellFor,annonsegrense=lagRatebegrenser(ANNO
         else {await t.slettCv((await kropp(req)).revisjon);r={ok:true};}
       }else if(bane==="/api/brevdata"){
         metode(req,"GET","POST");r=req.method==="GET"?await t.eksporter():await t.importer(await kropp(req));
-      }else if(bane==="/api/annonsetekst"){
-        /* Utgått. Brevflaten henter fortsatt annonsen hit inntil den får
-           annonsen fra jobbdokumentet; da fjernes ruten og Brev.hentAnnonse.
-           Nye kall bruker POST /api/jobber/:id/annonse/hent. */
-        metode(req,"POST");const {url}=await kropp(req);
-        if(typeof url!=="string" || url.length>2000)throw new Brevfeil("ugyldig","Lim inn en gyldig annonselenke.");
-        let side;
-        try{side=await nett.hentSide(url);}catch(e){throw hentefeil(e);}
-        r={tekst:trekkUtAnnonse(side.html),url:side.sluttUrl||url,hentet:new Date().toISOString()};
       }else if(bane.startsWith("/api/nokler/")){
         metode(req,"GET","PUT","DELETE");const leverandor=bane.split("/").at(-1);
         if(!["anthropic","openai"].includes(leverandor))throw new Brevfeil("ugyldig","Ukjent leverandør.");

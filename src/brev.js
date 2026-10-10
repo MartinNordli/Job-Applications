@@ -6,7 +6,6 @@ import { lagBrevtjeneste } from "./brevtjeneste.mjs";
 import { byggModellkropp, tolkModellsvar } from "./brev-provider.mjs";
 import { delSse, lagSvarsamler, lagFeltstrøm } from "./brev-strom.mjs";
 import { FASE } from "./brevlogikk.mjs";
-import { trekkUtAnnonse } from "./annonsetekst.mjs";
 
 const MAKS_STRØM=32*1024*1024;
 const tjenestene=new Map();
@@ -132,15 +131,6 @@ export const hentStil=()=>I_APP?lokal().hentStil():http("/api/stil");
 export const lagreStil=d=>I_APP?lokal().lagreStil(d):http("/api/stil",{method:"PUT",body:d});
 export const slettStil=revisjon=>I_APP?lokal().slettStil(revisjon):http("/api/stil",{method:"DELETE",body:{revisjon}});
 export const gjenopprettStil=()=>I_APP?lokal().gjenopprettStil():http("/api/stil/gjenopprett",{method:"POST"});
-/* Utgått: brevflaten bruker denne til brevet får annonsen fra
-   jobbdokumentet. Nye kall går til hentAnnonse(id) i jobbdokumenter.js,
-   som henter fra søknadens lenke og lagrer i jobb-<id>.json. */
-export async function hentAnnonse(url){
-  if(!I_APP)return http("/api/annonsetekst",{method:"POST",body:{url}});
-  const id=bruker();const side=await invoke("hent_side",{url});
-  if(bruker()!==id)throw new Brevfeil("utlogget","Profilen er byttet.");
-  return {tekst:trekkUtAnnonse(side.html),url:side.sluttUrl||url,hentet:new Date().toISOString()};
-}
 const opprett=async(id,inn,signal)=>I_APP?lokal().opprett(id,inn):(await http(sti(id)+"/kjoringer",{method:"POST",body:inn,signal})).kjoring;
 /* Fasehendelsen eies av transporten på begge sider. Over HTTP sender serveren
    den; i appen er det ingen strøm foran oss, så den lages her. Begge veier
@@ -180,21 +170,6 @@ export async function forbedre(id,instruks,{signal,...meldinger}={}){
   let k;
   try{k=await opprett(id,{instruks},signal);return await fullfør(id,k,{signal,melder:v});}
   catch(e){if(signal?.aborted&&k)await avbryt(id,k.id).catch(()=>{});throw e;}
-  finally{v.steng();}
-}
-/** @deprecated Bruk lagUtkast. Står til brevflaten er skrevet om. */
-export async function analyser(id,{signal,...meldinger}={}){
-  const v=vakt(signal,meldinger);
-  let k;
-  try{k=await opprett(id,{},signal);const r=await trinn(id,k.id,"analyse",{signal,melder:v});return {id:k.id,analyse:r.kjoring.analyse,dokument:r.dokument};}
-  catch(e){if(signal?.aborted&&k)await avbryt(id,k.id).catch(()=>{});throw e;}
-  finally{v.steng();}
-}
-/** @deprecated Bruk lagUtkast. Svarene brukes ikke lenger. Står til brevflaten er skrevet om. */
-export async function skriv(id,kid,_svar={}, {signal,...meldinger}={}){
-  const v=vakt(signal,meldinger);
-  try{return await fullfør(id,{id:kid,analyse:true},{signal,melder:v});}
-  catch(e){if(signal?.aborted)await avbryt(id,kid).catch(()=>{});throw e;}
   finally{v.steng();}
 }
 export const nokkelStatus=leverandor=>I_APP?invoke("brev_nokkel_status",{bruker:bruker(),leverandor}):http(`/api/nokler/${leverandor}`);
