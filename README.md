@@ -143,6 +143,19 @@ Vurderingen bruker en rimeligere modell enn brevet (hos Anthropic Sonnet, mens b
 Hos OpenAI brukes samme modell som til brevet.
 Resultatet lagres i `jobb-<id>.json` sammen med CV-revisjonen, annonsens sjekksum og promptversjonen den bygger på.
 
+### Intervjuer
+
+Hver søknad kan ha opptil 20 intervjuer med dato, tid, varighet, type, sted eller lenke, runde og notat.
+Legger du inn et intervju på en søknad som står på «Å søke på» eller «Sendt», settes status til «Intervju».
+Et intervju kan lastes ned som en kalenderfil (`.ics`) som åpnes i Kalender eller en annen kalender, med påminnelse to timer før.
+Filen har klokkeslettet i UTC, så sommertid blir riktig, og et intervju uten klokkeslett blir en heldagshendelse.
+Laster du ned en ny fil etter en endring, erstatter kalenderen den gamle hendelsen.
+Forberedelsen lages av brevmodellen fra CV-en, annonsen og det aktive brevet.
+Den gir sannsynlige spørsmål med svarskisser, eksempler fra din egen erfaring med ordrette sitater, spørsmål til arbeidsgiveren og en sjekkliste.
+Et sitat som ikke finnes i kildene, gir ingen forberedelse, og kildene er data for modellen, ikke instruksjoner.
+Taket er 30 forberedelser i timen per profil i nettleseren.
+Forberedelsen lagres i `jobb-<id>.json` per intervju, sammen med det den bygger på, så den merkes som utdatert når CV-en, annonsen eller brevet endres.
+
 ### Statuser, sektorer og jobbtyper
 
 | Felt | Verdier |
@@ -211,9 +224,17 @@ Hver søknad varsles én gang per frist.
 Flytter du fristen, kan den varsle på nytt.
 Bare søknader med status «Å søke på» varsles, og en frist som er i dag regnes også med, så en Mac som var slått av i går sier fra i dag.
 
+Intervjuer varsles også, og du kan slå dem av under Innstillinger.
+Du får ett varsel dagen før, ved første sjekk etter kl. 09, og ett når det er mellom 0 og 3 timer til start.
+Varselet sier selskap, stilling, klokkeslett og sted, eller intervjutype hvis stedet er tomt.
+Et intervju uten klokkeslett varsles bare dagen før.
+Intervjuer på arkiverte søknader (avslått, akseptert, trukket eller utløpt) varsles ikke.
+
 **I Mac-appen** kommer varselet også når Hired er lukket.
 Appen legger en bakgrunnsjobb i `~/Library/LaunchAgents/no.nordli.jobbsoknader.fristvarsel.plist` første gang den startes fra `/Applications`.
-Jobben kjører kl. 09 og når du logger inn, og macOS viser én gang beskjeden om at et bakgrunnsobjekt er lagt til.
+Jobben kjører hver time og når du logger inn.
+Intervjuene sjekkes hver gang, men fristene bare når klokken er over 09, så fristvarselet kommer til samme tid som før.
+macOS viser én gang beskjeden om at et bakgrunnsobjekt er lagt til.
 Første varsel ber macOS om lov til å vise varsler for Hired.
 Bakgrunnsjobben fjernes slik:
 
@@ -545,7 +566,7 @@ Flytt innholdet inn i katalogen over mens appen og serveren er avslått.
     nokkel-openai.txt       OpenAI-nøkkelen, modus 0600
     cv.json                 CV-teksten
     stil.json               stilreferansen: et eget brev nye brev skal ligne i tone og form
-    varsel.json             fristvarselet: på eller av, og hvor mange dager før
+    varsel.json             varselet: på eller av, dager før fristen og om intervjuer varsles
     varslet.json            fristene som alt er varslet
     brev-<jobb-id>.json     brev, grunnlag og versjoner for én søknad
     jobb-<jobb-id>.json     annonsen, vurderingen og intervjuforberedelsene for én søknad
