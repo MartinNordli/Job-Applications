@@ -956,7 +956,10 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .brev__steg__mikro{display:block;min-height:15px;margin-top:2px;font-family:var(--mono);
                    font-size:10.5px;line-height:1.4;color:var(--blekk-3)}
 .brev__steg[data-tilstand="ferdig"]{color:var(--blekk-2)}
-.brev__steg[data-tilstand="ferdig"]::before{opacity:1;background:none;box-shadow:inset 0 0 0 1.5px currentColor}
+/* Ferdige steg fylles, som i stegraden øverst i panelet, og streken
+   mellom to steg som er passert får samme farge. */
+.brev__steg[data-tilstand="ferdig"]::before{opacity:1;background:var(--blekk-3)}
+.brev__steg[data-tilstand="ferdig"]:has(+ [data-tilstand="ferdig"], + [data-tilstand="aktiv"])::after{background:var(--blekk-3)}
 .brev__steg[data-tilstand="aktiv"]{color:var(--blekk)}
 .brev__steg[data-tilstand="aktiv"] .brev__steg__navn{font-weight:600}
 .brev__steg[data-tilstand="aktiv"]::before{opacity:1;background:var(--hav);animation:brevPuls 1.7s ease-in-out infinite}
@@ -1000,8 +1003,11 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .brev__filknapp input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
 .brev__filknapp:has(input:focus-visible){outline:2px solid var(--hav);outline-offset:2px}
 .brev__filknapp.er-av{opacity:.45;pointer-events:none}
-.brev__velger{max-width:100%;font-family:var(--sans);font-size:13px;font-weight:500;color:var(--blekk);
-              border:0;background:transparent;padding:4px 0;cursor:pointer}
+/* Uten nettleserens egen pil står teksten kant i kant med etiketten
+   til venstre, og pila er den samme som i filtrene. */
+.brev__velger,.brev__versjon{-webkit-appearance:none;appearance:none;border:0;cursor:pointer;
+              background:transparent var(--pil) no-repeat right 2px center;padding:4px 16px 4px 0}
+.brev__velger{max-width:100%;font-family:var(--sans);font-size:13px;font-weight:500;color:var(--blekk)}
 .brev__velger:disabled{cursor:default;opacity:.6}
 .brev__cvpanel{grid-column:1/-1;padding:6px 0 12px}
 .brev__kildetekst{min-height:180px;max-height:360px;font-family:var(--sans);font-size:13px;line-height:1.6}
@@ -1046,7 +1052,7 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .brev__skriveflate{flex:1 0 auto;display:flex;flex-direction:column;min-width:0;background:var(--innfelt);padding:0 16px 16px;gap:10px}
 .brev__verktoylinje{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;
                     min-height:24px;margin:0 -16px -4px;padding:10px 24px 6px;background:var(--innfelt)}
-.brev__versjon{font-family:var(--sans);font-size:12px;color:var(--blekk-2);border:0;background:transparent;max-width:65%;padding:3px 0;cursor:pointer}
+.brev__versjon{font-family:var(--sans);font-size:12px;color:var(--blekk-2);max-width:65%}
 .brev__lagret{font-family:var(--mono);font-size:10.5px;color:var(--blekk-3);white-space:nowrap;text-align:right}
 .brev__papir{position:relative;flex:1 0 auto;min-height:340px;background:var(--kort);border-radius:var(--r-s);box-shadow:var(--loft);display:flex;scroll-margin-top:48px}
 .brev__tekst{display:block;flex:1;width:100%;min-width:0;padding:26px 28px;border:0;resize:none;overflow:hidden;background:transparent;font-family:var(--sans);font-size:16px;line-height:1.8;color:var(--blekk)}
