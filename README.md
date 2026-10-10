@@ -96,12 +96,36 @@ Et klikk hopper til søknaden og markerer den.
 
 ### Handlinger på hver søknad
 
-- **Søknadsbrev** åpner brevskriveren.
+- **Søknadsbrev** åpner søknaden i detaljpanelet, på fanen Brev.
 - Hovedknappen følger statusen: **Merk sendt** (setter sendtdato), **Fikk intervju**, **Fikk tilbud** eller **Gjenåpne**.
-- Sendte søknader og intervjuer kan markeres som **Avslag** eller **Trukket**.
-- En søknad med utgått frist kan markeres som **Utløpt**, én og én eller alle på én gang fra gruppen «Fristen har gått ut». En frist som går ut endrer aldri status av seg selv.
-- **Rediger** og **Slett**.
+- Knappene står i samme kolonne i alle rader og bånd, så blikket finner dem på samme sted.
+- **⋯** åpner en liten meny med det som brukes sjeldnere: **Rediger**, **Fikk avslag** og **Trakk søknaden** for sendte søknader og intervjuer, **Marker som utløpt** når fristen har gått ut, og **Slett**.
+- Utgåtte frister kan også flyttes til arkivet alle på én gang fra gruppen «Fristen har gått ut». En frist som går ut endrer aldri status av seg selv.
 - Stillingstittelen lenker til annonsen. I Mac-appen åpnes lenken i systemets nettleser.
+
+### Detaljpanelet
+
+Klikk på en rad, eller trykk Enter når raden har fokus, så åpnes søknaden i et panel til høyre.
+Listen blir stående ved siden av, og raden som er åpen er markert.
+På smal skjerm legger panelet seg over listen i full høyde.
+
+Øverst står selskap, stilling med lenke til annonsen, frist og status.
+Stegraden viser hvor langt søknaden er kommet, fra «å søke på» via sendt og intervju til tilbud, med datoen for hvert steg fra hendelsesloggen.
+Datoer som er regnet ut fra eldre data, er merket som omtrentlige.
+Avslag, trukket og utløpt vises som sideutganger.
+Et klikk på et steg endrer statusen, og endringen kan angres som ellers.
+**Rediger** åpner skjemaet i skuffen.
+
+Panelet har fire faner:
+
+- **Oversikt**: tidslinjen over alt som har skjedd med søknaden, og notatet, som lagres mens du skriver.
+- **Annonse**: den lagrede annonsen, hvor den kom fra og når. **Hent på nytt** henter den fra lenken, **Lim inn** tar teksten du har kopiert, og **Åpne originalen** går til annonsen. Feiler hentingen, sier panelet hvorfor og hva du kan gjøre i stedet.
+- **Intervju**: kommer.
+- **Brev**: brevskriveren, montert i panelet.
+
+Fanen blir stående når du går fra søknad til søknad, så du kan lese annonsene etter hverandre.
+Adressen endrer seg til `#jobb/<id>/<fane>`, så tilbakeknappen virker og en lenke åpner samme søknad og fane.
+Peker lenken til en søknad som ligger i en annen visning, bytter listen visning så raden står ved siden av.
 
 Sletting, statusbytte, flytting til arkivet og tilbakestilling kan angres fra varselet som dukker opp.
 
@@ -157,8 +181,9 @@ Valget huskes i nettleseren eller appen og havner aldri i datafilen.
 | --- | --- |
 | `n` | Ny søknad |
 | `/` | Søk |
-| `Esc` | Lukk |
-| `Enter` | Lagre skjemaet eller hent lenken |
+| `Esc` | Lukk skuffen, menyen eller detaljpanelet |
+| `Enter` | Åpne raden i detaljpanelet, lagre skjemaet eller hent lenken |
+| `←` `→` | Bytt fane i detaljpanelet |
 
 Snarveiene er inaktive mens innloggingen står, ellers ville `n` åpnet skjemaet bak den.
 
@@ -414,6 +439,11 @@ Det finnes foreløpig ingen knapp for å bytte passord i appen.
 
 **Dataene dine** nederst i sidepanelet viser hvor mange søknader som ligger i `jobber.json`, og har **Tilbakestill til startlisten**, som erstatter alt med de 55 søknadene appen startet med.
 Tilbakestillingen kan angres.
+
+**Hent manglende annonser** henter annonsen fra lenken til hver søknad som ikke har en lagret, én om gangen.
+Annonser som ligger i et søknadsbrev, flyttes over først.
+Nettleserversjonen henter høyst 30 i timen.
+Til slutt står en oversikt over hva som ble hentet, hva som manglet lenke og hva som feilet.
 
 Søknadslisten er en vanlig JSON-fil, se [Hvor dataene ligger](#hvor-dataene-ligger).
 Vil du ta en kopi av den eller flytte den, kopierer du filen.
