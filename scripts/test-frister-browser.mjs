@@ -122,7 +122,8 @@ try{
 
   /* ---------- én rad om gangen virker fortsatt ---------- */
   await page.locator("#filtSektor").selectOption("");
-  await page.locator('.rad[data-id="ut3"] [data-gjor="expired"]').click();
+  await page.locator('.rad[data-id="ut3"] [data-meny]').click();
+  await page.locator('#radmeny [data-gjor="expired"]').click();
   assert.deepEqual(await iBånd("baand-utgatt"), ["ut1", "ut4", "ut2"]);
 
   /* ---------- telefonbredde ---------- */

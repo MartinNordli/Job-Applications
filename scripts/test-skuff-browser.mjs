@@ -67,11 +67,13 @@ try{
   assert.deepEqual(await faner(), [["lenke", "false"], ["skjema", "true"]]);
   await page.keyboard.press("Escape");
 
-  /* ---------- dataene dine: bare tallet og startlisten ---------- */
+  /* ---------- dataene dine: tallet, annonsene og startlisten ---------- */
   await page.locator("#apneEksport").click();
   await page.locator("#skuff.er-apen").waitFor();
   assert.match(await page.locator("#skuffKropp").textContent(), /5 søknader ligger i jobber\.json/);
-  assert.deepEqual(await page.$$eval("#skuffKropp button", k => k.map(x => x.dataset.gjor)), ["tilbakestill"]);
+  assert.deepEqual(await page.$$eval("#skuffKropp button", k => k.map(x => x.dataset.gjor)), ["hentManglende", "tilbakestill"]);
+  /* Ingen av søknadene har lenke eller annonse: alle fem mangler. */
+  await page.waitForFunction(() => document.querySelector("#manglendeTall")?.textContent === "(5)");
   assert.equal(await page.locator("#apiNokkel").count(), 0);
   await page.screenshot({ path: path.join(dir, "dataene-dine.png") });
   await page.keyboard.press("Escape");
@@ -92,7 +94,9 @@ try{
   /* ---------- intervjuet overlever et avslag ---------- */
   await page.locator('[data-visning="sendt"]').click();
   await page.locator('.rad[data-id="sendt1"] [data-gjor="interview"]').click();
-  await page.locator('.rad[data-id="sendt1"] [data-gjor="rediger"]').click();
+  /* Rediger ligger bak «⋯» på raden. */
+  await page.locator('.rad[data-id="sendt1"] [data-meny]').click();
+  await page.locator('#radmeny [data-gjor="rediger"]').click();
   await page.locator("#skuff.er-apen").waitFor();
   assert.equal(await page.locator("#fintervju").isChecked(), true);
   await page.locator("#fStatus").selectOption("rejected");

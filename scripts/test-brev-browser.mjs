@@ -82,8 +82,13 @@ try{
   assert.ok((await page.locator("#brevTekst").inputValue()).endsWith("Min manuelle avslutning."));
   assert.deepEqual(kall,["analyse","skriv","kontroll","skriv","kontroll"]);
   await page.waitForFunction(()=>document.querySelector("#brevLagret").textContent.startsWith("Lagret"));
-  await page.locator("#lukkSkuff").click();
+  // Brevet står i detaljpanelet. Å lukke panelet venter på lagringen,
+  // og «Søknadsbrev» på raden åpner det rett på brevet igjen.
+  await page.locator('#detalj [data-panel="lukk"]').click();
+  await page.locator("#detalj").waitFor({state:"hidden"});
+  assert.equal(await page.evaluate(()=>location.hash),"");
   await page.locator('[data-gjor="brev"]').first().click();
+  assert.equal(await page.evaluate(()=>location.hash),"#jobb/brevtest/brev");
   await page.waitForFunction(()=>document.querySelector("#brevTekst")?.value.endsWith("Min manuelle avslutning."));
   await page.getByRole("button",{name:"Kopier brev",exact:true}).click();
   assert.ok((await page.evaluate(()=>navigator.clipboard.readText())).endsWith("Min manuelle avslutning."));
@@ -111,7 +116,7 @@ try{
   // mikrolinjene fra hverandre i høyden. Dette er den smaleste bredden.
   assert.equal(new Set(await page.$$eval(".brev__steg__mikro",e=>e.map(m=>m.getBoundingClientRect().top))).size,1);
   await page.getByRole("tab",{name:"Grunnlag",exact:true}).click();
-  await page.locator("#skuff").getByRole("button",{name:"Innstillinger",exact:true}).click();
+  await page.locator("#detalj").getByRole("button",{name:"Innstillinger",exact:true}).click();
   // Panelet bytter ut kildemargen, det legger seg ikke oppå den.
   assert.equal(await page.locator("#brevGrunnlag").isHidden(),true);
   await page.screenshot({path:path.join(dir,"07-innstillinger-mobil.png"),fullPage:true});
@@ -128,6 +133,8 @@ try{
   assert.equal(await page.locator("#brevInnstillinger").isHidden(),true);
   // Feil må bevare et eksisterende brev.
   modellfeil=true;
+  // I panelet er grunnlaget og brevet to faner, også på bred skjerm.
+  await page.getByRole("tab",{name:"Søknadsbrev",exact:true}).click();
   await page.locator("#brevInstruks").fill("En gang til.");await page.getByRole("button",{name:"Lag ny versjon",exact:true}).click();
   await page.locator("#brevFeil").waitFor({state:"visible"});
   assert.ok((await page.locator("#brevTekst").inputValue()).includes("Min manuelle avslutning."));
