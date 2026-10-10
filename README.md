@@ -129,6 +129,20 @@ Peker lenken til en søknad som ligger i en annen visning, bytter listen visning
 
 Sletting, statusbytte, flytting til arkivet og tilbakestilling kan angres fra varselet som dukker opp.
 
+### Hvor godt passer stillingen
+
+Oversikt-fanen viser en prosent for hvor godt stillingen passer CV-en din, med en kort oppsummering, styrker og det som mangler.
+Vurderingen kjøres av seg selv når en annonse er lagret, så sant CV-en og API-nøkkelen finnes.
+Ellers trykker du «Vurder», og «Vurder på nytt» lager en ny.
+Prosenten følger en fast skala: 90 og over betyr at alle krav er oppfylt med direkte bevis, 70 til 89 at kravene er oppfylt men noe av det ønskede mangler, 50 til 69 delvis, og under 50 at et sentralt krav mangler.
+Styrkene har ordrette sitater fra CV-en og annonsen, og et sitat som ikke finnes i kildene, gir ingen vurdering.
+Annonsen og CV-en er data for modellen, ikke instruksjoner.
+Raden i listen har et lite prosentmerke ved siden av nedtellingen.
+Endrer du CV-en eller annonsen, blir merket dempet og panelet sier hvorfor, men ingenting vurderes på nytt før du ber om det.
+Vurderingen bruker en rimeligere modell enn brevet (hos Anthropic Sonnet, mens brevet beholder Opus), og taket er 60 vurderinger i timen per profil i nettleseren.
+Hos OpenAI brukes samme modell som til brevet.
+Resultatet lagres i `jobb-<id>.json` sammen med CV-revisjonen, annonsens sjekksum og promptversjonen den bygger på.
+
 ### Statuser, sektorer og jobbtyper
 
 | Felt | Verdier |

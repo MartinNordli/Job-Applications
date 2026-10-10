@@ -441,6 +441,11 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
 /* Et kommende intervju er en avtale, ikke en frist: det løftes med
    blekk og vekt, aldri med hastekulør. */
 .rad__om[data-kommer]{color:var(--blekk);font-weight:500}
+/* Prosentmerket er opplysning, ikke varsel: innfelt og dempet, aldri i
+   hastekulør. Utdatert er det samme merket uten fyll. */
+.rad__match{flex:none;padding:2px 7px;border-radius:var(--r-s);background:var(--innfelt-2);color:var(--blekk-2);
+            font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rad__match.er-utdatert{background:none;color:var(--blekk-3);box-shadow:inset 0 0 0 1px var(--innfelt-2)}
 .rad__verktoy{display:flex;gap:4px;align-items:center}
 .handling--hoved{min-width:var(--hovedknapp);text-align:center}
 
@@ -826,6 +831,13 @@ a.detalj__stilling:hover{color:var(--hav-t);text-decoration:underline;text-under
 .match__liste li::marker{color:var(--blekk-3)}
 .match__liste b{font-weight:600}
 .match__liste span{color:var(--blekk-2)}
+.match__rad{margin-top:10px}
+.match__knapp{padding:6px 11px;font-size:12.5px}
+.match__feil{margin:8px 0 0;font-size:12.5px;line-height:1.45;color:var(--blekk-2)}
+/* Utdatert er dempet og forklart, ikke varslet. */
+.match--utdatert .match__prosent{color:var(--blekk-3)}
+.match--utdatert .match__sammendrag{color:var(--blekk-3)}
+.match__utdatert{margin:8px 0 0;font-size:12px;line-height:1.45;color:var(--blekk-3)}
 .match__alvor{font-family:var(--mono);font-size:10.5px;color:var(--blekk-3)!important}
 
 .tidslinje{list-style:none;margin:0;padding:0}

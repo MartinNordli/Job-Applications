@@ -185,6 +185,31 @@ function ventetekst(p){
   return { tekst: d === 0 ? "sendt i dag" : "venter " + antall(d, "dag", "dager") };
 }
 
+/* Prosentmerkene på radene. Ett utdrag per liste, hentet etter første
+   tegning og på nytt når en vurdering eller en annonse er skrevet.
+   Profilen står med, så merkene til én bruker aldri vises for en annen. */
+let matchMerker = { profil: null, data: {}, henter: false }, matchSkitten = false;
+async function lastMatchMerker(){
+  const profil = brukeren?.id;
+  if(!profil || matchMerker.henter) return;
+  matchMerker.henter = true; matchSkitten = false;
+  let data = {};
+  try{ data = await Jobbdokumenter.matchMerker(); }catch{}
+  matchMerker = { profil, data, henter: false };
+  if(matchSkitten) return lastMatchMerker();
+  if(profil === brukeren?.id) tegn();
+}
+/* Skrives noe mens utdraget hentes, leses det om med en gang det er ferdig. */
+Jobbdokumenter.påMatchEndring(() => { matchSkitten = true; lastMatchMerker(); });
+const UTDATERT_GRUNN = { cvRevisjon: "CV-en er endret", annonseSjekksum: "annonsen er endret", promptversjon: "eldre vurderingsmetode" };
+function matchMerkeHtml(p){
+  const m = matchMerker.profil === brukeren?.id ? matchMerker.data[p.id] : null;
+  if(!m) return "";
+  const gammel = m.utdatert.length > 0;
+  const tittel = "Hvor godt stillingen passer CV-en" + (gammel ? ". Utdatert: " + m.utdatert.map(k => UTDATERT_GRUNN[k]).join(", ") : "");
+  return '<span class="rad__match' + (gammel ? ' er-utdatert' : '') + '" title="' + esc(tittel) + '">' + m.prosent + ' %</span>';
+}
+
 function radHtml(p){
   const stilling = p.lenke
     ? '<a class="rad__stilling" href="' + esc(p.lenke) + '" target="_blank" rel="noopener noreferrer">' + esc(p.stilling) + '<span class="rad__pil">↗</span></a>'
@@ -245,7 +270,7 @@ function radHtml(p){
       + '<a class="rad__selskap" href="#jobb/' + p.id + '/oversikt">' + esc(p.selskap) + '</a>'
       + '<span class="rad__und">' + stilling + metaHtml + '</span>'
     + '</div>'
-    + '<div class="rad__hoyre">' + merke + om
+    + '<div class="rad__hoyre">' + merke + matchMerkeHtml(p) + om
       + '<div class="rad__verktoy"><button class="handling handling--brev" data-gjor="brev" data-id="' + p.id + '">Søknadsbrev</button>' + hoved
         + '<button class="handling rad__meny" type="button" data-meny="' + p.id + '" aria-haspopup="menu" aria-expanded="false"'
         + ' aria-label="Flere valg for ' + esc(p.selskap) + '">' + PRIKKER + '</button>'
@@ -670,6 +695,7 @@ function tegn(){
   /* Står panelet åpent, følger det søknaden: ny status, nytt notat eller
      endringer fra skuffen. Er søknaden slettet, lukker det seg. */
   panel.oppdater();
+  if(matchMerker.profil !== brukeren?.id) lastMatchMerker();
 }
 
 function fyllVelg(sel, par, valgt, forste){
@@ -1217,6 +1243,7 @@ async function lagreImportertAnnonse(id, annonse){
     }
     if(profil !== brukeren?.id) return;
     await Jobbdokumenter.lagreAnnonse(id, { tekst: annonse.tekst, url: annonse.url, hentet: annonse.hentet, kilde: "import" });
+    Jobbdokumenter.vurderIBakgrunnen(id);
   }catch(e){
     if(profil !== brukeren?.id) return;
     console.warn("Annonsen fra importen ble ikke lagret:", e);

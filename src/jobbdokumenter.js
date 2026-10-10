@@ -39,7 +39,9 @@ import { I_APP, bruker, http, lokaltLager } from "./dokumentklient.js";
 import { lagJobbdokumenter } from "./jobbdokumenttjeneste.mjs";
 import { tolkStier } from "./dokumentutdrag.mjs";
 import { lagMatchtjeneste } from "./matchtjeneste.mjs";
-import { lokalKallModell } from "./brev.js";
+import { lokalKallModell, hentCv } from "./brev.js";
+import { MATCH_PROMPTVERSJON } from "./matchlogikk.mjs";
+import { matchUtdatert } from "./jobbdokument.mjs";
 
 const tjenestene=new Map();
 function lokal(){
@@ -80,18 +82,51 @@ export function utdrag(stier){
 }
 
 export const annonseFor=id=>I_APP?lokal().annonseFor(id):http(asti(id));
-export const hentAnnonse=id=>I_APP?lokal().hentAnnonse(id):http(asti(id)+"/hent",{method:"POST"});
-export const lagreAnnonse=(id,annonse)=>I_APP?lokal().settAnnonse(id,annonse):http(asti(id),{method:"PUT",body:annonse});
+export const hentAnnonse=async id=>{const d=await(I_APP?lokal().hentAnnonse(id):http(asti(id)+"/hent",{method:"POST"}));meld(id);return d;};
+export const lagreAnnonse=async(id,annonse)=>{const d=await(I_APP?lokal().settAnnonse(id,annonse):http(asti(id),{method:"PUT",body:annonse}));meld(id);return d;};
 export const limInnAnnonse=(id,tekst)=>lagreAnnonse(id,{tekst,kilde:"limt"});
 /* Taket på 30 i timen gjelder bare i nettleseren, der serveren kan ha
    flere profiler. I appen er det ingen andre å dele nettet med. */
 export const hentManglendeAnnonser=({ider}={})=>I_APP?lokal().hentManglende({ider})
   :http("/api/jobbdokumenter/hent-manglende",{method:"POST",body:ider?{ider}:{}});
 
+/* Flaten som viser merker, lytter her og leser om. Hver skriving av en
+   vurdering eller en annonse melder fra, så merkene i listen og i panelet
+   ikke viser et tall som er byttet ut. */
+const lyttere=new Set();
+export function påMatchEndring(fn){lyttere.add(fn);return ()=>lyttere.delete(fn);}
+const meld=id=>{for(const fn of lyttere){try{fn(id);}catch{}}};
+
 /* Gir hele jobbdokumentet med den nye vurderingen. Uendret grunnlag
    gir den lagrede vurderingen uten nytt kall, med mindre tving er satt. */
-export const vurderMatch=(id,{tving=false}={})=>{
+export const vurderMatch=async(id,{tving=false}={})=>{
   const leverandor=valgtLeverandør();
-  return I_APP?lokalMatch().vurder(id,{tving,leverandor})
-    :http(`/api/jobber/${encodeURIComponent(id)}/match`,{method:"POST",body:{tving,leverandor}});
+  const dok=await(I_APP?lokalMatch().vurder(id,{tving,leverandor})
+    :http(`/api/jobber/${encodeURIComponent(id)}/match`,{method:"POST",body:{tving,leverandor}}));
+  meld(id);
+  return dok;
 };
+/* Etter at en annonse er lagret. Mangler CV-en eller nøkkelen, eller
+   feiler modellen, skjer det ingenting: «Vurder» i panelet prøver igjen. */
+export const vurderIBakgrunnen=id=>vurderMatch(id).catch(()=>null);
+
+/* Det en vurdering skal sammenliknes med nå. */
+export async function matchGrunnlag(){
+  const cv=await hentCv();
+  return {cvRevisjon:cv.revisjon,promptversjon:MATCH_PROMPTVERSJON};
+}
+/* Merkene til listen i ett oppslag: { <id>: { prosent, utdatert: [...] } }
+   for søknadene som har en vurdering. */
+export async function matchMerker(){
+  const [u,g]=await Promise.all([
+    utdrag(["match.prosent","match.cvRevisjon","match.annonseSjekksum","match.promptversjon","annonse.sjekksum"]),
+    matchGrunnlag()]);
+  const ut={};
+  for(const [fil,v] of Object.entries(u)){
+    if(typeof v["match.prosent"]!=="number")continue;
+    const dok={match:{cvRevisjon:v["match.cvRevisjon"]??null,annonseSjekksum:v["match.annonseSjekksum"]??null,promptversjon:v["match.promptversjon"]??null},
+      annonse:{sjekksum:v["annonse.sjekksum"]??null}};
+    ut[fil.slice(5,-5)]={prosent:v["match.prosent"],utdatert:matchUtdatert(dok,g)};
+  }
+  return ut;
+}

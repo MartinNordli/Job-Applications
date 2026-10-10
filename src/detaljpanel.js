@@ -54,6 +54,7 @@ import * as Jobbdokumenter from "./jobbdokumenter.js";
 import { åpneBrevflate } from "./brevflate.js";
 import { STATUSER, SEKTORER, JOBBTYPER } from "./felles.mjs";
 import { dagerSidenSendt } from "./hendelser.mjs";
+import { matchUtdatert } from "./jobbdokument.mjs";
 import { esc, monogram, omTekst, hast, datoMedÅr, ukedag, antall, tilIso } from "./formater.js";
 import { tidslinjeHtml, stegdatoer, lengstKommet, datoTekst, LØP, UTGANGER } from "./tidslinje.js";
 import { monterAnnonse } from "./annonseflate.js";
@@ -74,19 +75,32 @@ export function oppdaterDokument(id, dok){ aktivt?.oppdaterDokument(id, dok); }
 
 const ALVOR = { hoy: "viktig", middels: "middels", lav: "lite viktig" };
 
-function matchHtml(ktx){
+const UTDATERT_GRUNN = { cvRevisjon: "CV-en er endret siden vurderingen.", annonseSjekksum: "Annonsen er endret siden vurderingen.",
+  promptversjon: "Vurderingen er gjort med en eldre metode." };
+
+/* tilst: laster (kallet går), feil (teksten fra siste forsøk) og utdatert
+   (feltene i vurderingen som ikke lenger stemmer med CV-en og annonsen). */
+function matchHtml(ktx, tilst = {}){
   if(!ktx.dok && !ktx.dokFeil) return '<p class="detalj__tomt detalj__tomt--venter">Henter vurderingen…</p>';
   const m = ktx.dok?.match;
+  const harAnnonse = !!ktx.dok?.annonse?.tekst;
+  const knapp = '<button class="knapp knapp--liten knapp--stille match__knapp" type="button" data-match="vurder"'
+    + (tilst.laster ? ' aria-busy="true"' : "") + (tilst.laster || !harAnnonse ? " disabled" : "") + '>'
+    + (tilst.laster ? "Vurderer…" : m ? "Vurder på nytt" : "Vurder") + '</button>';
+  const feil = tilst.feil ? '<p class="match__feil" role="alert">' + esc(tilst.feil) + '</p>' : "";
   if(!m) return '<p class="detalj__tomt">Ingen vurdering av hvor godt stillingen passer ennå.'
-    + (ktx.dok?.annonse?.tekst ? "" : " Den bygger på annonsen, så lagre den først.") + '</p>';
+    + (harAnnonse ? "" : " Den bygger på annonsen, så lagre den først.") + '</p>'
+    + '<div class="match__rad">' + knapp + '</div>' + feil;
+  const utdatert = tilst.utdatert || [];
   const punkt = (tittel, liste, fn) => liste.length
     ? '<div class="match__del"><p class="match__deltittel">' + tittel + '</p><ul class="match__liste">' + liste.map(fn).join("") + '</ul></div>' : "";
-  return '<div class="match">'
+  return '<div class="match' + (utdatert.length ? " match--utdatert" : "") + '">'
     + '<p class="match__tall"><span class="match__prosent">' + m.prosent + ' %</span>'
       + (m.oppsummering ? '<span class="match__sammendrag">' + esc(m.oppsummering) + '</span>' : "") + '</p>'
+    + (utdatert.length ? '<p class="match__utdatert">Utdatert. ' + utdatert.map(k => UTDATERT_GRUNN[k]).filter(Boolean).join(" ") + '</p>' : "")
     + punkt("Styrker", m.styrker, s => '<li><b>' + esc(s.krav) + '</b>' + (s.bevis ? ' <span>' + esc(s.bevis) + '</span>' : "") + '</li>')
     + punkt("Mangler", m.mangler, x => '<li><b>' + esc(x.krav) + '</b> <span class="match__alvor">' + (ALVOR[x.alvor] || "") + '</span></li>')
-    + '</div>';
+    + '</div><div class="match__rad">' + knapp + '</div>' + feil;
 }
 
 function monterOversikt(flate, ktx, api){
@@ -134,8 +148,31 @@ function monterOversikt(flate, ktx, api){
   });
   notat.addEventListener("blur", lagreNå);
 
+  /* Vurderingen. grunnlag er CV-revisjonen og promptversjonen nå, og
+     hentes når oversikten åpnes og etter hver vurdering. Før den er
+     hentet, regnes ingenting som utdatert. */
+  let matchTilst = { laster: false, feil: null }, grunnlag = null, ryddet = false;
+  const lastGrunnlag = () => Jobbdokumenter.matchGrunnlag().then(g => { if(!ryddet){ grunnlag = g; tegn(); } }).catch(() => {});
+  async function vurder(){
+    const hvem = k.jobb.id;
+    matchTilst = { laster: true, feil: null }; tegn();
+    api.melde("Vurderer hvor godt stillingen passer");
+    try{
+      const d = await Jobbdokumenter.vurderMatch(hvem, { tving: true });
+      api.settDokument(hvem, d);
+      api.melde("Vurderingen er ferdig");
+      matchTilst = { laster: false, feil: null };
+    }catch(e){
+      matchTilst = { laster: false, feil: e?.code === "utlogget" ? null : (e?.message || "Fikk ikke vurdert stillingen. Prøv igjen.") };
+    }
+    if(ryddet) return;
+    tegn(); lastGrunnlag();
+  }
+  del("match").addEventListener("click", e => { if(e.target.closest('[data-match="vurder"]') && !matchTilst.laster) vurder(); });
+  lastGrunnlag();
+
   function tegn(){
-    del("match").innerHTML = matchHtml(k);
+    del("match").innerHTML = matchHtml(k, { ...matchTilst, utdatert: grunnlag ? matchUtdatert(k.dok, grunnlag) : [] });
     del("tid").innerHTML = tidslinjeHtml(k.jobb, k.iDag);
     /* Et notat brukeren skriver i, overskrives aldri av en omtegning. */
     if(document.activeElement !== notat && notat.value !== (k.jobb.notat || "")) notat.value = k.jobb.notat || "";
@@ -148,7 +185,7 @@ function monterOversikt(flate, ktx, api){
       k = ny; tegn();
     },
     lukk(){ lagreNå(); return true; },
-    rydd(){ clearTimeout(tid); avmeld(); }
+    rydd(){ ryddet = true; clearTimeout(tid); avmeld(); }
   };
 }
 

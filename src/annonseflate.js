@@ -219,6 +219,7 @@ export function monterAnnonse(flate, ktx, api){
       if(!aktiv || id !== k.jobb.id) return;
       opptatt = null; modus = "les"; utkast = "";
       api.settDokument(id, dok);
+      Jobbdokumenter.vurderIBakgrunnen(id);
       api.varsle(ferdig, forrige ? angreTil(forrige) : null);
       api.melde(ferdig);
     }catch(e){

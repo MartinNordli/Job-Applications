@@ -18,7 +18,17 @@ const nett = {
   hentSide: async url => { throw new Error(url.includes("borte") ? "Siden svarte 404." : "Adressen peker ikke til en nettside."); },
   spørModell: async () => { throw new Error("Ingen modell i denne testen."); }
 };
-const server = lagServer({ katalog: path.join(dir, "data"), nett });
+/* Vurderingen går til en falsk modell. modellFeil slår på en manglende nøkkel. */
+let modellFeil = false, modellkall = 0;
+const CV_TEKST = "Astrid Eksempel. To år med dataflyt i Python og SQL hos et kraftselskap.";
+const brevModellFor = () => async () => {
+  modellkall++;
+  if(modellFeil) throw Object.assign(new Error("Legg til API-nøkkelen for valgt leverandør."), { navn: "mangler-nokkel", status: 503 });
+  return { modell: "claude-sonnet-5-5", bruk: { input_tokens: 10, output_tokens: 10 }, data: { prosent: 84, sprak: "nb",
+    oppsummering: "Python og SQL er dekket.", mangler: [{ krav: "Kraftmarkedet", alvor: "lav" }],
+    styrker: [{ krav: "Python og SQL", bevis: "To år med dataflyt.", kilder: [{ kilde: "cv", sitat: "dataflyt i Python og SQL" }] }] } };
+};
+const server = lagServer({ katalog: path.join(dir, "data"), nett, brevModellFor });
 await new Promise(r => server.listen(0, "127.0.0.1", r));
 const url = `http://127.0.0.1:${server.address().port}`;
 
@@ -358,6 +368,72 @@ try{
   await page.keyboard.press("Escape");
   await panel.waitFor({ state: "hidden" });
   assert.equal(await page.locator(".skall > .hoved").getAttribute("inert"), null);
+
+  /* ---------- hvor godt stillingen passer: knapp, utdatert og merke ---------- */
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.evaluate(() => localStorage.setItem("jobbsoknader-tema", "lys"));
+  await page.goto(url);
+  await page.locator(".rad").first().waitFor();
+  const merke = id => page.locator(`.rad[data-id="${id}"] .rad__match`);
+  await merke("annonse").waitFor();
+  assert.equal((await merke("annonse").textContent()).trim(), "78 %");
+  assert.ok(await merke("annonse").evaluate(e => e.classList.contains("er-utdatert")), "en vurdering uten grunnlag er utdatert");
+  assert.equal(await merke("utenlenke").count(), 0, "ingen vurdering, intet merke");
+
+  // Uten CV og nøkkel gjør auto-kjøringen ingenting, og knappen sier hva som mangler.
+  await page.goto(url + "/#jobb/annonse/oversikt");
+  await page.locator(".match").waitFor();
+  assert.match(await page.locator(".match__utdatert").textContent(), /Utdatert/);
+  modellFeil = true;
+  await page.getByRole("button", { name: "Vurder på nytt" }).click();
+  await page.locator(".match__feil").waitFor();
+  assert.match(await page.locator(".match__feil").textContent(), /Legg inn CV-en|API-nøkkelen/);
+  assert.equal(await page.getByRole("button", { name: "Vurder på nytt" }).isEnabled(), true);
+
+  assert.ok((await context.request.put(url + "/api/cv", { data: { revisjon: 0, tekst: CV_TEKST, navn: "", format: "tekst" } })).ok());
+  const førKall = modellkall;
+  await page.getByRole("button", { name: "Vurder på nytt" }).click();
+  await page.locator(".match__feil").waitFor();
+  assert.match(await page.locator(".match__feil").textContent(), /API-nøkkelen/);
+  modellFeil = false;
+  await page.getByRole("button", { name: "Vurder på nytt" }).click();
+  await page.waitForFunction(() => document.querySelector(".match__prosent")?.textContent === "84 %");
+  assert.equal(await page.locator(".match--utdatert").count(), 0, "en fersk vurdering er ikke utdatert");
+  assert.equal(await page.locator(".match__feil").count(), 0);
+  assert.equal((await dokument("annonse")).match.promptversjon, "match-1");
+  assert.equal((await dokument("annonse")).match.cvRevisjon, 1);
+  assert.ok(modellkall > førKall);
+  await vent(async () => (await merke("annonse").textContent()).trim() === "84 %", "merket på raden");
+  assert.equal(await merke("annonse").evaluate(e => e.classList.contains("er-utdatert")), false);
+  const lysMerke = path.join(dir, "10-merke-lys.png");
+  await page.locator('.rad[data-id="annonse"]').screenshot({ animations: "disabled", path: lysMerke });
+
+  // En ny CV merker vurderingen utdatert uten å kjøre den på nytt.
+  const tilCv = modellkall;
+  assert.ok((await context.request.put(url + "/api/cv", { data: { revisjon: 1, tekst: CV_TEKST + " Sertifisert i prosjektstyring.", navn: "", format: "tekst" } })).ok());
+  await page.reload();
+  await merke("annonse").waitFor();
+  assert.ok(await merke("annonse").evaluate(e => e.classList.contains("er-utdatert")));
+  assert.match(await merke("annonse").getAttribute("title"), /CV-en er endret/);
+  await page.locator('.rad[data-id="annonse"] .rad__selskap').click();
+  await page.locator(".match__utdatert").waitFor();
+  assert.match(await page.locator(".match__utdatert").textContent(), /CV-en er endret/);
+  assert.equal(modellkall, tilCv, "en ny CV starter ingen vurdering av seg selv");
+  await page.screenshot({ animations: "disabled", path: path.join(dir, "11-oversikt-utdatert.png") });
+  await page.evaluate(() => localStorage.setItem("jobbsoknader-tema", "mork"));
+  await page.reload();
+  await merke("annonse").waitFor();
+  await page.locator('.rad[data-id="annonse"]').screenshot({ animations: "disabled", path: path.join(dir, "10-merke-mork-utdatert.png") });
+
+  // Lagres en annonse, vurderes den i bakgrunnen når CV og nøkkel finnes.
+  await page.goto(url + "/#jobb/utenlenke/annonse");
+  await page.getByRole("button", { name: "Lim inn", exact: true }).click();
+  await page.locator("#annonseLim").fill("Havbruk Vest søker dataingeniør.\n\nDu jobber med dataflyt i Python og SQL for oppdrettsanlegg.");
+  await page.getByRole("button", { name: "Lagre annonsen" }).click();
+  const auto = await vent(async () => (await dokument("utenlenke")).match, "vurderingen i bakgrunnen");
+  assert.equal(auto.prosent, 84);
+  await vent(async () => (await merke("utenlenke").count()) === 1, "merket på den nye raden");
+  await page.evaluate(() => localStorage.setItem("jobbsoknader-tema", "lys"));
 
   /* ---------- skjermbilder: fem temaer, fem bredder ---------- */
   for(const tema of ["lys", "mork", "ink", "blush", "midnatt"]){
