@@ -236,6 +236,7 @@ pub fn run() {
             flytt_fil,
             skriv_atomisk,
             hent_side,
+            nett::hent_json,
             spor_modell,
             sjekk_frister,
             brev::brev_les,

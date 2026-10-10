@@ -196,6 +196,12 @@ test("et privat token i profilen brukes i stedet, og avvises det, sier vi fra", 
   await assert.rejects(lagHentJson({ slåOpp: utvendig, forespør: avvist.forespør })(NAVFEED, { kilde: "nav", katalog }), /tokenet i nav-token.txt/);
   assert.equal(avvist.kall.length, 1, "ingen stille overgang til det offentlige tokenet");
 
+  // En tom fil er ingen fil, som for nokkel.txt: da gjelder det offentlige tokenet.
+  await fs.writeFile(path.join(katalog, NAV_TOKENFIL), "  \n");
+  const tom = falsk(url => url.pathname === "/api/publicToken" ? tokensvar() : json({}));
+  await lagHentJson({ slåOpp: utvendig, forespør: tom.forespør })(NAVFEED, { kilde: "nav", katalog });
+  assert.equal(tom.kall[1].hoder.Authorization, `Bearer ${TOKEN}`);
+
   await fs.writeFile(path.join(katalog, NAV_TOKENFIL), "ikke et token\r\nX-Injisert: ja");
   const ingen = falsk(() => json({}));
   await assert.rejects(lagHentJson({ slåOpp: utvendig, forespør: ingen.forespør })(NAVFEED, { kilde: "nav", katalog }), /ikke et gyldig token/);

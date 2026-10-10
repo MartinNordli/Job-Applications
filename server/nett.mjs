@@ -265,14 +265,16 @@ export function lagHentJson({ slåOpp = standardOppslag, forespør = httpsForesp
     return (offentligToken = token);
   }
 
-  /* null: ingen fil. Finnes filen uten et gyldig token, stopper vi
-     heller enn å bruke et annet enn det brukeren la der. */
+  /* null: ingen fil, eller en tom fil, som for nokkel.txt. Har filen
+     noe annet enn et token, stopper vi heller enn å bruke et annet
+     token enn det brukeren la der. */
   async function privatToken(katalog){
     if(!katalog) return null;
     let tekst;
     try{ tekst = await fs.readFile(path.join(katalog, NAV_TOKENFIL), "utf8"); }
     catch(e){ if(e?.code === "ENOENT") return null; throw new Error(`Kunne ikke lese ${NAV_TOKENFIL}.`); }
-    const token = tolkNavToken(tekst.slice(0, MAKS_TOKEN));
+    if(!tekst.trim()) return null;
+    const token = tekst.length <= MAKS_TOKEN ? tolkNavToken(tekst) : null;
     if(!token) throw new Error(`${NAV_TOKENFIL} har ikke et gyldig token.`);
     return token;
   }

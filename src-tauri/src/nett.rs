@@ -1,19 +1,25 @@
 /* ============================================================
-   De to utgående operasjonene, i appmodus.
+   De utgående operasjonene, i appmodus: siden importen henter,
+   modellen, og JSON-en Radar henter fra kjente kilder.
 
-   Motstykket til server/nett.mjs: samme to operasjoner, samme
-   vern, men utført av Rust. Reglene over dette laget ligger i
-   src/importlogikk.mjs og deles med nettleserversjonen.
+   Motstykket til server/nett.mjs: samme operasjoner, samme vern,
+   men utført av Rust. Reglene over dette laget ligger i
+   src/importlogikk.mjs og src/radarnett.mjs og deles med
+   nettleserversjonen. Reglene for hent_json står i begge språk, og
+   testdata/hentjson.json holder dem like.
 
-   Nøkkelen leses her og forlater aldri Rust. Adressen til modellen
-   står i koden, ikke i et argument — ellers ville en fiendtlig
-   utlysning kunnet be oss sende nøkkelen et annet sted.
+   Nøkkelen og NAV-tokenet leses her og forlater aldri Rust. Adressene
+   til modellen og til NAVs token står i koden, ikke i et argument.
+   Ellers ville en fiendtlig utlysning kunnet be oss sende nøkkelen
+   et annet sted.
    ============================================================ */
 
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
+use std::sync::Mutex;
 use std::time::Duration;
 
 use serde::Serialize;
+use tauri::AppHandle;
 
 const MAKS_SIDE: usize = 2 * 1024 * 1024;
 const MAKS_HOPP: usize = 3;
@@ -237,6 +243,307 @@ pub async fn spor_modell(nokkel: String, kropp: String) -> Result<String, String
     Ok(tekst)
 }
 
+/* ---------- hent JSON for Radar ---------- */
+/*
+   Samme regler som src/radarnett.mjs og lagHentJson i server/nett.mjs:
+   bare https og bare vertene under, ingen videresendinger, typen må
+   være application/json, 304 er «ingenting nytt», og over 5 MiB er en
+   feil, ikke et stille kutt. 30 s for NAV, 15 s ellers.
+
+   DNS låses som i hent_side: oppslaget sjekkes, og klienten får den
+   sjekkede adressen med .resolve(). Uten videresendinger er det ett
+   oppslag per kall.
+
+   Det offentlige NAV-tokenet holdes i minnet i prosessen. Det roterer
+   etter rundt 86 minutter uten at exp sier fra, så et 401 gir ett nytt
+   token og ett nytt forsøk. Et privat token fra nav-token.txt brukes
+   hvis filen finnes, og avvises det, sier vi fra i stedet for å bytte
+   stille til det offentlige.
+*/
+
+const MAKS_JSON: usize = 5 * 1024 * 1024;
+const MAKS_TOKEN: usize = 8 * 1024;
+const NAV_TOKENURL: &str = "https://pam-stilling-feed.nav.no/api/publicToken";
+pub const NAV_TOKENFIL: &str = "nav-token.txt";
+
+static OFFENTLIG_TOKEN: Mutex<Option<String>> = Mutex::new(None);
+
+#[derive(Serialize, Debug)]
+pub struct JsonSvar {
+    pub status: u16,
+    pub json: serde_json::Value,
+    pub etag: Option<String>,
+    #[serde(rename = "sistEndret")]
+    pub sist_endret: Option<String>,
+}
+
+/// Verten hver kilde får hente fra. Ukjent kilde har ingen vert.
+pub fn vert_for(kilde: &str) -> Option<&'static str> {
+    match kilde {
+        "nav" => Some("pam-stilling-feed.nav.no"),
+        "jobbnorge" => Some("publicapi.jobbnorge.no"),
+        "greenhouse" => Some("boards-api.greenhouse.io"),
+        "lever" => Some("api.lever.co"),
+        _ => None,
+    }
+}
+
+fn tidsgrense_for(kilde: &str) -> Duration {
+    Duration::from_secs(if kilde == "nav" { 30 } else { 15 })
+}
+
+/// Adressen, eller en melding brukeren kan lese. Brukernavn, passord
+/// og annen port enn 443 avvises: ingen av API-ene trenger dem, og
+/// alle tre er måter å få samme vertsnavn til å bety noe annet.
+pub fn sjekk_json_adresse(url: &str, kilde: &str) -> Result<reqwest::Url, String> {
+    let vert = vert_for(kilde).ok_or("Ukjent kilde.")?;
+    let u = reqwest::Url::parse(url).map_err(|_| "Ugyldig adresse til kilden.".to_string())?;
+    if u.scheme() != "https" {
+        return Err("Kilden må hentes over https.".into());
+    }
+    if !u.username().is_empty() || u.password().is_some() || u.port().is_some() {
+        return Err("Ugyldig adresse til kilden.".into());
+    }
+    if u.host_str().map(str::to_ascii_lowercase).as_deref() != Some(vert) {
+        return Err("Adressen hører ikke til kilden.".into());
+    }
+    Ok(u)
+}
+
+/// «application/json», med eller uten parametre. Tom type avvises.
+pub fn er_json_type(type_: &str) -> bool {
+    let t = type_.trim().to_ascii_lowercase();
+    match t.strip_prefix("application/json") {
+        Some(rest) => {
+            let rest = rest.trim_start();
+            rest.is_empty() || rest.starts_with(';')
+        }
+        None => false,
+    }
+}
+
+/// ETag og Last-Modified kommer tilbake fra radar.json. Bare synlige
+/// ASCII-tegn og mellomrom, så ingenting kan bære et linjeskift inn i
+/// et hode.
+pub fn hodeverdi(v: Option<&str>, maks: usize) -> Option<String> {
+    let v = v?;
+    let ok = !v.is_empty() && v.len() <= maks && v.bytes().all(|b| (0x20..=0x7e).contains(&b));
+    ok.then(|| v.to_owned())
+}
+
+/// Siste ikke-tomme linje, og bare hvis den har formen til en JWT.
+/// Formen er også vernet mot hodeinjeksjon i Authorization.
+pub fn tolk_nav_token(tekst: &str) -> Option<String> {
+    let siste = tekst.lines().map(str::trim).filter(|l| !l.is_empty()).last()?;
+    let deler: Vec<&str> = siste.split('.').collect();
+    let gyldig = siste.len() <= 4096
+        && deler.len() == 3
+        && deler.iter().all(|d| {
+            !d.is_empty() && d.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+        });
+    gyldig.then(|| siste.to_owned())
+}
+
+async fn send_json(
+    u: &reqwest::Url,
+    kilde: &str,
+    hoder: &[(&str, String)],
+) -> Result<reqwest::Response, String> {
+    let vert = u.host_str().ok_or("Lenken mangler et vertsnavn.")?.to_string();
+    let adresse = sjekk_vert(&vert, 443)?;
+    let grense = tidsgrense_for(kilde);
+    let klient = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(grense)
+        .user_agent(AGENT)
+        .resolve(&vert, adresse)
+        .build()
+        .map_err(|e| format!("Fikk ikke satt opp hentingen: {e}"))?;
+    let mut be = klient.get(u.clone()).header("Accept", "application/json");
+    for (navn, verdi) in hoder {
+        be = be.header(*navn, verdi);
+    }
+    be.send().await.map_err(|e| {
+        if e.is_timeout() {
+            format!("Kilden svarte ikke innen {} sekunder.", grense.as_secs())
+        } else {
+            "Fikk ikke kontakt med kilden.".to_string()
+        }
+    })
+}
+
+/// Taket er en feil, ikke et kutt. Content-Length kan lyve, så det
+/// telles det som faktisk kommer inn.
+async fn les_med_hardt_tak(
+    mut svar: reqwest::Response,
+    tak: usize,
+    melding: &str,
+    kilde: &str,
+) -> Result<Vec<u8>, String> {
+    let mut biter: Vec<u8> = Vec::new();
+    loop {
+        let bit = svar.chunk().await.map_err(|e| {
+            if e.is_timeout() {
+                format!("Kilden svarte ikke innen {} sekunder.", tidsgrense_for(kilde).as_secs())
+            } else {
+                "Mistet forbindelsen mens svaret ble lest.".to_string()
+            }
+        })?;
+        let Some(bit) = bit else { break };
+        if over_tak(biter.len(), bit.len(), tak) {
+            return Err(melding.to_owned());
+        }
+        biter.extend_from_slice(&bit);
+    }
+    Ok(biter)
+}
+
+fn over_tak(har: usize, ny: usize, tak: usize) -> bool {
+    har.saturating_add(ny) > tak
+}
+
+async fn nytt_offentlig_token() -> Result<String, String> {
+    *OFFENTLIG_TOKEN.lock().map_err(|_| "Tokenlageret er ødelagt.".to_string())? = None;
+    let u = sjekk_json_adresse(NAV_TOKENURL, "nav")?;
+    let svar = send_json(&u, "nav", &[("Accept", "text/plain".to_string())]).await?;
+    match svar.status().as_u16() {
+        200 => {}
+        404 => return Err("NAV har ikke et offentlig token akkurat nå. Radar prøver igjen senere.".into()),
+        k => return Err(format!("NAV svarte {k} på tokenet.")),
+    }
+    let tekst = les_med_hardt_tak(svar, MAKS_TOKEN, "Tokenet fra NAV var for langt.", "nav").await?;
+    let token = tolk_nav_token(&String::from_utf8_lossy(&tekst))
+        .ok_or("NAV svarte ikke med et gyldig token.")?;
+    *OFFENTLIG_TOKEN.lock().map_err(|_| "Tokenlageret er ødelagt.".to_string())? = Some(token.clone());
+    Ok(token)
+}
+
+/// Innholdet i nav-token.txt. Ingen fil, eller en tom fil, er intet
+/// privat token, som for nokkel.txt. En fil med noe annet enn et token
+/// er en feil: da stopper vi heller enn å bruke et annet token enn det
+/// brukeren la der.
+pub fn privat_token(innhold: Option<String>) -> Result<Option<String>, String> {
+    let Some(t) = innhold else { return Ok(None) };
+    if t.trim().is_empty() {
+        return Ok(None);
+    }
+    if t.len() > MAKS_TOKEN {
+        return Err(format!("{NAV_TOKENFIL} har ikke et gyldig token."));
+    }
+    tolk_nav_token(&t)
+        .map(Some)
+        .ok_or_else(|| format!("{NAV_TOKENFIL} har ikke et gyldig token."))
+}
+
+fn lagret_token() -> Option<String> {
+    OFFENTLIG_TOKEN.lock().ok().and_then(|t| t.clone())
+}
+
+/// `privat` er innholdet i nav-token.txt hvis filen finnes.
+pub async fn hent_json_med(
+    url: String,
+    kilde: String,
+    etag: Option<String>,
+    sist_endret: Option<String>,
+    privat: Option<String>,
+) -> Result<JsonSvar, String> {
+    let u = sjekk_json_adresse(&url, &kilde)?;
+    let etag = hodeverdi(etag.as_deref(), 200);
+    let sist_endret = hodeverdi(sist_endret.as_deref(), 64);
+    let mut hoder: Vec<(&str, String)> = Vec::new();
+    if let Some(e) = &etag {
+        hoder.push(("If-None-Match", e.clone()));
+    }
+    if let Some(s) = &sist_endret {
+        hoder.push(("If-Modified-Since", s.clone()));
+    }
+
+    let svar = if kilde == "nav" {
+        let privat = privat_token(privat)?;
+        let token = match (&privat, lagret_token()) {
+            (Some(p), _) => p.clone(),
+            (None, Some(t)) => t,
+            (None, None) => nytt_offentlig_token().await?,
+        };
+        let med = |t: &str| {
+            let mut h = hoder.clone();
+            h.push(("Authorization", format!("Bearer {t}")));
+            h
+        };
+        let mut svar = send_json(&u, &kilde, &med(&token)).await?;
+        if svar.status().as_u16() == 401 {
+            if privat.is_some() {
+                return Err(format!("NAV avviste tokenet i {NAV_TOKENFIL}."));
+            }
+            let nytt = nytt_offentlig_token().await?;
+            svar = send_json(&u, &kilde, &med(&nytt)).await?;
+            if svar.status().as_u16() == 401 {
+                if let Ok(mut t) = OFFENTLIG_TOKEN.lock() {
+                    *t = None;
+                }
+                return Err("NAV avviste tokenet. Radar prøver igjen senere.".into());
+            }
+        }
+        svar
+    } else {
+        send_json(&u, &kilde, &hoder).await?
+    };
+
+    let hode = |navn: reqwest::header::HeaderName, maks: usize| {
+        hodeverdi(svar.headers().get(navn).and_then(|v| v.to_str().ok()), maks)
+    };
+    let ny_etag = hode(reqwest::header::ETAG, 200);
+    let ny_sist = hode(reqwest::header::LAST_MODIFIED, 64);
+    let type_ = svar
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_owned();
+    let kode = svar.status().as_u16();
+
+    if kode == 304 {
+        return Ok(JsonSvar {
+            status: 304,
+            json: serde_json::Value::Null,
+            etag: ny_etag.or(etag),
+            sist_endret: ny_sist.or(sist_endret),
+        });
+    }
+    if (300..400).contains(&kode) {
+        return Err("Kilden sendte oss videre. Det følger ikke Radar.".into());
+    }
+    if kode != 200 {
+        return Err(format!("Kilden svarte {kode}."));
+    }
+    if !er_json_type(&type_) {
+        return Err("Kilden svarte ikke med JSON.".into());
+    }
+    let kropp = les_med_hardt_tak(svar, MAKS_JSON, "Svaret fra kilden er større enn 5 MiB.", &kilde).await?;
+    let json = serde_json::from_slice(&kropp).map_err(|_| "Kilden svarte med ugyldig JSON.".to_string())?;
+    Ok(JsonSvar { status: 200, json, etag: ny_etag, sist_endret: ny_sist })
+}
+
+/// Kommandoen webviewet kaller. `bruker` sier hvilken profilkatalog et
+/// privat NAV-token leses fra; tokenet selv går aldri tilbake.
+#[tauri::command]
+pub async fn hent_json(
+    app: AppHandle,
+    url: String,
+    kilde: String,
+    etag: Option<String>,
+    sist_endret: Option<String>,
+    bruker: Option<String>,
+) -> Result<JsonSvar, String> {
+    let privat = if kilde == "nav" {
+        let dir = super::bruker_katalog(&app, bruker.as_deref())?;
+        super::les_i(&dir, NAV_TOKENFIL).map_err(|_| format!("Kunne ikke lese {NAV_TOKENFIL}."))?
+    } else {
+        None
+    };
+    hent_json_med(url, kilde, etag, sist_endret, privat).await
+}
+
 #[cfg(test)]
 mod tester {
     use super::*;
@@ -345,5 +652,117 @@ mod tester {
         for url in ["file:///etc/passwd", "javascript:alert(1)", "ftp://example.com/"] {
             assert!(hent_side(url.into()).await.is_err(), "{url} skulle vaert avvist");
         }
+    }
+
+    /* ---------- hent_json ---------- */
+
+    /* Den samme filen leses av server/hentjson.test.mjs. */
+    fn felles() -> serde_json::Value {
+        serde_json::from_str(include_str!("../../testdata/hentjson.json")).expect("hentjson.json er gyldig")
+    }
+
+    #[test]
+    fn vertslisten_er_den_samme_som_i_node() {
+        for t in felles()["adresser"].as_array().unwrap() {
+            let (url, kilde, ok) = (t["url"].as_str().unwrap(), t["kilde"].as_str().unwrap(), t["ok"].as_bool().unwrap());
+            assert_eq!(sjekk_json_adresse(url, kilde).is_ok(), ok, "{url} for {kilde}: {}", t["om"]);
+        }
+    }
+
+    #[test]
+    fn bare_application_json_godtas() {
+        for t in felles()["typer"].as_array().unwrap() {
+            let type_ = t["type"].as_str().unwrap();
+            assert_eq!(er_json_type(type_), t["ok"].as_bool().unwrap(), "{type_:?}");
+        }
+    }
+
+    #[test]
+    fn nav_tokenet_leses_likt_som_i_node() {
+        for t in felles()["tokens"].as_array().unwrap() {
+            let tekst = t["tekst"].as_str().unwrap();
+            assert_eq!(tolk_nav_token(tekst).as_deref(), t["token"].as_str(), "{tekst:?}");
+        }
+        let lagret = include_str!("../../testdata/radar/nav/publicToken.txt");
+        assert!(tolk_nav_token(lagret).is_some_and(|t| t.starts_with("eyJ")));
+    }
+
+    #[test]
+    fn privat_token_tom_fil_er_ingen_fil_og_tull_er_en_feil() {
+        assert_eq!(privat_token(None), Ok(None));
+        assert_eq!(privat_token(Some("  \n".into())), Ok(None));
+        assert_eq!(privat_token(Some("eyJ.privat.token\n".into())), Ok(Some("eyJ.privat.token".into())));
+        assert!(privat_token(Some("ikke et token\r\nX-Injisert: ja".into())).is_err());
+        assert!(privat_token(Some(format!("a.b.{}", "ø".repeat(MAKS_TOKEN)))).is_err(), "langt token skal avvises uten å dele et tegn");
+    }
+
+    #[test]
+    fn hodeverdier_kan_ikke_bære_linjeskift() {
+        assert_eq!(hodeverdi(Some("W/\"abc\""), 200).as_deref(), Some("W/\"abc\""));
+        for ond in ["a\r\nX-Injisert: ja", "a\nb", "", "ø"] {
+            assert_eq!(hodeverdi(Some(ond), 200), None, "{ond:?}");
+        }
+        assert_eq!(hodeverdi(Some(&"x".repeat(201)), 200), None);
+        assert_eq!(hodeverdi(None, 200), None);
+    }
+
+    #[test]
+    fn taket_er_en_grense_og_ikke_et_kutt() {
+        assert!(!over_tak(0, MAKS_JSON, MAKS_JSON), "akkurat på taket er greit");
+        assert!(over_tak(MAKS_JSON, 1, MAKS_JSON));
+        assert!(over_tak(usize::MAX, 1, MAKS_JSON), "ingen overflyt");
+        assert_eq!(tidsgrense_for("nav"), Duration::from_secs(30));
+        assert_eq!(tidsgrense_for("lever"), Duration::from_secs(15));
+    }
+
+    #[test]
+    fn localhost_er_internt_også_for_json() {
+        let feil = sjekk_vert("localhost", 443).expect_err("localhost skal avvises");
+        assert!(feil.contains("internt nett"), "uventet melding: {feil}");
+    }
+
+    #[tokio::test]
+    async fn json_utenfor_vertslisten_hentes_ikke() {
+        for (url, kilde) in [
+            ("https://127.0.0.1/api", "nav"),
+            ("https://evil.example/v3/jobs", "jobbnorge"),
+            ("http://api.lever.co/v0/postings/bekk", "lever"),
+            ("https://api.lever.co/v0/postings/bekk", "webcruiter"),
+        ] {
+            assert!(hent_json_med(url.into(), kilde.into(), None, None, None).await.is_err(), "{url}");
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "går ut på nettet"]
+    async fn henter_ekte_json_fra_jobbnorge() {
+        let svar = hent_json_med(
+            "https://publicapi.jobbnorge.no/v3/jobs?orderby=Published&period=Day&results=2&page=0".into(),
+            "jobbnorge".into(),
+            None,
+            None,
+            None,
+        )
+        .await
+        .expect("skulle hentet søket");
+        assert_eq!(svar.status, 200);
+        assert!(svar.json["jobs"].is_array());
+    }
+
+    #[tokio::test]
+    #[ignore = "går ut på nettet"]
+    async fn henter_ekte_nav_feed_med_offentlig_token() {
+        let svar = hent_json_med(
+            "https://pam-stilling-feed.nav.no/api/v1/feed?last".into(),
+            "nav".into(),
+            None,
+            None,
+            None,
+        )
+        .await
+        .expect("skulle hentet siste side");
+        assert_eq!(svar.status, 200);
+        assert!(svar.json["items"].is_array());
+        assert!(!serde_json::to_string(&svar).unwrap().contains("Bearer"));
     }
 }
