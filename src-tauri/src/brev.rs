@@ -511,17 +511,20 @@ pub async fn dokument_utdrag(
         .map_err(|_| "Fikk ikke lest dokumentene.".to_string())?
 }
 
-fn leverandor(navn: &str) -> Result<(&'static str, &'static str, &'static str), String> {
+/// Modellene er knyttet til formålet (brev, vurdering, radar), og må være
+/// de samme som i src/brev-provider.mjs. Frontenden velger modell i
+/// kroppen; her godtas bare de som er oppført for leverandøren.
+fn leverandor(navn: &str) -> Result<(&'static str, &'static str, &'static [&'static str]), String> {
     match navn {
         "anthropic" => Ok((
             "nokkel.txt",
             "https://api.anthropic.com/v1/messages",
-            "claude-opus-5",
+            &["claude-opus-5", "claude-sonnet-5-5", "claude-haiku-5-5"],
         )),
         "openai" => Ok((
             "nokkel-openai.txt",
             "https://api.openai.com/v1/responses",
-            "gpt-6-astra",
+            &["gpt-6-astra"],
         )),
         _ => Err("Ukjent modellleverandør.".into()),
     }
@@ -668,12 +671,16 @@ impl Linjedeler {
 
 /// Kroppen frontenden sender inn. Strømming er eneste transportvei: et kall
 /// uten den ville gitt en annen feilsemantikk enn Node-siden har.
-fn sjekk_modellkropp(leverandor: &str, modell: &str, kropp: &str) -> Result<(), String> {
+fn sjekk_modellkropp(leverandor: &str, modeller: &[&str], kropp: &str) -> Result<(), String> {
     if kropp.len() > 1024 * 1024 {
         return Err("Grunnlaget er for stort.".into());
     }
     let json: Value = serde_json::from_str(kropp).map_err(|_| "Ugyldig modellforespørsel.")?;
-    if json.get("model").and_then(Value::as_str) != Some(modell) {
+    if !json
+        .get("model")
+        .and_then(Value::as_str)
+        .is_some_and(|m| modeller.contains(&m))
+    {
         return Err("Ukjent modell.".into());
     }
     if json.get("stream").and_then(Value::as_bool) != Some(true) {
@@ -722,8 +729,8 @@ async fn modellkall(
         });
     }
     /* Linjene sendes videre med én gang, men samles også opp: svaret
-       frontenden tolker er den returnerte kroppen, aldri kanalen. En tapt
-       eller sen kanalmelding kan dermed ikke endre brevet. */
+    frontenden tolker er den returnerte kroppen, aldri kanalen. En tapt
+    eller sen kanalmelding kan dermed ikke endre brevet. */
     let mut deler = Linjedeler::ny();
     let mut samlet = String::new();
     while let Some(bit) = svar
@@ -765,8 +772,8 @@ pub async fn brev_modell(
     // dermed ingen IPC-trafikk.
     let kanal: Option<Channel<Linjer>> = kanal.map(|id| id.channel_on(webview));
     let dir = profil(&app, &bruker)?;
-    let (_, url, modell) = self::leverandor(&leverandor)?;
-    sjekk_modellkropp(&leverandor, modell, &kropp)?;
+    let (_, url, modeller) = self::leverandor(&leverandor)?;
+    sjekk_modellkropp(&leverandor, modeller, &kropp)?;
     let nokkel = les_nokkel(&dir, &leverandor)?
         .ok_or("mangler-nokkel: Legg til API-nøkkelen for valgt leverandør.")?;
     if !gyldig_nokkel(&nokkel) {
@@ -1254,21 +1261,19 @@ mod tester {
     }
     #[test]
     fn modellkroppen_ma_be_om_strom_og_riktig_modell() {
+        const OPENAI: &[&str] = &["gpt-6-astra"];
+        const ANTHROPIC: &[&str] = &["claude-opus-5", "claude-sonnet-5-5", "claude-haiku-5-5"];
         let ok = r#"{"model":"gpt-6-astra","store":false,"stream":true}"#;
-        assert!(sjekk_modellkropp("openai", "gpt-6-astra", ok).is_ok());
+        assert!(sjekk_modellkropp("openai", OPENAI, ok).is_ok());
         assert_eq!(
-            sjekk_modellkropp(
-                "openai",
-                "gpt-6-astra",
-                r#"{"model":"gpt-6-astra","store":false}"#
-            )
-            .unwrap_err(),
+            sjekk_modellkropp("openai", OPENAI, r#"{"model":"gpt-6-astra","store":false}"#)
+                .unwrap_err(),
             "Strømming må være påslått."
         );
         assert_eq!(
             sjekk_modellkropp(
                 "openai",
-                "gpt-6-astra",
+                OPENAI,
                 r#"{"model":"gpt-6-astra","store":false,"stream":"ja"}"#
             )
             .unwrap_err(),
@@ -1277,38 +1282,57 @@ mod tester {
         assert_eq!(
             sjekk_modellkropp(
                 "openai",
-                "gpt-6-astra",
+                OPENAI,
                 r#"{"model":"gpt-6-astra","store":true,"stream":true}"#
             )
             .unwrap_err(),
             "Modellagring må være avslått."
         );
         assert_eq!(
-            sjekk_modellkropp(
-                "anthropic",
-                "claude-opus-5",
-                r#"{"model":"feil","stream":true}"#
-            )
-            .unwrap_err(),
+            sjekk_modellkropp("anthropic", ANTHROPIC, r#"{"model":"feil","stream":true}"#)
+                .unwrap_err(),
             "Ukjent modell."
         );
         assert!(sjekk_modellkropp(
             "anthropic",
-            "claude-opus-5",
+            ANTHROPIC,
             r#"{"model":"claude-opus-5","stream":true}"#
         )
         .is_ok());
         // Kroppen med hurtigbuffer: systemet og kildene er blokker med cache_control.
         assert!(sjekk_modellkropp(
             "anthropic",
-            "claude-opus-5",
+            ANTHROPIC,
             r#"{"model":"claude-opus-5","stream":true,"system":[{"type":"text","text":"Regler.","cache_control":{"type":"ephemeral"}}],"messages":[{"role":"user","content":[{"type":"text","text":"{}","cache_control":{"type":"ephemeral"}},{"type":"text","text":"{}"}]}]}"#
         )
         .is_ok());
         assert_eq!(
-            sjekk_modellkropp("anthropic", "claude-opus-5", "ikke json").unwrap_err(),
+            sjekk_modellkropp("anthropic", ANTHROPIC, "ikke json").unwrap_err(),
             "Ugyldig modellforespørsel."
         );
+    }
+    #[test]
+    fn hvert_formal_har_sin_modell_hos_leverandoren() {
+        let (_, _, modeller) = leverandor("anthropic").unwrap();
+        for m in ["claude-opus-5", "claude-sonnet-5-5", "claude-haiku-5-5"] {
+            let kropp = format!(r#"{{"model":"{m}","stream":true}}"#);
+            assert!(
+                sjekk_modellkropp("anthropic", modeller, &kropp).is_ok(),
+                "{m}"
+            );
+        }
+        // En modell fra den andre leverandøren godtas ikke.
+        assert_eq!(
+            sjekk_modellkropp(
+                "anthropic",
+                modeller,
+                r#"{"model":"gpt-6-astra","stream":true}"#
+            )
+            .unwrap_err(),
+            "Ukjent modell."
+        );
+        let (_, _, openai) = leverandor("openai").unwrap();
+        assert_eq!(openai, &["gpt-6-astra"]);
     }
     #[test]
     fn nokler_og_leverandorer() {

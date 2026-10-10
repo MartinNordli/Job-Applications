@@ -3,14 +3,25 @@
    flaten. De andre er programmeringsfeil, og blir en generell melding
    med en referanse i serverloggen (offentligFeil i server/brev-api.mjs). */
 import { Brevfeil } from "./dokumentfeil.mjs";
+/* Modellen følger formålet. Brevet er det brukeren leser og står inne
+   for, så det beholder den beste modellen. Vurderingen av hvor godt en
+   stilling passer, og radaren, er mange og korte kall, og får hver sin
+   rimeligere. OpenAI har ingen billigere modell i prosjektet ennå, så
+   alle tre formålene bruker den samme der. */
+export const FORMAL = Object.freeze(["brev", "vurdering", "radar"]);
 export const LEVERANDORER = Object.freeze({
-  anthropic: { modell: "claude-opus-5", url: "https://api.anthropic.com/v1/messages", nokkelfil: "nokkel.txt", miljo: "ANTHROPIC_API_KEY" },
-  openai: { modell: "gpt-6-astra", url: "https://api.openai.com/v1/responses", nokkelfil: "nokkel-openai.txt", miljo: "OPENAI_API_KEY" }
+  anthropic: { modell: "claude-opus-5", modeller: Object.freeze({ brev: "claude-opus-5", vurdering: "claude-sonnet-5-5", radar: "claude-haiku-5-5" }), url: "https://api.anthropic.com/v1/messages", nokkelfil: "nokkel.txt", miljo: "ANTHROPIC_API_KEY" },
+  openai: { modell: "gpt-6-astra", modeller: Object.freeze({ brev: "gpt-6-astra", vurdering: "gpt-6-astra", radar: "gpt-6-astra" }), url: "https://api.openai.com/v1/responses", nokkelfil: "nokkel-openai.txt", miljo: "OPENAI_API_KEY" }
 });
 
 export function leverandorFor(navn){
   if(!Object.hasOwn(LEVERANDORER, navn)) throw new Error("Ukjent modellleverandør.");
   return LEVERANDORER[navn];
+}
+
+export function modellFor(navn, formal = "brev"){
+  if(!FORMAL.includes(formal)) throw new Error("Ukjent formål.");
+  return leverandorFor(navn).modeller[formal];
 }
 
 /* Kroppen er bygd for hurtigbufferen. Rekkefølgen er system, så kildene,
@@ -21,8 +32,8 @@ export function leverandorFor(navn){
    en lik begynnelse av seg selv, og får samme rekkefølge uten merker.
    kilder er valgfri, så et kall uten kildeblokk (evalenes sammenligning)
    fortsatt er ett enkelt brukerinnhold. */
-export function byggModellkropp({ leverandor, system, kilder, innhold, skjema, trinn }){
-  const { modell } = leverandorFor(leverandor);
+export function byggModellkropp({ leverandor, system, kilder, innhold, skjema, trinn, formal = "brev" }){
+  const modell = modellFor(leverandor, formal);
   if(typeof system !== "string" || !system.trim()) throw new Error("Mangler skriveinstruksjoner.");
   if(!skjema || typeof skjema !== "object" || Array.isArray(skjema)) throw new Error("Mangler svarformat.");
   const tekst = typeof innhold === "string" ? innhold : JSON.stringify(innhold);
