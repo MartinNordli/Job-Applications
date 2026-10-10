@@ -99,7 +99,9 @@ const tittel = t => '<h4>' + esc(t.replace(/:$/, "")) + '</h4>';
 /* ---------- fanen ---------- */
 
 export function monterAnnonse(flate, ktx, api){
-  let modus = "les";          /* "les" | "lim" */
+  /* Brevet sender hit med hensikten «lim» når annonsen mangler, så man
+     lander rett i innlimingen i stedet for å lete etter knappen. */
+  let modus = ktx.hensikt === "lim" ? "lim" : "les";   /* "les" | "lim" */
   let opptatt = null;         /* tekst som sier hva som pågår, eller null */
   let feil = null;            /* { tittel, hjelp, lim, rediger } */
   let utkast = "";
@@ -266,6 +268,9 @@ export function monterAnnonse(flate, ktx, api){
 
   tegn();
   return {
+    fokuser(){
+      (flate.querySelector("#annonseLim") || flate.querySelector("[data-annonse]"))?.focus({ preventScroll: true });
+    },
     /* Ny søknadstilstand eller nytt dokument. Innlimingen tegnes ikke
        om, så teksten som limes inn, står. */
     oppdater(ny){

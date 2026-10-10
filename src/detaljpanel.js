@@ -37,8 +37,13 @@
    mens det hentes. api gir varsle, melde (skjermleserstatus),
    settDokument(id, dok), lastDokument(), rediger(), slett(),
    lagreNotat(tekst), påLagring(fn), brukernavn(), bunn (foten under
-   flaten, skjult til en fane viser den), åpneFane(id) og
+   flaten, skjult til en fane viser den), åpneFane(id, hensikt?) og
    etterSelvlukking() (for en fane som har ryddet seg selv).
+
+   hensikt er det en annen fane ber den nye om å begynne med, som når
+   brevet sender brukeren til annonsen for å lime den inn. Den kommer
+   som ktx.hensikt til monter(), bare den ene gangen. Har fanen da en
+   fokuser(), får den fokuset i stedet for overskriften.
 
    Utenfra: oppdaterDokument(id, dok?) når noe annet har skrevet
    jobbdokumentet (vurderingen, forberedelsene, Radar). Med dok brukes
@@ -159,15 +164,21 @@ function monterIntervju(flate){
 
 /* ---------- Brev ---------- */
 
-/* Brevflaten er laget for skuffen og tar en kropp og en fot. Her får
-   den panelets flate og fot. Den lagrer selv; lukk() venter på det, og
-   gir false hvis lagringen feilet, så panelet blir stående på brevet. */
+/* Brevflaten får panelets flate og fot, og jobbdokumentet, så den kan
+   vise om annonsen er lagret og sende til Annonse-fanen. Den lagrer
+   selv; lukk() venter på det, og gir false hvis lagringen feilet, så
+   panelet blir stående på brevet. */
 function monterBrev(flate, ktx, api){
   api.bunn.hidden = false;
   let ryddet = false;
-  const brev = åpneBrevflate({ jobb: ktx.jobb, navn: api.brukernavn(), kropp: flate, bunn: api.bunn,
-    påLukk: () => { ryddet = true; api.bunn.hidden = true; api.etterSelvlukking(); } });
+  const brev = åpneBrevflate({ jobb: ktx.jobb, navn: api.brukernavn(), kropp: flate, bunn: api.bunn, ktx,
+    påLukk: () => { ryddet = true; api.bunn.hidden = true; api.etterSelvlukking(); },
+    åpneFane: (f, hensikt) => api.åpneFane(f, hensikt),
+    settDokument: (id, d) => api.settDokument(id, d),
+    lastDokument: () => api.lastDokument()
+  });
   return {
+    oppdater: ny => { if(!ryddet) brev.oppdater(ny); },
     lukk: () => (ryddet ? true : brev.lukk()),
     rydd(){ if(!ryddet){ ryddet = true; brev.rydd(); } api.bunn.hidden = true; }
   };
@@ -201,6 +212,7 @@ export function lagDetaljpanel(deps){
   let montert = null;           /* { id, fane, obj } */
   let presset = false;          /* la vi selv oppføringen i historikken */
   let fokusFor = null;
+  let hensikt = null;           /* se åpneFane */
   let kø = Promise.resolve();
   let skall = null;
 
@@ -385,7 +397,7 @@ export function lagDetaljpanel(deps){
     },
     brukernavn: () => deps.brukernavn(),
     get bunn(){ return skall.bunn; },
-    åpneFane: f => åpne(id, { fane: f }),
+    åpneFane: (f, h) => åpne(id, { fane: f, hensikt: h }),
     etterSelvlukking: () => { montert = null; iKø(() => vis(id, "oversikt", { erstatt: true })); }
   };
 
@@ -409,7 +421,8 @@ export function lagDetaljpanel(deps){
     const f = FANER.get(fane) || FANER.get("oversikt");
     skall.flate.replaceChildren();
     skall.flate.scrollTop = 0;
-    montert = { id, fane, obj: f.monter(skall.flate, ktx(), api) || {} };
+    const h = hensikt; hensikt = null;
+    montert = { id, fane, obj: f.monter(skall.flate, h ? { ...ktx(), hensikt: h } : ktx(), api) || {} };
   }
 
   /* Viser søknaden og fanen. Gir false når fanen som står, ikke kunne
@@ -476,22 +489,25 @@ export function lagDetaljpanel(deps){
 
   /* ---------- inn og ut ---------- */
 
-  function åpne(nyId, { fane: ønsket, fra } = {}){
+  function åpne(nyId, { fane: ønsket, fra, hensikt: h = null } = {}){
     return iKø(async () => {
       if(!deps.jobb(nyId)) return;
+      hensikt = h;
       const varÅpen = erÅpen();
       /* Fanen blir stående når man går fra søknad til søknad, så man kan
          lese annonsene eller tidslinjene etter hverandre. */
       const nyFane = ønsket || (varÅpen ? fane : "oversikt");
       if(!varÅpen) fokusFor = fra || document.activeElement;
       const ok = await vis(nyId, nyFane, { push: !varÅpen, erstatt: varÅpen });
+      hensikt = null;
       if(!ok) return;
       if(!varÅpen) presset = true;
       /* Raden skal stå synlig ved siden av panelet; listen kan ha flyttet
          seg da den smalnet. */
       const rad = merkRad();
       if(rad && bred.matches) rad.scrollIntoView({ block: "nearest" });
-      fokuserTittel();
+      if(h && montert?.obj.fokuser) requestAnimationFrame(() => montert?.obj.fokuser?.());
+      else fokuserTittel();
     });
   }
 
