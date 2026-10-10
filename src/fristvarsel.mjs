@@ -148,7 +148,7 @@ export function intervjuvarsler(jobber, nå, innstilling, logg = {}){
         id: j.id, iid: iv.id, art: "intervju", type,
         tittel: tittel + ": " + String(j.selskap || "").trim(),
         tekst: intervjuTekst(j, iv, når),
-        start: start ? start.getTime() : Date.parse(iv.dato + "T00:00:00Z")
+        start: (start ?? new Date(+iv.dato.slice(0, 4), +iv.dato.slice(5, 7) - 1, +iv.dato.slice(8, 10))).getTime()
       });
       const når = tid ? "kl. " + iv.tid : "hele dagen";
       if(dagerMellom(iDag, iv.dato) === 1 && nå.getHours() >= FØRSTE_TIME)
