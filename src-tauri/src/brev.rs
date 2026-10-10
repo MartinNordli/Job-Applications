@@ -835,6 +835,12 @@ pub fn brev_avbryt_modell(
     Ok(())
 }
 
+/// Filtypene brukeren kan lagre: brev (pdf, docx), sikkerhetskopi (json)
+/// og kalenderfiler for intervjuer (ics).
+fn eksport_tillatt(ext: &str) -> bool {
+    ["pdf", "docx", "json", "ics"].contains(&ext)
+}
+
 #[tauri::command]
 pub async fn brev_lagre_fil(navn: String, bytes: Vec<u8>) -> Result<bool, String> {
     if bytes.len() > 25 * 1024 * 1024 {
@@ -845,7 +851,7 @@ pub async fn brev_lagre_fil(navn: String, bytes: Vec<u8>) -> Result<bool, String
         .and_then(|s| s.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
-    if !["pdf", "docx", "json"].contains(&ext.as_str()) {
+    if !eksport_tillatt(&ext) {
         return Err("Ugyldig eksportformat.".into());
     }
     let rent = Path::new(&navn)
@@ -871,6 +877,15 @@ mod tester {
     use super::*;
     fn dir() -> tempfile::TempDir {
         tempfile::tempdir().unwrap()
+    }
+    #[test]
+    fn eksport_tillater_kalenderfiler_men_ikke_kjørbare() {
+        for ok in ["pdf", "docx", "json", "ics"] {
+            assert!(eksport_tillatt(ok), "{ok}");
+        }
+        for nei in ["", "exe", "sh", "html", "ICS"] {
+            assert!(!eksport_tillatt(nei), "{nei}");
+        }
     }
     #[test]
     fn bare_profil_og_dokumentnavn() {

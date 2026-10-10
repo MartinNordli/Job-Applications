@@ -45,3 +45,10 @@ export async function eksporterBrev(inn, format){
   return lagreFil({ navn: `${del || "Soknadsbrev"}.${format}`, bytes,
     mime: format === "pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
 }
+
+/* Én intervju-fil til kalenderen. Samme lagring som brevene: dialogen
+   i appen, nedlasting i nettleseren. `post` er { jobb, intervju }. */
+export async function eksporterIcs(post){
+  const { lagIcs, icsFilnavn } = await import("./ics.mjs");
+  return lagreFil({ navn: icsFilnavn(post), bytes: lagIcs([post]), mime: "text/calendar;charset=utf-8" });
+}
