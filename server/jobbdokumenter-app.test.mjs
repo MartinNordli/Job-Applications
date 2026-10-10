@@ -45,6 +45,9 @@ const modellkropper = [];
 const ramme = (hendelse, data) => `event: ${hendelse}\ndata: ${JSON.stringify(data)}\n\n`;
 const FALSK_MATCH = { prosent: 81, oppsummering: "Kravene er dekket.", sprak: "nb", mangler: [],
   styrker: [{ krav: "Kundeservice", bevis: "Fem år", kilder: [{ kilde: "cv", sitat: "Fem år i kundeservice" }] }] };
+const FALSK_FORBEREDELSE = { sammendrag: "Rollen krever kundeservice.", sporsmalTilDem: ["Hvordan er teamet satt sammen?"], sjekkliste: ["Les annonsen på nytt"],
+  sporsmal: [{ sporsmal: "Fortell om en krevende kunde.", hvorfor: "Teste ro", svarskisse: "Situasjon, grep, resultat", kilder: [] }],
+  eksempler: [{ krav: "Kundeservice", situasjon: "Fem år i kundeservice", kilder: [{ kilde: "cv", sitat: "Fem år i kundeservice" }] }] };
 /* Det falske nettet bak hent_side. En streng er en feil, slik Rust sender
    den; alt annet er HTML. */
 const sider = new Map();
@@ -76,7 +79,7 @@ async function utfør(navn, a){
       modellkropper.push(kropp);
       return ramme("message_start", { type: "message_start", message: { id: "m", type: "message", role: "assistant", model: kropp.model, content: [], stop_reason: null, usage: { input_tokens: 10, output_tokens: 1 } } })
         + ramme("content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } })
-        + ramme("content_block_delta", { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: JSON.stringify(FALSK_MATCH) } })
+        + ramme("content_block_delta", { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: JSON.stringify(a.kropp.includes("sporsmalTilDem") ? FALSK_FORBEREDELSE : FALSK_MATCH) } })
         + ramme("content_block_stop", { type: "content_block_stop", index: 0 })
         + ramme("message_delta", { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 20 } })
         + ramme("message_stop", { type: "message_stop" });
@@ -201,4 +204,33 @@ test("vurderingen av hvor godt stillingen passer går gjennom brev_modell med vu
   await Jobbdokumenter.vurderMatch("m1", { tving: true });
   assert.equal(modellkropper.length, antall + 1);
   assert.ok(kall.includes("brev_modell"));
+});
+
+test("intervjuforberedelsen går gjennom brev_modell med brevmodellen og kan slettes", async () => {
+  const id = Økt.nåværendeBruker().id;
+  const dir = profil(id);
+  const intervju = { id: "iv1", dato: "2026-10-08", tid: "10:00", varighet: 45, sted: "Teams", type: "video", lenke: "", runde: "1", notat: "" };
+  await fs.writeFile(path.join(dir, "jobber.json"), JSON.stringify({ versjon: 3, jobber: [{ id: "f1", selskap: "Eksempel AS", stilling: "Rådgiver", intervjuer: [intervju] }] }));
+  const lager = lagBrevlager(dir);
+  const cv = await lager.skriv("cv.json", { tekst: "Kari. Fem år i kundeservice.", navn: "", format: "tekst", oppdatert: null }, (await lager.les("cv.json")).revisjon);
+  await assert.rejects(Jobbdokumenter.lagForberedelse("f1", "iv1"), e => e.code === "mangler-annonse");
+  await assert.rejects(Jobbdokumenter.lagForberedelse("f1", "finnes-ikke"), e => e.code === "finnes-ikke");
+  await Jobbdokumenter.limInnAnnonse("f1", "Rådgiver søkes med erfaring fra kundeservice.");
+
+  const d = await Jobbdokumenter.lagForberedelse("f1", "iv1");
+  assert.equal(d.forberedelser.iv1.sporsmal.length, 1);
+  assert.equal(d.forberedelser.iv1.promptversjon, "forberedelse-1");
+  assert.equal(d.forberedelser.iv1.cvRevisjon, cv.revisjon);
+  assert.equal(modellkropper.at(-1).model, "claude-opus-5", "brevmodellen, ikke vurderingsmodellen");
+  assert.equal((await lager.les("jobb-f1.json")).forberedelser.iv1.eksempler[0].kilder[0].kilde, "cv");
+
+  const antall = modellkropper.length;
+  await Jobbdokumenter.lagForberedelse("f1", "iv1");
+  assert.equal(modellkropper.length, antall, "uendret grunnlag bruker den lagrede forberedelsen");
+  await Jobbdokumenter.lagForberedelse("f1", "iv1", { tving: true });
+  assert.equal(modellkropper.length, antall + 1);
+
+  const etter = await Jobbdokumenter.slettForberedelse("f1", "iv1");
+  assert.deepEqual(etter.forberedelser, {});
+  assert.deepEqual((await lager.les("jobb-f1.json")).forberedelser, {});
 });

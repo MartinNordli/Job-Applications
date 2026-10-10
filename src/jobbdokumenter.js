@@ -30,6 +30,16 @@
                                og gir dokumentet med dok.match. Feilkoder:
                                mangler-cv, mangler-annonse, mangler-nokkel,
                                for-mange (bare i nettleseren)
+   lagForberedelse(id, iid, {tving?})
+                               lager intervjuforberedelsen for ett intervju
+                               og gir dokumentet med dok.forberedelser[iid].
+                               Uendret grunnlag gir den lagrede uten nytt
+                               kall. Feilkoder: finnes-ikke, mangler-cv,
+                               mangler-annonse, mangler-nokkel, for-mange
+                               (30 i timen, bare i nettleseren), kildefeil,
+                               modellformat
+   slettForberedelse(id, iid)  fjerner forberedelsen til ett intervju og
+                               gir dokumentet
    hentManglendeAnnonser({ider?})
                                henter alt som mangler, én om gangen, og
                                gir { hentet, fraBrev, hadde, utenLenke,
@@ -39,6 +49,7 @@ import { I_APP, bruker, http, lokaltLager } from "./dokumentklient.js";
 import { lagJobbdokumenter } from "./jobbdokumenttjeneste.mjs";
 import { tolkStier } from "./dokumentutdrag.mjs";
 import { lagMatchtjeneste } from "./matchtjeneste.mjs";
+import { lagForberedelsetjeneste } from "./forberedelsetjeneste.mjs";
 import { lokalKallModell, hentCv } from "./brev.js";
 import { MATCH_PROMPTVERSJON } from "./matchlogikk.mjs";
 import { matchUtdatert } from "./jobbdokument.mjs";
@@ -62,6 +73,16 @@ function lokalMatch(){
     matchtjenestene.set(id,lagMatchtjeneste({lager,jobbdokumenter:lokal(),hentJobb,kallModell:lokalKallModell(id,sjekk)}));
   }
   return matchtjenestene.get(id);
+}
+/* Forberedelsen likeså: modellkallet i Rust i appen, serveren i nettleseren. */
+const forberedelsetjenestene=new Map();
+function lokalForberedelse(){
+  const id=bruker();
+  if(!forberedelsetjenestene.has(id)){
+    const {lager,hentJobb,sjekk}=lokaltLager(id);
+    forberedelsetjenestene.set(id,lagForberedelsetjeneste({lager,jobbdokumenter:lokal(),hentJobb,kallModell:lokalKallModell(id,sjekk)}));
+  }
+  return forberedelsetjenestene.get(id);
 }
 /* Leverandøren brukeren sist valgte i brevskriveren, ellers Anthropic. */
 function valgtLeverandør(){
@@ -106,6 +127,14 @@ export const vurderMatch=async(id,{tving=false}={})=>{
   meld(id);
   return dok;
 };
+/* Gir hele jobbdokumentet med forberedelsen i forberedelser[iid]. */
+const fsti=(id,iid)=>`/api/jobber/${encodeURIComponent(id)}/intervjuer/${encodeURIComponent(iid)}/forberedelse`;
+export const lagForberedelse=(id,iid,{tving=false}={})=>{
+  const leverandor=valgtLeverandør();
+  return I_APP?lokalForberedelse().lag(id,iid,{tving,leverandor}):http(fsti(id,iid),{method:"POST",body:{tving,leverandor}});
+};
+export const slettForberedelse=(id,iid)=>I_APP?lokalForberedelse().slett(id,iid):http(fsti(id,iid),{method:"DELETE"});
+
 /* Etter at en annonse er lagret. Mangler CV-en eller nøkkelen, eller
    feiler modellen, skjer det ingenting: «Vurder» i panelet prøver igjen. */
 export const vurderIBakgrunnen=id=>vurderMatch(id).catch(()=>null);

@@ -10,6 +10,8 @@
    aldri viske ut en vurdering som har kostet penger, og grensesnittet
    kan ikke lagre en vurdering ingen modell har gjort.
 
+   Forberedelsene til intervjuer fjernes én og én med slettForberedelse().
+
    endre() er mønsteret de tjenestene skal bruke: les, endre, skriv
    med forventet revisjon, og prøv igjen ved konflikt.
 
@@ -174,5 +176,18 @@ export function lagJobbdokumenter({ lager, hentJobb, hentJobber, hentSide, foran
     return ut;
   }
 
-  return { hent, lagre, endre, gjenopprett, utdrag, settAnnonse, limInn, hentAnnonse, annonseFor, hentManglende };
+  /* Fjerner én intervjuforberedelse, og bare den. lagre() rører ikke
+     forberedelsene, så dette er den eneste veien ut for en forberedelse
+     brukeren ikke vil ha. Finnes den ikke, skrives ingenting. */
+  async function slettForberedelse(id, iid){
+    await sjekkJobb(id);
+    if(!erId(iid)) throw new Brevfeil("ugyldig", "Ugyldig intervju.");
+    return endre(id, d => {
+      if(!Object.hasOwn(d.forberedelser ?? {}, iid)) return undefined;
+      const { [iid]: _borte, ...resten } = d.forberedelser;
+      return { ...d, forberedelser: resten };
+    });
+  }
+
+  return { hent, lagre, endre, gjenopprett, utdrag, slettForberedelse, settAnnonse, limInn, hentAnnonse, annonseFor, hentManglende };
 }
