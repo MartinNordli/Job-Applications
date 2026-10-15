@@ -20,6 +20,7 @@
    sjekk()            → antall varsler som ble vist (0 ved feil)
    tillatelse()       → "app" | "granted" | "denied" | "default" | "ustøttet"
    beOmTillatelse()   → det samme, etter at nettleseren har spurt
+   visRadarvarsel(t)  → true når et varsel ble vist (se nederst)
    ============================================================ */
 
 import * as Økt from "./okt.js";
@@ -99,4 +100,18 @@ async function sjekkNå(){
         tag: v.art === "intervju" ? `intervju-${v.id}-${v.iid}-${v.type}` : "frist-" + v.id });
     return varsler.length;
   }catch{ return 0; }   /* et varsel som uteblir er ikke verdt å forstyrre flaten for */
+}
+
+/* Radar-varselet: teksten er laget av kjernen (varseltekst i
+   src/radarlogikk.mjs). I appen viser Rust det i varselsenteret; i
+   nettleseren vises det bare når siden har lov, og et varsel som ikke
+   kunne vises, regnes ikke som vist. Kaster aldri. */
+export async function visRadarvarsel(tekst){
+  if(typeof tekst !== "string" || !tekst.trim()) return false;
+  try{
+    if(I_APP) return await invoke("radar_varsel", { tekst });
+    if(tillatelse() !== "granted") return false;
+    new Notification("Radar", { body: tekst, tag: "radar", icon: "src/ikon.png", lang: "no" });
+    return true;
+  }catch{ return false; }
 }

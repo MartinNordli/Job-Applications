@@ -85,7 +85,7 @@ function lokalForberedelse(){
   return forberedelsetjenestene.get(id);
 }
 /* Leverandøren brukeren sist valgte i brevskriveren, ellers Anthropic. */
-function valgtLeverandør(){
+export function valgtLeverandør(){
   try{return window.localStorage.getItem(`jobbsoknader-brev-leverandor-${bruker()}`)==="openai"?"openai":"anthropic";}
   catch{return "anthropic";}
 }

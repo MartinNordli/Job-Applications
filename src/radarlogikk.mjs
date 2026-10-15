@@ -710,12 +710,13 @@ export async function søkNå(args){
    vanlig måte, som for enhver annonse som lagres. Annonsen først: går
    noe galt, står raden som ny og kan legges til igjen uten tap.
    lagreAnnonse og vurder kommer utenfra (jobbdokumenttjenesten, og
-   matchen som aldri skal stoppe resten). marker er markerLagtTil over
+   matchen, som aldri skal stoppe resten eller holde tilbake svaret). marker er markerLagtTil over
    den veien klienten har til radar.json.
 */
 export async function leggTilFraRad({ rad, jobbId, lagreAnnonse, marker, vurder }){
   await lagreAnnonse(jobbId, { tekst: rad.tekst, url: rad.url, kilde: "radar" });
   const d = await marker(rad.id);
-  try{ await vurder?.(jobbId); }catch{ /* «Vurder» i panelet prøver igjen */ }
+  /* Ikke avventet: vurderingen tar noen sekunder, og «Vurder» i panelet prøver igjen om den feiler. */
+  try{ Promise.resolve(vurder?.(jobbId)).catch(() => {}); }catch{ /* som over */ }
   return d;
 }
