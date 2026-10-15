@@ -169,6 +169,18 @@ test("to samtidige kall deler ett modellkall, og et sitat som ikke finnes lagrer
   assert.deepEqual((await dårlig.jobbdokumenter.hent("j1")).forberedelser, {});
 });
 
+test("en ny forberedelse rydder bort forberedelser til intervjuer som ikke finnes lenger", async t => {
+  const to = { ...JOBB, intervjuer: [INTERVJU, { ...INTERVJU, id: "iv2", dato: "2026-10-09" }] };
+  const { s, jobbdokumenter, medCv } = await tjeneste(t, { jobber: [to] });
+  await medCv();
+  await jobbdokumenter.settAnnonse("j1", { tekst: ANNONSE, kilde: "limt" });
+  await s.lag("j1", "iv1");
+  await s.lag("j1", "iv2");
+  to.intervjuer = [INTERVJU];
+  const d = await s.lag("j1", "iv1", { tving: true });
+  assert.deepEqual(Object.keys(d.forberedelser), ["iv1"]);
+});
+
 test("slett fjerner bare én forberedelse, og lagre() rører ikke de andre", async t => {
   const to = { ...JOBB, intervjuer: [INTERVJU, { ...INTERVJU, id: "iv2", dato: "2026-10-09" }] };
   const { s, jobbdokumenter, medCv } = await tjeneste(t, { jobber: [to] });

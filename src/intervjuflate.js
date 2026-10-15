@@ -371,7 +371,7 @@ export function monterIntervju(flate, ktx, api){
       + '<div class="ivskjema__rad">'
         + felt("type", "Type", '<select class="felt__inn" id="ivtype" name="type"><option value="">Ikke valgt</option>'
           + Object.entries(INTERVJUTYPER).map(([kode, navn]) => '<option value="' + kode + '"' + (v.type === kode ? " selected" : "") + '>' + navn + '</option>').join("") + '</select>')
-        + felt("runde", "Runde", '<input class="felt__inn" id="ivrunde" name="runde" type="text" maxlength="' + MAKS_INTERVJU.runde + '" placeholder="Første runde, case, teknisk" value="' + esc(v.runde) + '"' + attr("runde") + '>')
+        + felt("runde", "Runde", '<input class="felt__inn" id="ivrunde" name="runde" type="text" maxlength="' + MAKS_INTERVJU.runde + '" placeholder="Første, andre, case" value="' + esc(v.runde) + '"' + attr("runde") + '>')
       + '</div>'
       + felt("sted", "Sted", '<input class="felt__inn" id="ivsted" name="sted" type="text" maxlength="' + MAKS_INTERVJU.sted + '" placeholder="' + esc(STEDHINT[v.type] || STEDHINT[""]) + '" value="' + esc(v.sted) + '"' + attr("sted") + '>')
       + felt("lenke", "Lenke", '<input class="felt__inn" id="ivlenke" name="lenke" type="url" inputmode="url" placeholder="https://" value="' + esc(v.lenke) + '"' + attr("lenke", true) + '>',

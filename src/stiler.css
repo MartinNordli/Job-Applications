@@ -1013,7 +1013,6 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
                                  box-shadow:inset 0 0 0 1.25px var(--blekk-3)}
 
 /* Skjemaet tar flaten mens det står, som innlimingen i Annonse. */
-.ivskjema{max-width:46ch}
 .ivskjema__tittel{margin:0 0 4px;font-size:15.5px;font-weight:600;letter-spacing:-.014em}
 .ivskjema__tittel:focus{outline:none}
 .ivskjema__ingress{margin:0 0 4px;font-size:13px;line-height:1.5;color:var(--blekk-2)}

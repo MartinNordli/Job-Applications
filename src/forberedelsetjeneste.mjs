@@ -58,7 +58,11 @@ export function lagForberedelsetjeneste({ lager, jobbdokumenter, kallModell, hen
     const tekster = { cv: cv.tekst.trim(), annonse: annonse.tekst.trim(), brev: brev.tekst };
     const svar = await kallModell({ ...forberedelseForesporsel({ ...tekster, jobb, intervju, leverandor }), signal });
     const resultat = tolkForberedelse(svar?.data, tekster);
-    return jobbdokumenter.endre(jobbId, d => ({ ...d, forberedelser: { ...d.forberedelser, [iid]: {
+    /* En forberedelse til et intervju som ikke finnes lenger (slettingen
+       av den feilet etter at intervjuet var borte), ryddes bort her. */
+    const finnes = new Set(validerIntervjuer(jobb.intervjuer).map(i => i.id));
+    const beholdte = d => Object.fromEntries(Object.entries(d.forberedelser ?? {}).filter(([id]) => finnes.has(id)));
+    return jobbdokumenter.endre(jobbId, d => ({ ...d, forberedelser: { ...beholdte(d), [iid]: {
       ...resultat, cvRevisjon: cv.revisjon, annonseSjekksum: annonse.sjekksum ?? null, brevVersjonId: brev.versjonId,
       promptversjon: FORBEREDELSE_PROMPTVERSJON, leverandor, modell: String(svar?.modell ?? ""), bruk: svar?.bruk ?? undefined,
       laget: nå().toISOString() } } }));
