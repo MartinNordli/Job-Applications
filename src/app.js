@@ -14,6 +14,7 @@ import { medStatus, synkSendt, tidslinje, dagerSidenSendt, medianSvartid, svarti
 import * as F from "./formater.js";
 import { esc, MND, MND_K, tilDato, tilIso, antall, monogram, langDato, kortDatoMnd } from "./formater.js";
 import { lagDetaljpanel } from "./detaljpanel.js";
+import { kommende as kommendeIntervjuer } from "./intervjuer.mjs";
 import { lagMeny } from "./radmeny.js";
 
 const NOKKEL = "jobbsoknader-2027";
@@ -73,6 +74,8 @@ const panel = lagDetaljpanel({
   iDag: () => I_DAG,
   settStatus: (id, ny) => settStatus(id, ny),
   lagreNotat: (id, tekst) => lagreNotat(id, tekst),
+  endreIntervjuer: (id, regel) => endreIntervjuer(id, regel),
+  ventPåLagring: () => ventPåLagring(),
   rediger: id => apneSkuff("rediger", id),
   slett: id => slett(id),
   varsle: (tekst, angreFn) => varsle(tekst, angreFn),
@@ -168,8 +171,8 @@ function datoHtml(p){
      uansett, så raden flytter seg ikke, og et anslag ville vært gjetning. */
 
 function ventetekst(p){
-  const iDag = tilIso(I_DAG);
-  const kommende = (p.intervjuer || []).find(i => i.dato >= iDag);
+  /* Samme regel som Intervju-fanen: et intervju er kommende til det er over. */
+  const kommende = kommendeIntervjuer(p)[0];
   if(kommende){
     const d = dagerTil(kommende.dato);
     return { kommer: true, tekst: "intervju " + (d === 0 ? "i dag" : d === 1 ? "i morgen" : kortDatoMnd(kommende.dato)) };
@@ -1066,6 +1069,50 @@ function lagreNotat(id, tekst){
   p.notat = sjekk.verdi.notat;
   lagre(); tegn();
   return null;
+}
+
+/* Intervjuene fra detaljpanelet. `regel` er en av funksjonene i
+   intervjuer.mjs, bundet til det skjemaet sendte: den får søknaden og
+   klokken, og gir { ok, jobb, ... } eller { ok: false, feil }. Bare
+   feltene et intervju kan endre, kopieres over. Resultatet får med seg
+   angre(felt), som legger de feltene tilbake slik de var: Intervju-fanen
+   angrer statusbyttet uten å ta intervjuet bort, og en sletting uten å
+   røre statusen. */
+const INTERVJUFELT = ["intervjuer", "status", "sendtDato", "intervju", "hendelser"];
+function endreIntervjuer(id, regel){
+  const p = data.find(x => x.id === id);
+  if(!p) return { ok: false, feil: [{ felt: null, melding: "Søknaden finnes ikke lenger." }] };
+  const r = regel(p, { iDag: tilIso(I_DAG) });
+  if(!r.ok) return r;
+  const plukk = (o, felt) => Object.fromEntries(felt.map(f => [f, o[f]]));
+  const fra = plukk(p, INTERVJUFELT);
+  Object.assign(p, plukk(r.jobb, INTERVJUFELT));
+  lagre(); tegn();
+  return { ...r, angre: (felt = INTERVJUFELT) => {
+    if(!data.includes(p)) return;
+    Object.assign(p, plukk(fra, felt.filter(f => INTERVJUFELT.includes(f))));
+    lagre(); tegn();
+  } };
+}
+/* Løses når det som ligger i køen, er skrevet. Forberedelsen leser
+   intervjuet fra lageret, så et intervju som nettopp er lagt inn, må
+   være der først. Kan det ikke skrives, sier feilen hvorfor. */
+function ventPåLagring(){
+  if(!Lagring.harUlagret()) return Promise.resolve();
+  Lagring.nåMedEnGang();
+  return new Promise((ok, feil) => {
+    let ferdig = false, av = null;
+    const slutt = fn => { if(ferdig) return; ferdig = true; queueMicrotask(() => av?.()); fn(); };
+    av = Lagring.påTilstand(t => {
+      if(t.navn === "lagret" && !Lagring.harUlagret()) slutt(ok);
+      else if(["ulagret", "frakoblet", "konflikt", "utlogget", "blokkert"].includes(t.navn)){
+        const e = new Error("Intervjuet er ikke lagret ennå. " + (t.melding || "Prøv igjen når lagringen er i orden."));
+        e.code = t.navn === "utlogget" ? "utlogget" : "ulagret";
+        slutt(() => feil(e));
+      }
+    });
+    if(ferdig) av();
+  });
 }
 
 /* ---- annonsene som mangler ----

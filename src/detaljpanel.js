@@ -18,10 +18,11 @@
 
    ---- Fanene ----
 
-   En fane er { navn, monter(flate, ktx, api) } og registreres med
-   registrerFane(id, fane). Rekkefølgen er den første registreringen;
+   En fane er { navn, monter(flate, ktx, api), merke? } og registreres
+   med registrerFane(id, fane). Rekkefølgen er den første registreringen;
    registreres en id på nytt, byttes innholdet og plassen beholdes.
-   Det er slik intervjugrenen erstatter plassholderen.
+   merke(jobb, iDag) gir { tekst, sr } eller null: en kort mono-tekst
+   ved navnet i fanelisten, som Intervju bruker til datoen for det neste.
 
    monter() fyller `flate` og gir tilbake et objekt med det fanen
    trenger av livssyklus, alt valgfritt:
@@ -37,8 +38,9 @@
    mens det hentes. api gir varsle, melde (skjermleserstatus),
    settDokument(id, dok), lastDokument(), rediger(), slett(),
    lagreNotat(tekst), påLagring(fn), brukernavn(), bunn (foten under
-   flaten, skjult til en fane viser den), åpneFane(id, hensikt?) og
-   etterSelvlukking() (for en fane som har ryddet seg selv).
+   flaten, skjult til en fane viser den), åpneFane(id, hensikt?),
+   etterSelvlukking() (for en fane som har ryddet seg selv),
+   endreIntervjuer(regel) og ventPåLagring() (se intervjuflate.js).
 
    hensikt er det en annen fane ber den nye om å begynne med, som når
    brevet sender brukeren til annonsen for å lime den inn. Den kommer
@@ -58,13 +60,14 @@ import { matchUtdatert } from "./jobbdokument.mjs";
 import { esc, monogram, omTekst, hast, datoMedÅr, ukedag, antall, tilIso } from "./formater.js";
 import { tidslinjeHtml, stegdatoer, lengstKommet, datoTekst, LØP, UTGANGER } from "./tidslinje.js";
 import { monterAnnonse } from "./annonseflate.js";
+import { monterIntervju, intervjuMerke } from "./intervjuflate.js";
 
 /* ---------- fanene ---------- */
 
 const FANER = new Map();
-export function registrerFane(id, { navn, monter }){
+export function registrerFane(id, { navn, monter, merke = null }){
   if(!/^[a-z]{1,20}$/.test(id)) throw new Error("Fane-id-en må være små bokstaver.");
-  FANER.set(id, { navn, monter });
+  FANER.set(id, { navn, monter, merke });
   aktivt?.fanerEndret();
 }
 
@@ -189,16 +192,6 @@ function monterOversikt(flate, ktx, api){
   };
 }
 
-/* ---------- Intervju: plassen står klar ---------- */
-
-function monterIntervju(flate){
-  flate.innerHTML = '<div class="detalj__plass">'
-    + '<p class="detalj__tomtittel">Intervjuene får plass her</p>'
-    + '<p class="detalj__tomtekst">Her kommer tid og sted, forberedelser og spørsmål du vil stille. '
-    + 'Til da kan du merke søknaden med Intervju i stegraden og skrive detaljene i notatet under Oversikt.</p></div>';
-  return {};
-}
-
 /* ---------- Brev ---------- */
 
 /* Brevflaten får panelets flate og fot, og jobbdokumentet, så den kan
@@ -215,6 +208,7 @@ function monterBrev(flate, ktx, api){
     lastDokument: () => api.lastDokument()
   });
   return {
+    fokuser: () => brev.fokuser(),
     oppdater: ny => { if(!ryddet) brev.oppdater(ny); },
     lukk: () => (ryddet ? true : brev.lukk()),
     rydd(){ if(!ryddet){ ryddet = true; brev.rydd(); } api.bunn.hidden = true; }
@@ -223,7 +217,7 @@ function monterBrev(flate, ktx, api){
 
 registrerFane("oversikt", { navn: "Oversikt", monter: monterOversikt });
 registrerFane("annonse",  { navn: "Annonse",  monter: monterAnnonse });
-registrerFane("intervju", { navn: "Intervju", monter: monterIntervju });
+registrerFane("intervju", { navn: "Intervju", monter: monterIntervju, merke: intervjuMerke });
 registrerFane("brev",     { navn: "Brev",     monter: monterBrev });
 
 /* Pila skal aldri stå alene på en linje: siste ord og pila brytes ikke. */
@@ -281,9 +275,22 @@ export function lagDetaljpanel(deps){
     skall.faner.innerHTML = Array.from(FANER, ([fid, f]) =>
       '<button class="detalj__fane" type="button" role="tab" id="detaljFane-' + fid + '" data-fane="' + fid + '"'
       + ' aria-controls="detaljFlate" aria-selected="' + (fid === fane) + '" tabindex="' + (fid === fane ? 0 : -1) + '">'
-      + esc(f.navn) + '</button>').join("");
+      + esc(f.navn) + (f.merke ? '<span class="detalj__fanemerke" data-fanemerke="' + fid + '"></span>' : "") + '</button>').join("");
     skall.flate.setAttribute("aria-labelledby", "detaljFane-" + fane);
     el.dataset.fane = fane;
+    tegnFanemerker();
+  }
+
+  /* Merkene byttes uten å tegne fanene på nytt, så fokus blir stående. */
+  function tegnFanemerker(){
+    const j = id && deps.jobb(id);
+    if(!j) return;
+    skall.faner.querySelectorAll("[data-fanemerke]").forEach(m => {
+      const r = FANER.get(m.dataset.fanemerke)?.merke?.(j, deps.iDag());
+      const html = r ? '<span class="skjult">, </span><span aria-hidden="true">' + esc(r.tekst) + '</span><span class="skjult">' + esc(r.sr) + '</span>' : "";
+      if(m.innerHTML !== html) m.innerHTML = html;
+      m.hidden = !r;
+    });
   }
 
   /* Hva søknaden står på nå, i én linje av fakta: fristen eller
@@ -434,6 +441,8 @@ export function lagDetaljpanel(deps){
     },
     brukernavn: () => deps.brukernavn(),
     get bunn(){ return skall.bunn; },
+    endreIntervjuer: regel => deps.endreIntervjuer(id, regel),
+    ventPåLagring: () => deps.ventPåLagring(),
     åpneFane: (f, h) => åpne(id, { fane: f, hensikt: h }),
     etterSelvlukking: () => { montert = null; iKø(() => vis(id, "oversikt", { erstatt: true })); }
   };
@@ -686,6 +695,7 @@ export function lagDetaljpanel(deps){
       if(!deps.jobb(id)){ lukk({ tvang: true, slettet: true }); return; }
       merkRad();
       tegnTopp();
+      tegnFanemerker();
       oppdaterFane();
     }
   };

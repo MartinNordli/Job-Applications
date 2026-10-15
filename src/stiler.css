@@ -909,6 +909,141 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .annonse__lim .detalj__handlinger{margin-top:4px}
 .annonse .henter{margin-top:0}
 
+/* ---- Intervju ----
+   Intervjuene er rader i samme form som listen: datokolonnen i mono,
+   klokkeslettet, og hva slags intervju til høyre for den. Den åpne
+   raden står på et innfelt spor og bærer detaljene og forberedelsen,
+   rykket inn til tekstkolonnen så datoene står alene i sin. Tidligere
+   intervjuer er dempet, ikke skjult. */
+.intervjuer__del + .intervjuer__del{margin-top:26px}
+.intervjuer__liste{list-style:none;margin:0 -12px;padding:0}
+.iv{border-radius:var(--r-s);transition:background .12s ease}
+.iv + .iv{margin-top:2px}
+.iv.er-apen{background:var(--innfelt)}
+.iv__overskrift{margin:0;font:inherit}
+.iv__hode{display:grid;grid-template-columns:var(--dato) minmax(0,1fr) auto;gap:0 12px;align-items:baseline;
+          width:100%;min-height:44px;padding:10px 12px;background:none;border:0;border-radius:var(--r-s);
+          text-align:left;cursor:pointer;color:var(--blekk)}
+.iv__hode:hover{background:var(--innfelt)}
+.iv.er-apen .iv__hode:hover{background:none}
+.iv__dato{font-family:var(--mono);font-variant-numeric:tabular-nums;line-height:1.25}
+.iv__ukedag{display:block;font-size:9.5px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--blekk-3)}
+.iv__dag{display:block;font-size:12.5px;font-weight:500;white-space:nowrap}
+.iv__hvem{min-width:0;align-self:end}
+.iv__tid{font-family:var(--mono);font-size:15px;font-weight:500;letter-spacing:-.01em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.iv__slutt{color:var(--blekk-3)}
+.iv__tid--uten{font-family:var(--sans);font-size:13.5px;font-weight:500;letter-spacing:0;color:var(--blekk-2)}
+.iv__hva{display:block;margin-top:1px;font-size:12.5px;line-height:1.4;color:var(--blekk-2);
+         overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.iv__om{font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;color:var(--blekk-3);white-space:nowrap}
+/* Et intervju som pågår, er det eneste som får blekkets egen vekt her.
+   Ingen kulør: det haster ikke, det er nå. */
+.iv[data-pagar] .iv__om{color:var(--blekk);font-weight:500}
+.iv--tidligere .iv__dag,.iv--tidligere .iv__tid{color:var(--blekk-2)}
+.iv--tidligere .iv__hva,.iv--tidligere .iv__slutt,.iv--tidligere .iv__tid--uten{color:var(--blekk-3)}
+
+.iv__kropp{padding:0 12px 16px calc(12px + var(--dato) + 12px)}
+.iv__fakta{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:5px 16px;margin:2px 0 10px;font-size:13px;line-height:1.5}
+.iv__fakta dt{color:var(--blekk-3);font-size:12px;line-height:19.5px}
+.iv__fakta dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.iv__tall{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+.iv__notat{white-space:pre-line}
+.iv__lenke{color:var(--blekk);text-decoration:underline;text-decoration-color:var(--linje-2);text-underline-offset:3px}
+.iv__lenke:hover{color:var(--hav-t);text-decoration-color:currentColor}
+.iv__pil{margin-left:2px;font-size:.9em;color:var(--blekk-3)}
+.iv__handlinger{display:flex;flex-wrap:wrap;gap:2px;margin:0 -13px}
+.iv__handlinger .knapp:hover{background:var(--innfelt-2)}
+.iv__slett{color:var(--blekk-3)}
+.iv__handlinger .iv__slett:hover{background:var(--ild-vask);color:var(--ild-t)}
+.iv__bekreft{margin:4px 0 0;font-size:13px;line-height:1.5;color:var(--blekk-2)}
+.iv__bekreft p{margin:0 0 9px}
+.iv__bekreftknapp{color:var(--ild-t)}
+.intervjuer__fot{margin-top:18px}
+
+/* Forberedelsen deler spor med raden, skilt av en hårstrek. */
+.forb{margin-top:12px;padding-top:14px;border-top:1px solid var(--linje-2)}
+.forb__tittel{margin:0 0 9px}
+.forb__intro{max-width:52ch;margin:0 0 12px;font-size:13px;line-height:1.55;color:var(--blekk-2)}
+.forb__topp{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;margin:-4px 0 6px}
+.forb__meta{margin:0;font-size:12px;line-height:1.5;color:var(--blekk-3)}
+.forb__meta time{font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums}
+.forb__utdatert{color:var(--blekk-2)}
+.forb__igjen{margin-right:-13px;padding:6px 11px;font-size:12.5px}
+.forb__igjen:hover{background:var(--innfelt-2)}
+.forb__henter{margin:0 0 4px;align-items:flex-start;line-height:1.5}
+.forb__henter::before{margin-top:5px}
+.forb__klokke{margin-left:auto;padding-left:12px;font-variant-numeric:tabular-nums;color:var(--blekk-2)}
+.forb__mangler{margin:0 0 4px;font-size:13px;line-height:1.55;color:var(--blekk-2)}
+.forb__mangler p{max-width:52ch;margin:0 0 10px}
+.forb__feil{margin:0 0 12px;background:var(--kort)}
+.forb__feil .detalj__feiltittel{margin-bottom:2px}
+.forb[aria-busy="true"] .forb__innhold{opacity:.55}
+
+.forb__innhold{max-width:62ch}
+.forb__sammendrag{margin:4px 0 0;font-size:13.5px;line-height:1.6;color:var(--blekk)}
+.forb__del{margin-top:18px}
+.forb__deltittel{margin:0 0 6px;font-size:12px;font-weight:600;color:var(--blekk-2)}
+.forb__sporsmalsliste,.forb__eksempler{list-style:none;margin:0;padding:0}
+.forb__sporsmal + .forb__sporsmal{border-top:1px solid var(--linje)}
+.forb__sporsmal summary{position:relative;display:block;padding:8px 0 8px 18px;font-size:13.5px;font-weight:600;line-height:1.45;
+                        cursor:pointer;list-style:none;border-radius:var(--r-xs)}
+.forb__sporsmal summary::-webkit-details-marker{display:none}
+.forb__sporsmal summary::before{content:"";position:absolute;left:1px;top:14px;width:9px;height:6px;
+                                background:var(--pil) no-repeat center;transform:rotate(-90deg);transition:transform .12s ease}
+.forb__sporsmal details[open] summary::before{transform:none}
+.forb__sporsmal summary:hover{color:var(--hav-t)}
+.forb__svar{padding:0 0 12px 18px}
+.forb__hvorfor{margin:0 0 6px;font-size:12.5px;line-height:1.5;color:var(--blekk-3)}
+.forb__skisse{margin:0;font-size:13px;line-height:1.6;color:var(--blekk);white-space:pre-line}
+.forb__eksempler li + li{margin-top:12px}
+.forb__krav{margin:0;font-size:13px;font-weight:600;line-height:1.45}
+.forb__situasjon{margin:2px 0 0;font-size:13px;line-height:1.6;color:var(--blekk-2)}
+.forb__kilder{list-style:none;margin:6px 0 0;padding:0;font-size:12px;line-height:1.5;color:var(--blekk-3)}
+.forb__kilder li + li{margin-top:2px}
+.forb__kilder q{quotes:"«" "»";color:var(--blekk-2)}
+.forb__kildenavn{color:var(--blekk-3)}
+.forb__punkter{margin:0;padding-left:18px;font-size:13px;line-height:1.55}
+.forb__punkter li + li{margin-top:4px}
+.forb__punkter li::marker{color:var(--blekk-3)}
+/* Sjekklisten er gjøremål, så punktene er hule bokser og ikke prikker.
+   De er ikke avkrysninger: ingenting her lagres. */
+.forb__punkter--sjekk{list-style:none;padding-left:0}
+.forb__punkter--sjekk li{position:relative;padding-left:18px}
+.forb__punkter--sjekk li::before{content:"";position:absolute;left:1px;top:6px;width:8px;height:8px;border-radius:2px;
+                                 box-shadow:inset 0 0 0 1.25px var(--blekk-3)}
+
+/* Skjemaet tar flaten mens det står, som innlimingen i Annonse. */
+.ivskjema{max-width:46ch}
+.ivskjema__tittel{margin:0 0 4px;font-size:15.5px;font-weight:600;letter-spacing:-.014em}
+.ivskjema__tittel:focus{outline:none}
+.ivskjema__ingress{margin:0 0 4px;font-size:13px;line-height:1.5;color:var(--blekk-2)}
+.ivskjema__tittel + .feil,.ivskjema__ingress + .feil{margin-top:10px}
+.ivskjema > .ivskjema__rad:first-of-type{margin-top:16px}
+.ivskjema__rad{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+.ivskjema__rad--tid{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,.85fr)}
+.ivskjema__felt .felt__inn{min-height:42px;font-size:14px}
+.ivskjema__felt input[type="number"],.ivskjema__felt input[type="date"],.ivskjema__felt input[type="time"]{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+.ivskjema select.felt__inn{appearance:none;padding-right:30px;background-image:var(--pil);background-repeat:no-repeat;background-position:right 12px center;cursor:pointer}
+.ivskjema__felt [aria-invalid="true"]{border-color:var(--ild)}
+.ivskjema__feil{margin:6px 0 0;font-size:12px;line-height:1.45;font-weight:500;color:var(--ild-t)}
+.ivskjema__knapper{margin-top:6px}
+
+/* Merket ved fanenavnet: når neste intervju er. */
+.detalj__fanemerke{margin-left:6px;font-family:var(--mono);font-size:10.5px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--blekk-3)}
+.detalj__fane[aria-selected="true"] .detalj__fanemerke{color:var(--blekk-2)}
+
+@container detaljflate (max-width:460px){
+  .iv__kropp{padding-left:12px}
+  .ivskjema__rad--tid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ivskjema__felt--dato{grid-column:1 / -1}
+}
+@media (pointer:coarse), (max-width:640px){
+  .iv__handlinger .knapp,.forb .knapp,.iv__bekreft .knapp,.ivskjema__knapper .knapp,.intervjuer__fot .knapp{min-height:44px}
+}
+@media (pointer:coarse){
+  .ivskjema .felt__inn{font-size:16px}
+}
+
 /* Tellingen på «Hent manglende annonser» kommer etter at knappen er
    tegnet. Plassen er derfor alltid der. */
 .knapp__tall{display:inline-block;min-width:3.2ch;font-family:var(--mono);font-size:12px;font-weight:500;
