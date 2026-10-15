@@ -43,9 +43,9 @@ import { sjekkSchema } from "./brevlogikk.mjs";
 import { lokalDato, lagHendelse } from "./hendelser.mjs";
 import { Brevfeil } from "./dokumentfeil.mjs";
 import { RADAR, validerRadar } from "./jobbdokument.mjs";
-import { PRIS, KURS } from "./importlogg.mjs";
+import { KURS } from "./importlogg.mjs";
 import { KILDER, GRENSER, sov, rensLinje, oppdagType, oppdagTypeFraSide, karriereadresse, tolkJsonLd } from "./radarkilder.mjs";
-import { VURDERINGSSKJEMA, radarForespørsel } from "./radarprompt.mjs";
+import { VURDERINGSSKJEMA, FORSLAGSSKJEMA, FORSLAG_GRENSER, radarForespørsel, forslagForespørsel } from "./radarprompt.mjs";
 
 export const KARRIEREINTERVALL = 6 * 3600_000;
 export const LEIETID = 15 * 60_000;
@@ -186,6 +186,10 @@ function formatfeil(melding){
   const e = new Error(melding); e.code = "modellformat"; e.navn = "modellformat"; e.melding = melding; e.status = 502; return e;
 }
 
+/* En lenke eller e-postadresse i en grunn kommer fra en annonse, ikke
+   fra vurderingen, og er det et injeksjonsforsøk vil ha fram i flaten. */
+const LENKE = /https?:\/\/|\bwww\.|[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+\.[\p{L}]{2,}/iu;
+
 /* Modellsvaret er like fremmed som annonsene, og sjekkes strengt: bare
    feltene i skjemaet, nøyaktig én vurdering per annonse i bolken, et
    tall fra 0 til 100 og høyst tre grunner som ikke er tomme. Er noe
@@ -200,6 +204,7 @@ export function tolkVurdering(data, ids){
     if(v.grunner.length > RADAR.grunner) throw formatfeil("Modellen ga flere enn tre grunner.");
     const grunner = v.grunner.map(g => rensLinje(g, RADAR.grunn + 1));
     if(grunner.some(g => !g || Array.from(g).length > RADAR.grunn)) throw formatfeil("Modellen ga en tom eller for lang grunn.");
+    if(grunner.some(g => LENKE.test(g))) throw formatfeil("Modellen gjentok en lenke eller en adresse fra en annonse.");
     per.set(v.id, { id: v.id, prosent: Math.round(v.prosent), grunner });
   }
   if(per.size !== lov.size) throw formatfeil("Modellen hoppet over en annonse.");
@@ -247,6 +252,91 @@ export async function vurderAlle({ kandidater, cv, kallModell, leverandor = "ant
     }
   }
   return { vurdert, forkastet, sendt, utenVurdering: kandidater.length - valgt.length, bruk, feil };
+}
+
+/* ---------- «Foreslå fra CV» ---------- */
+
+/* Ett ord slik forfilter kan bruke det: renset, uten omsluttende
+   anførselstegn og skilletegn, ett til tre ord, høyst 40 tegn, minst
+   to tegn etter brettingen og minst én bokstav. Tegnene er de som
+   står i titler («C#», «.NET», «Node.js», «HR-rådgiver»). En lenke
+   eller adresse er aldri et søkeord. null når ordet ikke kan brukes. */
+const FORSLAGSTEGN = /^[\p{L}\p{N}.][\p{L}\p{N} .+#&/-]*$/u;
+const STEDSTEGN = /^\p{L}[\p{L} -]*$/u;
+function forslagsord(v, tegn = FORSLAGSTEGN){
+  if(typeof v !== "string") return null;
+  const t = rensLinje(v, 200).replace(/^["'«»“”‘’]+|["'«»“”‘’,;:!?]+$/gu, "").replace(/\.+$/u, "").trim();
+  if(!t || Array.from(t).length > FORSLAG_GRENSER.tegn || t.split(" ").length > FORSLAG_GRENSER.ord) return null;
+  if(!tegn.test(t) || !/\p{L}/u.test(t) || brett(t).length < 2) return null;
+  if(/(^|\s)www\.|[\p{L}\p{N}]\.(no|com|org|se|dk)$/iu.test(t)) return null;
+  return t;
+}
+function unikeOrd(liste, tegn, maks){
+  const sett = new Set(), ut = [];
+  for(const v of liste.slice(0, 40)){
+    const t = forslagsord(v, tegn);
+    if(!t || sett.has(brett(t))) continue;
+    sett.add(brett(t)); ut.push(t);
+  }
+  return ut.slice(0, maks);
+}
+
+/*
+   Forslaget er like fremmed som annonsene. Formen sjekkes strengt (bare
+   de tre listene, bare tekst), og hvert ord filtreres så det som blir
+   igjen, virker i forfilter:
+   - steder som ikke står i CV-en, tas bort: et sted modellen har gjettet,
+     er en påstand om personen som ikke har grunnlag
+   - ekskluderte ord som treffer et av søkeordene, tas bort, ellers ville
+     forslaget stengt ute de annonsene det selv ber om
+   Så kuttes listene til 12, 6 og 6. Tomme lister er et gyldig svar.
+*/
+export function tolkForslag(data, { cv }){
+  try{ sjekkSchema(data, FORSLAGSSKJEMA, "forslaget"); }
+  catch(e){ throw formatfeil(e?.melding || "Modellen svarte i feil format. Prøv igjen."); }
+  const G = FORSLAG_GRENSER;
+  const sokeord = unikeOrd(data.sokeord, FORSLAGSTEGN, G.sokeord);
+  const steder = unikeOrd(data.steder, STEDSTEGN, Infinity).filter(s => ordTreffer(cv, s)).slice(0, G.steder);
+  const ekskluder = unikeOrd(data.ekskluder, FORSLAGSTEGN, Infinity)
+    .filter(e => !sokeord.some(s => ordTreffer(s, e) || brett(s) === brett(e))).slice(0, G.ekskluder);
+  return { sokeord, steder, ekskluder };
+}
+
+/* Den rene delen: ett kall og den strenge tolkningen. Lagrer ingenting;
+   brukeren redigerer forslaget og lagrer selv med lagreInnstillinger. */
+export async function foreslåFraCv({ cv, kallModell, leverandor = "anthropic", signal }){
+  const tekst = String(cv ?? "").trim();
+  if(!tekst) throw new Brevfeil("mangler-cv", "Legg inn CV-en din, så kan Radar foreslå søkeord.", 409);
+  const svar = await kallModell({ ...forslagForespørsel({ cv: tekst, leverandor }), signal });
+  return tolkForslag(svar?.data, { cv: tekst });
+}
+
+/*
+   Forslaget fra profilen, med taket: høyst 10 kall i timen per profil.
+   Taket henger på lagerobjektet, som «Søk nå»-grensen, så det gjelder
+   både i appen og på serveren. Et kall som stopper på at nøkkelen
+   mangler, har ikke kostet noe og teller ikke.
+*/
+export const FORSLAG_TAK = Object.freeze({ tak: 10, vindu: 3600_000 });
+const forslagskall = new WeakMap();
+export async function foreslåFraProfil({ dokumenter, kallModell, leverandor = "anthropic", nå = () => new Date(), signal }){
+  const t = nå().getTime();
+  const kall = (forslagskall.get(dokumenter) ?? []).filter(x => t - x < FORSLAG_TAK.vindu);
+  if(kall.length >= FORSLAG_TAK.tak){
+    const min = Math.max(1, Math.ceil((FORSLAG_TAK.vindu - (t - kall[0])) / 60_000));
+    throw new Brevfeil("for-mange", `Du har bedt om mange forslag den siste timen. Prøv igjen om ${min} minutter.`, 429);
+  }
+  /* Telles før første await, så to klikk i samme øyeblikk ikke slipper forbi. */
+  kall.push(t);
+  forslagskall.set(dokumenter, kall);
+  try{
+    const cv = (await dokumenter.les("cv.json"))?.tekst;
+    return await foreslåFraCv({ cv, kallModell, leverandor, signal });
+  }catch(e){
+    const kode = e?.code ?? e?.navn;
+    if(kode === "mangler-cv" || kode === "mangler-nokkel"){ const i = kall.indexOf(t); if(i >= 0) kall.splice(i, 1); }
+    throw e;
+  }
 }
 
 /* ---------- innboks og hukommelse ---------- */
@@ -627,14 +717,22 @@ export async function leggTilKarriereside(dokumenter, { url, navn = "", nett }){
 export const SOK_NA_PAUSE = 60_000;
 export const ANTALL_KJORINGER_I_TILSTAND = 5;
 
-/* Omtrentlig kostnad i kroner for én kjøring, regnet fra tokenene og
-   Haiku-prisen i importloggen. Bufrede tokens koster en tidel og
-   bufring en og en kvart gang så mye som vanlige. Radar bruker Haiku
-   hos Anthropic; hos OpenAI er tallet bare en pekepinn. */
+/* Claude Haiku 5.5, dollar per million tokens, for prompter opp til
+   100 000 tokens (en bolk er langt under). Et øyeblikksbilde fra
+   prissiden i oktober 2026; endrer prisen seg, er det denne linjen som
+   skal rettes. Bufrede tokens koster en tidel, og bufring en og en
+   kvart gang så mye som vanlige. */
+export const RADARPRIS = Object.freeze({ inn: 0.10, ut: 0.50, skriv: 0.125, les: 0.01 });
+
+/* Omtrentlig kostnad i kroner for én kjøring, regnet fra tokenene.
+   Radar bruker Haiku 5.5 hos Anthropic; hos OpenAI er tallet bare en
+   pekepinn. */
 export function kjoringskostnad(bruk){
   if(!bruk) return 0;
-  const inn = (bruk.input_tokens ?? 0) + 1.25 * (bruk.cache_creation_input_tokens ?? 0) + 0.1 * (bruk.cache_read_input_tokens ?? 0);
-  const kr = ((inn / 1e6) * PRIS.inn + ((bruk.output_tokens ?? 0) / 1e6) * PRIS.ut) * KURS;
+  const P = RADARPRIS;
+  const dollar = ((bruk.input_tokens ?? 0) * P.inn + (bruk.cache_creation_input_tokens ?? 0) * P.skriv
+    + (bruk.cache_read_input_tokens ?? 0) * P.les + (bruk.output_tokens ?? 0) * P.ut) / 1e6;
+  const kr = dollar * KURS;
   return Math.round(kr * 10000) / 10000;
 }
 
