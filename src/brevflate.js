@@ -46,6 +46,16 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
   let gjenoppretting = null, arbeid = null;
   let annonseHenter = false, annonseFokus = false;
   let stil = null, stilEndret = false, stilLastes = null;
+  /* En annen fane kan sende hit for å få lagt inn CV-en («cv») eller
+     nøkkelen («nokkel»). Feltene er låst til grunnlaget er hentet, så
+     hensikten brukes først da. */
+  let hensikt = ["cv", "nokkel"].includes(ktx.hensikt) ? ktx.hensikt : null;
+  function brukHensikt() {
+    if (!hensikt || !dokument || !aktiv) return;
+    const h = hensikt; hensikt = null;
+    if (h === "cv") visCvTekst(true);
+    else visInnstillinger(true, "nøkkel");
+  }
   const finn = velger => kropp.querySelector(velger) || bunn.querySelector(velger);
   const lytt = (element, type, funksjon) => element.addEventListener(type, funksjon, { signal: liv.signal });
 
@@ -766,6 +776,7 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
     [cv, dokument] = svar.map(r => r.value);
     if (!dokument.revisjon) dokument.leverandor = husketLeverandør();
     fyllCv(); fyllDokument(); settOpptatt(false);
+    brukHensikt();
     const kjøring = dokument.kjoring;
     /* Et utkast som ble avbrutt mellom trinnene, fortsetter der det
        stoppet. Trinn som er gjort, koster ikke et nytt modellkall. */
@@ -780,5 +791,5 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
   }
   tegnAnnonse(); tegnStil();
   hentGrunnlag().catch(feil);
-  return { lukk, rydd, oppdater };
+  return { lukk, rydd, oppdater, fokuser: brukHensikt };
 }
