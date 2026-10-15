@@ -466,8 +466,16 @@ Du bestemmer selv om en stilling blir en søknad: **Legg til** lager søknaden, 
 Radar sorterer først uten modell: stillingen må være aktiv, fristen ikke passert, et søkeord må treffe, ingen ekskluderte ord må treffe tittel eller selskap, og stedet må passe.
 Så fjernes duplikater mot søknadslisten, innboksen, det du har avvist og mellom kildene, også en Jobbnorge-annonse som ligger i NAV.
 Bare det som er igjen, vurderes av modellen mot CV-en din, åtte om gangen, med Haiku hos Anthropic.
+Prosenten følger samme skala som [vurderingen i panelet](#hvor-godt-passer-stillingen), så 75 % betyr det samme begge steder, og hver stilling får høyst tre korte grunner på CV-ens språk.
 Stillinger over terskelen (60 % som standard) havner i innboksen.
 En kjøring som gir treff, gir ett varsel med de beste først.
+
+### Søkeord fra CV-en
+
+**Foreslå fra CV** lar modellen lese CV-en og foreslå opptil 12 søkeord, 6 steder og 6 ekskluderte ord.
+Forslaget fyller bare feltene, og ingenting lagres før du har rettet det og trykket lagre.
+Ordene sjekkes før du ser dem: et sted CV-en ikke nevner, et ekskludert ord som ville stengt ute et av søkeordene, og lenker eller lange fraser tas bort.
+Det er ett kall til Haiku, høyst ti i timen.
 
 ### Hvor og når den kjører
 
@@ -484,7 +492,9 @@ En kjøring som gir treff, gir ett varsel med de beste først.
 - NAV: høyst 60 detaljoppslag per kjøring. Jobbnorge: 20. Karrieresider: 10 hver.
 - Karrieresider hentes høyst hver sjette time, og en side som feiler fem ganger på rad, slås av med forklaring.
 - Innboksen rommer 200 stillinger. Det Radar har sett huskes i 200 dager, og det du har avvist i ett år.
-- Alle svar fra kildene har tak på størrelse og tid, og modellsvaret sjekkes strengt: et svar med feil form forkastes.
+- Høyst ti forslag fra CV-en i timen.
+- Alle svar fra kildene har tak på størrelse og tid, og modellsvaret sjekkes strengt: et svar med feil form, eller med en lenke fra en annonse i grunnene, forkastes.
+- En kjøring med 40 vurderinger koster omtrent ti øre med Haiku 5.5, og et forslag fra CV-en omtrent ett øre. Kostnaden for hver kjøring står i kjøringsloggen.
 
 ### Personvern
 
@@ -734,6 +744,7 @@ Testen oppretter en midlertidig profil og lagrer skjermbilder og eksportfiler de
 Skriveinstruksjonene og evalueringsdataene ligger i kildekoden.
 `node evals/kjor.mjs` viser 23 syntetiske testtilfeller uten nettverkskall.
 Kjøring mot betalte modeller og vurdering av skrivekvalitet er beskrevet i [`evals/README.md`](evals/README.md).
+`node evals/radar-kjor.mjs` gjør det samme for Radar: vurderingen og forslaget fra CV-en, uten nettverkskall.
 
 ### Miljøvariabler
 

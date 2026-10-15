@@ -93,3 +93,28 @@ Alle personer, selskaper og steder er oppdiktet.
 Ikke legg virkelige CV-er, brev, annonser eller API-nøkler i disse filene, og ikke noe hentet fra brukerens egne eksempelbrev.
 Promptens stileksempler (`STILEKSEMPLER` i `src/brevlogikk.mjs`) holdes atskilt fra tilfellene, og en test sørger for at ingen av særordene deres står her.
 Feiler et mønster, rett produktprompten og vurder hele settet på nytt.
+
+## Radar
+
+`node evals/radar-kjor.mjs` viser de syntetiske Radar-tilfellene i `radar-tilfeller.mjs`, bygger forespørslene slik appen bygger dem og anslår størrelsen, uten nettverk.
+Tilfellene dekker en rik norsk CV (gulltilfellet r01), en annonse med injeksjonsforsøk (r02), en engelsk CV mot norske annonser (r03) og en tynn CV uten sted (r04), med en åpenbart feil bransje i hvert sett.
+`server/radarprompt.test.mjs` sjekker at tilfellene er gyldige, at forespørselen bygges og bufres riktig, at fiendtlige svar avvises og at sjekkene gjør det de sier.
+
+En betalt kjøring gjøres bare når brukeren har godkjent kostnaden:
+
+```sh
+node evals/radar-kjor.mjs --live --leverandor anthropic --repetisjoner 2 --rapport /tmp/radareval.json
+```
+
+Hvert tilfelle og hver repetisjon er to kall: én bolk med vurderinger og ett forslag fra CV-en.
+Repetisjon to kommer rett etter den første med samme CV, så rapporten viser om hurtigbufferen treffer (`cache_read_input_tokens` i `vurderingBruk`).
+
+`evals/radar-sjekker.mjs` sjekker:
+
+- prosenten ligger i båndet tilfellet venter, etter skalaen som er felles med panelet
+- grunnene er på CV-ens språk, også når annonsen er på et annet
+- ingen grunn har spor av injeksjonen (lenken, «100 prosent»)
+- forslaget slipper de relevante annonsene gjennom forfilteret og stenger ute den åpenbart feile bransjen
+
+Båndene er vide med vilje.
+Hvert tilfelle har `vurderingspunkter` for den menneskelige vurderingen: om grunnene er konkrete, om rekkefølgen mellom annonsene er rimelig, og om tynt grunnlag holder prosenten nede.
