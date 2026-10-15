@@ -44,6 +44,7 @@ import { LOGGFIL, lagLinje, leggTil, sammendrag } from "../src/importlogg.mjs";
 import { trekkUtAnnonse } from "../src/annonsetekst.mjs";
 import { erBrevbane, lagBrevRuter } from "./brev-api.mjs";
 import { erVarselbane, lagVarselRuter } from "./varsel-api.mjs";
+import { erRadarbane, lagRadartjeneste, lagRadarRuter, startRadartimer } from "./radar-api.mjs";
 
 const HER = path.dirname(fileURLToPath(import.meta.url));
 const ROT = path.resolve(HER, "..");
@@ -541,6 +542,7 @@ async function apiRuter(req, res, bane, ktx){
 
   if(erBrevbane(bane)) return await ktx.brevRuter(req,res,bane,{lager,filer,katalog,tillatMiljø});
   if(erVarselbane(bane)) return await ktx.varselRuter(req, res, bane, { lager, filer, katalog });
+  if(erRadarbane(bane))  return await ktx.radarRuter(req, res, bane, { lager, filer, katalog, tillatMiljø });
 
   if(bane === "/api/nokkel")     return await apiNokkel(req, res, { filer, tillatMiljø });
   if(bane === "/api/jobber")     return await apiJobber(req, res, lager);
@@ -559,6 +561,9 @@ export function lagServer(valg = {}){
   const nett    = valg.nett    ?? lagNett();
   const brukere = valg.brukere ?? lagBrukere({ katalog });
   const brevRuter = lagBrevRuter({nett,modellFor:valg.brevModellFor});
+  const radartjeneste = lagRadartjeneste({ nett, modellFor: valg.brevModellFor, nå: valg.nå,
+    vent: valg.radarVent, kilder: valg.radarKilder });
+  const radarRuter = lagRadarRuter(radartjeneste);
   const varselRuter = lagVarselRuter({ svar, lesJson, ikkeTillatt, nå: valg.nå });
 
   /* Tre vinduer, tre grunner. Innlogging: 600 000 iterasjoner er
@@ -571,7 +576,7 @@ export function lagServer(valg = {}){
     import:       lagRatebegrenser({ tak: 30, vindu: 60 * 60_000 })
   };
 
-  return http.createServer(async (req, res) => {
+  const server = http.createServer(async (req, res) => {
     try{
       if(!vertOk(req.headers.host) || !opphavOk(req.headers.origin, req.headers.host))
         return svar(res, 403, { feil: "feil-opphav",
@@ -588,7 +593,7 @@ export function lagServer(valg = {}){
            registeret, så den gjøres ikke for statiske filer. */
         const økt = await brukere.verifiserToken(tolkCookies(req.headers.cookie)[COOKIE]);
         const ip  = req.socket.remoteAddress || "ukjent";
-        return await apiRuter(req, res, bane, { brukere, økt, nett, grenser, ip, brevRuter, varselRuter });
+        return await apiRuter(req, res, bane, { brukere, økt, nett, grenser, ip, brevRuter, varselRuter, radarRuter });
       }
 
       await statisk(req, res, bane);
@@ -603,6 +608,10 @@ export function lagServer(valg = {}){
         melding: `Noe gikk galt på serveren. Prøv igjen. Står det fast, se etter ${ref} i serverloggen.` });
     }
   });
+  /* Timen trenger de samme nettet og modellene som rutene. */
+  server.radartjeneste = radartjeneste;
+  server.brukere = brukere;
+  return server;
 }
 
 /* Lytter bare når filen kjøres direkte — tester importerer den. */
@@ -618,8 +627,23 @@ if(process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href){
   const beskjed = beskjedOmGammelData({ katalog });
   if(beskjed) console.warn(beskjed);
 
-  lagServer({ katalog }).listen(port, "127.0.0.1", () => {
+  const server = lagServer({ katalog });
+  server.listen(port, "127.0.0.1", () => {
     console.log(`Hired kjører på http://127.0.0.1:${port}`);
     console.log(`Dataene ligger i ${katalog}`);
   });
+
+  /* Radar kjører hver time for profilene som har den på. Når serveren
+     stoppes, avbrytes en pågående kjøring og leien slippes før prosessen går. */
+  const radartimer = startRadartimer({ brukere: server.brukere, tjeneste: server.radartjeneste });
+  let stopper = false;
+  const stopp = async () => {
+    if(stopper) return;
+    stopper = true;
+    await radartimer.stopp();
+    server.close();
+    process.exit(0);
+  };
+  process.on("SIGTERM", stopp);
+  process.on("SIGINT", stopp);
 }

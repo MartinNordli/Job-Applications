@@ -42,7 +42,8 @@ import { normaliserLenke } from "./importlogikk.mjs";
 import { sjekkSchema } from "./brevlogikk.mjs";
 import { lokalDato, lagHendelse } from "./hendelser.mjs";
 import { Brevfeil } from "./dokumentfeil.mjs";
-import { RADAR } from "./jobbdokument.mjs";
+import { RADAR, validerRadar } from "./jobbdokument.mjs";
+import { PRIS, KURS } from "./importlogg.mjs";
 import { KILDER, GRENSER, sov, rensLinje, oppdagType, oppdagTypeFraSide, karriereadresse, tolkJsonLd } from "./radarkilder.mjs";
 import { VURDERINGSSKJEMA, radarForespørsel } from "./radarprompt.mjs";
 
@@ -618,5 +619,99 @@ export async function leggTilKarriereside(dokumenter, { url, navn = "", nett }){
   });
   if(grunn) throw new Brevfeil("ugyldig", grunn, 409);
   if(!d) throw new Brevfeil("opptatt", "Radar-dokumentet ble endret samtidig. Prøv igjen.", 409);
+  return d;
+}
+
+/* ---------- det grensesnittet ser og gjør ---------- */
+
+export const SOK_NA_PAUSE = 60_000;
+export const ANTALL_KJORINGER_I_TILSTAND = 5;
+
+/* Omtrentlig kostnad i kroner for én kjøring, regnet fra tokenene og
+   Haiku-prisen i importloggen. Bufrede tokens koster en tidel og
+   bufring en og en kvart gang så mye som vanlige. Radar bruker Haiku
+   hos Anthropic; hos OpenAI er tallet bare en pekepinn. */
+export function kjoringskostnad(bruk){
+  if(!bruk) return 0;
+  const inn = (bruk.input_tokens ?? 0) + 1.25 * (bruk.cache_creation_input_tokens ?? 0) + 0.1 * (bruk.cache_read_input_tokens ?? 0);
+  const kr = ((inn / 1e6) * PRIS.inn + ((bruk.output_tokens ?? 0) / 1e6) * PRIS.ut) * KURS;
+  return Math.round(kr * 100) / 100;
+}
+
+/*
+   Alt flaten trenger i ett svar, uten hukommelsen (sett, avvist) og
+   uten teksten til hver kjøring. Nye først i innboksen, så de som er
+   lagt til. Leien sier om en kjøring pågår nå.
+*/
+export function tilstandFra(radar, nå = new Date()){
+  const innboks = [...radar.innboks.filter(r => r.status === "ny"), ...radar.innboks.filter(r => r.status !== "ny")];
+  const iDag = lokalDato(new Date(nå));
+  const k = radar.kildetilstand;
+  return {
+    revisjon: radar.revisjon,
+    innstillinger: radar.innstillinger,
+    innboks,
+    antallNye: radar.innboks.filter(r => r.status === "ny").length,
+    karrieresider: radar.innstillinger.karrieresider,
+    kilder: { nav: { sist: k.nav.sist, feil: k.nav.feil }, jobbnorge: { sist: k.jobbnorge.sist, feil: k.jobbnorge.feil } },
+    kjoringer: radar.kjoringer.slice(0, ANTALL_KJORINGER_I_TILSTAND).map(x => ({ ...x, kostnad: kjoringskostnad(x.bruk) })),
+    forbruk: { dato: iDag, vurderinger: radar.forbruk.dato === iDag ? radar.forbruk.vurderinger : 0,
+      tak: radar.innstillinger.maksVurderingerPerDogn },
+    kjorerNa: leieGyldig(radar.leie, nå)
+  };
+}
+
+/* Innstillingene brukeren kan sette. Karrieresidene har egne veier inn,
+   med status som bare kjøringene skal røre, så de tas fra dokumentet.
+   Alt går gjennom samme normalisering som ved lesing, så en verdi som
+   ikke passer, blir standardverdien i stedet for å havne i filen. */
+const INNSTILLINGSFELT = ["pa", "terskel", "maksVurderingerPerDogn", "sokeord", "ekskluder", "steder", "kilder"];
+export async function lagreInnstillinger(dokumenter, inn){
+  if(!inn || typeof inn !== "object" || Array.isArray(inn)) throw new Brevfeil("ugyldig", "Innstillingene har feil form.");
+  const feltene = Object.fromEntries(INNSTILLINGSFELT.filter(f => inn[f] !== undefined).map(f => [f, inn[f]]));
+  const d = await medNyeForsøk(dokumenter, r => {
+    const ny = validerRadar({ ...r, innstillinger: { ...r.innstillinger, ...feltene, karrieresider: r.innstillinger.karrieresider } });
+    return { ...r, innstillinger: ny.innstillinger };
+  });
+  if(!d) throw new Brevfeil("opptatt", "Radar-dokumentet ble endret samtidig. Prøv igjen.", 409);
+  return d;
+}
+
+export async function fjernKarriereside(dokumenter, id){
+  const d = await medNyeForsøk(dokumenter, r => r.innstillinger.karrieresider.some(s => s.id === id)
+    ? { ...r, innstillinger: { ...r.innstillinger, karrieresider: r.innstillinger.karrieresider.filter(s => s.id !== id) } } : null);
+  if(!d) throw new Brevfeil("finnes-ikke", "Karrieresiden er ikke i listen lenger.", 404);
+  return d;
+}
+
+/*
+   «Søk nå»: en vanlig kjøring, men høyst én i minuttet. Grensen er
+   både i minnet (to klikk i samme øyeblikk) og i kjøringsloggen i
+   radar.json (to prosesser, og en omlasting av siden). Den som venter
+   for kort, får vite hvor lenge.
+*/
+const sisteSøk = new WeakMap();
+export async function søkNå(args){
+  const { dokumenter } = args, nå = (args.nå ?? (() => new Date()))().getTime();
+  const sist = Math.max(sisteSøk.get(dokumenter) ?? 0, Date.parse((await dokumenter.les(RADARFIL)).kjoringer[0]?.start) || 0);
+  if(nå - sist < SOK_NA_PAUSE)
+    throw new Brevfeil("for-mange", `Radar har nettopp kjørt. Prøv igjen om ${Math.ceil((SOK_NA_PAUSE - (nå - sist)) / 1000)} sekunder.`, 429);
+  sisteSøk.set(dokumenter, nå);
+  return kjørRadar(args);
+}
+
+/*
+   «Legg til»: søknaden er lagret av grensesnittet. Her kommer annonsen
+   på dokumentet til søknaden, raden merkes, og så vurderes den på
+   vanlig måte, som for enhver annonse som lagres. Annonsen først: går
+   noe galt, står raden som ny og kan legges til igjen uten tap.
+   lagreAnnonse og vurder kommer utenfra (jobbdokumenttjenesten, og
+   matchen som aldri skal stoppe resten). marker er markerLagtTil over
+   den veien klienten har til radar.json.
+*/
+export async function leggTilFraRad({ rad, jobbId, lagreAnnonse, marker, vurder }){
+  await lagreAnnonse(jobbId, { tekst: rad.tekst, url: rad.url, kilde: "radar" });
+  const d = await marker(rad.id);
+  try{ await vurder?.(jobbId); }catch{ /* «Vurder» i panelet prøver igjen */ }
   return d;
 }

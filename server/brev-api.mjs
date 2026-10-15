@@ -25,11 +25,11 @@ const FORBEREDELSETAK = { tak: 30, vindu: 60 * 60_000 };
    hører til server.mjs; under en søknad er brev og dokument her.
    Utdraget har egen rot, så «utdrag» aldri kan forveksles med en id. */
 export const erBrevbane = p => /^\/api\/(cv(?:\/gjenopprett)?|stil(?:\/gjenopprett)?|brevdata|nokler\/[^/]+|jobbdokumenter\/(?:utdrag|hent-manglende)|jobber\/[^/]+\/(?:brev(?:\/.*)?|dokument(?:\/gjenopprett)?|annonse(?:\/hent)?|match|intervjuer\/[^/]+\/forberedelse))$/.test(p);
-function send(res,status,data){
+export function send(res,status,data){
   res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"});
   res.end(JSON.stringify(data));
 }
-async function kropp(req){
+export async function kropp(req){
   let størrelse=0;const b=[];
   for await(const bit of req){størrelse+=bit.length;if(størrelse>32*1024*1024)throw new Brevfeil("for-stort","Forespørselen er for stor.",413);b.push(bit);}
   try{return b.length?JSON.parse(Buffer.concat(b).toString("utf8")):{};}
@@ -48,11 +48,11 @@ export function offentligFeil(e){
   console.error(`Uventet feil i profildokumentene (${ref}):`,e);
   return {status:500,feil:"intern",melding:`Noe gikk galt på serveren. Prøv igjen. Står det fast, se etter ${ref} i serverloggen.`};
 }
-function objekt(v){
+export function objekt(v){
   if(!v || typeof v!=="object" || Array.isArray(v))throw new Brevfeil("ugyldig","Forespørselen har feil form.");
   return v;
 }
-function metode(req,...lov){if(!lov.includes(req.method))throw new Brevfeil("metode","Metoden er ikke tillatt.",405);}
+export function metode(req,...lov){if(!lov.includes(req.method))throw new Brevfeil("metode","Metoden er ikke tillatt.",405);}
 
 /* Trinn-endepunktet svarer alltid text/event-stream. Ingen JSON-variant og
    ingen Accept-forhandling: to transportveier betyr to feilsemantikker som må
