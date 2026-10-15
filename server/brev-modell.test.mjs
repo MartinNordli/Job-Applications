@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { byggModellkropp, tolkModellsvar } from "../src/brev-provider.mjs";
+import { readFileSync } from "node:fs";
+import { byggModellkropp, tolkModellsvar, LEVERANDORER, FORMAL } from "../src/brev-provider.mjs";
 import { lagBrevModell, brevNokkelStatus, settBrevNokkel, fjernBrevNokkel } from "./brev-modell.mjs";
 
 const schema = { type: "object", properties: { tekst: { type: "string" } }, required: ["tekst"], additionalProperties: false };
@@ -18,7 +19,7 @@ function sseSvar(leverandor, tekst, biter = 3){
   const deler = [];
   for(let i = 0; i < tekst.length; i += Math.ceil(tekst.length / biter)) deler.push(tekst.slice(i, i + Math.ceil(tekst.length / biter)));
   const rammer = leverandor === "anthropic"
-    ? [ramme("message_start", { type: "message_start", message: { id: "msg", type: "message", role: "assistant", model: "claude-opus-5", content: [], stop_reason: null, usage: { input_tokens: 3, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 2900 } } }),
+    ? [ramme("message_start", { type: "message_start", message: { id: "msg", type: "message", role: "assistant", model: "claude-opus-5-5", content: [], stop_reason: null, usage: { input_tokens: 3, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 2900 } } }),
         ramme("content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } }),
         ...deler.map(d => ramme("content_block_delta", { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: d } })),
         ramme("message_delta", { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 7 } }),
@@ -36,12 +37,30 @@ function strøm(deler){
 
 test("begge leverandører bruker samme schema og låst modell; OpenAI lagrer ikke", () => {
   const a = byggModellkropp({ ...inn, leverandor: "anthropic" });
-  assert.equal(a.model, "claude-opus-5"); assert.deepEqual(a.output_config.format.schema, schema);
+  assert.equal(a.model, "claude-opus-5-5"); assert.deepEqual(a.output_config.format.schema, schema);
   assert.equal(a.stream, true);
   const o = byggModellkropp({ ...inn, leverandor: "openai" });
   assert.equal(o.model, "gpt-6-astra"); assert.equal(o.store, false); assert.equal(o.text.format.strict, true); assert.equal(o.stream, true);
   assert.deepEqual(o.text.format.schema, schema); assert.equal(o.instructions, inn.system);
   assert.throws(()=>byggModellkropp({ ...inn, leverandor: "https://example.com" }));
+});
+test("modelltabellen er den samme som Rust godtar (testdata/modeller.json)", () => {
+  const felles = JSON.parse(readFileSync(new URL("../testdata/modeller.json", import.meta.url), "utf8"));
+  assert.deepEqual(Object.keys(felles).sort(), Object.keys(LEVERANDORER).sort());
+  for(const [navn, valg] of Object.entries(LEVERANDORER)){
+    assert.deepEqual({ ...valg.modeller }, felles[navn], navn);
+    assert.equal(valg.modell, valg.modeller.brev, navn);
+  }
+});
+test("Anthropic får innsatsen eksplisitt per formål, og ingen tenkeinnstilling", () => {
+  /* Opus 5.5 avviser thinking: disabled og budget_tokens, og standarden for
+     innsats er ikke lik mellom modellene. Derfor står den alltid i kroppen. */
+  const innsats = Object.fromEntries(FORMAL.map(formal => [formal, byggModellkropp({ ...inn, leverandor: "anthropic", formal })]));
+  assert.deepEqual(Object.fromEntries(Object.entries(innsats).map(([f, k]) => [f, [k.model, k.output_config.effort]])), {
+    brev: ["claude-opus-5-5", "medium"], vurdering: ["claude-sonnet-5-5", "high"], radar: ["claude-haiku-5-5", "medium"]
+  });
+  for(const k of Object.values(innsats)) assert.equal(Object.hasOwn(k, "thinking"), false);
+  assert.equal(Object.hasOwn(byggModellkropp({ ...inn, leverandor: "openai" }), "output_config"), false);
 });
 test("system, kilder og oppgave kommer i den rekkefølgen, og de to første er merket for bufring", () => {
   const a = byggModellkropp({ ...inn, leverandor: "anthropic" });

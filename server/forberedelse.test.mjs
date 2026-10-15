@@ -35,7 +35,7 @@ const svar = (o = {}) => ({
   sporsmalTilDem: ["Hvordan måler dere kundetilfredshet?"],
   sjekkliste: ["Les annonsen en gang til."], ...o });
 const BREVSPORSMAL = { sporsmal: "Du skriver at du trives med rutiner. Hvorfor?", hvorfor: "", svarskisse: "", kilder: [{ kilde: "brev", sitat: "trives med å skrive rutiner" }] };
-const modellsvar = (data = svar()) => ({ data, bruk: { input_tokens: 100, output_tokens: 50 }, modell: "claude-opus-5" });
+const modellsvar = (data = svar()) => ({ data, bruk: { input_tokens: 100, output_tokens: 50 }, modell: "claude-opus-5-5" });
 
 /* ---------- prompt og skjema ---------- */
 
@@ -46,7 +46,7 @@ test("prompten sier at kildene er data, følger språket og bruker brevmodellen"
   assert.deepEqual(FORBEREDELSESKJEMA.properties.eksempler.items.properties.kilder.items.properties.kilde.enum, ["cv", "annonse", "brev"]);
   assert.equal(FORBEREDELSESKJEMA.additionalProperties, false);
   const f = forberedelseForesporsel({ cv: CV, annonse: ANNONSE, brev: BREV, jobb: JOBB, intervju: INTERVJU, leverandor: "anthropic" });
-  assert.equal(byggModellkropp(f).model, "claude-opus-5");
+  assert.equal(byggModellkropp(f).model, "claude-opus-5-5");
   assert.ok(JSON.parse(f.kilder).kilder.brev === BREV);
   assert.equal(JSON.parse(f.innhold).intervju.runde, "1. runde");
   assert.ok(!f.innhold.includes(CV), "kildene ligger i kilder, ikke i innholdet");
@@ -122,7 +122,7 @@ test("forberedelsen lagres med grunnlaget og det aktive brevet, og brukes om igj
   const f = d.forberedelser.iv1;
   assert.equal(f.sporsmal.length, 2);
   assert.deepEqual([f.cvRevisjon, f.annonseSjekksum, f.brevVersjonId, f.promptversjon, f.modell, f.laget],
-    [1, sjekksum(ANNONSE), "v1", "forberedelse-1", "claude-opus-5", "2026-10-01T10:00:00.000Z"]);
+    [1, sjekksum(ANNONSE), "v1", "forberedelse-1", "claude-opus-5-5", "2026-10-01T10:00:00.000Z"]);
   assert.equal(f.bruk.output_tokens, 50);
   assert.equal(kall[0].formal, "brev");
   assert.equal(JSON.parse(kall[0].kilder).kilder.brev, BREV);

@@ -427,7 +427,7 @@ CV-teksten, annonsen, søknadsfeltene og en eventuell stilreferanse sendes til l
 **Innstillinger** står på språklinjen i grunnlaget.
 Den bytter ut grunnlaget og brevet med innstillingene, og **Lukk innstillinger** eller Esc tar deg tilbake.
 
-- **Skriv med**: Claude (`claude-opus-5`) eller OpenAI (`gpt-6-astra`).
+- **Skriv med**: Claude (`claude-opus-5-5`) eller OpenAI (`gpt-6-astra`).
   Valget huskes på profilen.
 - **API-nøkkel for valgt leverandør**: legg til eller fjern.
   Mangler nøkkelen, sier grunnlaget fra og tar deg dit.

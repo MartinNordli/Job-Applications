@@ -23,7 +23,7 @@ const ANNONSE = "Fjordnett søker dataingeniør. Du kan Python og SQL, og liker 
 let modellkall = 0;
 const brevModellFor = () => async () => {
   modellkall++;
-  return { modell: "claude-opus-5", bruk: { input_tokens: 10, output_tokens: 10 }, data: {
+  return { modell: "claude-opus-5-5", bruk: { input_tokens: 10, output_tokens: 10 }, data: {
     sammendrag: "Rollen handler om pålitelige datastrømmer.",
     sporsmal: [{ sporsmal: "Fortell om et datasett du måtte rydde.", hvorfor: "De tester metode.", svarskisse: "Situasjon, grep, resultat.", kilder: [] }],
     eksempler: [{ krav: "Python og SQL", situasjon: "To år med dataflyt.", kilder: [{ kilde: "cv", sitat: "dataflyt i Python og SQL" }] }],

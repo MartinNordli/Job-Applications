@@ -24,12 +24,15 @@
    brev som bruker særord fra dem, eller fra brukerens egen
    stilreferanse, uten at ordet står i grunnlaget.
    ============================================================ */
+import { modellFor } from "./brev-provider.mjs";
+
 export const PROMPTVERSJON = "brev-4";
 export const GRENSER = Object.freeze({ cv: 100_000, annonse: 100_000, instruks: 4_000, tekst: 16_000,
   historikk: 20_000, stilreferanse: 16_000, jobbfelt: 300 });
 export const LEVERANDORER = Object.freeze({
-  anthropic: Object.freeze({ navn: "Anthropic", modell: "claude-opus-5" }),
-  openai: Object.freeze({ navn: "OpenAI", modell: "gpt-6-astra" })
+  // Modellen hentes fra tabellen i brev-provider.mjs, så den står ett sted.
+  anthropic: Object.freeze({ navn: "Anthropic", modell: modellFor("anthropic", "brev") }),
+  openai: Object.freeze({ navn: "OpenAI", modell: modellFor("openai", "brev") })
 });
 
 function feil(code, melding){

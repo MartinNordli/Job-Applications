@@ -514,12 +514,14 @@ pub async fn dokument_utdrag(
 /// Modellene er knyttet til formålet (brev, vurdering, radar), og må være
 /// de samme som i src/brev-provider.mjs. Frontenden velger modell i
 /// kroppen; her godtas bare de som er oppført for leverandøren.
+/// testdata/modeller.json holder de to sidene like. En modell som er
+/// byttet ut, godtas ikke lenger: ingen lagrede data sender den på nytt.
 fn leverandor(navn: &str) -> Result<(&'static str, &'static str, &'static [&'static str]), String> {
     match navn {
         "anthropic" => Ok((
             "nokkel.txt",
             "https://api.anthropic.com/v1/messages",
-            &["claude-opus-5", "claude-sonnet-5-5", "claude-haiku-5-5"],
+            &["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"],
         )),
         "openai" => Ok((
             "nokkel-openai.txt",
@@ -1277,7 +1279,7 @@ mod tester {
     #[test]
     fn modellkroppen_ma_be_om_strom_og_riktig_modell() {
         const OPENAI: &[&str] = &["gpt-6-astra"];
-        const ANTHROPIC: &[&str] = &["claude-opus-5", "claude-sonnet-5-5", "claude-haiku-5-5"];
+        const ANTHROPIC: &[&str] = &["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"];
         let ok = r#"{"model":"gpt-6-astra","store":false,"stream":true}"#;
         assert!(sjekk_modellkropp("openai", OPENAI, ok).is_ok());
         assert_eq!(
@@ -1311,14 +1313,14 @@ mod tester {
         assert!(sjekk_modellkropp(
             "anthropic",
             ANTHROPIC,
-            r#"{"model":"claude-opus-5","stream":true}"#
+            r#"{"model":"claude-opus-5-5","stream":true}"#
         )
         .is_ok());
         // Kroppen med hurtigbuffer: systemet og kildene er blokker med cache_control.
         assert!(sjekk_modellkropp(
             "anthropic",
             ANTHROPIC,
-            r#"{"model":"claude-opus-5","stream":true,"system":[{"type":"text","text":"Regler.","cache_control":{"type":"ephemeral"}}],"messages":[{"role":"user","content":[{"type":"text","text":"{}","cache_control":{"type":"ephemeral"}},{"type":"text","text":"{}"}]}]}"#
+            r#"{"model":"claude-opus-5-5","stream":true,"system":[{"type":"text","text":"Regler.","cache_control":{"type":"ephemeral"}}],"messages":[{"role":"user","content":[{"type":"text","text":"{}","cache_control":{"type":"ephemeral"}},{"type":"text","text":"{}"}]}]}"#
         )
         .is_ok());
         assert_eq!(
@@ -1328,14 +1330,42 @@ mod tester {
     }
     #[test]
     fn hvert_formal_har_sin_modell_hos_leverandoren() {
+        /* Samme tabell som src/brev-provider.mjs testes mot. Rust godtar
+        nøyaktig modellene der, verken flere eller færre. */
+        let felles: Value =
+            serde_json::from_str(include_str!("../../testdata/modeller.json")).unwrap();
+        for navn in ["anthropic", "openai"] {
+            let (_, _, modeller) = leverandor(navn).unwrap();
+            let mut ventet: Vec<&str> = felles[navn]
+                .as_object()
+                .unwrap()
+                .values()
+                .map(|m| m.as_str().unwrap())
+                .collect();
+            ventet.sort_unstable();
+            ventet.dedup();
+            let mut godtatt = modeller.to_vec();
+            godtatt.sort_unstable();
+            assert_eq!(godtatt, ventet, "{navn}");
+        }
         let (_, _, modeller) = leverandor("anthropic").unwrap();
-        for m in ["claude-opus-5", "claude-sonnet-5-5", "claude-haiku-5-5"] {
+        for m in ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"] {
             let kropp = format!(r#"{{"model":"{m}","stream":true}}"#);
             assert!(
                 sjekk_modellkropp("anthropic", modeller, &kropp).is_ok(),
                 "{m}"
             );
         }
+        // Brevmodellen før byttet til Opus 5.5 godtas ikke lenger.
+        assert_eq!(
+            sjekk_modellkropp(
+                "anthropic",
+                modeller,
+                r#"{"model":"claude-opus-5","stream":true}"#
+            )
+            .unwrap_err(),
+            "Ukjent modell."
+        );
         // En modell fra den andre leverandøren godtas ikke.
         assert_eq!(
             sjekk_modellkropp(

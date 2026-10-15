@@ -7,10 +7,19 @@ import { Brevfeil } from "./dokumentfeil.mjs";
    for, så det beholder den beste modellen. Vurderingen av hvor godt en
    stilling passer, og radaren, er mange og korte kall, og får hver sin
    rimeligere. OpenAI har ingen billigere modell i prosjektet ennå, så
-   alle tre formålene bruker den samme der. */
+   alle tre formålene bruker den samme der.
+
+   Hos Anthropic tenker alle tre modellene alltid (adaptiv tenkning), og
+   innsatsen (output_config.effort) styrer hvor mye. Den står eksplisitt
+   per formål, for standarden er ikke lik mellom modellene: Opus 5.5 og
+   Haiku 5.5 har medium, Sonnet 5.5 high. Opus 5 hadde high, men Opus
+   5.5 på medium skal skrive minst like godt med færre tokens. Det er
+   det evals/kjor.mjs --sammenlign måler før byttet regnes som godt.
+   Tenkningen teller med i max_tokens. */
 export const FORMAL = Object.freeze(["brev", "vurdering", "radar"]);
 export const LEVERANDORER = Object.freeze({
-  anthropic: { modell: "claude-opus-5", modeller: Object.freeze({ brev: "claude-opus-5", vurdering: "claude-sonnet-5-5", radar: "claude-haiku-5-5" }), url: "https://api.anthropic.com/v1/messages", nokkelfil: "nokkel.txt", miljo: "ANTHROPIC_API_KEY" },
+  anthropic: { modell: "claude-opus-5-5", modeller: Object.freeze({ brev: "claude-opus-5-5", vurdering: "claude-sonnet-5-5", radar: "claude-haiku-5-5" }),
+    innsats: Object.freeze({ brev: "medium", vurdering: "high", radar: "medium" }), url: "https://api.anthropic.com/v1/messages", nokkelfil: "nokkel.txt", miljo: "ANTHROPIC_API_KEY" },
   openai: { modell: "gpt-6-astra", modeller: Object.freeze({ brev: "gpt-6-astra", vurdering: "gpt-6-astra", radar: "gpt-6-astra" }), url: "https://api.openai.com/v1/responses", nokkelfil: "nokkel-openai.txt", miljo: "OPENAI_API_KEY" }
 });
 
@@ -34,6 +43,7 @@ export function modellFor(navn, formal = "brev"){
    fortsatt er ett enkelt brukerinnhold. */
 export function byggModellkropp({ leverandor, system, kilder, innhold, skjema, trinn, formal = "brev" }){
   const modell = modellFor(leverandor, formal);
+  const innsats = leverandorFor(leverandor).innsats?.[formal];
   if(typeof system !== "string" || !system.trim()) throw new Error("Mangler skriveinstruksjoner.");
   if(!skjema || typeof skjema !== "object" || Array.isArray(skjema)) throw new Error("Mangler svarformat.");
   const tekst = typeof innhold === "string" ? innhold : JSON.stringify(innhold);
@@ -52,7 +62,7 @@ export function byggModellkropp({ leverandor, system, kilder, innhold, skjema, t
       ...(kildetekst ? [{ type: "text", text: kildetekst, cache_control: { type: "ephemeral" } }] : []),
       { type: "text", text: tekst }
     ] }],
-    output_config: { format: { type: "json_schema", schema: skjema } }
+    output_config: { effort: innsats, format: { type: "json_schema", schema: skjema } }
   };
   return {
     model: modell,

@@ -221,7 +221,7 @@ test("intervjuforberedelsen går gjennom brev_modell med brevmodellen og kan sle
   assert.equal(d.forberedelser.iv1.sporsmal.length, 1);
   assert.equal(d.forberedelser.iv1.promptversjon, "forberedelse-1");
   assert.equal(d.forberedelser.iv1.cvRevisjon, cv.revisjon);
-  assert.equal(modellkropper.at(-1).model, "claude-opus-5", "brevmodellen, ikke vurderingsmodellen");
+  assert.equal(modellkropper.at(-1).model, "claude-opus-5-5", "brevmodellen, ikke vurderingsmodellen");
   assert.equal((await lager.les("jobb-f1.json")).forberedelser.iv1.eksempler[0].kilder[0].kilde, "cv");
 
   const antall = modellkropper.length;

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { delSse, lagSvarsamler, lagFeltstrøm } from "../src/brev-strom.mjs";
+import { tolkModellsvar } from "../src/brev-provider.mjs";
 
 const ramme = (hendelse, data) => `event: ${hendelse}\ndata: ${JSON.stringify(data)}\n\n`;
 function alle(del, tekst){ return del(tekst); }
@@ -39,7 +40,7 @@ test("Anthropic-strøm settes sammen til nøyaktig et ikke-strømmet svar", () =
   const s = lagSvarsamler("anthropic");
   const del = delSse();
   const tekst = "{\"tekst\":\"Et brev.\"}";
-  const kilde = ramme("message_start", { type: "message_start", message: { id: "msg_1", type: "message", role: "assistant", model: "claude-opus-5", content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 31, output_tokens: 1 } } })
+  const kilde = ramme("message_start", { type: "message_start", message: { id: "msg_1", type: "message", role: "assistant", model: "claude-opus-5-5", content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 31, output_tokens: 1 } } })
     + ramme("ping", { type: "ping" })
     + ramme("content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } })
     + ramme("content_block_delta", { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: tekst.slice(0, 9) } })
@@ -51,11 +52,36 @@ test("Anthropic-strøm settes sammen til nøyaktig et ikke-strømmet svar", () =
   for(const r of del(kilde)) biter += s.ta(r);
   assert.equal(biter, tekst);
   assert.deepEqual(s.svar(), {
-    id: "msg_1", type: "message", role: "assistant", model: "claude-opus-5",
+    id: "msg_1", type: "message", role: "assistant", model: "claude-opus-5-5",
     content: [{ type: "text", text: tekst }], stop_reason: "end_turn", stop_sequence: null,
     // Tellingen er kumulativ og settes: 1 + 42 ville vært feil.
     usage: { input_tokens: 31, output_tokens: 42 }
   });
+});
+
+test("tenkeblokker foran svaret når verken forhåndsvisningen eller teksten", () => {
+  /* Opus 5.5 tenker alltid, og svaret begynner med en thinking-blokk.
+     Den er tom som standard, men heller ikke en oppsummert tanke skal
+     vises som brev eller tolkes som JSON. */
+  const s = lagSvarsamler("anthropic");
+  const del = delSse();
+  const tekst = "{\"tekst\":\"Et brev.\"}";
+  const kilde = ramme("message_start", { type: "message_start", message: { id: "msg_2", type: "message", role: "assistant", model: "claude-opus-5-5", content: [], stop_reason: null, usage: { input_tokens: 31, output_tokens: 1 } } })
+    + ramme("content_block_start", { type: "content_block_start", index: 0, content_block: { type: "thinking", thinking: "", signature: "" } })
+    + ramme("content_block_delta", { type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "Kravene først." } })
+    + ramme("content_block_delta", { type: "content_block_delta", index: 0, delta: { type: "signature_delta", signature: "sig" } })
+    + ramme("content_block_stop", { type: "content_block_stop", index: 0 })
+    + ramme("content_block_start", { type: "content_block_start", index: 1, content_block: { type: "text", text: "" } })
+    + ramme("content_block_delta", { type: "content_block_delta", index: 1, delta: { type: "text_delta", text: tekst } })
+    + ramme("content_block_stop", { type: "content_block_stop", index: 1 })
+    + ramme("message_delta", { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 300 } })
+    + ramme("message_stop", { type: "message_stop" });
+  let biter = "";
+  for(const r of del(kilde)) biter += s.ta(r);
+  assert.equal(biter, tekst);
+  const svar = s.svar();
+  assert.deepEqual(svar.content.map(b => b.type), ["thinking", "text"]);
+  assert.deepEqual(tolkModellsvar("anthropic", svar).data, { tekst: "Et brev." });
 });
 
 test("Anthropic-strøm uten message_stop gir ikke noe svar, og max_tokens bevares", () => {

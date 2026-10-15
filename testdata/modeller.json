@@ -1,0 +1,4 @@
+{
+  "anthropic": { "brev": "claude-opus-5-5", "vurdering": "claude-sonnet-5-5", "radar": "claude-haiku-5-5" },
+  "openai": { "brev": "gpt-6-astra", "vurdering": "gpt-6-astra", "radar": "gpt-6-astra" }
+}

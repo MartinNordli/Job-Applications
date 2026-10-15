@@ -38,7 +38,7 @@ test("prompten har skalaen og sier at kildene er data, og skjemaet følger norma
 });
 
 test("modellen følger formålet, og brevet beholder sin", () => {
-  assert.equal(modellFor("anthropic"), "claude-opus-5");
+  assert.equal(modellFor("anthropic"), "claude-opus-5-5");
   assert.equal(modellFor("anthropic", "vurdering"), "claude-sonnet-5-5");
   assert.equal(modellFor("anthropic", "radar"), "claude-haiku-5-5");
   assert.equal(modellFor("openai", "vurdering"), modellFor("openai", "brev"));
@@ -49,7 +49,7 @@ test("modellen følger formålet, og brevet beholder sin", () => {
   assert.equal(kropp.system[0].cache_control.type, "ephemeral");
   assert.equal(kropp.messages[0].content[0].cache_control.type, "ephemeral");
   assert.equal(kropp.stream, true);
-  assert.equal(byggModellkropp({ ...f, formal: undefined }).model, "claude-opus-5");
+  assert.equal(byggModellkropp({ ...f, formal: undefined }).model, "claude-opus-5-5");
 });
 
 /* ---------- normalisering og kildesjekk ---------- */
