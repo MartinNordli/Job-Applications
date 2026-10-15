@@ -400,6 +400,39 @@ impl Avsender for Varselsenter {
     }
 }
 
+/// Radar-varselet. Teksten er laget av kjernen (src/radarlogikk.mjs) og
+/// er alt renset der, men den kommer fra fremmede sider og går til
+/// systemet, så den renses en gang til her med samme regel som
+/// `rensLinje`: kontrolltegn og usynlige tegn blir mellomrom, mellomrom
+/// samles, og lengden kortes på tegn. Samme tilfeller leses av begge
+/// sider fra testdata/radarvarsel.json.
+pub const MAKS_RADARVARSEL: usize = 240;
+
+fn usynlig(c: char) -> bool {
+    c.is_control()
+        || matches!(c, '\u{00AD}' | '\u{061C}' | '\u{180E}' | '\u{200B}'..='\u{200F}' | '\u{2028}'..='\u{202E}'
+            | '\u{2060}'..='\u{2064}' | '\u{2066}'..='\u{206F}' | '\u{FEFF}' | '\u{FFF9}'..='\u{FFFB}')
+}
+
+pub fn rens_radarvarsel(tekst: &str) -> Option<String> {
+    let linje: String = tekst
+        .chars()
+        .map(|c| if usynlig(c) { ' ' } else { c })
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    let kortet: String = linje.chars().take(MAKS_RADARVARSEL).collect();
+    if kortet.is_empty() { None } else { Some(kortet) }
+}
+
+pub fn vis_radarvarsel(tekst: &str, avsender: &dyn Avsender) -> Result<bool, String> {
+    let Some(tekst) = rens_radarvarsel(tekst) else { return Ok(false) };
+    avsender
+        .send(&Varsel { id: "radar".into(), dager: 0, tittel: "Radar".into(), tekst })
+        .map(|_| true)
+}
+
 fn nå_iso() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
@@ -652,6 +685,26 @@ mod tester {
         assert_eq!(sjekk_katalog(&rot, None, nå("2026-10-04T09:05"), "T", true, &opptak).unwrap(), 1);
         assert_eq!(opptak.0.borrow()[1], "Frist i dag: Aker BP");
         let _ = std::fs::remove_dir_all(&rot);
+    }
+
+    #[test]
+    fn radarvarselet_renses_likt_i_js_og_rust() {
+        let tilfeller: Value =
+            serde_json::from_str(include_str!("../../testdata/radarvarsel.json")).unwrap();
+        for t in tilfeller["tilfeller"].as_array().unwrap() {
+            let inn = t["inn"].as_str().unwrap();
+            let ut = t["ut"].as_str().map(String::from);
+            assert_eq!(rens_radarvarsel(inn), ut, "{inn:?}");
+        }
+    }
+
+    #[test]
+    fn radarvarselet_sendes_bare_når_det_er_tekst() {
+        let o = Opptak(RefCell::new(vec![]), false);
+        assert_eq!(vis_radarvarsel(" \u{200B} ", &o), Ok(false));
+        assert_eq!(vis_radarvarsel("2 nye stillinger passer", &o), Ok(true));
+        assert_eq!(o.0.borrow().as_slice(), ["Radar"]);
+        assert!(vis_radarvarsel("tekst", &Opptak(RefCell::new(vec![]), true)).is_err());
     }
 
     struct Opptak(RefCell<Vec<String>>, bool);

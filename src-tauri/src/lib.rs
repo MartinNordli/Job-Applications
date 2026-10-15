@@ -215,6 +215,16 @@ async fn sjekk_frister(app: AppHandle, bruker: String) -> Result<usize, String> 
         .map_err(|e| e.to_string())?
 }
 
+/// Radar-varselet: ett Mac-varsel med teksten kjernen har laget. Gir
+/// false når teksten var tom etter rensing. Kjøres utenfor hovedtråden
+/// av samme grunn som `sjekk_frister`.
+#[tauri::command]
+async fn radar_varsel(tekst: String) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || varsel::vis_radarvarsel(&tekst, &varsel::Varselsenter::ny()))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -239,6 +249,7 @@ pub fn run() {
             nett::hent_json,
             spor_modell,
             sjekk_frister,
+            radar_varsel,
             brev::brev_les,
             brev::brev_skriv,
             brev::brev_slett,

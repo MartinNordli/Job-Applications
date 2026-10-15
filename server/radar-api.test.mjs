@@ -198,3 +198,9 @@ test("timen kjører profiler som har Radar på og en gammel kjøring, hopper ove
   await stoppet.stopp();
   assert.ok((await dok.les("radar.json")).kjoringer.length <= 1);
 });
+
+test("varseltekster renses likt i JS og Rust (testdata/radarvarsel.json)", async () => {
+  const { rensLinje } = await import("../src/radarkilder.mjs");
+  const { tilfeller } = JSON.parse(await fs.readFile(new URL("../testdata/radarvarsel.json", import.meta.url), "utf8"));
+  for(const t of tilfeller) assert.equal(rensLinje(t.inn, 240) || null, t.ut, JSON.stringify(t.inn.slice(0, 20)));
+});
