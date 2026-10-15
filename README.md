@@ -19,6 +19,7 @@ Appen finnes i to utgaver med samme kode og samme data:
 - [Legg til søknader](#legg-til-søknader)
 - [Import fra lenke](#import-fra-lenke)
 - [Søknadsbrev](#søknadsbrev)
+- [Radar](#radar)
 - [API-nøkler](#api-nøkler)
 - [Kontoer](#kontoer)
 - [Dataene dine](#dataene-dine)
@@ -440,6 +441,58 @@ Den bytter ut grunnlaget og brevet med innstillingene, og **Lukk innstillinger**
   En stilreferanse som er skrevet inn, men ikke lagret, lagres når du går fra brevet.
 - **Last ned sikkerhetskopi** og **Gjenopprett fra sikkerhetskopi**: kopien har med CV-en, stilreferansen, brevene, det som er lagret om hver søknad (annonse, vurdering og forberedelser) og Radar, se [Sikkerhetskopi av brevene](#sikkerhetskopi-av-brevene).
 - **Slett CV fra profilen** og **Slett brevet og versjonene**.
+
+## Radar
+
+Radar leter etter ledige stillinger som passer CV-en din, og legger de beste i en innboks.
+Du bestemmer selv om en stilling blir en søknad: **Legg til** lager søknaden, **Ikke interessert** fjerner stillingen og husker at du sa nei.
+
+### Kildene
+
+- **NAV**: den åpne annonsefeeden til Arbeidsplassen.
+- **Jobbnorge**: det åpne API-et til Jobbnorge, eventuelt bare for noen fylker.
+- **Karrieresider**: Greenhouse, Lever, Teamtailor og sider med strukturerte data (JSON-LD).
+  Du limer inn adressen, og Radar finner ut hvilken type det er.
+  En side Radar ikke kan lese, avvises med en forklaring.
+- Radar leser bare disse API-ene, og bare over https til vertene som hører til kilden.
+  Den henter ikke vilkårlige sider.
+- Står NAV-annonsen som inaktiv, fjernes den fra innboksen, slik NAVs vilkår krever.
+- Et privat NAV-token kan ligge i `nav-token.txt` i profilens katalog.
+  En tom fil betyr at det åpne tokenet brukes.
+  Tokenet forlater aldri Node eller Rust.
+
+### Slik går en kjøring
+
+Radar sorterer først uten modell: stillingen må være aktiv, fristen ikke passert, et søkeord må treffe, ingen ekskluderte ord må treffe tittel eller selskap, og stedet må passe.
+Så fjernes duplikater mot søknadslisten, innboksen, det du har avvist og mellom kildene, også en Jobbnorge-annonse som ligger i NAV.
+Bare det som er igjen, vurderes av modellen mot CV-en din, åtte om gangen, med Haiku hos Anthropic.
+Stillinger over terskelen (60 % som standard) havner i innboksen.
+En kjøring som gir treff, gir ett varsel med de beste først.
+
+### Hvor og når den kjører
+
+- **Node-serveren** kjører Radar hver time for hver profil som har den på, og ved oppstart hvis forrige kjøring er mer enn en time gammel. Serveren varsler ikke selv.
+- **Mac-appen** kjører den i appen mens den er åpen: ved start hvis forrige kjøring er gammel, og så hver time. Treff kommer som Mac-varsel.
+- **Nettleseren** gjør det samme mens fanen er åpen, og varsler hvis du har gitt nettleseren lov.
+- Bare én kjøring om gangen får kjøre for en profil. Radar-dokumentet har en leie på 15 minutter, så appen og serveren aldri kjører samtidig.
+- **Søk nå** starter en kjøring med en gang.
+
+### Tak
+
+- Høyst én **Søk nå** i minuttet.
+- Høyst 40 vurderinger per kjøring, og et døgntak du setter selv (150 som standard, aldri over 1000). Når taket er nådd, vurderes ikke flere før neste døgn.
+- NAV: høyst 60 detaljoppslag per kjøring. Jobbnorge: 20. Karrieresider: 10 hver.
+- Karrieresider hentes høyst hver sjette time, og en side som feiler fem ganger på rad, slås av med forklaring.
+- Innboksen rommer 200 stillinger. Det Radar har sett huskes i 200 dager, og det du har avvist i ett år.
+- Alle svar fra kildene har tak på størrelse og tid, og modellsvaret sjekkes strengt: et svar med feil form forkastes.
+
+### Personvern
+
+- CV-en din og teksten i annonsene som består forfilteret, sendes til modellleverandøren du har lagt inn nøkkel for. Ingenting annet går ut.
+- Kontaktpersoner i NAV-annonser leses aldri ut, lagres ikke og går ikke til modellen.
+- Uten API-nøkkel eller CV kjører Radar ikke vurderingen, og kildene regnes som uhentet slik at de samme annonsene hentes neste gang.
+- Hver profil har sin egen `radar.json`, og ingen profil ser en annens innboks.
+- `radar.json` er med i sikkerhetskopien.
 
 ## API-nøkler
 
