@@ -1,8 +1,8 @@
 # Evaluering av søknadsbrev
 
-`node evals/kjor.mjs` viser de 21 syntetiske tilfellene og validerer grunnlagene, uten nettverk.
+`node evals/kjor.mjs` viser de 23 syntetiske tilfellene og validerer grunnlagene, uten nettverk.
 Vanlige tester bruker modellstubber og kjører aldri den betalte evalueringen.
-`server/evals.test.mjs` sjekker at tilfellene er gyldige og at de automatiske sjekkene gjør det de sier.
+`server/evals.test.mjs` sjekker at tilfellene er gyldige, at de automatiske sjekkene gjør det de sier, og at modellsammenligningen bare bytter modell og innsats.
 
 ## Betalt kjøring
 
@@ -10,15 +10,38 @@ En betalt kjøring gjøres bare når brukeren har godkjent kostnaden.
 Sett `ANTHROPIC_API_KEY` eller `OPENAI_API_KEY` i miljøet, uten å legge nøkler i repoet, og kjør eksplisitt:
 
 ```sh
-node evals/kjor.mjs --live --leverandor anthropic --repetisjoner 3 --baseline --rapport /tmp/breveval-anthropic.json
-node evals/kjor.mjs --live --leverandor openai --repetisjoner 3 --baseline --rapport /tmp/breveval-openai.json
+node evals/kjor.mjs --live --leverandor anthropic --repetisjoner 3 --rapport /tmp/breveval-anthropic.json
+node evals/kjor.mjs --live --leverandor openai --repetisjoner 3 --rapport /tmp/breveval-openai.json
 ```
 
 Hvert tilfelle bruker tre modellkall: analyse, skriving og kontroll.
-Det blir 189 kall per leverandør med tre repetisjoner, og inntil 252 med `--baseline`.
-`--tilfelle 01 --repetisjoner 1` kjører bare ett tilfelle.
+Det blir 69 kall per leverandør og repetisjon.
+`--tilfelle 01` kjører bare ett tilfelle, og `--tilfelle 01,08,15` flere.
 Det er ingen automatiske nye forsøk, og rapporten overskriver aldri en eksisterende fil.
 Rapporten har med bruken per trinn og en oppsummering av hurtigbufferen (`lest`, `skrevet` og `ubufret`), så effekten av bufringen kan måles over analyse, skriving og kontroll.
+Den har også kostnaden i dollar og kroner, regnet av de faktiske tokentallene med prisene i `evals/sammenligning.mjs`.
+`--tak-dollar` (standard 20) stopper kjøringen før neste tilfelle når taket er nådd, så det overskrides med høyst ett tilfelle.
+
+### Modellbytte
+
+`--sammenlign <modell>` kjører hele kjeden en gang til per tilfelle med en annen Anthropic-modell, typisk den appen brukte før byttet.
+Forespørselen er den samme byte for byte, bortsett fra modellen og innsatsen (`--sammenlign-innsats`, standard `high`).
+Slik ble brevet bedt om før byttet til Opus 5.5: `claude-opus-5` uten innsats, som for den modellen betyr `high`.
+
+```sh
+node evals/kjor.mjs --live --leverandor anthropic --repetisjoner 1 --sammenlign claude-opus-5 --rapport /tmp/breveval-opus-5-5.json
+```
+
+Ved siden av rapporten skrives en blind vurderingsfil (`/tmp/breveval-opus-5-5.blind.md`) med de to brevene per tilfelle som A og B.
+Hvilken side som er den nye modellen, trekkes per tilfelle, og filen har verken modellnavn, tokentall eller tider.
+Rapporten sier hvilken variant som er A og B (`variant` er `ny` eller `forrige`), og den åpnes først når alle brevene er vurdert.
+`kostnad.perVariant` i rapporten viser kostnad, utdatatokens, bufring og beståtte automatiske sjekker for hver modell.
+
+`--baseline` er ikke en modellsammenligning.
+Det gir ett ekstra kall per tilfelle med en naiv prompt på samme modell, og viser hva kjeden med analyse og kontroll tilfører.
+
+Tilfelle 22 og 23 ligger nær modellenes sikkerhetsfiltre (biologi og IT-sikkerhet), men er helt vanlige søknader.
+En avvisning der er en feil, og vises i rapporten som en feil med meldingen «Modellen kunne ikke skrive et brev fra dette grunnlaget.»
 
 ## Automatiske sjekker
 

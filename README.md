@@ -679,7 +679,7 @@ Testen oppretter en midlertidig profil og lagrer skjermbilder og eksportfiler de
 ### Evaluering av søknadsbrev
 
 Skriveinstruksjonene og evalueringsdataene ligger i kildekoden.
-`node evals/kjor.mjs` viser 21 syntetiske testtilfeller uten nettverkskall.
+`node evals/kjor.mjs` viser 23 syntetiske testtilfeller uten nettverkskall.
 Kjøring mot betalte modeller og vurdering av skrivekvalitet er beskrevet i [`evals/README.md`](evals/README.md).
 
 ### Miljøvariabler
