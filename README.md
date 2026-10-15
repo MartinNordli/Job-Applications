@@ -120,7 +120,7 @@ Panelet har fire faner:
 
 - **Oversikt**: tidslinjen over alt som har skjedd med søknaden, og notatet, som lagres mens du skriver.
 - **Annonse**: den lagrede annonsen, hvor den kom fra og når. **Hent på nytt** henter den fra lenken, **Lim inn** tar teksten du har kopiert, og **Åpne originalen** går til annonsen. Feiler hentingen, sier panelet hvorfor og hva du kan gjøre i stedet.
-- **Intervju**: kommer.
+- **Intervju**: intervjuene med tid, sted og forberedelse (se [Intervjuer](#intervjuer)), og datoen for det neste står ved fanenavnet.
 - **Brev**: brevskriveren, montert i panelet.
 
 Fanen blir stående når du går fra søknad til søknad, så du kan lese annonsene etter hverandre.
@@ -146,10 +146,18 @@ Resultatet lagres i `jobb-<id>.json` sammen med CV-revisjonen, annonsens sjekksu
 ### Intervjuer
 
 Hver søknad kan ha opptil 20 intervjuer med dato, tid, varighet, type, sted eller lenke, runde og notat.
-Legger du inn et intervju på en søknad som står på «Å søke på» eller «Sendt», settes status til «Intervju».
+Du legger dem inn og endrer dem i Intervju-fanen i detaljpanelet.
+Legger du inn et intervju på en søknad som står på «Å søke på» eller «Sendt», settes status til «Intervju», og varselet lar deg angre statusbyttet uten at intervjuet forsvinner.
+Kommende intervjuer står først, og de som har vært, står under dem, dempet.
+Ett intervju står åpent om gangen, med sted, lenke, varighet og notat, og knappene **Legg i kalender**, **Endre** og **Slett**.
+Et slettet intervju kan angres fra varselet, men har det en forberedelse, spør panelet først, fordi forberedelsen slettes for godt.
 Et intervju kan lastes ned som en kalenderfil (`.ics`) som åpnes i Kalender eller en annen kalender, med påminnelse to timer før.
 Filen har klokkeslettet i UTC, så sommertid blir riktig, og et intervju uten klokkeslett blir en heldagshendelse.
 Laster du ned en ny fil etter en endring, erstatter kalenderen den gamle hendelsen.
+**Lag forberedelse** under hvert intervju lager forberedelsen, og ingenting sendes til modellen før du trykker.
+Mens den lages, viser panelet hvor lenge det har gått, og du kan bytte fane eller søknad i mellomtiden.
+En lagret forberedelse vises uten nytt kall, og **Lag på nytt** lager en ny.
+Mangler annonsen, CV-en eller API-nøkkelen, sier panelet hva som mangler og sender deg dit det legges inn.
 Forberedelsen lages av brevmodellen fra CV-en, annonsen og det aktive brevet.
 Den gir sannsynlige spørsmål med svarskisser, eksempler fra din egen erfaring med ordrette sitater, spørsmål til arbeidsgiveren og en sjekkliste.
 Et sitat som ikke finnes i kildene, gir ingen forberedelse, og kildene er data for modellen, ikke instruksjoner.
