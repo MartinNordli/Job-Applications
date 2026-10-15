@@ -174,10 +174,25 @@ export const nav = {
     let ny = { side: tilstand?.side ?? null, etag: tilstand?.etag ?? null, sistEndret: tilstand?.sistEndret ?? null };
     const items = [];
     let kall = 0;
+    let fraLagret = url !== `${NAV_BASE}/api/v1/feed?last`;
     while(url && kall < GRENSER.navSider){
       sjekkAvbrudd(signal);
       if(kall) await vent(GRENSER.pause);
-      const svar = await nett.hentJson(url, { kilde: "nav", etag, sistEndret });
+      let svar;
+      try{
+        svar = await nett.hentJson(url, { kilde: "nav", etag, sistEndret });
+      }catch(feil){
+        /* En lagret side NAV ikke lenger svarer på, ville stått fast for
+           alltid. Feiler den første siden, begynner vi på nytt fra den
+           nyeste, én gang. Er det nettet som er nede, feiler den også,
+           og den lagrede siden står urørt til neste kjøring. */
+        if(!fraLagret || kall || signal?.aborted) throw feil;
+        fraLagret = false;
+        url = `${NAV_BASE}/api/v1/feed?last`;
+        etag = sistEndret = null;
+        kall++;
+        continue;
+      }
       kall++;
       if(svar?.status === 304) break;
       const side = svar?.json;

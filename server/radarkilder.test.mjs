@@ -71,6 +71,21 @@ test("NAV: høyst 20 sider per kjøring, og pekeren står der den slapp", async 
   assert.equal(r.tilstand.side, `side${GRENSER.navSider + 1}`);
 });
 
+test("NAV: en lagret side som feiler, gir én ny start fra ?last, men nede nett lar pekeren stå", async () => {
+  const forste = await json("nav/feed-siste-side.json");
+  const nett = falskNett({ json: url => {
+    if(url.endsWith("/api/v1/feed?last")) return { status: 200, json: forste };
+    throw new Error("NAV svarte 404.");
+  } });
+  const r = await nav.hent({ nett, tilstand: { side: "borte" }, vent: ingenPause });
+  assert.deepEqual(nett.kall.map(k => k.url.endsWith("?last")), [false, true]);
+  assert.equal(r.tilstand.side, forste.id);
+
+  const nede = falskNett({ json: () => { throw new Error("Fikk ikke kontakt."); } });
+  await assert.rejects(nav.hent({ nett: nede, tilstand: { side: "borte" }, vent: ingenPause }), /kontakt/);
+  assert.equal(nede.kall.length, 2, "bare ett forsøk på ny start");
+});
+
 test("NAV: next_url til en annen vert stopper hentingen", async () => {
   const nett = falskNett({ json: () => ({ status: 200, json: { id: "a", next_id: "b", next_url: "https://evil.example/api/v1/feed/b", items: [] } }) });
   await assert.rejects(nav.hent({ nett, tilstand: { side: "a" }, vent: ingenPause }), /ukjent adresse/);
