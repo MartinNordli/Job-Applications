@@ -467,7 +467,7 @@ Radar sorterer først uten modell: stillingen må være aktiv, fristen ikke pass
 Så fjernes duplikater mot søknadslisten, innboksen, det du har avvist og mellom kildene, også en Jobbnorge-annonse som ligger i NAV.
 Bare det som er igjen, vurderes av modellen mot CV-en din, åtte om gangen, med Haiku hos Anthropic.
 Prosenten følger samme skala som [vurderingen i panelet](#hvor-godt-passer-stillingen), så 75 % betyr det samme begge steder, og hver stilling får høyst tre korte grunner på CV-ens språk.
-Stillinger over terskelen (60 % som standard) havner i innboksen.
+Stillinger over terskelen (70 % som standard, der kravene regnes som oppfylt) havner i innboksen.
 En kjøring som gir treff, gir ett varsel med de beste først.
 
 ### Søkeord fra CV-en

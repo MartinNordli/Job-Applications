@@ -146,6 +146,7 @@ test("én kjøring: NAV og Jobbnorge gir én vurdering for samme annonse, innbok
   assert.equal(d.kildetilstand.nav.etag, '"e1"');
   assert.equal(d.kildetilstand.jobbnorge.sisteId, 309820);
   assert.equal(d.kjoringer[0].treff, 1);
+  assert.equal(d.kjoringer[0].promptversjon, "radar-2", "kalibreringen kan følges over tid");
 
   const r2 = await kjørRadar({ dokumenter: lager, nett, kallModell, nå, vent: ingenPause });
   assert.equal(kallModell.kall.length, 1, "det som er vurdert, vurderes ikke på nytt");

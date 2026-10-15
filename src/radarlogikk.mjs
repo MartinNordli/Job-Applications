@@ -45,7 +45,7 @@ import { Brevfeil } from "./dokumentfeil.mjs";
 import { RADAR, validerRadar } from "./jobbdokument.mjs";
 import { KURS } from "./importlogg.mjs";
 import { KILDER, GRENSER, sov, rensLinje, oppdagType, oppdagTypeFraSide, karriereadresse, tolkJsonLd } from "./radarkilder.mjs";
-import { VURDERINGSSKJEMA, FORSLAGSSKJEMA, FORSLAG_GRENSER, radarForespørsel, forslagForespørsel } from "./radarprompt.mjs";
+import { RADAR_PROMPTVERSJON, VURDERINGSSKJEMA, FORSLAGSSKJEMA, FORSLAG_GRENSER, radarForespørsel, forslagForespørsel } from "./radarprompt.mjs";
 
 export const KARRIEREINTERVALL = 6 * 3600_000;
 export const LEIETID = 15 * 60_000;
@@ -530,7 +530,7 @@ export async function kjørRadar({ dokumenter, jobber = [], nett, kallModell, le
   };
 
   const inn = leid.innstillinger;
-  const logg = { start: stempel, slutt: null, kandidater: 0, nye: 0, vurdert: 0, treff: 0, utenVurdering: 0,
+  const logg = { start: stempel, slutt: null, promptversjon: RADAR_PROMPTVERSJON, kandidater: 0, nye: 0, vurdert: 0, treff: 0, utenVurdering: 0,
     kilder: [], bruk: null, feil: [] };
   const feil = new Set(), utfall = new Map(), inaktive = new Set();
   let vurdert = [], sendt = 0, pekereGjelder = true;

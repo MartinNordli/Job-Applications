@@ -206,7 +206,7 @@ const rad = (over = {}) => ({ id: "nav:a1", kilde: "nav", kildeId: "a1", url: "h
 
 test("radar.json får hele formen med standardverdier", () => {
   const d = validerRadar({ revisjon: 0 });
-  assert.deepEqual(d.innstillinger, { pa: false, terskel: 60, maksVurderingerPerDogn: 150, sokeord: [], ekskluder: [], steder: [],
+  assert.deepEqual(d.innstillinger, { pa: false, terskel: 70, maksVurderingerPerDogn: 150, sokeord: [], ekskluder: [], steder: [],
     kilder: { nav: { pa: true }, jobbnorge: { pa: true, fylker: [] } }, karrieresider: [] });
   assert.deepEqual(d.kildetilstand, { nav: { side: null, etag: null, sistEndret: null, sist: null, feil: null },
     jobbnorge: { sisteId: null, sist: null, feil: null } });
@@ -232,7 +232,7 @@ test("radar.json normaliseres tilgivende og dropper det som ikke passer", () => 
     kjoringer: [{ start: "2026-10-09T10:00:00.000Z", vurdert: 3, kilder: [{ kilde: "nav", hentet: 5 }, { kilde: "finn" }], feil: ["Kilden svarte 500."] }, { start: "nå" }],
     leie: { eier: "a", utloper: "aldri" } });
   assert.equal(d.innstillinger.pa, false);
-  assert.equal(d.innstillinger.terskel, 60);
+  assert.equal(d.innstillinger.terskel, 70);
   assert.equal(d.innstillinger.maksVurderingerPerDogn, 150);
   assert.deepEqual(d.innstillinger.sokeord, ["data", "ki"]);
   assert.deepEqual(d.innstillinger.kilder, { nav: { pa: false }, jobbnorge: { pa: true, fylker: [3, 42] } });

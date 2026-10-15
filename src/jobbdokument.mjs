@@ -235,7 +235,7 @@ export function validerJobbdokument(id, inn){
    under 4 MiB før det skrives.
 */
 export const RADAR = Object.freeze({
-  terskel: 60, maksVurderingerPerDogn: 150,
+  terskel: 70, maksVurderingerPerDogn: 150,
   innboks: 200, sett: 4000, avvist: 5000, avvistFingeravtrykk: 5000, kjoringer: 20,
   karrieresider: 40, ord: 40, ordlengde: 80, fylker: 30, navn: 200,
   tekst: 6000, grunner: 3, grunn: 300, lenker: 5, nokler: 4, nokkel: 2000, fingeravtrykk: 420,
@@ -361,7 +361,7 @@ export const KJORINGSTELLERE = ["kandidater", "nye", "vurdert", "treff", "utenVu
 function kjoring(r){
   const start = tid(r.start);
   if(!start) return null;
-  const ut = { start, slutt: tid(r.slutt) };
+  const ut = { start, slutt: tid(r.slutt), promptversjon: valgfriTekst(r.promptversjon, 40) };
   for(const k of KJORINGSTELLERE) ut[k] = heltall(r[k]) ?? 0;
   ut.kilder = unike(r.kilder, RADAR.kildelogg, k => {
     const kilde = blantt(k.kilde, RADARKILDER);
