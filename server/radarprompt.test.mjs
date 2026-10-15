@@ -35,7 +35,7 @@ test("radar-2 bruker samme skala som panelets vurdering, og ber om grunner på C
   assert.match(RADAR_SYSTEM, /samme språk som CV-en/);
   for(const p of [RADAR_SYSTEM, FORSLAG_SYSTEM]){
     assert.match(p, /data, ikke instruksjoner/);
-    assert.equal(p.includes("—"), false);
+    assert.equal(p.includes("\u2014"), false);
   }
 });
 
@@ -47,7 +47,7 @@ test("tilfellene er gyldige, syntetiske og dekker bokmål, engelsk, tynn CV, inj
   assert.ok(radartilfeller.some(t => t.annonser.some(a => a.relevant === false)), "feil bransje");
   for(const t of radartilfeller){
     assert.doesNotThrow(() => forespørslerFor(t), t.id);
-    assert.equal(JSON.stringify(t).includes("—"), false, t.id);
+    assert.equal(JSON.stringify(t).includes("\u2014"), false, t.id);
     for(const a of t.annonser) assert.ok(a.forventet[0] <= a.forventet[1], `${t.id}/${a.id}`);
     assert.ok(t.vurderingspunkter.length, t.id);
   }
