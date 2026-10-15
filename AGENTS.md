@@ -40,6 +40,7 @@ Trenger en oppgave endringer på andre siden av en grense, gjør agenten sin del
   Ikke bytt branch, ikke flett, ikke push.
 - Rør aldri `data/` eller appkatalogen i `~/Library/Application Support/no.nordli.jobbsoknader/`, og les aldri API-nøkkelen.
   Kjør serveren med `DATA_KATALOG=$(mktemp -d)`.
+- Rust-verktøyet ligger ikke på PATH i agentskallet. Kjør `PATH="/opt/homebrew/opt/rustup/bin:$PATH" npm run test:rust`.
 - Ingen test eller kjøring når et ekte nett eller en ekte modell, med mindre orkestratoren har sagt det, etter at brukeren har godkjent kostnaden.
 - Bokmål i kode, kommentarer, tekst i appen og commit-meldinger.
 - Aldri tankestrek (U+2014).
