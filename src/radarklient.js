@@ -33,6 +33,13 @@
                                   { kjort, grunn?: "av"|"opptatt", lagret,
                                   kjoring, antallNye, varsel, tilstand }
                                   og viser varselet når det er ett
+   foreslaFraCv({ leverandor? })  ett modellkall som gir { sokeord: [≤12],
+                                  steder: [≤6], ekskluder: [≤6] } fra CV-en,
+                                  allerede filtrert til ord forfilter kan
+                                  bruke. Lagrer ingenting: brukeren retter
+                                  forslaget og lagrer med lagreInnstillinger.
+                                  Feilkoder "mangler-cv", "mangler-nokkel",
+                                  "for-mange" (10 i timen), "modellformat"
    ikkeInteressert(id)            gir tilstanden; feilkode "finnes-ikke"
    leggTilKarriereside({url, navn?})  gir tilstanden; feilkode "ugyldig"
                                   med grunnen når siden ikke kan leses
@@ -60,7 +67,7 @@ import * as Jobbdokumenter from "./jobbdokumenter.js";
 import { visRadarvarsel } from "./varsling.js";
 import { søkNå, tilstandFra, lagreInnstillinger as lagreInnstillingerLokalt, ikkeInteressert as ikkeInteressertLokalt,
          markerLagtTil, leggTilKarriereside as leggTilKarrieresideLokalt, fjernKarriereside as fjernKarrieresideLokalt,
-         leggTilFraRad, soknadFraRad } from "./radarlogikk.mjs";
+         leggTilFraRad, soknadFraRad, foreslåFraProfil } from "./radarlogikk.mjs";
 
 export { soknadFraRad };
 export const TIME = 3600_000;
@@ -126,6 +133,14 @@ export async function sokNa({ leverandor = Jobbdokumenter.valgtLeverandør() } =
   meld(svar.tilstand);
   if(svar.varsel) visRadarvarsel(svar.varsel);
   return svar;
+}
+
+export async function foreslaFraCv({ leverandor = Jobbdokumenter.valgtLeverandør() } = {}){
+  if(I_APP){
+    const l = lokal();
+    return foreslåFraProfil({ dokumenter: l.lager, kallModell: l.kallModell, leverandor }).catch(e => { throw oversett(e); });
+  }
+  return (await http("/api/radar/forslag", { method: "POST", body: { leverandor } })).forslag;
 }
 
 export async function ikkeInteressert(id){

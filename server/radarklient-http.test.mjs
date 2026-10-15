@@ -35,6 +35,7 @@ test("klienten snakker med Radar-rutene og legger til en stilling med annonse og
     hentJson: async url => ({ status: 200, json: url.endsWith("/jobs") ? full : full.jobs.find(j => url.endsWith(`/${j.id}`)) }) };
   const tjener = lagServer({ katalog, brukere: lagBrukere({ katalog, iterasjoner: 1 }), nett, brevModellFor: () => async valg => {
     modeller.push(valg.formal);
+    if(valg.trinn === "radarforslag") return { data: { sokeord: ["dataingeniør", "dataingeniør"], steder: ["Bergen"], ekskluder: ["lærling"] }, bruk: { input_tokens: 10, output_tokens: 5 } };
     if(valg.formal === "radar") return { data: { vurderinger: JSON.parse(valg.innhold).annonser.map(a => ({ id: a.id, prosent: 90, grunner: ["Passer."] })) }, bruk: { input_tokens: 10, output_tokens: 5 } };
     return { data: { prosent: 70, oppsummering: "Ok.", sprak: "nb", mangler: [], styrker: [] }, bruk: { input_tokens: 10, output_tokens: 5 }, modell: "test" };
   } });
@@ -54,6 +55,7 @@ test("klienten snakker med Radar-rutene og legger til en stilling med annonse og
   const k = await Radar.sokNa({ leverandor: "anthropic" });
   assert.equal(k.antallNye, full.jobs.length);
   await assert.rejects(Radar.sokNa(), e => e.code === "for-mange" && e.status === 429);
+  assert.deepEqual(await Radar.foreslaFraCv({ leverandor: "anthropic" }), { sokeord: ["dataingeniør"], steder: [], ekskluder: ["lærling"] });
 
   const rad = (await Radar.hentTilstand()).innboks[0];
   const etter = await Radar.lagtTil(rad.id, "j1");

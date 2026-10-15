@@ -64,6 +64,8 @@ async function utfør(navn, a){
     case "brev_modell": {
       const kropp = JSON.parse(a.kropp);
       modellkropper.push(kropp);
+      if(kropp.output_config?.format?.schema?.properties?.sokeord)
+        return sse(JSON.stringify({ sokeord: ["Dataingeniør", "www.tilbud.example"], steder: ["Oslo"], ekskluder: ["ingeniør", "lærling"] }));
       if(/haiku/.test(kropp.model)){
         const ider = [...new Set([...JSON.stringify(kropp).matchAll(/\\"id\\":\\"(a\d+)\\"/g)].map(m => m[1]))];
         return sse(JSON.stringify({ vurderinger: ider.map(id => ({ id, prosent: 85, grunner: ["Passer."] })) }));
@@ -121,6 +123,14 @@ test("Radar i appen: innstillinger, karriereside, «Søk nå» med varsel og tak
   assert.equal(modellkropper.at(-1).model, "claude-haiku-5-5");
   await assert.rejects(Radar.sokNa(), e => e.code === "for-mange");
   assert.equal(modellkropper.length, 1);
+
+  /* «Foreslå fra CV» går samme vei til modellen og lagrer ingenting. */
+  const urørt = await Radar.hentTilstand();
+  assert.deepEqual(await Radar.foreslaFraCv(), { sokeord: ["Dataingeniør"], steder: [], ekskluder: ["lærling"] });
+  assert.equal(modellkropper.at(-1).model, "claude-haiku-5-5");
+  assert.equal(modellkropper.at(-1).messages[0].content[0].cache_control?.type, "ephemeral");
+  assert.deepEqual(await Radar.hentTilstand(), urørt);
+  modellkropper.pop();
 
   const rad = k.tilstand.innboks[0];
   assert.equal(rad.status, "ny");

@@ -4,13 +4,16 @@
    GET    /api/radar                          tilstanden (tilstandFra)
    PUT    /api/radar/innstillinger            ← innstillingene
    POST   /api/radar/kjor                     ← { leverandor? }  «Søk nå»
+   POST   /api/radar/forslag                  ← { leverandor? }  «Foreslå fra CV»
    POST   /api/radar/ikke-interessert         ← { id }
    POST   /api/radar/lagt-til                 ← { id }  merker raden
    POST   /api/radar/karrieresider            ← { url, navn? }
    DELETE /api/radar/karrieresider/<id>
 
    Alle svarer med { tilstand }, og kjor i tillegg med utfallet av
-   kjøringen. Id-en til en rad kan være en lenke, så den går i
+   kjøringen. forslag svarer bare med { forslag: { sokeord, steder,
+   ekskluder } } og lagrer ingenting: brukeren retter forslaget og
+   lagrer det med innstillingene. Id-en til en rad kan være en lenke, så den går i
    kroppen og ikke i stien.
 
    Serveren varsler ikke selv: varselet vises av appen eller
@@ -26,7 +29,7 @@ import { lagBrevModell, brevNokkelStatus } from "./brev-modell.mjs";
 import { lagRadarnett } from "../src/radarnett.mjs";
 import { Brevfeil } from "../src/dokumentfeil.mjs";
 import { kjørRadar, søkNå, tilstandFra, lagreInnstillinger, ikkeInteressert, markerLagtTil,
-         leggTilKarriereside, fjernKarriereside } from "../src/radarlogikk.mjs";
+         leggTilKarriereside, fjernKarriereside, foreslåFraProfil } from "../src/radarlogikk.mjs";
 import { deltMiljønokkel } from "./nokkel.mjs";
 import { offentligFeil, send, kropp, objekt, metode } from "./brev-api.mjs";
 
@@ -34,7 +37,7 @@ export const TIME = 3600_000;
 const LEVERANDORER = ["anthropic", "openai"];
 
 export const erRadarbane = bane => bane === "/api/radar"
-  || /^\/api\/radar\/(?:innstillinger|kjor|ikke-interessert|lagt-til|karrieresider(?:\/[A-Za-z0-9_-]{1,64})?)$/.test(bane);
+  || /^\/api\/radar\/(?:innstillinger|kjor|forslag|ikke-interessert|lagt-til|karrieresider(?:\/[A-Za-z0-9_-]{1,64})?)$/.test(bane);
 
 export function lagRadartjeneste({ nett, modellFor, nå = () => new Date(), vent, kilder } = {}){
   const lagre = new Map();
@@ -69,7 +72,14 @@ export function lagRadartjeneste({ nett, modellFor, nå = () => new Date(), vent
     };
     return manuell ? søkNå(args) : kjørRadar(args);
   }
-  return { dokumenter, kjør, nå, nett };
+
+  async function foreslå(ktx, { leverandor, signal } = {}){
+    const { katalog, tillatMiljø } = ktx;
+    return foreslåFraProfil({ dokumenter: dokumenter(katalog),
+      kallModell: modellFor ? modellFor(ktx) : lagBrevModell({ katalog, tillatMiljø }),
+      leverandor: await leverandorFor(ktx, leverandor), nå, signal });
+  }
+  return { dokumenter, kjør, foreslå, nå, nett };
 }
 
 export function lagRadarRuter(tjeneste){
@@ -94,6 +104,10 @@ export function lagRadarRuter(tjeneste){
         const u = await tjeneste.kjør(ktx, { leverandor: inn.leverandor, signal: controller.signal, manuell: true });
         const { nye, ...rest } = u;
         r = { ...rest, antallNye: nye?.length ?? 0, ...await tilstand() };
+      }else if(bane === "/api/radar/forslag"){
+        metode(req, "POST");
+        const inn = objekt(await kropp(req));
+        r = { forslag: await tjeneste.foreslå(ktx, { leverandor: inn.leverandor, signal: controller.signal }) };
       }else if(bane === "/api/radar/ikke-interessert" || bane === "/api/radar/lagt-til"){
         metode(req, "POST");
         const { id } = objekt(await kropp(req));

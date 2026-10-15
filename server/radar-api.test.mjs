@@ -32,6 +32,8 @@ async function start(t){
   };
   const server = lagServer({ katalog, brukere, nett, brevModellFor: () => async valg => {
     modellkall.push(valg);
+    if(valg.trinn === "radarforslag")
+      return { data: { sokeord: ["Dataingeniør", "https://tilbud.example.invalid", "data engineer"], steder: ["Oslo"], ekskluder: ["lærling", "ingeniør"] }, bruk: { input_tokens: 700, output_tokens: 30 } };
     const annonser = JSON.parse(valg.innhold).annonser;
     return { data: { vurderinger: annonser.map(a => ({ id: a.id, prosent: 80, grunner: ["Passer."] })) }, bruk: { input_tokens: 100, output_tokens: 20 } };
   } });
@@ -203,4 +205,28 @@ test("varseltekster renses likt i JS og Rust (testdata/radarvarsel.json)", async
   const { rensLinje } = await import("../src/radarkilder.mjs");
   const { tilfeller } = JSON.parse(await fs.readFile(new URL("../testdata/radarvarsel.json", import.meta.url), "utf8"));
   for(const t of tilfeller) assert.equal(rensLinje(t.inn, 240) || null, t.ut, JSON.stringify(t.inn.slice(0, 20)));
+});
+
+test("«Foreslå fra CV» gir et filtrert forslag uten å lagre noe, og taket er 10 i timen", async t => {
+  const { api, registrer, utenOkt, modellkall } = await start(t);
+  assert.equal((await utenOkt("/api/radar/forslag", "POST", {})).status, 401);
+  const før = (await api("/api/radar")).data.tilstand;
+
+  const r = await api("/api/radar/forslag", "POST", { leverandor: "anthropic" });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.data, { forslag: { sokeord: ["Dataingeniør", "data engineer"], steder: [], ekskluder: ["lærling"] } });
+  assert.equal(modellkall.at(-1).formal, "radar");
+  assert.match(JSON.parse(modellkall.at(-1).kilder).kilder.cv, /Dataingeniør med ti års erfaring/);
+  assert.deepEqual((await api("/api/radar")).data.tilstand, før, "forslaget lagres ikke");
+
+  assert.equal((await api("/api/radar/forslag", "POST", { leverandor: "ukjent" })).data.feil, "ugyldig");
+  for(let i = 1; i < 10; i++) assert.equal((await api("/api/radar/forslag", "POST", {})).status, 200);
+  const stopp = await api("/api/radar/forslag", "POST", {});
+  assert.equal(stopp.status, 429);
+  assert.equal(stopp.data.feil, "for-mange");
+
+  const annen = await registrer("beta@example.no");
+  const utenCv = await annen("/api/radar/forslag", "POST", {});
+  assert.equal(utenCv.status, 409);
+  assert.equal(utenCv.data.feil, "mangler-cv");
 });
