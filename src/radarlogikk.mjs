@@ -635,7 +635,7 @@ export function kjoringskostnad(bruk){
   if(!bruk) return 0;
   const inn = (bruk.input_tokens ?? 0) + 1.25 * (bruk.cache_creation_input_tokens ?? 0) + 0.1 * (bruk.cache_read_input_tokens ?? 0);
   const kr = ((inn / 1e6) * PRIS.inn + ((bruk.output_tokens ?? 0) / 1e6) * PRIS.ut) * KURS;
-  return Math.round(kr * 100) / 100;
+  return Math.round(kr * 10000) / 10000;
 }
 
 /*
@@ -693,10 +693,14 @@ export async function fjernKarriereside(dokumenter, id){
 const sisteSøk = new WeakMap();
 export async function søkNå(args){
   const { dokumenter } = args, nå = (args.nå ?? (() => new Date()))().getTime();
-  const sist = Math.max(sisteSøk.get(dokumenter) ?? 0, Date.parse((await dokumenter.les(RADARFIL)).kjoringer[0]?.start) || 0);
-  if(nå - sist < SOK_NA_PAUSE)
-    throw new Brevfeil("for-mange", `Radar har nettopp kjørt. Prøv igjen om ${Math.ceil((SOK_NA_PAUSE - (nå - sist)) / 1000)} sekunder.`, 429);
+  const for_mange = sist => new Brevfeil("for-mange",
+    `Radar har nettopp kjørt. Prøv igjen om ${Math.ceil((SOK_NA_PAUSE - (nå - sist)) / 1000)} sekunder.`, 429);
+  /* Minnet sjekkes og settes før første await, ellers slipper to klikk gjennom. */
+  const iMinnet = sisteSøk.get(dokumenter) ?? 0;
+  if(nå - iMinnet < SOK_NA_PAUSE) throw for_mange(iMinnet);
   sisteSøk.set(dokumenter, nå);
+  const sist = Date.parse((await dokumenter.les(RADARFIL)).kjoringer[0]?.start) || 0;
+  if(nå - sist < SOK_NA_PAUSE) throw for_mange(sist);
   return kjørRadar(args);
 }
 

@@ -69,7 +69,7 @@ export function lagRadartjeneste({ nett, modellFor, nå = () => new Date(), vent
     };
     return manuell ? søkNå(args) : kjørRadar(args);
   }
-  return { dokumenter, kjør, nå };
+  return { dokumenter, kjør, nå, nett };
 }
 
 export function lagRadarRuter(tjeneste){
