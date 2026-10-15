@@ -36,6 +36,10 @@ npm run app:bygg
 
 Kommandoen legger `Hired.app` i `src-tauri/target/release/bundle/macos/`.
 Kopier den til `/Applications`, så finner du den i Spotlight.
+
+`npm run app:installer` gjør begge deler i ett: den bygger fra `main`, ber en åpen Hired avslutte, bytter ut appen i `/Applications` og starter den igjen.
+Den nekter å bygge fra en annen branch eller med endringer som ikke er committet, så den installerte appen er nøyaktig det som er flettet inn (`--tving` overstyrer).
+Svarer ikke appen når den bes avslutte, avbrytes byttet i stedet for at appen drepes.
 Appen het tidligere `Jobbsøknader.app`.
 Har du den gamle i `/Applications`, kan du slette den: dataene ligger i den samme katalogen og følger med til Hired.
 Bygget samler frontenden i `dist/` først, så appen får med alt som er endret i nettleserversjonen.

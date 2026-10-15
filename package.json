@@ -13,6 +13,7 @@
     "tauri": "tauri",
     "app:dev": "tauri dev",
     "app:bygg": "tauri build",
+    "app:installer": "node scripts/installer-app.mjs",
     "pretest:rust": "node scripts/bygg-front.mjs",
     "test:rust": "cd src-tauri && cargo test"
   },

@@ -16,6 +16,9 @@ Den skriver ikke selv funksjoner av betydning, men gjør dette:
    Små rettelser gjør orkestratoren selv.
 5. Fletter: rebase på oppdatert `main`, `npm test && npm run test:ui && npm run test:rust`, `git merge --ff-only`, og så fjernes worktree og branch.
    En konflikt som ikke kan løses mekanisk, går til brukeren.
+6. Oppdaterer Mac-appen med `npm run app:installer` fra `main`, så brukeren kan ta den i bruk med en gang.
+   Det gjøres etter hver fletting brukeren merker (ny funksjon eller synlig rettelse), og alltid etter den siste flettingen før arbeidet stopper.
+   Kjører `npm start` fra hovedrepoet, startes serveren på nytt når serverkoden er endret.
 
 Høyst to agenter jobber samtidig, og bare på oppgaver som ikke rører de samme filene.
 To agenter deler aldri worktree samtidig.
