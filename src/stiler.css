@@ -1397,6 +1397,12 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
             font-family:var(--mono);font-size:11px;color:var(--blekk-3);text-decoration:none}
 .kside__url:hover{color:var(--hav-t);text-decoration:underline}
 .kside .kilde__linje{margin-left:0}
+/* En side Radar har slått av: navnet trer tilbake, og veien inn igjen
+   står rett under grunnen, i kant med teksten. */
+.kside--av .kside__fjern{grid-row:1 / span 4}
+.kside--av .kside__navn{color:var(--blekk-2)}
+.kside__pa{justify-self:start;margin:7px 0 0 -2px;background:var(--innfelt-2)}
+.kside__pa:disabled{cursor:default;opacity:.6}
 .ksider__tom{margin:0 0 10px}
 .ksider__ny{display:flex;gap:8px}
 .ksider__ny .felt__inn{flex:1;min-width:0}
@@ -1485,7 +1491,7 @@ a.handling{display:inline-flex;align-items:center;text-decoration:none}
   .ordliste__inn{min-height:44px}
   .kside__url{display:flex;align-items:center;min-height:44px;margin:-8px 0}
   .radarinnst .avkrys,.fylker__topp,.radarinnst .fylker__post{min-height:44px}
-  .funn .handling,.kside__fjern{min-height:44px}
+  .funn .handling,.kside__fjern,.kside__pa{min-height:44px}
   .terskel__glider{height:44px}
 }
 @media (pointer:coarse){

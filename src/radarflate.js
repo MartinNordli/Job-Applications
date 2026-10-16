@@ -81,6 +81,7 @@ export function lagRadarflate(api){
   let klokketimer = null, pollTimer = null, grunnlagTimer = null;
   const utsatt = new Map();     /* «Ikke interessert» som venter på angrefristen */
   const legger = new Set();     /* rader som legges til nå */
+  const slårPå = new Set();     /* karrieresider som slås på igjen nå */
   const jobbFor = new Map();    /* radId → jobbId der annonsen ikke ble lagret */
 
   /* ---------- tilstand ---------- */
@@ -434,11 +435,16 @@ export function lagRadarflate(api){
           const navn = s.navn || vert(s.url) || s.url;
           const status = !s.pa && s.grunn ? '<span class="kilde__feil">' + esc(sidegrunn(s)) + '</span>'
             : s.feilRad > 0 && s.grunn ? '<span class="kilde__feil">Feilet ' + (s.feilRad === 1 ? "ved siste henting" : s.feilRad + " ganger på rad") + ': ' + esc(s.grunn) + '</span>'
-            : s.sist ? "Sist hentet " + tidHtml(s.sist) : "Ikke hentet ennå";
-          return '<li class="kside"><div class="kside__hvem"><span class="kside__navn">' + esc(navn) + '</span>'
+            : s.sist ? "Sist hentet " + tidHtml(s.sist) : s.pa ? "Hentes ved neste søk" : "Ikke hentet ennå";
+          const av = !s.pa && !!s.grunn;
+          const statusId = "radarSide-" + esc(s.id) + "-status";
+          return '<li class="kside' + (av ? " kside--av" : "") + '"><div class="kside__hvem"><span class="kside__navn">' + esc(navn) + '</span>'
             + '<span class="kside__type">' + esc(KILDENAVN[s.type] || s.type) + '</span></div>'
             + '<a class="kside__url" href="' + esc(s.url) + '" target="_blank" rel="noopener noreferrer">' + esc(s.url) + '</a>'
-            + '<p class="kilde__linje">' + status + '</p>'
+            + '<p class="kilde__linje" id="' + statusId + '">' + status + '</p>'
+            + (av ? '<button class="handling kside__pa" type="button" data-radar="slaPaSide" data-id="' + esc(s.id) + '"'
+              + ' data-fokus="slaPaSide-' + esc(s.id) + '" aria-describedby="' + statusId + '"' + (slårPå.has(s.id) ? " disabled" : "") + '>'
+              + (slårPå.has(s.id) ? "Slår på…" : "Slå på igjen") + '</button>' : "")
             + '<button class="handling handling--stille kside__fjern" type="button" data-radar="fjernSide" data-id="' + esc(s.id) + '"'
             + ' data-fokus="fjernSide-' + esc(s.id) + '" aria-label="Fjern ' + esc(navn) + '">Fjern</button></li>';
         }).join("") + '</ul>' : '<p class="felt__hjelp ksider__tom">Ingen ennå. Greenhouse, Lever, Teamtailor og sider med strukturerte stillingsdata kan leses.</p>')
@@ -803,6 +809,28 @@ export function lagRadarflate(api){
     }catch(e){ if(e?.code !== "utlogget") api.varsle(e?.message || "Fikk ikke fjernet siden"); }
   }
 
+  /* En side Radar slo av etter fem feil, slås på av brukeren. Den hentes
+     ved neste søk; fokus går til «Fjern» på samme side, siden knappen
+     man trykket på, forsvinner. */
+  async function slåPåSide(id){
+    const s = innstillinger().karrieresider.find(x => x.id === id);
+    if(!s || slårPå.has(id)) return;
+    slårPå.add(id);
+    tegn();
+    try{
+      const ny = await Radar.slaPaKarriereside(id);
+      slårPå.delete(id);
+      settTilstand(ny);
+      api.varsle("Slo på " + (s.navn || vert(s.url)) + " igjen. Den hentes ved neste søk.");
+      rot?.querySelector('[data-fokus="fjernSide-' + CSS.escape(id) + '"]')?.focus();
+    }catch(e){
+      slårPå.delete(id);
+      if(e?.code === "finnes-ikke") last();
+      if(e?.code !== "utlogget") api.varsle(e?.message || "Fikk ikke slått på siden");
+      tegn();
+    }
+  }
+
   /* Ord fra feltet: komma og linjeskift skiller, og et ord som står
      der fra før (uansett store og små bokstaver), legges ikke til igjen. */
   function leggTilOrd(liste, tekst){
@@ -845,6 +873,7 @@ export function lagRadarflate(api){
     }
     else if(hva === "leggTilSide") leggTilSide();
     else if(hva === "fjernSide") fjernSide(b.dataset.id);
+    else if(hva === "slaPaSide") slåPåSide(b.dataset.id);
     else if(hva === "leggTil") leggTil(b.dataset.id);
     else if(hva === "ikke") ikkeInteressert(b.dataset.id);
     else if(hva === "apneSoknad") api.åpneSøknad(b.dataset.jobb, { fra: b });
