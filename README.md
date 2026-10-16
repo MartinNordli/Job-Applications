@@ -80,7 +80,7 @@ Finnes det ingen data noe sted, starter den første kontoen med startlisten.
 
 ### Visninger
 
-Sidepanelet har fire visninger, med antall søknader ved siden av navnet.
+Sidepanelet har fem visninger, med antall søknader ved siden av navnet.
 
 - **Frister**: søknader du ikke har sendt. De er gruppert i «Denne uka» (frist i dag og de neste sju dagene), «Løpende opptak» og én gruppe per måned. En farget stripe og teksten «i dag», «i morgen» eller «om N dager» viser hastegraden.
   Frister som har gått ut, ligger i en egen sammenfoldet gruppe nederst, «Fristen har gått ut», med antallet i overskriften.
@@ -95,6 +95,8 @@ Sidepanelet har fire visninger, med antall søknader ved siden av navnet.
   Eldre søknader uten sendtdato viser ingen ventetid.
 - **Arkiv**: avslag, tilbud, trukne og utløpte søknader.
 - **Tall**: statistikk, se under.
+- **Radar**: nye stillinger som passer CV-en, med antallet nye ved siden av navnet, se [Radar](#radar).
+  Søket og filtrene er skjult her, fordi de gjelder søknadene.
 
 **Neste frist** nederst i sidepanelet viser din faktiske neste frist, uavhengig av filtre.
 Et klikk hopper til søknaden og markerer den.
@@ -446,6 +448,21 @@ Den bytter ut grunnlaget og brevet med innstillingene, og **Lukk innstillinger**
 
 Radar leter etter ledige stillinger som passer CV-en din, og legger de beste i en innboks.
 Du bestemmer selv om en stilling blir en søknad: **Legg til** lager søknaden, **Ikke interessert** fjerner stillingen og husker at du sa nei.
+
+### Visningen
+
+**Radar** står i sidepanelet under Oversikt, med antallet nye stillinger ved siden av navnet.
+Er Radar av, forklarer visningen hva den gjør, og **Slå på Radar** setter den i gang.
+Øverst står hva Radar gjør nå og **Søk nå**, og under det merknadene: CV-en eller API-nøkkelen som mangler, med vei til Brev-fanen der de legges inn, søkeord som mangler, og kilder som feilet ved siste søk.
+Innstillingene ligger i ett kort som er sammenfoldet når Radar er i gang, med et sammendrag av hva som gjelder.
+Der står søkeord, steder og ekskluderte ord som lister du kan redigere, terskelen, NAV og Jobbnorge (med fylker), karrieresidene, forbruket i dag mot døgntaket og de fem siste kjøringene med treff og kostnad i kroner.
+**Foreslå fra CV** fyller listene med stiplede forslag, og ingenting lagres før du trykker **Lagre innstillingene**.
+Av og på og karrieresidene lagres med en gang, og en karriereside du fjerner, kan legges inn igjen med **Angre**.
+Innboksen har ett bånd for nye stillinger og ett for dem du har lagt til.
+Hver stilling viser prosenten, selskapet, stillingen, stedet, kilden, når den ble publisert, fristen og opptil tre grunner.
+**Legg til** lager søknaden under Frister og lagrer annonsen på den, og raden står så dempet med **Åpne søknaden**.
+**Ikke interessert** kan angres i sju sekunder før Radar husker valget.
+**Åpne** viser annonsen hos kilden.
 
 ### Kildene
 

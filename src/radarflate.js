@@ -815,6 +815,13 @@ export function lagRadarflate(api){
   /* ---------- lyttere ---------- */
 
   function klikk(e){
+    /* Valget huskes med en gang, ikke først ved toggle: tegnes kortet på
+       nytt i mellomtiden, skal det nye stå slik brukeren ville. */
+    const topp = e.target.closest(".radarinnst__topp");
+    if(topp) innstÅpen = !topp.parentElement.open;
+    /* Hele flaten rundt brikkene er feltet. */
+    if(e.target.classList.contains("ordliste__flate") || e.target.classList.contains("ordliste__ord"))
+      e.target.closest(".ordliste__flate").querySelector(".ordliste__inn")?.focus();
     const b = e.target.closest("[data-radar]");
     if(!b || !rot.contains(b) || b.disabled) return;
     const hva = b.dataset.radar;

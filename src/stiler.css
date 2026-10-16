@@ -1318,6 +1318,10 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .radarinnst__deltittel{margin:0 0 12px}
 .radarinnst__innhold > :last-child{margin-bottom:0}
 .radarinnst .avkrys{margin-top:0;font-size:13.5px;color:var(--blekk);min-height:28px}
+@container radarinnst (max-width:460px){
+  .radarinnst__bunn{justify-content:flex-end}
+  .radarinnst__lagret{flex-basis:100%}
+}
 @container radarinnst (min-width:620px){
   .radarinnst__del{display:grid;grid-template-columns:150px minmax(0,1fr);gap:0 24px}
   .radarinnst__deltittel{padding-top:2px;line-height:1.45}
@@ -1336,7 +1340,7 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 
 /* Ordlistene: brikkene og feltet står i én innfelt flate, som et felt. */
 .ordliste{margin-bottom:18px}
-.ordliste__flate{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:5px;min-height:42px;
+.ordliste__flate{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:5px;min-height:42px;cursor:text;
                  background:var(--innfelt);border:1px solid var(--linje);border-radius:var(--r-s);
                  transition:background .12s ease,border-color .12s ease}
 .ordliste__flate:focus-within{background:var(--kort);border-color:var(--hav)}
@@ -1351,6 +1355,7 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .ord__fjern{position:relative;flex:none;display:flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;
             background:none;border:0;border-radius:5px;color:var(--blekk-3);cursor:pointer}
 .ord__fjern:hover{background:var(--linje-2);color:var(--blekk)}
+.ord__fjern:focus-visible{outline-offset:0}
 .ordliste__inn{flex:1 1 150px;min-width:0;min-height:30px;padding:4px 6px;background:none;border:0;font-size:14px}
 .ordliste__inn::placeholder{color:var(--blekk-3)}
 .ordliste__inn:focus-visible{outline:none}
@@ -1477,7 +1482,8 @@ a.handling{display:inline-flex;align-items:center;text-decoration:none}
   .ord{min-height:36px}
   .ord__fjern{width:32px;height:32px}
   .ord__fjern::after{content:"";position:absolute;inset:-6px}
-  .ordliste__inn{min-height:36px}
+  .ordliste__inn{min-height:44px}
+  .kside__url{display:flex;align-items:center;min-height:44px;margin:-8px 0}
   .radarinnst .avkrys,.fylker__topp,.radarinnst .fylker__post{min-height:44px}
   .funn .handling,.kside__fjern{min-height:44px}
   .terskel__glider{height:44px}
