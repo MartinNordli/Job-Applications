@@ -88,8 +88,11 @@ export function lagBrevRuter({nett,modellFor,annonsegrense=lagRatebegrenser(ANNO
   function tjeneste(ktx){
     const {katalog,tillatMiljø,lager}=ktx;
     const nøkkel=katalog+":"+tillatMiljø;
+    /* Jobbdokumentene har hentingen og taket på den, så en annonse brevet
+       må hente, teller med i de 30 hentingene i timen. */
     if(!tjenester.has(nøkkel))tjenester.set(nøkkel,lagBrevtjeneste({
       lager:lagBrevlager(katalog),
+      jobbdokumenter:jobbdokumenter(ktx),
       kallModell:modellFor?modellFor(ktx):lagBrevModell({katalog,tillatMiljø}),
       hentJobb:async id=>(await lager.les()).jobber?.find(j=>j.id===id)
     }));
@@ -238,7 +241,7 @@ export function lagBrevRuter({nett,modellFor,annonsegrense=lagRatebegrenser(ANNO
           if(!kid){
             const nå=Date.now();const tidligere=(grenser.get(ktx.katalog)||[]).filter(v=>v>nå-3600000);
             if(tidligere.length>=20)throw new Brevfeil("for-mange","Du har startet 20 utkast den siste timen. Vent litt før du lager flere.",429);
-            r={kjoring:await t.opprett(id,inn)};grenser.set(ktx.katalog,[...tidligere,nå]);
+            r={kjoring:await t.opprett(id,objekt(inn),{signal:controller.signal})};grenser.set(ktx.katalog,[...tidligere,nå]);
           }else if(handling==="avbryt")r={dokument:await t.avbryt(id,kid)};
           else return await kjørTrinn(t,res,id,kid,inn,controller);
         }
@@ -253,13 +256,13 @@ export function lagBrevRuter({nett,modellFor,annonsegrense=lagRatebegrenser(ANNO
 /* Skilt ut fordi den har én ting å si: hodene skrives først rett før
    tjenesten kalles, slik at metodesjekk, kroppsparsing og ukjent trinn
    fortsatt svarer med vanlig HTTP-status og JSON. Etter det er alt en
-   hendelse i strømmen, også feil. */
+   hendelse i strømmen, også feil. Det finnes ett trinn, «skriv». */
 async function kjørTrinn(t,res,id,kid,inn,controller){
-  if(!Object.hasOwn(FASE,inn.trinn)) throw new Brevfeil("ugyldig","Ukjent skrivetrinn.");
+  if(!Object.hasOwn(FASE,inn?.trinn)) throw new Brevfeil("ugyldig","Ukjent skrivetrinn.");
   const strøm=åpneStrøm(res);
   try{
     strøm.fase({trinn:inn.trinn,fase:FASE[inn.trinn],nullstill:true});
-    const r=await t.trinn(id,kid,inn.trinn,inn.svar,{signal:controller.signal,
+    const r=await t.trinn(id,kid,inn.trinn,{signal:controller.signal,
       påDelta:tekst=>strøm.delta({trinn:inn.trinn,tekst})});
     strøm.slutt("ferdig",r);
   }catch(e){

@@ -9,17 +9,22 @@ import { delSse } from "../src/brev-strom.mjs";
 import { lagBrevlager } from "./brevlager.mjs";
 import { sjekksum } from "../src/jobbdokument.mjs";
 
-const analyse = () => ({sprak:"nb",begrunnelse:"Bokmål i annonsen.",kontaktperson:"",krav:[],bevis:[],virksomhet:[],uklarheter:[],merknader:[],maAvklares:false});
 const BREV = "Til rekrutteringsteamet i Eksempelbedrift,\n\nJeg søker stillingen som rådgiver.\n\nMed vennlig hilsen\nAlfa Eksempel";
 const brev = () => ({tekst:BREV,sprak:"nb",merknader:[],pastander:[],maAvklares:false});
 const rad = {id:"j1",selskap:"Eksempelbedrift",stilling:"Rådgiver",lenke:"https://example.invalid/jobb",sted:"Oslo",frist:null,status:"todo",sektor:"annet",notat:"",sendtDato:null};
 const sti="/api/jobber/j1/brev";
-async function start(t,callback){
-  const katalog=await fs.mkdtemp(path.join(os.tmpdir(),"brev-http-test-"));const kall=[];
+/* Annonsemodellen beholder linje 2 til 3 av siden. */
+const svarFor = p => ({data:p.formal==="annonse"?{erAnnonse:true,behold:[{fra:2,til:3}]}:brev(),bruk:{input_tokens:10,output_tokens:20},modell:"testmodell"});
+const SIDE = "<main><p>Logg inn</p><p>Eksempelbedrift søker en rådgiver som vil arbeide med kunder i hele landet, fra kontoret i Oslo.</p>"
+  + "<p>Du har erfaring fra kundeservice, skriver klart og enkelt, og liker å følge opp en sak helt til den er løst for kunden.</p><p>Andre stillinger</p></main>";
+async function start(t,callback,{hentSide}={}){
+  const katalog=await fs.mkdtemp(path.join(os.tmpdir(),"brev-http-test-"));const kall=[],hentet=[];
   const brukere=lagBrukere({katalog,iterasjoner:1});
-  const server=lagServer({katalog,brukere,brevModellFor:ktx=>async p=>{
+  const nett={hentSide:hentSide??(async url=>{hentet.push(url);return {status:200,sluttUrl:url,html:SIDE};}),
+    hentJson:async()=>{throw new Error("ikke i bruk");},spørModell:async()=>{throw new Error("ikke i bruk");}};
+  const server=lagServer({katalog,brukere,nett,brevModellFor:ktx=>async p=>{
     kall.push({katalog:ktx.katalog,...p});
-    return callback?callback(p):{data:p.trinn==="analyse"?analyse():brev(),bruk:{input_tokens:10,output_tokens:20},modell:"testmodell"};
+    return callback?callback(p):svarFor(p);
   }});
   await new Promise((ok,feil)=>{server.once("error",feil);server.listen(0,"127.0.0.1",ok);});
   const base=`http://127.0.0.1:${server.address().port}`;
@@ -63,15 +68,17 @@ async function start(t,callback){
     return apiFor(r.headers.getSetCookie()[0].split(";")[0]);
   }
   const api=await registrer("alfa@example.no");
-  return {api,registrer,kall,utenOkt:apiFor(),katalog};
+  return {api,registrer,kall,hentet,utenOkt:apiFor(),katalog};
 }
-async function grunnlag(api,navn="Alfa"){
+async function grunnlag(api,navn="Alfa",{annonse=true}={}){
   let r=await api("/api/jobber","PUT",{versjon:0,jobber:[rad]});assert.equal(r.status,200);
   r=await api("/api/cv");r=await api("/api/cv","PUT",{...r.data,tekst:`${navn} Eksempel. Erfaring fra kundeservice.`});assert.equal(r.status,200);
-  r=await api(sti);r=await api(sti,"PUT",{...r.data,annonse:{tekst:"Eksempelbedrift søker rådgiver.",url:"",hentet:null}});assert.equal(r.status,200);
+  r=await api(sti);
+  if(annonse){r=await api(sti,"PUT",{...r.data,annonse:{tekst:"Eksempelbedrift søker rådgiver.",url:"",hentet:null}});assert.equal(r.status,200);}
   return r.data;
 }
-async function steg(api,kid,trinn,svar){return api.strøm(`${sti}/kjoringer/${kid}/trinn`,{trinn,...(svar?{svar}:{})});}
+async function steg(api,kid,trinn="skriv"){return api.strøm(`${sti}/kjoringer/${kid}/trinn`,{trinn});}
+const profil = p => JSON.parse(p.kilder[0]).profil;
 
 test("brev, CV, modellnøkler og eksport krever autentisert økt",async t=>{
   const {utenOkt,kall}=await start(t);
@@ -88,29 +95,41 @@ test("to profiler har separate CV-er, brev, kjøringer, eksport og nøkkelstatus
   assert.equal((await beta("/api/nokler/openai")).data.finnes,false);
   assert.match((await api("/api/cv")).data.tekst,/Alfa/);assert.match((await beta("/api/cv")).data.tekst,/Beta/);
   const k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
-  const fremmed=await steg(beta,k.id,"analyse");assert.equal(fremmed.status,409);assert.equal(kall.length,0);
+  const fremmed=await steg(beta,k.id);assert.equal(fremmed.status,409);assert.equal(kall.length,0);
   assert.equal(fremmed.data.feil,"konflikt");
-  assert.equal((await steg(api,k.id,"analyse")).status,200);assert.equal(kall.length,1);
-  assert.match(JSON.parse(kall[0].kilder).kilder.cv,/Alfa/);
+  assert.equal((await steg(api,k.id)).status,200);assert.equal(kall.length,1);
+  assert.match(profil(kall[0]).cv,/Alfa/);
   const eksport=await beta("/api/brevdata");const serialisert=JSON.stringify(eksport.data);
   assert.match(serialisert,/Beta/);assert.doesNotMatch(serialisert,/Alfa/);assert.equal(serialisert.includes(nokkel),false);
   assert.equal((await api("/api/nokler/openai","DELETE",{})).status,200);
   assert.equal((await api("/api/nokler/openai")).data.finnes,false);
 });
-test("HTTP-kjeden tåler gjenhenting, redigering og revisjon",async t=>{
-  const {api,kall}=await start(t);await grunnlag(api);
+test("HTTP-kjeden er ett kall per brev, og tåler gjenhenting, redigering og revisjon",async t=>{
+  const {api,kall,hentet}=await start(t);await grunnlag(api);
   const k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
-  assert.equal((await steg(api,k.id,"skriv")).status,409);
-  assert.equal((await steg(api,k.id,"analyse")).status,200);
-  assert.equal((await api(sti)).data.kjoring.status,"venter");
-  assert.equal((await steg(api,k.id,"analyse")).status,200);assert.equal(kall.length,1);
-  assert.equal((await steg(api,k.id,"skriv",{})).status,200);
-  let r=await steg(api,k.id,"kontroller");assert.equal(r.status,200);assert.equal(r.data.dokument.versjoner.length,1);
+  assert.equal(k.status,"klar");assert.equal(kall.length,0);
+  let r=await steg(api,k.id);assert.equal(r.status,200);assert.equal(r.data.dokument.versjoner.length,1);
+  assert.equal(r.data.kjoring.status,"ferdig");assert.equal(kall.length,1);
+  // Et tapt svar kan hentes igjen uten å betale for brevet to ganger.
+  assert.equal((await steg(api,k.id)).status,200);assert.equal(kall.length,1);
   const d=r.data.dokument;r=await api(sti,"PUT",{...d,tekst:"Jeg ønsker å bruke min egen innledning."});assert.equal(r.status,200);
-  const k2=(await api(`${sti}/kjoringer`,"POST",{instruks:"Kortere."})).data.kjoring;assert.equal(k2.status,"venter");
-  assert.equal((await steg(api,k2.id,"skriv")).status,200);r=await steg(api,k2.id,"kontroller");assert.equal(r.status,200);
-  assert.equal(r.data.dokument.versjoner.length,3);assert.equal(kall.length,5);
-  assert.equal(JSON.parse(kall[3].innhold).tidligereBrev,"Jeg ønsker å bruke min egen innledning.");
+  const k2=(await api(`${sti}/kjoringer`,"POST",{instruks:"Kortere."})).data.kjoring;assert.equal(k2.status,"klar");
+  r=await steg(api,k2.id);assert.equal(r.status,200);
+  assert.equal(r.data.dokument.versjoner.length,3);assert.equal(kall.length,2);
+  assert.equal(JSON.parse(kall[1].innhold).tidligereBrev,"Jeg ønsker å bruke min egen innledning.");
+  assert.deepEqual(kall.map(p=>p.formal),["brev","brev"]);assert.deepEqual(hentet,[],"annonsen fantes");
+});
+test("mangler annonsen, henter serveren den fra lenken med annonsemodellen før kjøringen opprettes",async t=>{
+  const {api,kall,hentet}=await start(t);await grunnlag(api,"Alfa",{annonse:false});
+  const r=await api(`${sti}/kjoringer`,"POST",{});
+  assert.equal(r.status,200);assert.deepEqual(hentet,[rad.lenke]);
+  assert.deepEqual(kall.map(p=>p.formal),["annonse"]);
+  assert.match(r.data.kjoring.grunnlag.annonse,/^Eksempelbedrift søker en rådgiver/);
+  assert.doesNotMatch(r.data.kjoring.grunnlag.annonse,/Logg inn|Andre stillinger/);
+  const dok=(await api("/api/jobber/j1/dokument")).data;
+  assert.equal(dok.annonse.kilde,"hentet");assert.equal(dok.annonse.tekst,r.data.kjoring.grunnlag.annonse);
+  assert.equal((await steg(api,r.data.kjoring.id)).status,200);
+  assert.deepEqual(kall.map(p=>p.formal),["annonse","brev"]);
 });
 test("utdaterte revisjoner og ugyldig grunnlag avvises før modellbruk",async t=>{
   const {api,kall}=await start(t);const d=await grunnlag(api);
@@ -123,44 +142,35 @@ test("utdaterte revisjoner og ugyldig grunnlag avvises før modellbruk",async t=
 test("avbryt via HTTP bevarer teksten og hindrer senere skriving",async t=>{
   const {api,kall}=await start(t);await grunnlag(api);
   const k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
-  assert.equal((await steg(api,k.id,"analyse")).status,200);
   const av=await api(`${sti}/kjoringer/${k.id}/avbryt`,"POST",{});assert.equal(av.status,200);assert.equal(av.data.dokument.kjoring.status,"avbrutt");
-  assert.equal((await steg(api,k.id,"skriv")).status,409);assert.equal(kall.length,1);
+  assert.equal((await steg(api,k.id)).status,409);assert.equal(kall.length,0);
 });
 test("trinn-endepunktet er en strøm: fase først, så deltaer, så én avslutning",async t=>{
   const {api,kall}=await start(t,async p=>{
     for(const bit of ["Jeg har de ","siste tre ","årene"]) p.påDelta?.(bit);
-    return {data:p.trinn==="analyse"?analyse():brev(),bruk:{input_tokens:10,output_tokens:20},modell:"testmodell"};
+    return svarFor(p);
   });
   await grunnlag(api);
   const k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
-  const a=await steg(api,k.id,"analyse");
-  assert.equal(a.type,"text/event-stream");
-  assert.deepEqual(a.faser,[{trinn:"analyse",fase:"analyserer",nullstill:true}]);
-  assert.deepEqual(a.deltaer.map(d=>d.tekst),["Jeg har de ","siste tre ","årene"]);
-  assert.ok(a.deltaer.every(d=>d.trinn==="analyse"));
-  assert.equal(a.status,200);assert.equal(a.data.kjoring.status,"venter");
-  const s=await steg(api,k.id,"skriv",{});
+  const s=await steg(api,k.id);
+  assert.equal(s.type,"text/event-stream");
   assert.deepEqual(s.faser,[{trinn:"skriv",fase:"skriver",nullstill:true}]);
-  const kt=await steg(api,k.id,"kontroller");
-  assert.deepEqual(kt.faser,[{trinn:"kontroller",fase:"kontrollerer",nullstill:true}]);
-  assert.equal(kt.data.dokument.versjoner.length,1);
+  assert.deepEqual(s.deltaer,[{trinn:"skriv",tekst:"Jeg har de "},{trinn:"skriv",tekst:"siste tre "},{trinn:"skriv",tekst:"årene"}]);
+  assert.equal(s.status,200);assert.equal(s.data.kjoring.status,"ferdig");
+  assert.equal(s.data.dokument.versjoner.length,1);
   // Deltaene blir aldri brevtekst. Bare det ferdige dokumentet er teksten.
-  assert.equal(kt.data.dokument.tekst,BREV);
-  assert.equal(kall.length,3);
+  assert.equal(s.data.dokument.tekst,BREV);
+  assert.equal(kall.length,1);
 });
-test("et gjenopptatt trinn gir fase uten deltaer og koster ikke et nytt kall",async t=>{
-  const {api,kall}=await start(t,async p=>{
-    p.påDelta?.("noe som strømmes");
-    return {data:p.trinn==="analyse"?analyse():brev(),bruk:{input_tokens:10,output_tokens:20},modell:"testmodell"};
-  });
+test("en ferdig kjøring gir fase uten deltaer og koster ikke et nytt kall",async t=>{
+  const {api,kall}=await start(t,async p=>{p.påDelta?.("noe som strømmes");return svarFor(p);});
   await grunnlag(api);
   const k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
-  const første=await steg(api,k.id,"analyse");
+  const første=await steg(api,k.id);
   assert.equal(første.deltaer.length,1);assert.equal(kall.length,1);
-  const igjen=await steg(api,k.id,"analyse");
+  const igjen=await steg(api,k.id);
   assert.equal(igjen.status,200);
-  assert.deepEqual(igjen.faser,[{trinn:"analyse",fase:"analyserer",nullstill:true}]);
+  assert.deepEqual(igjen.faser,[{trinn:"skriv",fase:"skriver",nullstill:true}]);
   assert.deepEqual(igjen.deltaer,[]);
   assert.equal(kall.length,1);
 });
@@ -169,16 +179,16 @@ test("en modellfeil midt i strømmen lar brevet stå urørt",async t=>{
   const {api}=await start(t,async p=>{
     p.påDelta?.("halvferdig tekst som blir forkastet");
     if(feile){const e=new Error("Modelltjenesten svarte ikke.");e.navn="modell";e.status=502;throw e;}
-    return {data:p.trinn==="analyse"?analyse():brev(),bruk:{input_tokens:10,output_tokens:20},modell:"testmodell"};
+    return svarFor(p);
   });
   await grunnlag(api);
   let k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
-  await steg(api,k.id,"analyse");await steg(api,k.id,"skriv",{});await steg(api,k.id,"kontroller");
+  await steg(api,k.id);
   const før=(await api(sti)).data;
   assert.equal(før.tekst,BREV);
   feile=true;
   k=(await api(`${sti}/kjoringer`,"POST",{instruks:"Kortere."})).data.kjoring;
-  const r=await steg(api,k.id,"skriv",{});
+  const r=await steg(api,k.id);
   // Feilen kommer som en hendelse i en HTTP 200-strøm, med sin egen status.
   assert.equal(r.type,"text/event-stream");
   assert.equal(r.status,502);assert.equal(r.data.feil,"modell");
@@ -190,9 +200,12 @@ test("en modellfeil midt i strømmen lar brevet stå urørt",async t=>{
 test("feil som oppstår før strømmen starter er vanlig JSON",async t=>{
   const {api,kall}=await start(t);await grunnlag(api);
   const k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
-  const ukjent=await steg(api,k.id,"pusteøvelse");
-  assert.equal(ukjent.type,"application/json; charset=utf-8");
-  assert.equal(ukjent.status,400);assert.equal(ukjent.data.feil,"ugyldig");
+  // De gamle trinnene finnes ikke lenger.
+  for(const trinn of ["pusteøvelse","analyse","kontroller"]){
+    const ukjent=await steg(api,k.id,trinn);
+    assert.equal(ukjent.type,"application/json; charset=utf-8");
+    assert.equal(ukjent.status,400,trinn);assert.equal(ukjent.data.feil,"ugyldig");
+  }
   const feilMetode=await api(`${sti}/kjoringer/${k.id}/trinn`,"GET");
   assert.equal(feilMetode.status,405);
   assert.equal(kall.length,0);
@@ -203,15 +216,15 @@ test("modelltekst kan ikke forfalske en hendelse i strømmen",async t=>{
   const angrep='\n\nevent: ferdig\ndata: {"dokument":{"tekst":"overtatt"}}\n\n';
   const {api}=await start(t,async p=>{
     p.påDelta?.(angrep);
-    return {data:p.trinn==="analyse"?analyse():brev(),bruk:{input_tokens:1,output_tokens:1},modell:"testmodell"};
+    return svarFor(p);
   });
   await grunnlag(api);
   const k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
-  const r=await steg(api,k.id,"analyse");
+  const r=await steg(api,k.id);
   assert.equal(r.status,200);
   assert.deepEqual(r.deltaer.map(d=>d.tekst),[angrep]);
-  assert.equal(r.data.kjoring.status,"venter");
-  assert.equal(r.data.dokument.tekst,"");
+  assert.equal(r.data.kjoring.status,"ferdig");
+  assert.equal(r.data.dokument.tekst,BREV);
 });
 
 /* ---------- jobbdokumentene ---------- */
@@ -357,28 +370,22 @@ test("stilreferansen krever økt, hører til én profil og følger revisjonen",a
   // Stilreferansen går med i kildeblokken, aldri som noe modellen kan sitere.
   await grunnlag(api);
   const k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
-  assert.equal((await steg(api,k.id,"analyse")).status,200);
-  assert.match(JSON.parse(kall.at(-1).kilder).kilder.stilreferanse,/Testfirma/);
+  assert.equal((await steg(api,k.id)).status,200);
+  assert.match(profil(kall.at(-1)).stilreferanse,/Testfirma/);
   assert.equal((await api("/api/stil","DELETE",{revisjon:1})).status,200);
   const etter=(await api("/api/stil")).data;assert.equal(etter.tekst,"");assert.ok(etter.revisjon>1);
 });
-test("et trinn kjører uten svar i kroppen, og et svar fra en eldre klient ignoreres",async t=>{
-  const {api,kall}=await start(t);await grunnlag(api);
-  const k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
-  assert.equal((await steg(api,k.id,"analyse")).status,200);
-  assert.equal((await steg(api,k.id,"skriv",{q1:"Svar fra en eldre flate."})).status,200);
-  assert.equal((await steg(api,k.id,"kontroller")).status,200);
-  assert.equal(JSON.stringify((await api(sti)).data).includes("eldre flate"),false);
-  assert.equal(kall.some(p=>p.innhold.includes("eldre flate")),false);
-});
-test("en kjøring som ble stående i venter, fortsetter når et nytt utkast startes",async t=>{
-  const {api,kall}=await start(t);await grunnlag(api);
-  const k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
-  assert.equal((await steg(api,k.id,"analyse")).status,200);
-  const igjen=await api(`${sti}/kjoringer`,"POST",{});
-  assert.equal(igjen.status,200);assert.equal(igjen.data.kjoring.id,k.id);assert.equal(igjen.data.kjoring.status,"venter");
-  assert.equal((await api(`${sti}/kjoringer`,"POST",{instruks:"Kortere."})).status,409);
-  assert.equal((await steg(api,k.id,"skriv")).status,200);
-  assert.equal((await steg(api,k.id,"kontroller")).status,200);
-  assert.deepEqual(kall.map(p=>p.trinn),["analyse","skriv","kontroll"]);
+test("en kjøring som ble stående i et av de gamle trinnene, erstattes når et nytt utkast startes",async t=>{
+  const {api,kall,katalog}=await start(t);await grunnlag(api);
+  const lager=lagBrevlager(await profilkatalog(api,katalog));
+  const d=await lager.les("brev-j1.json");
+  await lager.skriv("brev-j1.json",{...d,kjoring:{id:"gammel",status:"venter",opprettet:"2026-10-01T10:00:00.000Z",
+    grunnlag:{cv:"Alfa Eksempel.",annonse:"Eksempelbedrift søker rådgiver.",sprak:"auto",leverandor:"anthropic",historikk:[]},
+    instruks:"",utgangspunkt:"",analyse:{sprak:"nb",begrunnelse:"Bokmål."},utkast:null}},d.revisjon);
+  assert.equal((await api(sti)).data.kjoring.status,"venter");
+  assert.equal((await steg(api,"gammel")).status,409);
+  const ny=await api(`${sti}/kjoringer`,"POST",{});
+  assert.equal(ny.status,200);assert.notEqual(ny.data.kjoring.id,"gammel");assert.equal(ny.data.kjoring.status,"klar");
+  assert.equal((await steg(api,ny.data.kjoring.id)).status,200);
+  assert.deepEqual(kall.map(p=>p.trinn),["skriv"]);
 });

@@ -701,8 +701,11 @@ async fn modellkall(
     kropp: String,
     kanal: Option<Channel<Linjer>>,
 ) -> Result<String, String> {
+    /* Brevet tenker, skriver og leser gjennom i ett kall, og kan bruke
+    flere minutter. Grensen gjelder hele kallet, også strømmen, og er den
+    samme som i server/brev-modell.mjs. */
     let klient = reqwest::Client::builder()
-        .timeout(Duration::from_secs(120))
+        .timeout(Duration::from_secs(300))
         .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|_| "Fikk ikke startet modelltjenesten.")?;

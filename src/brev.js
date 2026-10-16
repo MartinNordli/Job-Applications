@@ -3,6 +3,7 @@ import * as Økt from "./okt.js";
 import { Brevfeil } from "./brevdata.mjs";
 import { I_APP, bruker, invoke, http, lokaltLager } from "./dokumentklient.js";
 import { lagBrevtjeneste } from "./brevtjeneste.mjs";
+import { lagJobbdokumenter } from "./jobbdokumenttjeneste.mjs";
 import { byggModellkropp, tolkModellsvar } from "./brev-provider.mjs";
 import { delSse, lagSvarsamler, lagFeltstrøm } from "./brev-strom.mjs";
 import { FASE } from "./brevlogikk.mjs";
@@ -113,8 +114,10 @@ export function lokalKallModell(id,sjekk){
 function lokal(){
   const id=bruker();
   if(!tjenestene.has(id)){
-    const {lager,hentJobb,sjekk}=lokaltLager(id);
-    tjenestene.set(id,lagBrevtjeneste({lager,hentJobb,kallModell:lokalKallModell(id,sjekk)}));
+    const {lager,hentJobb,hentJobber,hentSide,sjekk}=lokaltLager(id);
+    // Med hentSide kan brevet hente en annonse som mangler, fra søknadens lenke.
+    tjenestene.set(id,lagBrevtjeneste({lager,hentJobb,kallModell:lokalKallModell(id,sjekk),
+      jobbdokumenter:lagJobbdokumenter({lager,hentJobb,hentJobber,hentSide})}));
   }
   return tjenestene.get(id);
 }
@@ -135,47 +138,36 @@ export const hentStil=()=>I_APP?lokal().hentStil():http("/api/stil");
 export const lagreStil=d=>I_APP?lokal().lagreStil(d):http("/api/stil",{method:"PUT",body:d});
 export const slettStil=revisjon=>I_APP?lokal().slettStil(revisjon):http("/api/stil",{method:"DELETE",body:{revisjon}});
 export const gjenopprettStil=()=>I_APP?lokal().gjenopprettStil():http("/api/stil/gjenopprett",{method:"POST"});
-const opprett=async(id,inn,signal)=>I_APP?lokal().opprett(id,inn):(await http(sti(id)+"/kjoringer",{method:"POST",body:inn,signal})).kjoring;
-/* Fasehendelsen eies av transporten på begge sider. Over HTTP sender serveren
-   den; i appen er det ingen strøm foran oss, så den lages her. Begge veier
-   gjelder det samme: fase alltid først, også når trinnet gjenopptas. */
-function trinn(id,kid,trinnnavn,{signal,melder}){
-  if(!I_APP) return strøm(sti(id)+`/kjoringer/${kid}/trinn`,{body:{trinn:trinnnavn},signal,
+/* Oppretter kjøringen. Mangler annonsen, henter tjenesten den først fra
+   søknadens lenke, så dette kan ta noen sekunder. */
+const opprett=async(id,inn,signal)=>I_APP?lokal().opprett(id,inn,{signal}):(await http(sti(id)+"/kjoringer",{method:"POST",body:inn,signal})).kjoring;
+/* Det ene trinnet, «skriv». Fasehendelsen eies av transporten på begge
+   sider. Over HTTP sender serveren den; i appen er det ingen strøm foran
+   oss, så den lages her. Begge veier gjelder det samme: fase alltid
+   først, også når kjøringen allerede er ferdig. */
+function skriv(id,kid,{signal,melder}){
+  if(!I_APP) return strøm(sti(id)+`/kjoringer/${kid}/trinn`,{body:{trinn:"skriv"},signal,
     påFase:d=>melder.fase(d),påDelta:(tekst,om)=>melder.delta(tekst,om)});
-  melder.fase({trinn:trinnnavn,fase:FASE[trinnnavn],nullstill:true});
-  return lokal().trinn(id,kid,trinnnavn,undefined,{signal,påDelta:tekst=>melder.delta(tekst,{trinn:trinnnavn})});
-}
-/* Resten av en kjøring, fra der den står. Et trinn som allerede er gjort
-   koster ikke et nytt modellkall: tjenesten svarer med det lagrede
-   resultatet, og fasen meldes likevel, så flaten kan merke steget ferdig. */
-async function fullfør(id,k,{signal,melder}){
-  if(!k.analyse)await trinn(id,k.id,"analyse",{signal,melder});
-  if(signal?.aborted)throw new Brevfeil("avbrutt","Skrivingen ble avbrutt.");
-  await trinn(id,k.id,"skriv",{signal,melder});
-  if(signal?.aborted)throw new Brevfeil("avbrutt","Skrivingen ble avbrutt.");
-  return (await trinn(id,k.id,"kontroller",{signal,melder})).dokument;
+  melder.fase({trinn:"skriv",fase:FASE.skriv,nullstill:true});
+  return lokal().trinn(id,kid,"skriv",{signal,påDelta:tekst=>melder.delta(tekst,{trinn:"skriv"})});
 }
 export const avbryt=(id,kid)=>I_APP?lokal().avbryt(id,kid):http(sti(id)+`/kjoringer/${kid}/avbryt`,{method:"POST",body:{}});
-/* Skriv utkast: analyse, skriving og kontroll i ett kall. Fasene kommer
-   i påFase ({trinn, fase, nullstill}) og teksten underveis i påDelta
-   (tekst, {trinn}). Svaret er det ferdige brevdokumentet. Står det en
-   kjøring som ble avbrutt mellom trinnene, fortsetter den der den
-   stoppet i stedet for å starte på nytt. */
-export async function lagUtkast(id,{signal,...meldinger}={}){
+/* Skriv utkast: ett modellkall, med kodekontroll etterpå. Fasen kommer i
+   påFase ({trinn, fase, nullstill}) og teksten underveis i påDelta
+   (tekst, {trinn}). Svaret er det ferdige brevdokumentet. */
+async function kjør(id,inn,{signal,...meldinger}){
   const v=vakt(signal,meldinger);
   let k;
-  try{k=await opprett(id,{},signal);return await fullfør(id,k,{signal,melder:v});}
-  catch(e){if(signal?.aborted&&k)await avbryt(id,k.id).catch(()=>{});throw e;}
+  try{
+    k=await opprett(id,inn,signal);
+    if(signal?.aborted)throw new Brevfeil("avbrutt","Skrivingen ble avbrutt.");
+    return (await skriv(id,k.id,{signal,melder:v})).dokument;
+  }catch(e){if(signal?.aborted&&k)await avbryt(id,k.id).catch(()=>{});throw e;}
   finally{v.steng();}
 }
+export const lagUtkast=(id,valg={})=>kjør(id,{},valg);
 /* Lag ny versjon ut fra teksten som står nå og brukerens instruks. */
-export async function forbedre(id,instruks,{signal,...meldinger}={}){
-  const v=vakt(signal,meldinger);
-  let k;
-  try{k=await opprett(id,{instruks},signal);return await fullfør(id,k,{signal,melder:v});}
-  catch(e){if(signal?.aborted&&k)await avbryt(id,k.id).catch(()=>{});throw e;}
-  finally{v.steng();}
-}
+export const forbedre=(id,instruks,valg={})=>kjør(id,{instruks},valg);
 export const nokkelStatus=leverandor=>I_APP?invoke("brev_nokkel_status",{bruker:bruker(),leverandor}):http(`/api/nokler/${leverandor}`);
 export const settNokkel=(leverandor,nokkel)=>I_APP?invoke("brev_nokkel_sett",{bruker:bruker(),leverandor,nokkel}):http(`/api/nokler/${leverandor}`,{method:"PUT",body:{nokkel}});
 export const slettNokkel=leverandor=>I_APP?invoke("brev_nokkel_slett",{bruker:bruker(),leverandor}):http(`/api/nokler/${leverandor}`,{method:"DELETE"});

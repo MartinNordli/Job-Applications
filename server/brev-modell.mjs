@@ -7,7 +7,9 @@ import { validerNokkel, hale } from "../src/brukerlogikk.mjs";
 import { leverandorFor, byggModellkropp, tolkModellsvar } from "../src/brev-provider.mjs";
 import { delSse, lagSvarsamler, lagFeltstrøm } from "../src/brev-strom.mjs";
 
-const TIDSGRENSE = 120_000;
+/* Brevet tenker, skriver og leser gjennom i ett kall, og kan bruke
+   flere minutter. Tidsgrensen gjelder hele kallet, også strømmen. */
+const TIDSGRENSE = 300_000;
 const MAKS_SVAR = 2 * 1024 * 1024;
 
 export class BrevModellfeil extends Error {
@@ -118,7 +120,7 @@ export function lagBrevModell({ katalog, tillatMiljø = false, fetch: hent = glo
       return tolkModellsvar(leverandor, raa);
     }catch(e){
       if(signal?.aborted) throw new BrevModellfeil("avbrutt", "Genereringen ble avbrutt.", 499);
-      if(avbryt.signal.aborted) throw new BrevModellfeil("tidsavbrudd", "Modellen svarte ikke innen to minutter. Prøv igjen.", 504);
+      if(avbryt.signal.aborted) throw new BrevModellfeil("tidsavbrudd", "Modellen svarte ikke innen fem minutter. Prøv igjen.", 504);
       if(e instanceof BrevModellfeil || e?.navn === "modellformat") throw e;
       throw new BrevModellfeil("modell", "Fikk ikke kontakt med modelltjenesten. Prøv igjen.");
     }finally{

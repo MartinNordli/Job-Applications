@@ -2,27 +2,36 @@
    Brevtjenesten: CV, stilreferanse, brev og kjøringene som skriver
    dem. HTTP-rutene og appen bruker den samme kjeden.
 
-   En kjøring går gjennom tre trinn: analyse (klar → analyserer →
-   venter), skriving (venter → skriver → skrevet) og kontroll
-   (skrevet → kontrollerer → ferdig). Tilstandsnavnene er de samme som
-   da brevskriveren stilte spørsmål, så gamle dokumenter leses som før.
-   «venter» betyr nå bare at analysen er ferdig og skrivingen er neste.
+   En kjøring er klar → skriver → ferdig, og skrivingen er ett
+   modellkall (skrivBrev i src/brevlogikk.mjs). Den kan også ende som
+   avbrutt eller feilet. «klar» betyr at grunnlaget er samlet og at
+   ingenting er betalt ennå.
+
+   Kjøringer fra brev-4 og eldre gikk gjennom analyse, skriving og
+   kontroll, med tilstandene analyserer, venter, skrevet og
+   kontrollerer. Ingen av dem kan fortsettes nå. En slik kjøring står
+   ikke i veien: neste «Skriv utkast» erstatter den med en ny. Gamle
+   versjoner med analyse og tre bruksoppføringer leses og vises som før.
 
    Annonsen hentes fra jobb-<id>.json gjennom annonseFor, ett sted for
    søknaden. Har jobbdokumentet aldri hatt en annonse, flytter
    annonseFor annonsen fra brevdokumentet over én gang (se
    src/jobbdokumenttjeneste.mjs), så brev fra før jobbdokumentet
-   fantes, virker uten at noe gjøres.
+   fantes, virker uten at noe gjøres. Mangler annonsen, men søknaden
+   har en lenke, hentes den før kjøringen opprettes: siden hentes,
+   modellen for formålet «annonse» velger linjene som hører til
+   annonsen (src/annonseuttrekk.mjs), og annonsen lagres i
+   jobbdokumentet før brevet bruker den. Det skjer bare når brukeren
+   har bedt om et brev.
    ============================================================ */
 import { Brevfeil, brevfil, validerCv, validerStil, validerBrev, validerDokument, harInnhold } from "./brevdata.mjs";
 import { dokumenttype } from "./dokumentnavn.mjs";
-import { analyserGrunnlag, skrivUtkast, kontrollerUtkast, validerGrunnlag, PROMPTVERSJON, FASE } from "./brevlogikk.mjs";
+import { skrivBrev, validerGrunnlag, PROMPTVERSJON, FASE } from "./brevlogikk.mjs";
+import { velgAnnonse } from "./annonseuttrekk.mjs";
 import { SEKTORER, JOBBTYPER } from "./felles.mjs";
 import { lagJobbdokumenter } from "./jobbdokumenttjeneste.mjs";
 
-const aktive = new Set(Object.values(FASE));
-/* Ikke i gang, men heller ikke ferdig. En slik kjøring kan fortsettes. */
-const VENTENDE = new Set(["klar","venter","skrevet"]);
+const SKRIVER = FASE.skriv;
 const klon = v => structuredClone(v);
 const tidspunkt = () => new Date().toISOString();
 /* Det modellen får vite om søknaden fra listen. Kodene blir til ord. */
@@ -32,19 +41,18 @@ const jobbfelt = j => ({ selskap:j?.selskap??"",stilling:j?.stilling??"",sted:j?
 const likt = (a,b) => JSON.stringify(a??null) === JSON.stringify(b??null);
 const sammeKilder = (a,b) => ["cv","annonse","sprak","leverandor"].every(k => String(a?.[k]??"").trim() === String(b?.[k]??"").trim())
   && likt(a?.jobb,b?.jobb);
+const erNettlenke = v => typeof v === "string" && /^https?:\/\//i.test(v.trim());
+const MANGLER_ANNONSE = "Søknaden mangler annonsen. Hent den eller lim den inn før du skriver brevet.";
 
 const SIKKERHETSKOPI = 3;
 const TYPER_I_KOPI = { 1:["cv","brev"], 2:["cv","brev","jobb","radar"], 3:["cv","stil","brev","jobb","radar"] };
 
-/* annonseFor(jobbId) gir annonseteksten for søknaden, eller tom tekst.
-   Den er injisert så annonsen kan komme fra et annet sted uten at
-   tjenesten endres. Et objekt med tekst godtas også. */
-export function lagBrevtjeneste({lager,kallModell,hentJobb,annonseFor,lagId = () => crypto.randomUUID()}){
-  const finnAnnonse = annonseFor ?? lagJobbdokumenter({lager,hentJobb}).annonseFor;
-  async function annonsen(id){
-    const a = await finnAnnonse(id);
-    return typeof a === "string" ? a : (typeof a?.tekst === "string" ? a.tekst : "");
-  }
+/* jobbdokumenter er tjenesten fra src/jobbdokumenttjeneste.mjs, med
+   hentSide og taket for henting satt opp av den som kaller. Uten den
+   lages en som bare kan lese annonsen, ikke hente den. */
+export function lagBrevtjeneste({lager,kallModell,hentJobb,jobbdokumenter,lagId = () => crypto.randomUUID()}){
+  const jd = jobbdokumenter ?? lagJobbdokumenter({lager,hentJobb});
+  const annonsen = async id => (await jd.annonseFor(id))?.tekst ?? "";
   /* Kildene slik de er nå, i samme form som et grunnlag. */
   const gjeldende = (d,{cv,jobb,fraJobb}) => ({ cv:cv.tekst,annonse:fraJobb,jobb:jobbfelt(jobb),sprak:d.sprak,leverandor:d.leverandor });
   const avbrudd = new Map();
@@ -75,32 +83,44 @@ export function lagBrevtjeneste({lager,kallModell,hentJobb,annonseFor,lagId = ()
     d.kjoring = før.kjoring;
     return lager.skriv(brevfil(id),d,inn.revisjon);
   }
+  /* Henter annonsen fra søknadens lenke og lagrer den i jobbdokumentet.
+     Gir teksten og det uttrekket kostet. */
+  async function hentManglendeAnnonse(id,jobb,{leverandor,signal}){
+    if(!erNettlenke(jobb.lenke) || typeof jd.hentAnnonse!=="function") throw new Brevfeil("ugyldig-grunnlag",MANGLER_ANNONSE);
+    let uttrekk=null;
+    const dok=await jd.hentAnnonse(id,{velg:async(tekst,j)=>{
+      const v=await velgAnnonse(tekst,{kallModell,leverandor,jobb:jobbfelt(j),signal});
+      if(v.bruk||v.modell)uttrekk={modell:v.modell,bruk:v.bruk};
+      return v.tekst;
+    }});
+    signal?.throwIfAborted();
+    return {tekst:dok?.annonse?.tekst??"",uttrekk};
+  }
   /* Uten instruks er dette «Skriv utkast», med instruks «Lag ny versjon».
-     Står det en ventende kjøring for den samme forespørselen, fortsetter
-     den i stedet for å starte på nytt: en kjøring som ble stående i
-     «venter» går da rett til skriving, og ingen betaler for analysen
-     to ganger. En kjøring som er i gang, eller som ble startet for en
-     annen forespørsel, må avbrytes først. */
-  async function opprett(id,{instruks=""}={}){
+     Grunnlaget samles på nytt hver gang, så brevet skrives fra kildene
+     slik de er nå. En kjøring som skriver, må avbrytes først. Alt annet
+     erstattes: en kjøring i «klar» har ikke kostet noe, og kjøringer fra
+     de gamle trinnene kan ikke fortsettes. */
+  async function opprett(id,{instruks=""}={},{signal}={}){
     const jobb = await sjekkJobb(id);
     if(typeof instruks!=="string" || instruks.length>4000) throw new Brevfeil("ugyldig","Forbedringsinstruksjonen kan ha høyst 4 000 tegn.");
-    // Å fortsette endrer ingenting, så det skrives heller ingenting.
-    const før = (await les(id)).kjoring;
-    if(VENTENDE.has(før?.status) && (før.instruks||"")===instruks) return klon(før);
-    const [cv,stil,fraJobb] = await Promise.all([hentCv(),hentStil(),annonsen(id)]);
+    const før = await les(id);
+    const opptatt = k => k?.status===SKRIVER;
+    // Sjekkes før annonsen hentes, så ingen betaler for et uttrekk som ikke brukes.
+    if(opptatt(før.kjoring)) throw new Brevfeil("opptatt","Et utkast er allerede under arbeid. Avbryt det før du starter på nytt.",409);
+    const [cv,stil] = await Promise.all([hentCv(),hentStil()]);
+    if(!cv.tekst.trim()) throw new Brevfeil("ugyldig-grunnlag","Legg til CV-en din før du skriver brevet.");
+    let fraJobb = await annonsen(id), uttrekk = null;
+    if(!fraJobb.trim()) ({tekst:fraJobb,uttrekk} = await hentManglendeAnnonse(id,jobb,{leverandor:før.leverandor,signal}));
+    if(!fraJobb.trim()) throw new Brevfeil("ugyldig-grunnlag",MANGLER_ANNONSE);
     let kjørt;
     await endre(id,d => {
-      const k = d.kjoring;
-      if(aktive.has(k?.status) || VENTENDE.has(k?.status)) throw new Brevfeil("opptatt","Et utkast er allerede under arbeid. Avbryt det før du starter på nytt.",409);
-      const kilder = gjeldende(d,{cv,jobb,fraJobb});
-      if(!kilder.cv.trim()) throw new Brevfeil("ugyldig-grunnlag","Legg til CV-en din før du skriver brevet.");
-      if(!kilder.annonse.trim()) throw new Brevfeil("ugyldig-grunnlag","Søknaden mangler annonsen. Hent den eller lim den inn før du skriver brevet.");
+      if(opptatt(d.kjoring)) throw new Brevfeil("opptatt","Et utkast er allerede under arbeid. Avbryt det før du starter på nytt.",409);
       const aktivVersjon=d.versjoner.find(v=>v.id===d.aktivVersjon);
       const historikk=instruks?(aktivVersjon?.historikk||[]):[];
-      const grunnlag = validerGrunnlag({...kilder,historikk,stilreferanse:stil.tekst});
-      const avstamning=aktivVersjon?.analyse?aktivVersjon:(k?.resultatId===d.aktivVersjon?k:null);
-      const gjenbruk = !!instruks && avstamning?.analyse && sammeKilder(avstamning.grunnlag,grunnlag);
-      kjørt = {id:lagId(),status:gjenbruk?"venter":"klar",opprettet:tidspunkt(),grunnlag,cvRevisjon:cv.revisjon,utgangspunkt:d.tekst,instruks,analyse:gjenbruk?avstamning.analyse:null,utkast:null};
+      const grunnlag = validerGrunnlag({...gjeldende(d,{cv,jobb,fraJobb}),historikk,stilreferanse:stil.tekst});
+      kjørt = {id:lagId(),status:"klar",opprettet:tidspunkt(),grunnlag,cvRevisjon:cv.revisjon,utgangspunkt:d.tekst,instruks,
+        ...(uttrekk?{annonseuttrekk:uttrekk}:{})};
       d.kjoring = kjørt;
       return d;
     });
@@ -113,24 +133,19 @@ export function lagBrevtjeneste({lager,kallModell,hentJobb,annonseFor,lagId = ()
       return d;
     });
   }
-  /* Det fjerde argumentet var svarene på avklaringsspørsmålene. Det
-     tas fortsatt imot, så en eldre klient ikke feiler, men brukes ikke. */
-  async function trinn(id,kid,trinnnavn,_svar, {signal,påDelta}={}){
+  /* Skriver brevet for en kjøring i «klar». Det eneste trinnet heter
+     «skriv». Er kjøringen allerede ferdig, gis resultatet tilbake uten
+     et nytt modellkall, så et tapt HTTP-svar kan hentes igjen. */
+  async function trinn(id,kid,trinnnavn,{signal,påDelta}={}){
     await sjekkJobb(id);
-    const ventet = {analyse:"klar",skriv:"venter",kontroller:"skrevet"};
-    const status = FASE;
-    if(!ventet[trinnnavn]) throw new Brevfeil("ugyldig","Ukjent skrivetrinn.");
+    if(!Object.hasOwn(FASE,trinnnavn)) throw new Brevfeil("ugyldig","Ukjent skrivetrinn.");
     let k;
     const nå = await les(id);
     if(nå.kjoring?.id!==kid) throw new Brevfeil("konflikt","Kjøringen finnes ikke lenger.",409);
     if(nå.kjoring.status==="ferdig")return {kjoring:nå.kjoring,dokument:nå};
-    // Et tapt HTTP-svar kan hentes igjen uten å gjenta modellkallet.
-    if(trinnnavn==="analyse" && nå.kjoring.analyse) return {kjoring: nå.kjoring,dokument:nå};
-    if(trinnnavn==="skriv" && nå.kjoring.utkast) return {kjoring:nå.kjoring,dokument:nå};
-    if(trinnnavn==="kontroller" && nå.kjoring.status==="ferdig") return {kjoring:nå.kjoring,dokument:nå};
     await endre(id,d => {
-      if(d.kjoring?.id!==kid || d.kjoring.status!==ventet[trinnnavn]) throw new Brevfeil("opptatt","Dette skrivetrinnet er allerede startet eller avbrutt.",409);
-      d.kjoring.status=status[trinnnavn];
+      if(d.kjoring?.id!==kid || d.kjoring.status!=="klar") throw new Brevfeil("opptatt","Dette utkastet er allerede startet eller avbrutt.",409);
+      d.kjoring.status=SKRIVER;
       k=klon(d.kjoring); return d;
     });
     const controller = new AbortController();
@@ -139,37 +154,35 @@ export function lagBrevtjeneste({lager,kallModell,hentJobb,annonseFor,lagId = ()
     if(signal?.aborted) controller.abort();
     signal?.addEventListener("abort",av,{once:true});
     try{
-      let resultat;
       // Deltaene går bare til den som kaller. Ingen av dem rører dokumentet:
-      // kontrollen kan forkaste en tekst som allerede er strømmet ferdig.
-      const valg = {kallModell,signal:controller.signal,...(typeof påDelta==="function"?{påDelta}:{})};
-      if(trinnnavn==="analyse") resultat=await analyserGrunnlag(k.grunnlag,valg);
-      if(trinnnavn==="skriv") resultat=await skrivUtkast(k.grunnlag,k.analyse,{...valg,tekst:k.utgangspunkt,instruks:k.instruks});
-      if(trinnnavn==="kontroller") resultat=await kontrollerUtkast(k.grunnlag,k.analyse,k.utkast,valg);
+      // kodekontrollen kan forkaste en tekst som allerede er strømmet ferdig.
+      const resultat=await skrivBrev(k.grunnlag,{kallModell,signal:controller.signal,tekst:k.utgangspunkt,instruks:k.instruks,
+        ...(typeof påDelta==="function"?{påDelta}:{})});
       if(controller.signal.aborted) throw new Brevfeil("avbrutt","Skrivingen ble avbrutt.",409);
       // Kildene slik de er nå, for å se om brukeren har endret noe mens modellen skrev.
-      const nå = trinnnavn==="kontroller" ? {cv:await hentCv(),jobb:await hentJobb(id),fraJobb:await annonsen(id)} : null;
+      const kilder = {cv:await hentCv(),jobb:await hentJobb(id),fraJobb:await annonsen(id)};
       const dokument = await endre(id,d => {
-        if(d.kjoring?.id!==kid || d.kjoring.status!==status[trinnnavn]) throw new Brevfeil("avbrutt","Kjøringen er avbrutt. Eksisterende brev er beholdt.",409);
-        if(trinnnavn==="analyse"){ d.kjoring.analyse=resultat; d.kjoring.status="venter"; }
-        if(trinnnavn==="skriv"){ d.kjoring.utkast=resultat; d.kjoring.status="skrevet"; }
-        if(trinnnavn==="kontroller"){
-          if(d.versjoner.length>=99) throw new Brevfeil("for-mange","Eksporter og rydd historikken før du lager flere versjoner.");
-          // Bevar den manuelle teksten også når ingen generert versjon inneholder den.
-          if(d.tekst && !d.versjoner.some(v=>v.tekst===d.tekst)) d.versjoner.push({...d.versjoner.find(v=>v.id===d.aktivVersjon),id:lagId(),tekst:d.tekst,opprettet:tidspunkt(),sprak:d.kjoring.analyse.sprak,manuell:true});
-          const v={id:lagId(),tekst:resultat.tekst,sprak:resultat.sprak,opprettet:tidspunkt(),grunnlag:k.grunnlag,analyse:k.analyse,instruks:k.instruks,historikk:[...(k.grunnlag.historikk||[]),...(k.instruks?[k.instruks]:[])],leverandor:k.grunnlag.leverandor,modell:resultat.modell || k.analyse.modell,promptversjon:PROMPTVERSJON,merknader:resultat.merknader || [],bruk:[k.analyse.bruk,k.utkast.bruk,resultat.bruk].filter(Boolean)};
-          d.versjoner.push(v);
-          const uendret=d.tekst===k.utgangspunkt && sammeKilder(gjeldende(d,nå),k.grunnlag);
-          if(uendret){d.tekst=v.tekst;d.aktivVersjon=v.id;}
-          d.kjoring.status="ferdig";d.kjoring.resultatId=v.id;d.kjoring.nyttForslag=!uendret;
-          d.kjoring.utkast=null;
+        if(d.kjoring?.id!==kid || d.kjoring.status!==SKRIVER) throw new Brevfeil("avbrutt","Kjøringen er avbrutt. Eksisterende brev er beholdt.",409);
+        if(d.versjoner.length>=99) throw new Brevfeil("for-mange","Eksporter og rydd historikken før du lager flere versjoner.");
+        // Bevar den manuelle teksten også når ingen generert versjon inneholder den.
+        if(d.tekst && !d.versjoner.some(v=>v.tekst===d.tekst)){
+          const aktiv=d.versjoner.find(v=>v.id===d.aktivVersjon);
+          d.versjoner.push({...aktiv,id:lagId(),tekst:d.tekst,opprettet:tidspunkt(),sprak:aktiv?.sprak??resultat.sprak,manuell:true});
         }
+        const v={id:lagId(),tekst:resultat.tekst,sprak:resultat.sprak,opprettet:tidspunkt(),grunnlag:k.grunnlag,instruks:k.instruks,
+          historikk:[...(k.grunnlag.historikk||[]),...(k.instruks?[k.instruks]:[])],leverandor:k.grunnlag.leverandor,modell:resultat.modell,
+          promptversjon:PROMPTVERSJON,merknader:resultat.merknader||[],bruk:[resultat.bruk].filter(Boolean),
+          ...(k.annonseuttrekk?{annonseuttrekk:k.annonseuttrekk}:{})};
+        d.versjoner.push(v);
+        const uendret=d.tekst===k.utgangspunkt && sammeKilder(gjeldende(d,kilder),k.grunnlag);
+        if(uendret){d.tekst=v.tekst;d.aktivVersjon=v.id;}
+        d.kjoring.status="ferdig";d.kjoring.resultatId=v.id;d.kjoring.nyttForslag=!uendret;
         return d;
       });
       return {kjoring:dokument.kjoring,dokument};
     }catch(e){
       await endre(id,d => {
-        if(d.kjoring?.id===kid && d.kjoring.status===status[trinnnavn]){
+        if(d.kjoring?.id===kid && d.kjoring.status===SKRIVER){
           d.kjoring.status=controller.signal.aborted?"avbrutt":"feilet";
           d.kjoring.feil={code:e.code||"modellfeil",melding:e.message||"Modellen svarte ikke."};
         }

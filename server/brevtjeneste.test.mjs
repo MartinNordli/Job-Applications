@@ -5,51 +5,60 @@ import os from "node:os";
 import path from "node:path";
 import { lagBrevlager } from "./brevlager.mjs";
 import { lagBrevtjeneste } from "../src/brevtjeneste.mjs";
+import { lagJobbdokumenter } from "../src/jobbdokumenttjeneste.mjs";
 
-/* Syntetiske personer og selskaper. */
-const a = () => ({ sprak:"nb",begrunnelse:"Annonsens språk.",kontaktperson:"",krav:[],bevis:[],virksomhet:[],uklarheter:[],merknader:[],maAvklares:false });
+/* Syntetiske personer, selskaper og sider. */
 const BREV = "Til rekrutteringsteamet i Eksempel AS,\n\nJeg søker stillingen som kunderådgiver.\n\nMed vennlig hilsen\nKari Eksempel";
-const b = (tekst=BREV) => ({tekst,sprak:"nb",merknader:[],pastander:[],maAvklares:false});
-const modell = async p => ({data:p.trinn==="analyse"?a():b(),bruk:{input_tokens:10,output_tokens:20},modell:"syntetisk-modell"});
+const b = (tekst=BREV) => ({sprak:"nb",tekst,pastander:[],merknader:[],maAvklares:false});
+/* Siden annonsen hentes fra: meny og bunntekst rundt selve annonsen. */
+const ANNONSELINJER = ["Eksempel AS søker en kunderådgiver til kontoret i Oslo.","Du vil svare kunder på telefon og chat, og følge opp saker til de er løst.",
+  "Vi ser etter deg som har erfaring fra kundeservice og liker å forklare ting enkelt.","Søknadsfrist er 1. desember. Kontaktperson er Per Eksempel."];
+const SIDE = `<html><body><nav>Meny</nav><main><p>Logg inn</p><p>Godta informasjonskapsler</p>${ANNONSELINJER.map(l=>`<p>${l}</p>`).join("")}<p>Andre stillinger: Lagermedarbeider</p></main></body></html>`;
+const uttrekk = {erAnnonse:true,behold:[{fra:3,til:6}]};
+const modell = async p => ({data:p.formal==="annonse"?uttrekk:b(),bruk:{input_tokens:10,output_tokens:20},modell:p.formal==="annonse"?"syntetisk-haiku":"syntetisk-modell"});
 const vent = () => {let slipp;const promise=new Promise(r=>{slipp=r;});return {promise,slipp};};
-const kilder = p => JSON.parse(p.kilder).kilder;
-const RAD = {id:"j1",stilling:"Kunderådgiver",selskap:"Eksempel AS",sted:"Oslo",jobbtype:"fulltid",sektor:"finans",notat:"Privat: ring Per."};
-async function oppsett(t, callback=modell, ekstra={}){
+const soknad = p => JSON.parse(p.kilder[1]).soknad;
+const RAD = {id:"j1",stilling:"Kunderådgiver",selskap:"Eksempel AS",sted:"Oslo",jobbtype:"fulltid",sektor:"finans",notat:"Privat: ring Per.",lenke:""};
+async function oppsett(t, callback=modell, {annonse="Eksempel AS søker kunderådgiver.",lenke="",hentSide}={}){
   const katalog=await fs.mkdtemp(path.join(os.tmpdir(),"brev-tjeneste-test-"));
   t.after(()=>fs.rm(katalog,{recursive:true,force:true}));
-  const lager=lagBrevlager(katalog),kall=[];let id=0;
-  const rad={...RAD};
-  const lag=()=>lagBrevtjeneste({lager,hentJobb:async id=>id==="j1"?rad:null,
-    lagId:()=>`id${++id}`,kallModell:async p=>{kall.push(p);return callback(p);},...ekstra});
+  const lager=lagBrevlager(katalog),kall=[],hentet=[];let id=0;
+  const rad={...RAD,lenke};
+  const hentJobb=async id=>id==="j1"?rad:null;
+  const side=hentSide??(async url=>{hentet.push(url);return {status:200,sluttUrl:url,html:SIDE};});
+  const lag=()=>lagBrevtjeneste({lager,hentJobb,lagId:()=>`id${++id}`,kallModell:async p=>{kall.push(p);return callback(p);},
+    jobbdokumenter:lagJobbdokumenter({lager,hentJobb,hentSide:side})});
   const tjeneste=lag();
   await tjeneste.lagreCv({...await tjeneste.hentCv(),tekst:"Kari Eksempel. Erfaring fra kundeservice."});
-  await tjeneste.lagreBrev("j1",{...await tjeneste.hentBrev("j1"),annonse:{tekst:"Eksempel AS søker kunderådgiver.",url:"",hentet:null}});
-  return {tjeneste,lager,kall,lag,katalog,rad};
+  if(annonse) await tjeneste.lagreBrev("j1",{...await tjeneste.hentBrev("j1"),annonse:{tekst:annonse,url:"",hentet:null}});
+  return {tjeneste,lager,kall,hentet,lag,katalog,rad};
 }
-async function generer(tjeneste){
+async function generer(tjeneste,inn){
+  const k=await tjeneste.opprett("j1",inn);
+  return tjeneste.trinn("j1",k.id,"skriv");
+}
+test("ett modellkall per brev, og manuell redigering og ny versjon gir bevarte versjoner",async t=>{
+  const {tjeneste,kall,hentet}=await oppsett(t);
   const k=await tjeneste.opprett("j1");
-  await tjeneste.trinn("j1",k.id,"analyse");
-  await tjeneste.trinn("j1",k.id,"skriv");
-  return tjeneste.trinn("j1",k.id,"kontroller");
-}
-test("hele kjeden, manuell redigering og revisjon gir bevarte versjoner",async t=>{
-  const {tjeneste,kall}=await oppsett(t);
-  const ferdig=await generer(tjeneste);
+  assert.equal(k.status,"klar");assert.equal(kall.length,0,"å opprette koster ingenting");
+  const ferdig=await tjeneste.trinn("j1",k.id,"skriv");
   assert.equal(ferdig.kjoring.status,"ferdig");assert.equal(ferdig.dokument.versjoner.length,1);
-  assert.deepEqual(kall.map(p=>p.trinn),["analyse","skriv","kontroll"]);
-  const promptversjon = ferdig.dokument.versjoner[0].promptversjon;
-  assert.equal(promptversjon,"brev-4");
-  assert.ok(kall.every(p=>p.system.includes(`Promptversjon: ${promptversjon}`)));
-  assert.equal(Object.hasOwn(ferdig.dokument.versjoner[0],"svar"),false);
+  assert.deepEqual(kall.map(p=>[p.trinn,p.formal]),[["skriv","brev"]]);
+  assert.deepEqual(hentet,[],"annonsen fantes, så ingenting ble hentet");
+  const v=ferdig.dokument.versjoner[0];
+  assert.equal(v.promptversjon,"brev-5");assert.equal(v.modell,"syntetisk-modell");
+  assert.deepEqual(v.bruk,[{input_tokens:10,output_tokens:20}]);
+  for(const felt of ["analyse","svar","annonseuttrekk"]) assert.equal(Object.hasOwn(v,felt),false,felt);
+  assert.ok(kall[0].system.includes("Promptversjon: brev-5"));
+  assert.equal(ferdig.dokument.tekst,BREV);
   const manuell=await tjeneste.lagreBrev("j1",{...ferdig.dokument,tekst:"Min egen innledning og mitt eget språk."});
   const ny=await tjeneste.opprett("j1",{instruks:"Gjør brevet kortere."});
-  assert.equal(ny.status,"venter");assert.equal(Object.hasOwn(ny,"svar"),false);
-  await tjeneste.trinn("j1",ny.id,"skriv");
-  const etter=await tjeneste.trinn("j1",ny.id,"kontroller");
+  assert.equal(ny.status,"klar");
+  const etter=await tjeneste.trinn("j1",ny.id,"skriv");
   assert.equal(etter.dokument.versjoner.length,3);
   assert.ok(etter.dokument.versjoner.some(v=>v.manuell&&v.tekst===manuell.tekst));
-  assert.equal(JSON.parse(kall[3].innhold).tidligereBrev,manuell.tekst);
-  assert.deepEqual(kall.map(p=>p.trinn),["analyse","skriv","kontroll","skriv","kontroll"]);
+  assert.equal(JSON.parse(kall[1].innhold).tidligereBrev,manuell.tekst);
+  assert.equal(kall.length,2);
 });
 test("utdatert lagring gir konflikt uten å endre gjeldende tekst",async t=>{
   const {tjeneste}=await oppsett(t);const d=await tjeneste.hentBrev("j1");
@@ -57,81 +66,73 @@ test("utdatert lagring gir konflikt uten å endre gjeldende tekst",async t=>{
   await assert.rejects(tjeneste.lagreBrev("j1",{...d,tekst:"Gammel fane."}),{code:"konflikt"});
   assert.equal((await tjeneste.hentBrev("j1")).tekst,"Den nye teksten.");
 });
-test("manuelle endringer under QA bevares og resultatet blir et nytt forslag",async t=>{
+test("manuelle endringer mens modellen skriver bevares, og resultatet blir et nytt forslag",async t=>{
   const startet=vent(),slipp=vent();
-  const {tjeneste}=await oppsett(t,async p=>{if(p.trinn==="kontroll"){startet.slipp();await slipp.promise;}return modell(p);});
-  const k=await tjeneste.opprett("j1");await tjeneste.trinn("j1",k.id,"analyse");await tjeneste.trinn("j1",k.id,"skriv");
-  const arbeid=tjeneste.trinn("j1",k.id,"kontroller");await startet.promise;
+  const {tjeneste}=await oppsett(t,async p=>{startet.slipp();await slipp.promise;return modell(p);});
+  const k=await tjeneste.opprett("j1");
+  const arbeid=tjeneste.trinn("j1",k.id,"skriv");await startet.promise;
+  assert.equal((await tjeneste.hentBrev("j1")).kjoring.status,"skriver");
   await tjeneste.lagreBrev("j1",{...await tjeneste.hentBrev("j1"),tekst:"Manuell tekst skrevet mens modellen arbeider."});
   slipp.slipp();const r=await arbeid;
   assert.equal(r.dokument.tekst,"Manuell tekst skrevet mens modellen arbeider.");
   assert.equal(r.kjoring.nyttForslag,true);assert.equal(r.dokument.versjoner.length,2);
 });
-test("avbryt stanser videre trinn og et sent svar overskriver ikke brevet",async t=>{
+test("avbryt stanser skrivingen, og et sent svar overskriver ikke brevet",async t=>{
   const startet=vent(),slipp=vent();
   const {tjeneste,kall}=await oppsett(t,async p=>{startet.slipp();await slipp.promise;return modell(p);});
-  const k=await tjeneste.opprett("j1");const arbeid=tjeneste.trinn("j1",k.id,"analyse");
+  const k=await tjeneste.opprett("j1");const arbeid=tjeneste.trinn("j1",k.id,"skriv");
   const avvist=assert.rejects(arbeid);await startet.promise;
   await tjeneste.avbryt("j1",k.id);slipp.slipp();await avvist;
-  assert.equal((await tjeneste.hentBrev("j1")).kjoring.status,"avbrutt");
+  const d=await tjeneste.hentBrev("j1");
+  assert.equal(d.kjoring.status,"avbrutt");assert.equal(d.versjoner.length,0);assert.equal(d.tekst,"");
   await assert.rejects(tjeneste.trinn("j1",k.id,"skriv"),{code:"opptatt"});assert.equal(kall.length,1);
 });
-test("påDelta føres til modellkallet med riktig felt, og aldri inn i dokumentet",async t=>{
-  const {tjeneste,kall}=await oppsett(t,async p=>{
-    p.påDelta?.("forhåndsvisning som aldri skal lagres");
-    return modell(p);
-  });
+test("påDelta føres til modellkallet med feltet tekst, og aldri inn i dokumentet",async t=>{
+  const {tjeneste,kall}=await oppsett(t,async p=>{p.påDelta?.("forhåndsvisning som aldri skal lagres");return modell(p);});
   const deltaer=[];
   const k=await tjeneste.opprett("j1");
-  const påDelta=(tekst)=>deltaer.push(tekst);
-  await tjeneste.trinn("j1",k.id,"analyse",{},{påDelta});
-  await tjeneste.trinn("j1",k.id,"skriv",{},{påDelta});
-  const r=await tjeneste.trinn("j1",k.id,"kontroller",{},{påDelta});
-  assert.deepEqual(kall.map(p=>p.felt),["begrunnelse","tekst","tekst"]);
-  assert.equal(deltaer.length,3);
-  // Bare den oppfylte returverdien blir brevtekst. Deltaene finnes ikke i dokumentet.
+  const r=await tjeneste.trinn("j1",k.id,"skriv",{påDelta:tekst=>deltaer.push(tekst)});
+  assert.deepEqual(kall.map(p=>p.felt),["tekst"]);assert.equal(deltaer.length,1);
   assert.equal(r.dokument.tekst,BREV);
   assert.equal(JSON.stringify(r.dokument).includes("forhåndsvisning"),false);
 });
-test("et gjenopptatt trinn kaller verken modellen eller påDelta",async t=>{
-  const {tjeneste,kall}=await oppsett(t,async p=>{p.påDelta?.("tekstbit");return modell(p);});
-  const deltaer=[];const påDelta=t=>deltaer.push(t);
-  const k=await tjeneste.opprett("j1");
-  await tjeneste.trinn("j1",k.id,"analyse",{},{påDelta});
-  assert.equal(kall.length,1);assert.equal(deltaer.length,1);
-  await tjeneste.trinn("j1",k.id,"analyse",{},{påDelta});
-  assert.equal(kall.length,1);assert.equal(deltaer.length,1);
-});
-test("uten påDelta sendes verken felt eller tilbakekalling til modellen",async t=>{
+test("en ferdig kjøring gis tilbake uten nytt modellkall, og uten påDelta sendes verken felt eller tilbakekalling",async t=>{
   const {tjeneste,kall}=await oppsett(t);
-  const k=await tjeneste.opprett("j1");await tjeneste.trinn("j1",k.id,"analyse");
-  assert.equal(Object.hasOwn(kall[0],"felt"),false);
-  assert.equal(Object.hasOwn(kall[0],"påDelta"),false);
+  const k=await tjeneste.opprett("j1");const første=await tjeneste.trinn("j1",k.id,"skriv");
+  assert.equal(Object.hasOwn(kall[0],"felt"),false);assert.equal(Object.hasOwn(kall[0],"påDelta"),false);
+  const igjen=await tjeneste.trinn("j1",k.id,"skriv",{påDelta:()=>assert.fail("ingen deltaer")});
+  assert.equal(kall.length,1);assert.deepEqual(igjen.dokument.versjoner,første.dokument.versjoner);
 });
-test("lagret analyse kan fortsettes etter ny tjenesteinstans uten å betale analyse igjen",async t=>{
-  const {tjeneste,kall,lag}=await oppsett(t);
-  const k=await tjeneste.opprett("j1");await tjeneste.trinn("j1",k.id,"analyse");
-  const ny=lag();assert.equal((await ny.hentBrev("j1")).kjoring.status,"venter");
-  await ny.trinn("j1",k.id,"analyse");assert.equal(kall.length,1);
-  await ny.trinn("j1",k.id,"skriv");await ny.trinn("j1",k.id,"skriv");assert.equal(kall.length,2);
-  await ny.trinn("j1",k.id,"kontroller");await ny.trinn("j1",k.id,"kontroller");assert.equal(kall.length,3);
-});
-test("feil rekkefølge, manglende jobb og tomt grunnlag gir ingen modellkall",async t=>{
+test("ukjent trinn, manglende jobb og tomt grunnlag gir ingen modellkall",async t=>{
   const {tjeneste,kall}=await oppsett(t);
   await assert.rejects(tjeneste.opprett("ukjent"),{code:"finnes-ikke"});
   const k=await tjeneste.opprett("j1");
-  await assert.rejects(tjeneste.trinn("j1",k.id,"skriv"),{code:"opptatt"});
-  await assert.rejects(tjeneste.trinn("j1",k.id,"ukjent"),{code:"ugyldig"});
+  for(const gammelt of ["analyse","kontroller","ukjent"]) await assert.rejects(tjeneste.trinn("j1",k.id,gammelt),{code:"ugyldig"},gammelt);
+  await assert.rejects(tjeneste.trinn("j1","annen-kjoring","skriv"),{code:"konflikt"});
   await tjeneste.avbryt("j1",k.id);
   await tjeneste.lagreCv({...await tjeneste.hentCv(),tekst:""});
-  await assert.rejects(tjeneste.opprett("j1"),{code:"ugyldig-grunnlag"});assert.equal(kall.length,0);
+  await assert.rejects(tjeneste.opprett("j1"),{code:"ugyldig-grunnlag",message:/CV-en/});assert.equal(kall.length,0);
 });
-test("en kildeendring krever ny analyse",async t=>{
-  const {tjeneste,kall}=await oppsett(t);
-  const r=await generer(tjeneste);assert.equal(Object.hasOwn(r.kjoring,"svar"),false);
-  await tjeneste.lagreCv({...await tjeneste.hentCv(),tekst:"Oppdatert CV med en ny erfaring."});
-  const k=await tjeneste.opprett("j1",{instruks:"Prøv igjen med den nye CV-en."});
-  assert.equal(k.status,"klar");await tjeneste.trinn("j1",k.id,"analyse");assert.equal(kall.length,4);
+test("en kjøring som skriver, må avbrytes før en ny, og en i klar erstattes med kildene slik de er nå",async t=>{
+  const startet=vent(),slipp=vent();
+  const {tjeneste}=await oppsett(t,async p=>{startet.slipp();await slipp.promise;return modell(p);});
+  const første=await tjeneste.opprett("j1");
+  await tjeneste.lagreCv({...await tjeneste.hentCv(),tekst:"Kari Eksempel. Oppdatert CV med en ny erfaring."});
+  const andre=await tjeneste.opprett("j1",{instruks:"Kortere."});
+  assert.notEqual(andre.id,første.id);assert.match(andre.grunnlag.cv,/Oppdatert CV/);
+  await assert.rejects(tjeneste.trinn("j1",første.id,"skriv"),{code:"konflikt"});
+  const arbeid=tjeneste.trinn("j1",andre.id,"skriv");await startet.promise;
+  await assert.rejects(tjeneste.opprett("j1"),{code:"opptatt"});
+  slipp.slipp();await arbeid;
+});
+test("kodekontrollen avviser oppdiktede fakta: ingen versjon lagres, og kjøringen står som feilet",async t=>{
+  const oppdiktet={...b(),pastander:[{tekst:"Ledet et team på tolv",kilder:[{kilde:"cv",sitat:"ledet et team på tolv"}]}]};
+  const {tjeneste,kall}=await oppsett(t,async p=>({data:oppdiktet,bruk:null,modell:"syntetisk-modell"}));
+  const k=await tjeneste.opprett("j1");
+  await assert.rejects(tjeneste.trinn("j1",k.id,"skriv"),{code:"kildefeil"});
+  const d=await tjeneste.hentBrev("j1");
+  assert.equal(d.kjoring.status,"feilet");assert.equal(d.kjoring.feil.code,"kildefeil");
+  assert.equal(d.versjoner.length,0);assert.equal(d.tekst,"");assert.equal(kall.length,1,"ingen nye forsøk i skjul");
 });
 test("eksport og import inkluderer egne kilder og versjoner, men ingen aktiv kjøring",async t=>{
   const {tjeneste}=await oppsett(t);await generer(tjeneste);
@@ -200,27 +201,24 @@ test("ukjente versjoner, navn og former i sikkerhetskopien avvises",async t=>{
   await assert.rejects(tjeneste.importer({...grunn,dokumenter:JSON.parse('{"__proto__":{"skjemaVersjon":1,"revisjon":1}}')}),{code:"ugyldig"});
   await assert.rejects(tjeneste.importer({...grunn,dokumenter:{"jobb-x.json":{skjemaVersjon:1,revisjon:1,annonse:{tekst:"x",url:"javascript:1"}}}}),{code:"ugyldig"});
 });
-test("faktakorrigeringer følger valgt versjon til neste revisjon uten å bli dagens stilinstruks",async t=>{
+test("faktakorrigeringer følger valgt versjon til neste versjon uten å bli dagens stilinstruks",async t=>{
   const {tjeneste,kall}=await oppsett(t);await generer(tjeneste);
-  const første=await tjeneste.opprett("j1",{instruks:"Maks 100 ord. Korrigering: Jeg vant en servicepris."});
-  await tjeneste.trinn("j1",første.id,"skriv");await tjeneste.trinn("j1",første.id,"kontroller");
+  await generer(tjeneste,{instruks:"Maks 100 ord. Korrigering: Jeg vant en servicepris."});
   const andre=await tjeneste.opprett("j1",{instruks:"Utdyp eksemplene."});
   assert.ok(andre.grunnlag.historikk.some(h=>h.includes("servicepris")));
   assert.equal(andre.instruks,"Utdyp eksemplene.");
-  if(andre.status==="klar")await tjeneste.trinn("j1",andre.id,"analyse");
   await tjeneste.trinn("j1",andre.id,"skriv");
   const inn=JSON.parse(kall.at(-1).innhold);
-  assert.ok(kilder(kall.at(-1)).historikk.some(h=>h.includes("servicepris")));
+  assert.ok(inn.historikk.some(h=>h.includes("servicepris")));
   assert.equal(inn.revisjonsinstruks,"Utdyp eksemplene.");
-  assert.equal(kall.at(-1).kilder.includes("Utdyp eksemplene"),false);
-  await tjeneste.trinn("j1",andre.id,"kontroller");
+  assert.equal(kall.at(-1).kilder.join("").includes("Utdyp eksemplene"),false);
   const d=await tjeneste.hentBrev("j1");const opprinnelig=d.versjoner[0];
   await tjeneste.lagreBrev("j1",{...d,aktivVersjon:opprinnelig.id,tekst:opprinnelig.tekst});
   const gren=await tjeneste.opprett("j1",{instruks:"Kortere fra første versjon."});
   assert.equal(gren.grunnlag.historikk.some(h=>h.includes("servicepris")),false);
 });
 
-/* ---------- brev-4: grunnlaget, annonsen og kjøringer som fortsetter ---------- */
+/* ---------- grunnlaget og annonsen ---------- */
 
 test("grunnlaget har søknadsfeltene og stilreferansen, men ikke notat, kontekst eller svar",async t=>{
   const {tjeneste,kall}=await oppsett(t);
@@ -231,8 +229,8 @@ test("grunnlaget har søknadsfeltene og stilreferansen, men ikke notat, kontekst
   assert.deepEqual(k.grunnlag.jobb,{selskap:"Eksempel AS",stilling:"Kunderådgiver",sted:"Oslo",jobbtype:"Fast stilling",sektor:"Finans"});
   assert.match(k.grunnlag.stilreferanse,/Testfirma/);
   for(const felt of ["kontekst","svar","notat","stilling","selskap"]) assert.equal(Object.hasOwn(k.grunnlag,felt),false,felt);
-  await tjeneste.trinn("j1",k.id,"analyse");
-  const sendt=kall[0].kilder;
+  await tjeneste.trinn("j1",k.id,"skriv");
+  const sendt=kall[0].kilder.join("")+kall[0].innhold;
   assert.equal(sendt.includes("Gammel kontekst"),false);assert.equal(sendt.includes("ring Per"),false);
   assert.match(sendt,/Testfirma/);
 });
@@ -242,101 +240,122 @@ test("annonsen kommer fra jobbdokumentet, og flyttes dit fra brevet én gang",as
   assert.equal(k.grunnlag.annonse,"Eksempel AS søker kunderådgiver.");
   const flyttet=await lager.les("jobb-j1.json");
   assert.equal(flyttet.annonse.kilde,"brev");assert.equal(flyttet.annonse.tekst,"Eksempel AS søker kunderådgiver.");
-  await tjeneste.avbryt("j1",k.id);
   await lager.skriv("jobb-j1.json",{...flyttet,annonse:{tekst:"Eksempel AS søker kunderådgiver med erfaring fra bank.",kilde:"import"}},flyttet.revisjon);
   // Brevets eget annonsefelt er ikke lenger kilden.
   await tjeneste.lagreBrev("j1",{...await tjeneste.hentBrev("j1"),annonse:{tekst:"Utdatert annonse i brevet.",url:"",hentet:null}});
   k=await tjeneste.opprett("j1");
   assert.equal(k.grunnlag.annonse,"Eksempel AS søker kunderådgiver med erfaring fra bank.");
-  await tjeneste.trinn("j1",k.id,"analyse");
-  assert.equal(kilder(kall[0]).annonse,"Eksempel AS søker kunderådgiver med erfaring fra bank.");
+  await tjeneste.trinn("j1",k.id,"skriv");
+  assert.equal(soknad(kall[0]).annonse,"Eksempel AS søker kunderådgiver med erfaring fra bank.");
 });
-test("annonseFor kan injiseres, som tekst eller som objekt med tekst",async t=>{
-  for(const svar of ["Injisert annonse for kunderådgiver.",{tekst:"Injisert annonse for kunderådgiver.",url:""}]){
-    const spurt=[];
-    const {tjeneste}=await oppsett(t,modell,{annonseFor:async id=>{spurt.push(id);return svar;}});
-    const k=await tjeneste.opprett("j1");
-    assert.equal(k.grunnlag.annonse,"Injisert annonse for kunderådgiver.");assert.deepEqual(spurt,["j1"]);
-  }
-});
-test("uten annonse eller CV starter ingen kjøring, og feilen sier hva som mangler",async t=>{
-  let annonse="";
-  const {tjeneste,kall}=await oppsett(t,modell,{annonseFor:async()=>annonse});
-  await assert.rejects(tjeneste.opprett("j1"),{code:"ugyldig-grunnlag",message:/mangler annonsen/});
-  annonse="Eksempel AS søker kunderådgiver.";
-  await tjeneste.lagreCv({...await tjeneste.hentCv(),tekst:""});
-  await assert.rejects(tjeneste.opprett("j1"),{code:"ugyldig-grunnlag",message:/CV-en/});
-  assert.equal((await tjeneste.hentBrev("j1")).kjoring,null);assert.equal(kall.length,0);
-});
-test("en kjøring som står i venter fortsetter rett til skriving uten ny analyse",async t=>{
-  const {tjeneste,kall,lag}=await oppsett(t);
-  const k=await tjeneste.opprett("j1");await tjeneste.trinn("j1",k.id,"analyse");
-  const revisjon=(await tjeneste.hentBrev("j1")).revisjon;
-  // Fanen ble lukket her. Neste «Skriv utkast» skal fortsette, ikke starte på nytt.
-  const ny=lag();
-  const igjen=await ny.opprett("j1");
-  assert.equal(igjen.id,k.id);assert.equal(igjen.status,"venter");
-  assert.equal((await ny.hentBrev("j1")).revisjon,revisjon,"å fortsette skriver ingenting");
-  await ny.trinn("j1",igjen.id,"analyse");await ny.trinn("j1",igjen.id,"skriv");
-  const r=await ny.trinn("j1",igjen.id,"kontroller");
-  assert.equal(r.kjoring.status,"ferdig");
-  assert.deepEqual(kall.map(p=>p.trinn),["analyse","skriv","kontroll"]);
-  // En annen forespørsel må vente til den ventende er avbrutt.
-  const tredje=await ny.opprett("j1");await ny.trinn("j1",tredje.id,"analyse");
-  await assert.rejects(ny.opprett("j1",{instruks:"Kortere."}),{code:"opptatt"});
-});
-test("svar sendt til skrivetrinnet av en eldre klient lagres ikke og brukes ikke",async t=>{
-  const {tjeneste,kall}=await oppsett(t);
-  const k=await tjeneste.opprett("j1");await tjeneste.trinn("j1",k.id,"analyse");
-  await tjeneste.trinn("j1",k.id,"skriv",{q1:"Et svar fra den gamle flaten."});
-  const d=await tjeneste.hentBrev("j1");
-  assert.equal(JSON.stringify(d).includes("gamle flaten"),false);
-  assert.equal(kall.some(p=>p.innhold.includes("gamle flaten")||p.kilder.includes("gamle flaten")),false);
-});
-test("en kjøring fra brev-3 med kontekst og svar kan skrives ferdig",async t=>{
-  const {tjeneste,lager,kall}=await oppsett(t);
-  const d=await tjeneste.hentBrev("j1");
-  const gammelAnalyse={sprak:"nb",begrunnelse:"Bokmål.",sporsmal:[{id:"q1",tekst:"Hva liker du?"}],krav:[],bevis:[],uklarheter:[],maAvklares:false,bruk:null,modell:"gammel"};
-  await lager.skriv("brev-j1.json",{...d,kontekst:"Gammel kontekst.",kjoring:{id:"gammel",status:"venter",opprettet:"2026-09-01T10:00:00.000Z",
-    grunnlag:{cv:"Kari Eksempel. Erfaring fra kundeservice.",annonse:"Eksempel AS søker kunderådgiver.",kontekst:"Gammel kontekst.",sprak:"auto",
-      stilling:"Kunderådgiver",selskap:"Eksempel AS",leverandor:"anthropic",historikk:[]},
-    cvRevisjon:1,utgangspunkt:"",instruks:"",analyse:gammelAnalyse,svar:{q1:"Gammelt svar."},utkast:null}},d.revisjon);
-  const k=await tjeneste.opprett("j1");assert.equal(k.id,"gammel");
-  await tjeneste.trinn("j1",k.id,"analyse");await tjeneste.trinn("j1",k.id,"skriv");
-  const r=await tjeneste.trinn("j1",k.id,"kontroller");
-  assert.equal(r.kjoring.status,"ferdig");
-  // Det gamle grunnlaget kjente ikke stedet fra søknaden, så det regnes som
-  // endret: brevet havner i versjonslisten i stedet for å bytte teksten.
-  assert.equal(r.kjoring.nyttForslag,true);assert.equal(r.dokument.versjoner[0].tekst,BREV);
-  assert.deepEqual(kall.map(p=>p.trinn),["skriv","kontroll"]);
-  assert.equal(kilder(kall[0]).jobb.selskap,"Eksempel AS");
-  assert.equal(kall.some(p=>p.kilder.includes("Gammel kontekst")||p.innhold.includes("Gammelt svar")),false);
-  // Gamle versjoner med kontekst og svar lastes fortsatt.
-  await lager.skriv("brev-j1.json",{...r.dokument,versjoner:[...r.dokument.versjoner,{...r.dokument.versjoner[0],id:"v-gammel",svar:{q1:"x"},grunnlag:{...r.dokument.versjoner[0].grunnlag,kontekst:"x"}}]},r.dokument.revisjon);
-  assert.equal((await tjeneste.hentBrev("j1")).versjoner.length,2);
-});
-test("en endret stilling krever ny analyse, en endret stilreferanse gjør det ikke",async t=>{
-  const {tjeneste,kall,rad}=await oppsett(t);
+test("mangler annonsen, hentes den fra lenken, renses av annonsemodellen og lagres før brevet skrives",async t=>{
+  const {tjeneste,lager,kall,hentet}=await oppsett(t,modell,{annonse:"",lenke:"https://jobb.example/kunderadgiver"});
+  const k=await tjeneste.opprett("j1");
+  assert.deepEqual(hentet,["https://jobb.example/kunderadgiver"]);
+  assert.deepEqual(kall.map(p=>p.formal),["annonse"]);
+  // Modellen får sidens linjer nummerert og søknadsfeltene, og svarer bare med linjenumre.
+  const inn=JSON.parse(kall[0].innhold);
+  assert.equal(inn.stilling,"Kunderådgiver");assert.match(inn.side,/^\[1\] Logg inn$/m);
+  assert.equal(k.grunnlag.annonse,ANNONSELINJER.join("\n"));
+  assert.deepEqual(k.annonseuttrekk,{modell:"syntetisk-haiku",bruk:{input_tokens:10,output_tokens:20}});
+  const jd=await lager.les("jobb-j1.json");
+  assert.equal(jd.annonse.tekst,ANNONSELINJER.join("\n"));assert.equal(jd.annonse.kilde,"hentet");
+  assert.equal(jd.annonse.url,"https://jobb.example/kunderadgiver");
+  const r=await tjeneste.trinn("j1",k.id,"skriv");
+  assert.deepEqual(kall.map(p=>p.formal),["annonse","brev"]);
+  assert.equal(soknad(kall[1]).annonse,ANNONSELINJER.join("\n"));
+  assert.deepEqual(r.dokument.versjoner[0].annonseuttrekk,k.annonseuttrekk);
+  // Neste brev bruker den lagrede annonsen uten å hente igjen.
   await generer(tjeneste);
-  await tjeneste.lagreStil({revisjon:0,tekst:"Et nytt eget brev."});
-  let k=await tjeneste.opprett("j1",{instruks:"Kortere."});
-  assert.equal(k.status,"venter");assert.match(k.grunnlag.stilreferanse,/nytt eget brev/);
-  await tjeneste.trinn("j1",k.id,"skriv");await tjeneste.trinn("j1",k.id,"kontroller");
-  rad.stilling="Seniorrådgiver";
-  k=await tjeneste.opprett("j1",{instruks:"Enda kortere."});
-  assert.equal(k.status,"klar");
-  assert.equal(kall.filter(p=>p.trinn==="analyse").length,1);
+  assert.equal(hentet.length,1);assert.deepEqual(kall.map(p=>p.formal),["annonse","brev","brev"]);
+});
+test("finnes annonsen, brukes den direkte uten henting og uten annonsemodellen, også når søknaden har lenke",async t=>{
+  const {tjeneste,kall,hentet}=await oppsett(t,modell,{lenke:"https://jobb.example/kunderadgiver"});
+  await generer(tjeneste);
+  assert.deepEqual(hentet,[]);assert.deepEqual(kall.map(p=>p.formal),["brev"]);
+});
+test("sier annonsemodellen at siden ikke har annonsen, stopper det før noe er lagret eller betalt for brevet",async t=>{
+  const {tjeneste,lager,kall}=await oppsett(t,async p=>({data:{erAnnonse:false,behold:[]},bruk:null,modell:"syntetisk-haiku"}),
+    {annonse:"",lenke:"https://jobb.example/tatt-ned"});
+  await assert.rejects(tjeneste.opprett("j1"),{code:"ikke-annonse",message:/Lim inn annonsen/});
+  assert.deepEqual(kall.map(p=>p.formal),["annonse"]);
+  assert.equal((await lager.les("jobb-j1.json")).annonse.tekst,"");
+  assert.equal((await tjeneste.hentBrev("j1")).kjoring,null);
+});
+test("kan annonsemodellens svar ikke brukes, lagres teksten slik den ble lest ut av siden",async t=>{
+  const {tjeneste}=await oppsett(t,async p=>({data:p.formal==="annonse"?{erAnnonse:true,behold:[{fra:900,til:999}]}:b(),bruk:null}),
+    {annonse:"",lenke:"https://jobb.example/kunderadgiver"});
+  const k=await tjeneste.opprett("j1");
+  assert.match(k.grunnlag.annonse,/Logg inn/);assert.match(k.grunnlag.annonse,/Per Eksempel/);
+});
+test("uten annonse og uten lenke starter ingen kjøring, og feilen sier hva som mangler",async t=>{
+  const {tjeneste,kall,hentet}=await oppsett(t,modell,{annonse:""});
+  await assert.rejects(tjeneste.opprett("j1"),{code:"ugyldig-grunnlag",message:/mangler annonsen/});
+  assert.equal((await tjeneste.hentBrev("j1")).kjoring,null);assert.equal(kall.length,0);assert.deepEqual(hentet,[]);
+});
+test("en død lenke gir feilen fra hentingen, og ingen modellkall",async t=>{
+  const {tjeneste,kall}=await oppsett(t,modell,{annonse:"",lenke:"https://jobb.example/borte",
+    hentSide:async()=>{throw new Error("Siden svarte 404.");}});
+  await assert.rejects(tjeneste.opprett("j1"),{code:"dod-lenke"});assert.equal(kall.length,0);
 });
 test("en annonse som endres mens modellen skriver, gir et nytt forslag i stedet for å bytte teksten",async t=>{
   const startet=vent(),slipp=vent();
-  const {tjeneste,lager}=await oppsett(t,async p=>{if(p.trinn==="kontroll"){startet.slipp();await slipp.promise;}return modell(p);});
-  const k=await tjeneste.opprett("j1");await tjeneste.trinn("j1",k.id,"analyse");await tjeneste.trinn("j1",k.id,"skriv");
-  const arbeid=tjeneste.trinn("j1",k.id,"kontroller");await startet.promise;
+  const {tjeneste,lager}=await oppsett(t,async p=>{startet.slipp();await slipp.promise;return modell(p);});
+  const k=await tjeneste.opprett("j1");
+  const arbeid=tjeneste.trinn("j1",k.id,"skriv");await startet.promise;
   const jd=await lager.les("jobb-j1.json");
   await lager.skriv("jobb-j1.json",{...jd,annonse:{tekst:"En helt annen annonse.",kilde:"limt"}},jd.revisjon);
   slipp.slipp();const r=await arbeid;
   assert.equal(r.kjoring.nyttForslag,true);assert.equal(r.dokument.tekst,"");assert.equal(r.dokument.versjoner.length,1);
 });
+
+/* ---------- gammel form ---------- */
+
+/* En kjøring fra brev-4 som sto i et av de gamle trinnene, og en versjon
+   med analysen og tre bruksoppføringer. */
+const gammelAnalyse={sprak:"nb",begrunnelse:"Bokmål.",kontaktperson:"",krav:[],bevis:[],virksomhet:[],uklarheter:[],merknader:[],maAvklares:false,bruk:{input_tokens:5,output_tokens:5},modell:"claude-opus-5"};
+const gammelKjoring=(status,id="gammel")=>({id,status,opprettet:"2026-10-01T10:00:00.000Z",
+  grunnlag:{cv:"Kari Eksempel. Erfaring fra kundeservice.",annonse:"Eksempel AS søker kunderådgiver.",jobb:{selskap:"Eksempel AS",stilling:"Kunderådgiver",sted:"Oslo",jobbtype:"Fast stilling",sektor:"Finans"},
+    sprak:"auto",leverandor:"anthropic",historikk:[],stilreferanse:""},
+  cvRevisjon:1,utgangspunkt:"",instruks:"",analyse:status==="klar"?null:gammelAnalyse,utkast:status==="skrevet"?{...b(),revisjonsinstruks:"",bruk:null,modell:"claude-opus-5"}:null});
+const gammelVersjon={id:"v-gammel",tekst:BREV,sprak:"nb",opprettet:"2026-10-01T10:05:00.000Z",grunnlag:gammelKjoring("venter").grunnlag,
+  analyse:gammelAnalyse,instruks:"",historikk:[],leverandor:"anthropic",modell:"claude-opus-5",promptversjon:"brev-4",merknader:[],
+  bruk:[{input_tokens:1},{input_tokens:2},{input_tokens:3}]};
+test("gamle versjoner med analyse og tre trinn leses, og en ny versjon kan bygge på dem",async t=>{
+  const {tjeneste,lager,kall}=await oppsett(t);
+  const d=await tjeneste.hentBrev("j1");
+  await lager.skriv("brev-j1.json",{...d,tekst:BREV,aktivVersjon:"v-gammel",versjoner:[gammelVersjon],
+    kjoring:{...gammelKjoring("ferdig"),resultatId:"v-gammel",nyttForslag:false,utkast:null}},d.revisjon);
+  const lest=await tjeneste.hentBrev("j1");
+  assert.deepEqual(lest.versjoner[0].analyse,gammelAnalyse);assert.equal(lest.versjoner[0].bruk.length,3);
+  const k=await tjeneste.opprett("j1",{instruks:"Kortere."});
+  const r=await tjeneste.trinn("j1",k.id,"skriv");
+  assert.equal(r.kjoring.status,"ferdig");assert.equal(r.dokument.versjoner.length,2);
+  assert.equal(r.dokument.versjoner[1].promptversjon,"brev-5");
+  assert.equal(JSON.parse(kall[0].innhold).tidligereBrev,BREV);
+  // Eksporten tar med den gamle versjonen som den er.
+  assert.deepEqual((await tjeneste.eksporter()).dokumenter["brev-j1.json"].versjoner[0].analyse,gammelAnalyse);
+});
+for(const status of ["klar","analyserer","venter","skriver","skrevet","kontrollerer","feilet","avbrutt"]){
+  test(`en kjøring fra de gamle trinnene i «${status}» kan startes på nytt`,async t=>{
+    const {tjeneste,lager,kall}=await oppsett(t);
+    const d=await tjeneste.hentBrev("j1");
+    await lager.skriv("brev-j1.json",{...d,kjoring:gammelKjoring(status)},d.revisjon);
+    assert.equal((await tjeneste.hentBrev("j1")).kjoring.status,status);
+    // De gamle trinnene finnes ikke lenger, og «skriv» krever en ny kjøring.
+    if(status!=="klar") await assert.rejects(tjeneste.trinn("j1","gammel","skriv"),{code:"opptatt"});
+    // «skriver» kan stå igjen fra en avbrutt app, og avbrytes som før.
+    if(status==="skriver"){
+      await assert.rejects(tjeneste.opprett("j1"),{code:"opptatt"});
+      await tjeneste.avbryt("j1","gammel");
+    }
+    const k=await tjeneste.opprett("j1");
+    assert.notEqual(k.id,"gammel");assert.equal(k.status,"klar");
+    for(const felt of ["analyse","utkast"]) assert.equal(Object.hasOwn(k,felt),false,felt);
+    const r=await tjeneste.trinn("j1",k.id,"skriv");
+    assert.equal(r.kjoring.status,"ferdig");assert.deepEqual(kall.map(p=>p.trinn),["skriv"]);
+  });
+}
 
 for(const type of ["cv","stil","brev"]){
   const operasjoner = tjeneste => type==="cv" ? {

@@ -17,7 +17,8 @@
 
    Annonsen har egne veier inn, alle gjennom endre(): importen og
    innlimingen (settAnnonse), henting fra søknadens lenke
-   (hentAnnonse) og flyttingen fra brevdokumentet (annonseFor). De
+   (hentAnnonse, også når brevet skal skrives og annonsen mangler) og
+   flyttingen fra brevdokumentet (annonseFor). De
    skriver bare annonsen, så en vurdering som lages samtidig, står.
    Siden hentes før dokumentet leses: ingen lås holdes over et
    nettverkskall.
@@ -101,8 +102,10 @@ export function lagJobbdokumenter({ lager, hentJobb, hentJobber, hentSide, foran
 
   /* Henter annonsen fra søknadens lenke. Taket telles først når vi
      faktisk skal ut på nettet, og feilene sier hva brukeren kan gjøre
-     i stedet. */
-  async function hentAnnonse(id){
+     i stedet. velg(tekst, jobb) kan snevre inn teksten som ble lest ut
+     av siden, og gir teksten som skal lagres. Brevet bruker den til å la
+     en modell velge annonsens linjer (src/annonseuttrekk.mjs). */
+  async function hentAnnonse(id, { velg } = {}){
     const j = await sjekkJobb(id);
     if(!hentSide) throw new Brevfeil("ugyldig", "Henting er ikke satt opp her.", 500);
     const lenke = typeof j.lenke === "string" ? j.lenke.trim() : "";
@@ -114,7 +117,8 @@ export function lagJobbdokumenter({ lager, hentJobb, hentJobber, hentSide, foran
       if(e?.code === "utlogget") throw e;
       throw hentefeil(e);
     }
-    const tekst = annonseFraSide(side?.html);
+    const lest = annonseFraSide(side?.html);
+    const tekst = typeof velg === "function" ? await velg(lest, j) : lest;
     const url = erNettlenke(side?.sluttUrl) ? side.sluttUrl : lenke;
     return skrivAnnonse(id, { tekst, url, kilde: "hentet", hentet: nå().toISOString() });
   }

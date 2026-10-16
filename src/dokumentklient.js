@@ -20,7 +20,7 @@ export async function invoke(navn,valg={}){
   catch(e){
     const m=typeof e==="string"?e:e?.message||"Appen kunne ikke fullføre handlingen.";
     const kode=m.split(":",1)[0];
-    const kjente={konflikt:"Dokumentet er endret i et annet vindu. Teksten din er beholdt.",opptatt:"Dokumentet er opptatt. Prøv igjen når andre vinduer er lukket.",odelagt:"Dokumentet kan ikke leses. Gjenopprett forrige lagring.",gjenoppretting:"Hovedfilen mangler. Gjenopprett forrige lagring.",avbrutt:"Skrivingen ble avbrutt.",tidsavbrudd:"Modellen svarte ikke innen to minutter.","ingen-kopi":"Fant ingen tidligere lagring å gjenopprette."};
+    const kjente={konflikt:"Dokumentet er endret i et annet vindu. Teksten din er beholdt.",opptatt:"Dokumentet er opptatt. Prøv igjen når andre vinduer er lukket.",odelagt:"Dokumentet kan ikke leses. Gjenopprett forrige lagring.",gjenoppretting:"Hovedfilen mangler. Gjenopprett forrige lagring.",avbrutt:"Skrivingen ble avbrutt.",tidsavbrudd:"Modellen svarte ikke innen fem minutter.","ingen-kopi":"Fant ingen tidligere lagring å gjenopprette."};
     throw new Brevfeil(kjente[kode]?kode:/^[a-z-]+:/.test(m)?kode:"appfeil",kjente[kode]||m,409);
   }
 }
