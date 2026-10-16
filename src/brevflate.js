@@ -61,7 +61,9 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
   let endring = 0, lagret = 0, cvEndring = 0, cvLagret = 0, lagring = null, ventetid;
   let forespørsel = null, arbeidsnr = 0, modellarbeid = false;
   let gjenoppretting = null, arbeid = null, uferdig = null;
-  let annonseHenter = false, annonseFokus = false;
+  /* annonseHenter: «Hent» i grunnlaget. annonseTilBrev: brevet henter
+     en annonse som manglet, fra den starter til panelet har den. */
+  let annonseHenter = false, annonseTilBrev = false, annonseFokus = false;
   let stil = null, stilEndret = false, stilLastes = null;
   /* En annen fane kan sende hit for å få lagt inn CV-en («cv») eller
      nøkkelen («nokkel»). Feltene er låst til grunnlaget er hentet, så
@@ -282,7 +284,7 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
     const verdi = finn("#brevAnnonseVerdi"), handlinger = finn("#brevAnnonseHandlinger");
     /* Når brevet henter en annonse som manglet, sier raden det samme
        som når den hentes herfra. */
-    const henter = annonseHenter || (fase === "henter" && opptatt);
+    const henter = annonseHenter || annonseTilBrev;
     const av = henter || opptatt || !dokument;
     const knapp = (hva, tekst) => `<button class="knapp knapp--stille brev__lenkeknapp" type="button" data-brev="${hva}"${av && hva !== "seAnnonse" ? " disabled" : ""}>${tekst}</button>`;
     let tekst, html = "", mangler = false;
@@ -533,7 +535,11 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
     finally { if (aktiv) settOpptatt(false, finn("#brevStatus").textContent === "Leser CV-en…" ? "" : finn("#brevStatus").textContent); }
   }
   async function avbryt() {
+    const fraStopp = document.activeElement === finn('[data-brev="stopp"]');
     arbeidsnr++; forespørsel?.abort();
+    /* Ble hentingen avbrutt, kan annonsen likevel være lagret. Panelet
+       henter dokumentet, så raden viser det som faktisk er der. */
+    if (annonseTilBrev) { annonseTilBrev = false; lastDokument(); }
     strømSkjul(); stoppUr(); settFase("hvile");
     /* En kjøring fra et annet vindu eller et brutt kall har ingen
        forespørsel her å avbryte. Den stoppes hos tjenesten. */
@@ -544,6 +550,8 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
     if (!aktiv) return;
     finn('[data-brev="stopp"]').textContent = "Avbryt";
     settOpptatt(false, "Skrivingen er avbrutt. Grunnlaget og tidligere brev er beholdt.");
+    /* Avbryt forsvinner. Fokuset går til knappen som skriver på nytt. */
+    if (fraStopp) finn('[data-brev="skriv"]').focus();
   }
   /* En feil fra kjøringen, med en vei videre der det finnes en. Feil fra
      hentingen av annonsen bruker de samme ordene som Annonse-fanen. */
@@ -566,10 +574,14 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
   async function kjør({ slags, kall, ferdig, stoppet, lagreFørst }) {
     const nummer = ++arbeidsnr;
     const henter = henterFørst(), v = vert(lenke());
+    /* «Skriv på nytt» forsvinner når den trykkes. «Avbryt» kommer på
+       samme sted og tar fokuset, så tastaturet ikke faller ut av raden. */
+    const fraIgjen = document.activeElement === finn('[data-brev="skrivIgjen"]');
     forespørsel = new AbortController(); modellarbeid = true; strømAv = false; uferdig = null;
     tekster = TEKSTER[slags]; tekstKommet = false;
-    settFase(henter ? "henter" : "skriver"); startUr();
+    settFase(henter ? "henter" : "skriver"); startUr(); annonseTilBrev = henter;
     settOpptatt(true, henter ? "Henter annonsen" + (v ? " fra " + v : "") + "…" : tekster.leser);
+    if (fraIgjen) finn('[data-brev="stopp"]').focus();
     try {
       if (lagreFørst) { await lagre(); if (!aktiv || nummer !== arbeidsnr) return false; }
       const resultat = await kall({ signal: forespørsel.signal, ...lagMelder(nummer) });
@@ -585,7 +597,9 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
     } catch (e) {
       if (nummer === arbeidsnr) {
         const fasen = fase;
-        strømSkjul(); kjøringsfeil(e, fasen); await ferskRevisjon();
+        strømSkjul(); kjøringsfeil(e, fasen);
+        if (fasen === "henter") annonseTilBrev = false;
+        await ferskRevisjon();
         melding(fasen === "henter" ? "Brevet er ikke skrevet, fordi annonsen ikke kunne hentes." : stoppet);
         settFase("stoppet");
       }
@@ -847,6 +861,7 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
     k = { ...ny, jobb: ny.jobb || k.jobb };
     const nå = merke();
     if (før && nå && før !== nå && dokument?.tekst) finn("#brevEndret").hidden = false;
+    if (nå || ny.dokFeil) annonseTilBrev = false;
     tegnAnnonse(); oppdaterKnapper();
   }
   async function hentGrunnlag() {

@@ -1118,7 +1118,7 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
    med og uten den. */
 .brev__tilbakemelding{position:relative}
 .brev__statusrad:is([data-fase="henter"],[data-fase="skriver"],[data-fase="stoppet"]) .brev__tilbakemelding::before{
-  content:"";position:absolute;left:-14px;top:.62em;width:7px;height:7px;border-radius:50%;background:var(--hav)}
+  content:"";position:absolute;left:-14px;top:.45em;width:7px;height:7px;border-radius:50%;background:var(--hav)}
 .brev__statusrad:is([data-fase="henter"],[data-fase="skriver"]) .brev__tilbakemelding::before{animation:brevPuls 1.7s ease-in-out infinite}
 /* Feilen selv står i feltet under, i ild. Linjen sier bare at det
    stoppet, med prikken i samme farge. */
