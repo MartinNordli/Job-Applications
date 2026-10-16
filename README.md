@@ -360,7 +360,7 @@ Grunnlaget og brevet ruller sammen som ett dokument.
 
 Brevet bygger også på søknaden (selskap, stilling, sted, jobbtype og sektor fra listen, men ikke notatet, som ofte er private påminnelser) og på stilreferansen, hvis du har lagt inn en under [Innstillinger i brevskriveren](#innstillinger-i-brevskriveren).
 
-**Skriv utkast** kan ikke trykkes før både CV-en og annonsen er på plass.
+**Skriv utkast** kan ikke trykkes før CV-en er på plass og søknaden har en annonse eller en lenke.
 Grunnen står ved knappen, for eksempel «Legg til annonsen først».
 
 Et konkret språkvalg går foran et språkønske i instruksen til en ny versjon, som går foran annonsens krav til søknadsspråk og deretter annonsens hovedspråk.
@@ -372,18 +372,33 @@ Brevet bygger bare på det som står over.
 ### Slik blir brevet til
 
 Trykk **Skriv utkast**.
-Appen gjør tre modellkall etter hverandre, uten at du trenger å svare på noe underveis.
-Fremdriften øverst viser dem som **Leser annonsen og CV-en**, **Skriver** og **Leser gjennom**:
+Brevet skrives av Claude Opus 5.5 (`claude-opus-5-5`) i ett modellkall, uten at du trenger å svare på noe underveis.
+Ingenting skrives før du ber om det.
 
-1. **Analyse**: finner de viktigste kravene i annonsen, erfaringene som best viser at du oppfyller dem, og det annonsen sier om selskapet.
-2. **Skriving**: lager brevet ut fra analysen.
-3. **Kontroll**: en egen redaktørkontroll retter brevet mot kildene.
+Kallet har alt i én prompt: reglene for språk, form og fakta, to oppdiktede eksempelbrev, CV-en, stilreferansen, søknaden og annonsen.
+Modellen tenker gjennom grunnlaget før den skriver: de viktigste kravene i annonsen, de to eller tre erfaringene som best viser at du oppfyller dem, og det annonsen sier om selskapet.
+Så skriver den brevet og leser det gjennom mot reglene.
+Svaret har brevet og en liste over påstandene i det, hver med ordrette sitater fra CV-en, annonsen eller søknaden.
+
+Kontrollen etterpå gjøres av appen, ikke av et nytt modellkall.
+Hvert sitat må stå ordrett i kilden det oppgir.
+Språket, hilsenen, avslutningen, en ordgrense i annonsen, tomme fraser, em dash og ord lånt fra eksempelbrevene eller stilreferansen kontrolleres også.
+Feiler noe av dette, forkastes brevet med en forklaring, og brevet du hadde, står urørt.
+
+Mangler søknaden annonsen, men har en lenke, henter appen annonsen først.
+Siden hentes, og Claude Haiku 5.5 (`claude-haiku-5-5`) velger linjene på siden som hører til annonsen, så meny, informasjonskapsler og andre stillinger ikke kommer med.
+Modellen velger bare linjer og skriver ingenting selv, så det som lagres, står ordrett på siden.
+Annonsen lagres på søknaden, og neste brev bruker den uten å hente på nytt.
+Har siden ingen annonse for stillingen, for eksempel fordi den er tatt ned, sier appen fra i stedet for å skrive et brev.
+Finnes annonsen fra før, brukes den direkte, og Haiku spørres ikke.
+Mangler både annonse og lenke, sier appen at annonsen mangler.
 
 Mangler grunnlaget noe vesentlig, for eksempel fordi CV-en og annonsen ser ut til å gjelde to ulike personer, stopper kjøringen med en forklaring i stedet for å gjette.
-Ble en kjøring avbrutt mellom to trinn, fortsetter den der den stoppet neste gang brevet åpnes, uten å betale for trinnene som er gjort.
-Står et trinn fortsatt i arbeid fra et annet vindu, sier brevet fra og tilbyr **Avbryt forrige kjøring**.
+Står et brev fortsatt under arbeid fra et annet vindu, sier brevet fra og tilbyr **Avbryt forrige kjøring**.
+En kjøring fra den gamle flyten i tre trinn kan ikke fortsettes, men står ikke i veien: neste **Skriv utkast** starter på nytt.
+Brev og versjoner skrevet med den gamle flyten leses og vises som før.
 
-Teksten strømmer inn mens den skrives, først utkastet og så kontrollens gjennomgang.
+Teksten strømmer inn mens den skrives.
 Det du ser underveis er et forslag: det lagres ikke, erstatter aldri det du selv har skrevet, og kontrollen kan forkaste det.
 Teksten lander i brevet først når kontrollen har godkjent den.
 **Avbryt** stopper når som helst, og grunnlaget og tidligere brev beholdes.
@@ -405,7 +420,7 @@ Språket skal være konkret.
 Tomme fraser som «brenner for», «spennende mulighet», «drømmejobb», «esteemed team», «ideal candidate» og «I am excited to apply» stoppes, sammen med em dash og retoriske kontrastmaler.
 Prompten har to oppdiktede eksempelbrev som viser formen.
 Navn, tall og erfaringer fra dem, eller fra stilreferansen din, stoppes hvis de dukker opp i brevet uten å stå i CV-en, annonsen eller søknaden.
-Modellkontroll og kildehenvisninger reduserer feil, men brevet må fortsatt leses av den som skal sende det.
+Kontrollen og kildehenvisningene reduserer feil, men brevet må fortsatt leses av den som skal sende det.
 
 ### Etter at brevet er skrevet
 
@@ -419,16 +434,20 @@ Modellkontroll og kildehenvisninger reduserer feil, men brevet må fortsatt lese
 
 ### Kostnad og nettverk
 
-Første utkast bruker tre modellkall.
-En ny versjon med samme grunnlag gjenbruker analysen og trenger to.
+Hvert brev og hver ny versjon er ett modellkall.
+Et brev koster omtrent 1 til 1,5 kroner (10 til 14 cent) med Opus 5.5.
+Anslaget bygger på rundt 7 000 tokens inn og 3 000 til 5 000 tokens ut, der tenkningen er det meste av det som kommer ut, og er ikke målt ennå.
+En ny versjon innen fem minutter koster litt mindre, fordi grunnlaget da leses fra hurtigbufferen.
+Å hente en annonse som mangler, koster under 5 øre med Haiku 5.5.
 Appen prøver ikke på nytt i skjul og bytter aldri leverandør av seg selv.
-En brutt forbindelse kan bety at leverandøren behandlet kallet uten at svaret kom frem, så appen starter ikke kjeden på nytt.
+Brevkallet får bruke opptil fem minutter før appen gir opp.
 
-De tre kallene begynner likt, så leverandøren kan bufre det som går igjen.
+Kallet er ordnet for hurtigbufferen, med det som endres sjeldnest først.
 Først kommer reglene og eksempelbrevene, som er de samme for alle brev.
-Så kommer kildene, som er de samme i alle tre trinnene for ett brev.
-Bare oppgaven for trinnet kommer etter.
-Hos Anthropic er begge de faste delene merket for hurtigbuffer, og OpenAI bufrer en lik begynnelse av seg selv.
+Så kommer CV-en og stilreferansen, som er de samme for alle søknadene dine.
+Så kommer søknaden og annonsen, som er de samme for alle versjoner av ett brev.
+Bare oppgaven, og ved en ny versjon teksten din og instruksen, kommer etter.
+Hos Anthropic er de tre faste delene merket for hurtigbuffer, og OpenAI bufrer en lik begynnelse av seg selv.
 Bufrede tokens telles i brukstallene på hver versjon (`cache_creation_input_tokens` og `cache_read_input_tokens`).
 Hvor mye bufferen sparer i praksis, er ikke målt ennå: evalueringsrapporten oppsummerer det per tilfelle når den betalte evalueringen kjøres.
 
@@ -812,7 +831,8 @@ src/okt-app.mjs          kontoene i appmodus, over Rust og crypto.subtle
 src/innlogging.js        innloggingen
 
 src/brevlogikk.mjs       prompt, stileksempler, skjemaer og kontrollene for brevet
-src/brevtjeneste.mjs     kjeden analyse, skriving og kontroll, og stilreferansen
+src/brevtjeneste.mjs     kjøringen som skriver brevet i ett kall, og stilreferansen
+src/annonseuttrekk.mjs   annonsens linjer ut av en hentet side, valgt av Haiku
 src/brev-provider.mjs    meldingsformatet for Anthropic og OpenAI
 src/brev-strom.mjs       strømmende modellsvar
 src/brevdata.mjs         formatet for CV-, stil- og brevdokumentene
