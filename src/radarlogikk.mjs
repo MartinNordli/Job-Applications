@@ -782,6 +782,17 @@ export async function fjernKarriereside(dokumenter, id){
   return d;
 }
 
+/* En side som er slått av etter fem feil på rad, slås på igjen av
+   brukeren. Telleren nullstilles, og «sist» tømmes, så den hentes i
+   neste kjøring i stedet for om seks timer. */
+export async function slåPåKarriereside(dokumenter, id){
+  const d = await medNyeForsøk(dokumenter, r => r.innstillinger.karrieresider.some(s => s.id === id)
+    ? { ...r, innstillinger: { ...r.innstillinger, karrieresider: r.innstillinger.karrieresider.map(s => s.id === id
+      ? { ...s, pa: true, feilRad: 0, grunn: null, sist: null } : s) } } : null);
+  if(!d) throw new Brevfeil("finnes-ikke", "Karrieresiden er ikke i listen lenger.", 404);
+  return d;
+}
+
 /*
    «Søk nå»: en vanlig kjøring, men høyst én i minuttet. Grensen er
    både i minnet (to klikk i samme øyeblikk) og i kjøringsloggen i

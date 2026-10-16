@@ -8,6 +8,7 @@
    POST   /api/radar/ikke-interessert         ← { id }
    POST   /api/radar/lagt-til                 ← { id }  merker raden
    POST   /api/radar/karrieresider            ← { url, navn? }
+   PUT    /api/radar/karrieresider/<id>        slår på igjen en side som er slått av
    DELETE /api/radar/karrieresider/<id>
 
    Alle svarer med { tilstand }, og kjor i tillegg med utfallet av
@@ -29,7 +30,7 @@ import { lagBrevModell, brevNokkelStatus } from "./brev-modell.mjs";
 import { lagRadarnett } from "../src/radarnett.mjs";
 import { Brevfeil } from "../src/dokumentfeil.mjs";
 import { kjørRadar, søkNå, tilstandFra, lagreInnstillinger, ikkeInteressert, markerLagtTil,
-         leggTilKarriereside, fjernKarriereside, foreslåFraProfil } from "../src/radarlogikk.mjs";
+         leggTilKarriereside, fjernKarriereside, slåPåKarriereside, foreslåFraProfil } from "../src/radarlogikk.mjs";
 import { deltMiljønokkel } from "./nokkel.mjs";
 import { offentligFeil, send, kropp, objekt, metode } from "./brev-api.mjs";
 
@@ -118,6 +119,8 @@ export function lagRadarRuter(tjeneste){
         const { url, navn } = objekt(await kropp(req));
         if(typeof url !== "string" || !url.trim() || url.length > 2000) throw new Brevfeil("ugyldig", "Legg inn adressen til karrieresiden.");
         r = await tilstand(await leggTilKarriereside(d, { url, navn: typeof navn === "string" ? navn : "", nett: lagRadarnett({ node: nett, katalog: ktx.katalog }) }));
+      }else if(req.method === "PUT"){
+        r = await tilstand(await slåPåKarriereside(d, bane.split("/").at(-1)));
       }else{
         metode(req, "DELETE");
         r = await tilstand(await fjernKarriereside(d, bane.split("/").at(-1)));

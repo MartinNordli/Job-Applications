@@ -174,6 +174,21 @@ test("karrieresider kan fjernes, og en side som ikke finnes gir 404", async t =>
   assert.equal(r.data.tilstand.karrieresider.length, 0);
 });
 
+test("en karriereside som er slått av etter fem feil, kan slås på igjen med nullstilt teller", async t => {
+  const { api, brukere, katalog } = await start(t);
+  const { karrieresider } = await slåPå(api);
+  const reg = await brukere.lesRegister();
+  const dok = lagBrevlager(path.join(katalog, "brukere", reg.brukere[0].id));
+  const r0 = await dok.les("radar.json");
+  await dok.skriv("radar.json", { ...r0, innstillinger: { ...r0.innstillinger, karrieresider: r0.innstillinger.karrieresider.map(s =>
+    ({ ...s, pa: false, feilRad: 5, grunn: "Slått av etter 5 feil på rad: 404" })) } }, r0.revisjon);
+  assert.equal((await api("/api/radar/karrieresider/finnes-ikke", "PUT")).status, 404);
+  const r = await api(`/api/radar/karrieresider/${karrieresider[0].id}`, "PUT");
+  assert.equal(r.status, 200);
+  const side = r.data.tilstand.karrieresider[0];
+  assert.deepEqual([side.pa, side.feilRad, side.grunn], [true, 0, null]);
+});
+
 test("timen kjører profiler som har Radar på og en gammel kjøring, hopper over ferske, og stopper når serveren stopper", async t => {
   const { api, server, brukere, modellkall, katalog } = await start(t);
   await slåPå(api);

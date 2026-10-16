@@ -44,6 +44,7 @@
    leggTilKarriereside({url, navn?})  gir tilstanden; feilkode "ugyldig"
                                   med grunnen når siden ikke kan leses
    fjernKarriereside(id)          gir tilstanden
+   slaPaKarriereside(id)          slår på igjen en side som er slått av; gir tilstanden
    soknadFraRad(rad)              søknaden uten id, klar for validerSoknad
                                   og listen: sett kilde: "radar"
    lagtTil(radId, jobbId)         etter at søknaden er lagret i listen under
@@ -66,7 +67,7 @@ import { Brevfeil } from "./dokumentfeil.mjs";
 import * as Jobbdokumenter from "./jobbdokumenter.js";
 import { visRadarvarsel } from "./varsling.js";
 import { søkNå, tilstandFra, lagreInnstillinger as lagreInnstillingerLokalt, ikkeInteressert as ikkeInteressertLokalt,
-         markerLagtTil, leggTilKarriereside as leggTilKarrieresideLokalt, fjernKarriereside as fjernKarrieresideLokalt,
+         markerLagtTil, leggTilKarriereside as leggTilKarrieresideLokalt, fjernKarriereside as fjernKarrieresideLokalt, slåPåKarriereside as slaPaKarrieresideLokalt,
          leggTilFraRad, soknadFraRad, foreslåFraProfil } from "./radarlogikk.mjs";
 
 export { soknadFraRad };
@@ -158,6 +159,14 @@ export async function leggTilKarriereside({ url, navn = "" }){
     return meld(await lesLokalt());
   }
   return tilstandAv(await http("/api/radar/karrieresider", { method: "POST", body: { url, navn } }));
+}
+
+export async function slaPaKarriereside(id){
+  if(I_APP){
+    await slaPaKarrieresideLokalt(lokal().lager, id).catch(e => { throw oversett(e); });
+    return meld(await lesLokalt());
+  }
+  return tilstandAv(await http(`/api/radar/karrieresider/${encodeURIComponent(id)}`, { method: "PUT" }));
 }
 
 export async function fjernKarriereside(id){
