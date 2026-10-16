@@ -16,6 +16,7 @@ import { esc, MND, MND_K, tilDato, tilIso, antall, monogram, langDato, kortDatoM
 import { lagDetaljpanel } from "./detaljpanel.js";
 import { kommende as kommendeIntervjuer } from "./intervjuer.mjs";
 import { lagMeny } from "./radmeny.js";
+import { lagRadarflate } from "./radarflate.js";
 
 const NOKKEL = "jobbsoknader-2027";
 window.__jobbsoknaderKjorer = true;   /* se fallback-skriptet i index.html */
@@ -87,6 +88,41 @@ const panel = lagDetaljpanel({
   tilListen: () => $("#sidetittel")
 });
 const meny = lagMeny({ valg: id => menyvalg(id) });
+/* Radar eier sin egen DOM i #innhold mens visningen står. Søknaden
+   «Legg til» lager, går gjennom samme regler og samme lagring som
+   skjemaet: validerSoknad, så medStatus, så listen. */
+const radar = lagRadarflate({
+  jobber: () => data,
+  iDag: () => I_DAG,
+  leggTilSøknad: utkast => {
+    const sjekk = validerSoknad(utkast, { lagId: nyId });
+    if(!sjekk.ok) return { ok: false, melding: sjekk.feil[0].melding };
+    const verdi = medStatus(sjekk.verdi, sjekk.verdi.status, { iDag: tilIso(I_DAG) });
+    data.push(verdi);
+    lagre(); tegn();
+    return { ok: true, jobb: verdi };
+  },
+  ventPåLagring: () => ventPåLagring(),
+  åpneSøknad: (id, valg) => panel.åpne(id, valg),
+  /* CV-en og nøkkelen bor i Brev-fanen, som Intervju-fanen sender til.
+     Radar har ingen søknad selv, så den åpnes på den panelet viser,
+     ellers den neste med frist, ellers den første. Uten søknader står
+     Anthropic-nøkkelen også under Innstillinger. */
+  tilCv: fra => brevFor("cv", fra),
+  tilNøkkel: fra => brevFor("nokkel", fra),
+  varsle: (tekst, angreFn) => varsle(tekst, angreFn),
+  fokuserTittel: () => $("#sidetittel").focus(),
+  etterEndring: () => {
+    $("#tallRadar").textContent = radar.tall();
+    if(visning === "radar") $("#sideUnder").innerHTML = radar.undertittel();
+  }
+});
+function brevFor(hensikt, fra){
+  const id = panel.valgtId() || data.filter(p => p.status === "todo").sort(sorterFrist)[0]?.id || data[0]?.id;
+  if(id) return panel.åpne(id, { fane: "brev", hensikt, fra });
+  if(hensikt === "nokkel") return apneSkuff("innstillinger");
+  varsle("CV-en legges inn i Brev-fanen til en søknad. Legg til en søknad først.");
+}
 
 /* ============================================================
    3. Datohjelpere
@@ -643,7 +679,8 @@ const SIDER = {
   frister: { tittel:"Frister",  ingen:"Ingenting å søke på akkurat nå." },
   sendt:   { tittel:"Sendt",    ingen:"Ingen søknader venter på svar ennå. Merk en som sendt fra Frister." },
   arkiv:   { tittel:"Arkiv",    ingen:"Arkivet er tomt. Hit havner avslag, tilbud og frister som gikk ut." },
-  tall:    { tittel:"Tall",     ingen:"" }
+  tall:    { tittel:"Tall",     ingen:"" },
+  radar:   { tittel:"Radar",    ingen:"" }
 };
 
 function tegn(){
@@ -679,16 +716,21 @@ function tegn(){
         })()
     : visning === "sendt"  ? '<b>' + antSendt + '</b> venter på svar'
     : visning === "arkiv"  ? '<b>' + antArkiv + '</b> avgjort'
+    : visning === "radar"  ? radar.undertittel()
     : '<b>' + data.length + '</b> søknader sporet i alt';
   $("#sideUnder").innerHTML = und;
 
   $("#nullstill").hidden = !(sok || filtSektor || filtSted);
+  $("#tallRadar").textContent = radar.tall();
 
-  $("#innhold").innerHTML =
+  /* Søket og filtrene gjelder søknadene, ikke Radar. */
+  $(".sok").hidden = $(".filtre").hidden = visning === "radar";
+  if(visning === "radar") radar.vis($("#innhold"));
+  else{ radar.skjul(); $("#innhold").innerHTML =
       visning === "frister" ? visFrister()
     : visning === "sendt"   ? visEtterSektor(ER_SENDT, SIDER.sendt.ingen)
     : visning === "arkiv"   ? visEtterSektor(ER_ARKIV, SIDER.arkiv.ingen)
-    : visTall();
+    : visTall(); }
 
   fyllVelg("#filtSektor", Object.entries(SEKTORER).filter(([k]) => data.some(p => p.sektor === k)), filtSektor, "Alle sektorer");
   const steder = Array.from(new Set(data.flatMap(p => (p.sted || "").split("/").map(s => s.trim()).filter(Boolean))))
@@ -1645,6 +1687,8 @@ document.addEventListener("click", e => {
 
 function settNav(){
   $$("#faner .nav__post").forEach(f => f.setAttribute("aria-selected", String(f.dataset.visning === visning)));
+  /* På smal skjerm ruller toppstripa sidelengs; den valgte fanen skal stå synlig. */
+  $('#faner [aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
 }
 
 /* Sørger for at raden til en søknad står i listen: bytter til visningen
@@ -1716,7 +1760,7 @@ document.addEventListener("keydown", e => {
   if($("#skuff").classList.contains("er-apen")) return;   /* dialogen eier tastaturet */
   if(e.key === "n"){ e.preventDefault(); apneSkuff("ny"); }
   /* Søkefeltet ligger bak arket på smal skjerm. */
-  if(e.key === "/" && !panel.erModal()){ e.preventDefault(); $("#sok").focus(); }
+  if(e.key === "/" && !panel.erModal() && visning !== "radar"){ e.preventDefault(); $("#sok").focus(); }
 });
 
 /* ============================================================
@@ -1915,6 +1959,7 @@ async function start(){
     varsle("Fikk ikke flyttet inn det som lå i datakatalogen fra før");
   await hentData();
   Varsling.sjekk();
+  radar.start(brukeren?.id);
   if(økt.migrert && økt.migrert.includes("jobber.json") && data.length)
     varsle("Tok med " + antall(data.length, "søknad", "søknader") + " som lå her fra før");
 }
@@ -1949,6 +1994,7 @@ function loggUt(){
    bortfall, ikke én gang per kall — det er okt.js som passer på det. */
 Økt.påUtlogget(async melding => {
   if(portenStår()) return;
+  radar.stopp();
   lukkSkuff();
   panel.lukk({ tvang: true });
   /* Et varsel med «Angre» skal ikke bli stående bak låsen: knappen er
@@ -1966,6 +2012,7 @@ function loggUt(){
   erFørste = !!økt.erFørste;
   visBruker();
   await gjenoppta();
+  radar.start(brukeren?.id);
 });
 
 /* Samme bruker er tilbake. Lå det noe ulagret, skal det overleve

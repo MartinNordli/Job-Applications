@@ -307,7 +307,7 @@ a{color:inherit}
 /* Overskriften tar imot fokus når noe den sto over forsvinner (se
    arkiverUtgatte). Ringen skal rundt ordet, ikke rundt hele kolonnen. */
 .tittel{margin:0;font-size:27px;font-weight:700;letter-spacing:-.03em;line-height:1.08;width:fit-content}
-.tittel__und{margin:7px 0 0;font-size:13.5px;color:var(--blekk-2)}
+.tittel__und{margin:7px 0 0;min-height:1.45em;font-size:13.5px;color:var(--blekk-2)}
 .tittel__und b{font-family:var(--mono);font-weight:500;font-size:.92em;
                font-variant-numeric:tabular-nums;color:var(--blekk)}
 
@@ -1274,6 +1274,217 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .knapp:disabled{cursor:default;opacity:.5}
 .knapp:disabled:hover{box-shadow:var(--loft)}
 .knapp--primar:disabled:hover{background:var(--primar)}
+
+/* ---------- Radar ----------
+   Samme materiale som listen: innboksen er bånd og ett kort per bånd,
+   innstillingene ett kort som kan foldes. Prosenten står i kolonnen der
+   listen har datoen, i samme dempede merke som matchen på raden. Kulør
+   følger resten av appen: en frist som haster i innboksen, og ord for
+   det som har feilet. --hav er fokus, fremdrift og forbruksstreken. */
+.radar__laster{margin:22px 0 0}
+.radar__kontroll{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;min-height:40px;margin:2px 0 14px}
+.radar__status{flex:1 1 260px;min-width:0;margin:0;display:flex;align-items:baseline;gap:8px;
+               font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--blekk-3)}
+.radar__status::before{content:"";flex:none;width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.5;transform:translateY(-1px)}
+.radar__kontroll[data-soker] .radar__status{color:var(--blekk-2)}
+.radar__kontroll[data-soker] .radar__status::before{opacity:1;background:var(--hav);animation:brevPuls 1.7s ease-in-out infinite}
+.radar__kontroll[data-feil] .radar__status{color:var(--ild-t)}
+.radar__kontroll[data-feil] .radar__status::before{opacity:1}
+.radar__klokke{flex:none;font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;color:var(--blekk-2)}
+.radar__klokke:empty{display:none}
+.radar__sok{flex:none;margin-left:auto;min-width:92px}
+.radar__tid{font-family:var(--mono);font-size:.92em;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.radar__intro{margin:4px 0 16px;padding:24px 26px 26px}
+.radar__introtittel{margin:0 0 8px;font-size:18px;font-weight:600;letter-spacing:-.018em}
+.radar__introtekst{max-width:62ch;margin:0 0 10px;font-size:14px;line-height:1.55;color:var(--blekk-2)}
+.radar__introtekst--liten{margin-bottom:18px;font-size:12.5px;color:var(--blekk-3)}
+
+/* Innstillingene. Overskriften er en <summary>: pila sier at kortet kan
+   foldes, og sammendraget ved siden av sier hva som gjelder uten at det
+   må åpnes. */
+.radarinnst{padding:0;margin-bottom:16px;container:radarinnst / inline-size}
+.radarinnst__topp{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;padding:16px 20px;cursor:pointer;
+                  list-style:none;border-radius:var(--r);-webkit-user-select:none;user-select:none}
+.radarinnst__topp::-webkit-details-marker{display:none}
+.radarinnst__topp .baand__pil{align-self:center;margin-right:-4px}
+.radarinnst[open] > .radarinnst__topp .baand__pil,.fylker[open] > .fylker__topp .baand__pil{transform:rotate(90deg)}
+.radarinnst__topp:hover .baand__pil{color:var(--blekk)}
+.radarinnst__topp:focus-visible{outline-offset:-2px}
+.radarinnst__tittel{margin:0;font-size:15.5px;font-weight:600;letter-spacing:-.014em}
+.radarinnst__sammendrag{flex:1 1 220px;min-width:0;font-size:12.5px;line-height:1.45;color:var(--blekk-3)}
+.radarinnst__kropp{padding:4px 20px 6px}
+.radarinnst__del{padding:0 0 26px}
+.radarinnst__deltittel{margin:0 0 12px}
+.radarinnst__innhold > :last-child{margin-bottom:0}
+.radarinnst .avkrys{margin-top:0;font-size:13.5px;color:var(--blekk);min-height:28px}
+@container radarinnst (min-width:620px){
+  .radarinnst__del{display:grid;grid-template-columns:150px minmax(0,1fr);gap:0 24px}
+  .radarinnst__deltittel{padding-top:2px;line-height:1.45}
+}
+/* Lagringen står nederst i kortet også når alt er lagret, så ingenting
+   hopper. Er noe endret, fester den seg til bunnen av vinduet mens man
+   ruller gjennom innstillingene. */
+.radarinnst__bunn{z-index:2;display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+                  padding:11px 20px;background:var(--innfelt);border-radius:0 0 var(--r) var(--r)}
+.radarinnst__bunn[data-endret]{position:sticky;bottom:0}
+.radarinnst__lagret{flex:1 1 160px;margin:0;font-family:var(--mono);font-size:11px;color:var(--blekk-3)}
+.radarinnst__lagret[data-t="endret"]{color:var(--blekk)}
+.radarinnst__lagret[data-t="feil"]{color:var(--ild-t)}
+.radarinnst__bunn .knapp--stille:hover{background:var(--innfelt-2)}
+.radarinnst__bunn .knapp:disabled{box-shadow:none}
+
+/* Ordlistene: brikkene og feltet står i én innfelt flate, som et felt. */
+.ordliste{margin-bottom:18px}
+.ordliste__flate{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:5px;min-height:42px;
+                 background:var(--innfelt);border:1px solid var(--linje);border-radius:var(--r-s);
+                 transition:background .12s ease,border-color .12s ease}
+.ordliste__flate:focus-within{background:var(--kort);border-color:var(--hav)}
+.ordliste__flate:has(.ordliste__inn:focus-visible){outline:2px solid var(--hav);outline-offset:1px}
+.ordliste__ord{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none;min-width:0}
+.ord{display:inline-flex;align-items:center;gap:2px;max-width:100%;min-height:28px;padding:2px 2px 2px 9px;
+     border-radius:var(--r-xs);background:var(--innfelt-2);font-size:13px;line-height:1.3;color:var(--blekk)}
+.ord__tekst{min-width:0;overflow-wrap:anywhere}
+/* Et foreslått ord er ikke lagret ennå: stiplet kant, og «foreslått» for
+   skjermlesere. */
+.ord--ny{background:var(--kort);box-shadow:inset 0 0 0 1px var(--blekk-3);outline:1px dashed var(--kort);outline-offset:-1px}
+.ord__fjern{position:relative;flex:none;display:flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;
+            background:none;border:0;border-radius:5px;color:var(--blekk-3);cursor:pointer}
+.ord__fjern:hover{background:var(--linje-2);color:var(--blekk)}
+.ordliste__inn{flex:1 1 150px;min-width:0;min-height:30px;padding:4px 6px;background:none;border:0;font-size:14px}
+.ordliste__inn::placeholder{color:var(--blekk-3)}
+.ordliste__inn:focus-visible{outline:none}
+.radar__forslag{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:-4px 0 20px}
+.radar__forslag .henter{flex:1 1 200px;margin:0}
+.radar__forslag .henter:empty{min-height:0}
+.radar__forslagfeil{flex:1 1 100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+.radar__forslagfeil .feil{margin:0}
+
+.terskel__rad{display:flex;align-items:center;gap:14px}
+.terskel__glider{flex:1 1 auto;max-width:320px;min-width:0;height:28px;margin:0;accent-color:var(--hav);cursor:pointer}
+.terskel__verdi{flex:none;min-width:5ch;font-family:var(--mono);font-size:15px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--blekk)}
+
+.kilder{list-style:none;margin:0;padding:0}
+.kilde + .kilde{margin-top:12px}
+.kilde__linje{margin:2px 0 0 25px;font-size:12px;line-height:1.5;color:var(--blekk-3)}
+.kilde__feil{color:var(--ild-t)}
+.fylker{margin:6px 0 0 25px}
+.fylker__topp{display:inline-flex;align-items:center;gap:8px;min-height:28px;padding:2px 6px 2px 0;cursor:pointer;list-style:none;
+              font-size:13px;color:var(--blekk-2);border-radius:var(--r-xs)}
+.fylker__topp::-webkit-details-marker{display:none}
+.fylker__topp:hover{color:var(--blekk)}
+.fylker__topp:hover .baand__pil{color:var(--blekk)}
+.fylker__valg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0 12px;margin:6px 0 0;padding:0;border:0}
+.radarinnst .fylker__post{margin:0;min-height:30px;font-size:13px;color:var(--blekk-2)}
+.fylker .felt__hjelp{margin-top:4px}
+
+.ksider{margin-top:20px}
+.ksider__tittel{margin-bottom:8px}
+.ksider__liste{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:6px}
+.kside{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1px 10px;align-items:start;padding:9px 6px 10px 12px;
+       background:var(--innfelt);border-radius:var(--r-s)}
+.kside > :not(.kside__fjern){grid-column:1}
+.kside__fjern{grid-column:2;grid-row:1 / span 3;align-self:center}
+.kside__hvem{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 8px}
+.kside__navn{font-size:13.5px;font-weight:600;overflow-wrap:anywhere}
+.kside__type{font-size:12px;color:var(--blekk-3)}
+.kside__url{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+            font-family:var(--mono);font-size:11px;color:var(--blekk-3);text-decoration:none}
+.kside__url:hover{color:var(--hav-t);text-decoration:underline}
+.kside .kilde__linje{margin-left:0}
+.ksider__tom{margin:0 0 10px}
+.ksider__ny{display:flex;gap:8px}
+.ksider__ny .felt__inn{flex:1;min-width:0}
+.ksider__ny .felt__inn[aria-invalid="true"]{border-color:var(--ild)}
+.ksider__ny .knapp{flex:none}
+.ksider .henter{margin-top:8px}
+.ksider .henter:empty{min-height:0}
+.ksider__feil{margin:8px 0 0}
+
+.forbruk__tall{margin:0;font-size:13.5px;color:var(--blekk-2)}
+.forbruk__tall b{font-family:var(--mono);font-weight:500;font-size:.92em;font-variant-numeric:tabular-nums;color:var(--blekk)}
+.forbruk__spor{max-width:360px;height:6px;margin:9px 0 2px;border-radius:3px;background:var(--innfelt-2);overflow:hidden}
+.forbruk__fyll{height:100%;min-width:2px;border-radius:3px;background:var(--graf-3)}
+.forbruk__tak{margin-top:14px}
+.radarinnst .forbruk__inn{width:96px;font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+.radarinnst .felt__hjelp{margin-top:7px}
+
+.kjoringer{width:100%;max-width:560px;border-collapse:collapse;font-size:12.5px;color:var(--blekk-2)}
+.kjoringer th{padding:0 0 6px;font-size:12px;font-weight:500;text-align:left;color:var(--blekk-3)}
+.kjoringer td{padding:7px 0;box-shadow:inset 0 1px 0 var(--linje);vertical-align:baseline}
+.kjoringer th + th,.kjoringer td + td{padding-left:12px}
+.kjoringer__nar{font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--blekk)}
+.kjoringer .kjoringer__tall{text-align:right;font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.kjoringer th.kjoringer__tall{font-family:var(--sans);font-size:12px}
+.kjoringer__feil td{padding:0 0 8px;box-shadow:none;font-size:12px;line-height:1.5;color:var(--blekk-2)}
+.radar__ingen{margin:0}
+
+/* Merknadene står på bunnen, ikke i et kort, så de får kortets flate
+   selv: det innfelte sporet forsvinner mot bunnen i de mørke temaene. */
+.radar__merknad{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:0 0 10px;background:var(--kort)}
+.radar__merknad p{flex:1 1 280px;margin:0}
+.radar__merknad b{font-weight:600;color:var(--blekk)}
+.radar__merknad .knapp{flex:none}
+.radar__veier{display:flex;flex-wrap:wrap;gap:8px}
+.radar__merknader{margin-bottom:6px}
+.radar__merknader:empty{display:none}
+.radar__tomt{margin-top:14px}
+
+/* Innboksen. Høyrekolonnen har handlingene, og faller ned under teksten
+   når listen er smal, som i radene. */
+.funn{display:grid;grid-template-columns:var(--dato) minmax(0,1fr) auto;gap:0 14px;align-items:start;
+      padding:14px 16px 15px 19px}
+.funn + .funn{box-shadow:inset 0 1px 0 var(--linje)}
+.funn__prosent{padding-top:1px}
+.funn__prosent .rad__match{display:inline-block;font-size:11.5px;font-weight:500;color:var(--blekk)}
+.funn__hoved-kol{min-width:0}
+.funn__tittel{margin:0;font:inherit}
+.funn__selskap{display:block;font-size:14.5px;font-weight:600;letter-spacing:-.012em;line-height:1.35;overflow-wrap:anywhere}
+.funn__stilling{display:block;font-size:13.5px;line-height:1.4;color:var(--blekk-2);overflow-wrap:anywhere}
+.funn__meta{display:flex;flex-wrap:wrap;gap:1px 14px;margin:5px 0 0;font-size:12.5px;line-height:1.5;color:var(--blekk-3)}
+.funn__meta > span{white-space:nowrap}
+.funn__meta > .funn__sted{white-space:normal}
+.funn__tid{font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--blekk-2)}
+.funn__om{font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums}
+.funn__frist[data-hast="naa"] .funn__om{color:var(--ild-t);font-weight:500}
+.funn__frist[data-hast="snart"] .funn__om{color:var(--rav-t)}
+.funn__grunner{max-width:68ch;margin:9px 0 0;padding-left:16px;font-size:13px;line-height:1.5;color:var(--blekk-2)}
+.funn__grunner li + li{margin-top:3px}
+.funn__grunner li::marker{color:var(--blekk-3)}
+.funn__handlinger{display:flex;align-items:center;gap:4px;justify-content:flex-end}
+.funn .handling--hoved{background:var(--innfelt-2);color:var(--blekk)}
+.funn .handling--hoved:hover{background:var(--linje-2)}
+.funn .handling:disabled{cursor:default;opacity:.6}
+a.handling{display:inline-flex;align-items:center;text-decoration:none}
+.funn__lagtinn{margin:4px 0 0;font-size:12px;color:var(--blekk-3)}
+.funn__borte{padding:6px 9px;font-size:12.5px;color:var(--blekk-3);white-space:nowrap}
+/* Lagt til: samme rad, ett trinn dempet. */
+.funn--lagt .funn__selskap{font-weight:500;color:var(--blekk-2)}
+.funn--lagt .funn__stilling,.funn--lagt .funn__tid{color:var(--blekk-3)}
+.funn--lagt .funn__prosent .rad__match{background:none;color:var(--blekk-3);box-shadow:inset 0 0 0 1px var(--innfelt-2)}
+.funn--lagt .funn__hoved{background:var(--innfelt);color:var(--blekk-2)}
+@container liste (max-width:640px){
+  .funn{grid-template-columns:var(--dato) minmax(0,1fr)}
+  .funn__handlinger{grid-column:2;justify-content:flex-start;flex-wrap:wrap;margin:10px 0 0 -11px}
+}
+@container liste (max-width:430px){
+  .funn{--dato:48px;padding:13px 14px 14px 15px;gap:0 10px}
+}
+@media (pointer:coarse), (max-width:640px){
+  .radarinnst__topp{min-height:44px}
+  .radar__kontroll .knapp,.radarinnst__bunn .knapp,.radar__merknad .knapp,.radar__forslag .knapp,.ksider__ny .knapp{min-height:44px}
+  .ksider__ny .felt__inn{min-height:44px}
+  .ord{min-height:36px}
+  .ord__fjern{width:32px;height:32px}
+  .ord__fjern::after{content:"";position:absolute;inset:-6px}
+  .ordliste__inn{min-height:36px}
+  .radarinnst .avkrys,.fylker__topp,.radarinnst .fylker__post{min-height:44px}
+  .funn .handling,.kside__fjern{min-height:44px}
+  .terskel__glider{height:44px}
+}
+@media (pointer:coarse){
+  .ordliste__inn,.radarinnst .felt__inn{font-size:16px}
+}
 
 /* ---------- varsel ---------- */
 .varsel{position:fixed;left:calc(50% + var(--side)/2);bottom:26px;transform:translate(-50%,14px);z-index:70;
