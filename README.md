@@ -336,7 +336,7 @@ Det skjer bare én gang, og bare når søknaden aldri har hatt en annonse fra f�
 ## Søknadsbrev
 
 Velg **Søknadsbrev** på en søknad, eller fanen **Brev** i detaljpanelet.
-Øverst står fremdriften for et utkast.
+Øverst står statuslinjen, som også viser fremdriften mens et brev skrives.
 Under den står grunnlaget, én linje per kilde, og under det brevet på et papir som vokser med teksten.
 Grunnlaget og brevet ruller sammen som ett dokument.
 
@@ -362,6 +362,7 @@ Brevet bygger også på søknaden (selskap, stilling, sted, jobbtype og sektor f
 
 **Skriv utkast** kan ikke trykkes før CV-en er på plass og søknaden har en annonse eller en lenke.
 Grunnen står ved knappen, for eksempel «Legg til annonsen først».
+Mangler bare annonsen og søknaden har en lenke, kan knappen trykkes, og det står ved den at annonsen hentes fra lenken først, for eksempel «Annonsen hentes fra finn.no først».
 
 Et konkret språkvalg går foran et språkønske i instruksen til en ny versjon, som går foran annonsens krav til søknadsspråk og deretter annonsens hovedspråk.
 CV-ens språk bestemmer ikke brevspråket.
@@ -390,14 +391,20 @@ Siden hentes, og Claude Haiku 5.5 (`claude-haiku-5-5`) velger linjene på siden 
 Modellen velger bare linjer og skriver ingenting selv, så det som lagres, står ordrett på siden.
 Annonsen lagres på søknaden, og neste brev bruker den uten å hente på nytt.
 Har siden ingen annonse for stillingen, for eksempel fordi den er tatt ned, sier appen fra i stedet for å skrive et brev.
+Det gjelder også en død lenke, en lenke til en fil og en side med for lite tekst.
+Feilen sier hva som skjedde, og **Lim inn annonsen** går til Annonse-fanen, rett i innlimingen.
 Finnes annonsen fra før, brukes den direkte, og Haiku spørres ikke.
 Mangler både annonse og lenke, sier appen at annonsen mangler.
 
 Mangler grunnlaget noe vesentlig, for eksempel fordi CV-en og annonsen ser ut til å gjelde to ulike personer, stopper kjøringen med en forklaring i stedet for å gjette.
 Står et brev fortsatt under arbeid fra et annet vindu, sier brevet fra og tilbyr **Avbryt forrige kjøring**.
-En kjøring fra den gamle flyten i tre trinn kan ikke fortsettes, men står ikke i veien: neste **Skriv utkast** starter på nytt.
+Ble et brev ikke ferdig, for eksempel fordi panelet ble lukket mens det ble skrevet, sier statuslinjen det neste gang brevet åpnes, og tilbyr **Skriv på nytt**.
+Det skrives ikke på nytt av seg selv.
+En kjøring fra den gamle flyten i tre trinn kan ikke fortsettes, men vises på samme måte og står ikke i veien.
 Brev og versjoner skrevet med den gamle flyten leses og vises som før.
 
+Statuslinjen sier hva som skjer: «Henter annonsen fra …» når annonsen mangler, «Leser annonsen og CV-en» mens modellen tenker, og «Skriver utkastet» når teksten begynner å komme.
+Tenkningen kan ta en stund før noe vises, så linjen viser også hvor lenge kallet har holdt på.
 Teksten strømmer inn mens den skrives.
 Det du ser underveis er et forslag: det lagres ikke, erstatter aldri det du selv har skrevet, og kontrollen kan forkaste det.
 Teksten lander i brevet først når kontrollen har godkjent den.
