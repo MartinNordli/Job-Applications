@@ -12,7 +12,13 @@
 
 import { SEKTORER, JOBBTYPER, MAKS, normaliserIsoDato, erIsoDato, sjekkLenke } from "./felles.mjs";
 
-export const MODELL     = "claude-haiku-4-5";
+/* Haiku 5.5 tenker alltid (adaptiv tenkning, ingen budget_tokens), og
+   tenkningen teller med i max_tokens. Innsatsen står derfor eksplisitt
+   og lav: feltene står i teksten, de skal ikke resonneres fram. Modellen
+   tar heller ikke imot temperature eller en forhåndsutfylt assistentrolle,
+   så ingen av dem sendes. */
+export const MODELL     = "claude-haiku-5-5";
+export const INNSATS    = "low";
 export const MAKS_TEKST = 12_000;
 
 /* Feltene importen prøver å fylle. `lenke` står ikke her: den er
@@ -441,14 +447,16 @@ export function byggForespørsel(tekst, manglende, iDag = new Date()){
 
   return {
     model: MODELL,
-    max_tokens: 1024,
+    /* Romslig nok til at tenkningen ikke spiser svaret. Svaret selv er
+       noen få felt. */
+    max_tokens: 4096,
     system: ledetekst(felt),
     /* Dagens dato er bare relevant når fristen er i spill — en frist
        uten år kan ikke tolkes uten den. Ellers er den bortkastet. */
     messages: [{ role: "user", content:
       (felt.includes("frist") ? `I dag er ${iDag.toISOString().slice(0, 10)}.\n` : "")
       + `${be}\n\n--- annonsetekst ---\n${bit}` }],
-    output_config: { format: { type: "json_schema", schema: skjema } }
+    output_config: { effort: INNSATS, format: { type: "json_schema", schema: skjema } }
   };
 }
 

@@ -631,8 +631,9 @@ mod tester {
             }
         };
         let kropp = serde_json::json!({
-            "model": "claude-haiku-4-5",
-            "max_tokens": 64,
+            "model": "claude-haiku-5-5",
+            "max_tokens": 1024,
+            "output_config": { "effort": "low" },
             "messages": [{ "role": "user", "content": "Svar med ordet: hei" }]
         })
         .to_string();

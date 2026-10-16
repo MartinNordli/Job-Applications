@@ -18,9 +18,11 @@ export const LOGGFIL = "importlogg.jsonl";
 /* Nok til flere år med import, lite nok til å leses i én jafs. */
 export const MAKS_LINJER = 500;
 
-/* Claude Haiku 4.5, dollar per million tokens. Et øyeblikksbilde —
-   endrer prisen seg, er det denne linjen som skal rettes. */
-export const PRIS = { inn: 1, ut: 5 };
+/* Claude Haiku 5.5, dollar per million tokens, for prompter på høyst
+   100 000 tokens. Importen sender noen tusen tegn, så den høyere satsen
+   for lengre prompter gjelder aldri her. Et øyeblikksbilde: endrer
+   prisen seg, er det denne linjen som skal rettes. */
+export const PRIS = { inn: 0.1, ut: 0.5 };
 
 /* Omtrentlig, og med vilje ikke hentet fra nettet: tallet skal være
    det samme i morgen, og en valutakurs på fire desimaler ville gitt

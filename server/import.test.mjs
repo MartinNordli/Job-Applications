@@ -354,7 +354,12 @@ test("byggForespørsel spør bare om det som mangler, og null om ingenting", () 
   const be = byggForespørsel("tekst", ["sektor", "jobbtype"]);
   assert.deepEqual(be.output_config.format.schema.required, ["sector", "job_type"]);
   assert.equal(be.output_config.format.schema.additionalProperties, false);
-  assert.equal(be.model, "claude-haiku-4-5");
+  assert.equal(be.model, "claude-haiku-5-5");
+  // Haiku 5.5 avviser budget_tokens og sampling, og tenkningen teller i max_tokens.
+  assert.equal(be.output_config.effort, "low");
+  for(const felt of ["thinking", "temperature", "top_p", "top_k"]) assert.equal(Object.hasOwn(be, felt), false, felt);
+  assert.ok(be.max_tokens >= 4096);
+  assert.equal(be.messages.at(-1).role, "user");
   assert.equal(byggForespørsel("tekst", []), null);
 });
 
@@ -602,9 +607,9 @@ test("sammendraget teller de tre tallene", () => {
 });
 
 test("prisen regnes av de ekte tokentallene", () => {
-  /* 1 000 000 inn og 0 ut = $1 = kr 11 med kursen i modulen. */
-  assert.ok(Math.abs(kroner({ inn: 1e6, ut: 0 }) - 11) < 1e-9);
-  assert.ok(Math.abs(kroner({ inn: 0, ut: 1e6 }) - 55) < 1e-9);
+  /* Haiku 5.5: 1 000 000 inn = $0,10 = kr 1,10, og 1 000 000 ut = $0,50 = kr 5,50. */
+  assert.ok(Math.abs(kroner({ inn: 1e6, ut: 0 }) - 1.1) < 1e-9);
+  assert.ok(Math.abs(kroner({ inn: 0, ut: 1e6 }) - 5.5) < 1e-9);
 });
 
 test("en vellykket import skriver én linje, og endepunktet leser den", async t => {

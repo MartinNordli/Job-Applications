@@ -298,7 +298,7 @@ Det meste leses rett ut av siden, uten modell:
 - Fristen i brødteksten, som «Søk senest søndag 13. september».
 - Jobbtypen ut fra ansettelsesform og stillingsnavn.
 
-Bare det som fortsatt mangler, går videre til Claude Haiku (`claude-haiku-4-5`).
+Bare det som fortsatt mangler, går videre til Claude Haiku 5.5 (`claude-haiku-5-5`), med lav innsats.
 Et selskap som allerede står i listen, får sektoren sin derfra i stedet for å klassifiseres på nytt.
 Hvor mye annonsetekst som sendes, avhenger av hva som gjenstår.
 En typisk norsk annonse gir tre felt og rundt 500 tokens, som koster under ett øre.
