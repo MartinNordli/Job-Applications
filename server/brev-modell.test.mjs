@@ -57,8 +57,11 @@ test("Anthropic får innsatsen eksplisitt per formål, og ingen tenkeinnstilling
      innsats er ikke lik mellom modellene. Derfor står den alltid i kroppen. */
   const innsats = Object.fromEntries(FORMAL.map(formal => [formal, byggModellkropp({ ...inn, leverandor: "anthropic", formal })]));
   assert.deepEqual(Object.fromEntries(Object.entries(innsats).map(([f, k]) => [f, [k.model, k.output_config.effort]])), {
-    brev: ["claude-opus-5-5", "medium"], vurdering: ["claude-sonnet-5-5", "high"], radar: ["claude-haiku-5-5", "medium"]
+    brev: ["claude-opus-5-5", "medium"], vurdering: ["claude-sonnet-5-5", "high"], radar: ["claude-haiku-5-5", "medium"],
+    annonse: ["claude-haiku-5-5", "low"]
   });
+  // Brevet tenker, skriver og leser gjennom i ett kall, og får plass til alt.
+  assert.equal(innsats.brev.max_tokens, 16000);
   for(const k of Object.values(innsats)) assert.equal(Object.hasOwn(k, "thinking"), false);
   assert.equal(Object.hasOwn(byggModellkropp({ ...inn, leverandor: "openai" }), "output_config"), false);
 });
@@ -71,6 +74,13 @@ test("system, kilder og oppgave kommer i den rekkefølgen, og de to første er m
   ] }]);
   const o = byggModellkropp({ ...inn, leverandor: "openai" });
   assert.deepEqual(o.input, [{ role: "user", content: [{ type: "input_text", text: inn.kilder }, { type: "input_text", text: JSON.stringify(inn.innhold) }] }]);
+  // Flere kildeblokker får hvert sitt merke, i rekkefølgen de kom.
+  const flere = byggModellkropp({ ...inn, kilder: ["profil", "søknad"], leverandor: "anthropic" });
+  assert.deepEqual(flere.messages[0].content.map(b => [b.text, !!b.cache_control]), [["profil", true], ["søknad", true], [JSON.stringify(inn.innhold), false]]);
+  assert.deepEqual(byggModellkropp({ ...inn, kilder: ["profil", "søknad"], leverandor: "openai" }).input[0].content.map(b => b.text), ["profil", "søknad", JSON.stringify(inn.innhold)]);
+  // Systemet har ett av de fire merkene Anthropic tillater.
+  assert.throws(() => byggModellkropp({ ...inn, kilder: ["a", "b", "c", "d"], leverandor: "anthropic" }), /grunnlag/);
+  assert.throws(() => byggModellkropp({ ...inn, kilder: ["a", " "], leverandor: "anthropic" }), /grunnlag/);
   // Uten kildeblokk er det bare oppgaven, som før.
   const uten = byggModellkropp({ ...inn, kilder: undefined, leverandor: "anthropic" });
   assert.equal(uten.messages[0].content.length, 1);
