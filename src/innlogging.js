@@ -123,7 +123,7 @@ function kroppen(verdier){
       + '<p class="port__ingress">' + esc(status.melding
           || "Brukerregisteret kan ikke leses. Rett opp brukere.json før du logger inn.") + '</p>'
       + '<p class="felt__hjelp" style="margin:0 0 18px">Filen ligger i datakatalogen. '
-      + 'Søknadene er urørt — det er bare registeret over hvem som eier dem som er skadet.</p>'
+      + 'Søknadene er urørt. Det er bare registeret over hvem som eier dem som er skadet.</p>'
       + '<button class="knapp knapp--bred" type="button" data-port="påNytt">Sjekk på nytt</button>'
       + '</div>' + foten();
 

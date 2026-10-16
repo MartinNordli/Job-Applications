@@ -1654,7 +1654,9 @@ a.handling{display:inline-flex;align-items:center;text-decoration:none}
   /* ikonet bærer knappen alene */
   .nyknapp{font-size:0;padding:10px 12px;gap:0}
   .tittelrad{gap:12px}
-  .sok{flex:1}
+  /* Søket deler raden med overskriften bare når det er plass til
+     plassholderen; ellers får det sin egen rad. */
+  .sok{flex:1 1 220px}
   .sok__felt{width:100%}
   /* Parvis også på telefon: sju fliser under hverandre ville skjøvet
      resten av tallene langt ned. Mindre luft og tall, samme oppbygging. */

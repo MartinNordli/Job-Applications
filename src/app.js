@@ -182,7 +182,7 @@ function sorterFrist(a, b){
    forkortes til tre tegn, så datoene står rett under hverandre. */
 function datoHtml(p){
   if(visning === "frister"){
-    if(!p.frist) return '<div class="dato dato--lopende"><span class="dato__dag">—</span></div>';
+    if(!p.frist) return '<div class="dato dato--lopende"><span class="dato__dag">–</span></div>';
     const d = tilDato(p.frist);
     return '<div class="dato">'
          + '<span class="dato__ukedag">' + ukedag(p.frist).slice(0, 2) + '</span>'
@@ -953,7 +953,7 @@ function tegnSkuff(){
       + (n === 1 ? 'søknad.' : 'søknader.') + '</p>'
       + '<p style="margin:0 0 14px;color:var(--blekk-2);font-size:14px;line-height:1.5">'
       + (filErOdelagt
-          ? '<code>jobber.json</code> kan ikke leses. Den blir flyttet til side — ikke slettet — '
+          ? '<code>jobber.json</code> kan ikke leses. Den blir flyttet til side, ikke slettet, '
             + 'og <code>jobber.forrige.json</code> skrives inn i stedet.'
           : '<code>jobber.json</code> finnes ikke lenger, men <code>jobber.forrige.json</code> ligger igjen')
       + (sisteKopi.oppdatert ? ' Kopien er fra ' + esc(kortTid(sisteKopi.oppdatert)) + '.' : '.')
@@ -1008,7 +1008,7 @@ function tegnSkuff(){
     + felt("stilling", "Stilling", p.stilling, "text", "Graduate: Data Engineer")
     + felt("lenke", "Lenke til utlysningen", p.lenke, "url", "https://…")
     + '<div class="felt__rad">' + felt("frist", "Søknadsfrist", p.frist, "date", "") + felt("sted", "Sted", p.sted, "text", "Oslo") + '</div>'
-    + '<label class="avkrys"><input type="checkbox" id="ingenFrist"' + (utenFrist ? " checked" : "") + '> Løpende opptak — ingen frist</label>'
+    + '<label class="avkrys"><input type="checkbox" id="ingenFrist"' + (utenFrist ? " checked" : "") + '> Løpende opptak, ingen frist</label>'
     /* Sektor og jobbtype hører sammen — begge sier hva slags stilling
        dette er. Status er brukerens egen, og står derfor for seg selv. */
     + '<div class="felt__rad" style="margin-top:15px">'
@@ -1399,8 +1399,8 @@ async function hentFraLenke(){
 
     const antall = Object.values(svar.kilder || {}).filter(kk => kk && kk !== "bruker").length;
     varsle(antall
-      ? "Leste " + antall + (antall === 1 ? " felt" : " felter") + " fra annonsen — se over dem før du legger til"
-      : "Fant lite i annonsen — fyll inn resten selv");
+      ? "Leste " + antall + (antall === 1 ? " felt" : " felter") + " fra annonsen. Se over dem før du legger til"
+      : "Fant lite i annonsen. Fyll inn resten selv");
   }catch(e){
     if(mitt !== hentenr) return;
     /* Lenken skal aldri gå tapt. Den blir stående i feltet, og den følger
@@ -1846,7 +1846,7 @@ Lagring.påTilstand(t => {
   else if(t.navn === "utlogget")
     visStripe(t.melding || "Du er logget ut. Endringen ligger her til du er inne igjen.");
   else if(t.navn === "konflikt")
-    visStripe("Dataene ble endret et annet sted — antakelig i en annen fane. "
+    visStripe("Dataene ble endret et annet sted, antakelig i en annen fane. "
       + "Endringen din er ikke skrevet, og blir det ikke før du henter på nytt.",
       "Hent på nytt", "hentPåNytt");
   else if(t.navn === "blokkert")
