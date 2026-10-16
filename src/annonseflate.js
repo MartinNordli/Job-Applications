@@ -34,6 +34,7 @@ const FEIL = {
   "dod-lenke":     { tittel: "Annonsen ligger ikke lenger på adressen.", hjelp: "Den er antakelig tatt ned. Har du teksten et annet sted, kan du lime den inn." },
   "ikke-nettside": { tittel: "Lenken peker ikke til en nettside.", hjelp: "Den kan gå til en PDF eller en fil. Åpne originalen, kopier teksten og lim den inn." },
   "tom-annonse":   { tittel: "Fant for lite tekst på siden.", hjelp: "Siden bygges antakelig med JavaScript. Åpne originalen, kopier annonsen og lim den inn." },
+  "ikke-annonse":  { tittel: "Fant ingen annonse for stillingen på siden.", hjelp: "Den kan være tatt ned, eller lenken går til en liste over stillinger. Har du teksten, kan du lime den inn." },
   "for-lang":      { tittel: "Siden har mer enn 100 000 tegn tekst.", hjelp: "Lim inn bare selve annonsen i stedet." },
   "henting":       { hjelp: "Prøv igjen om litt, eller lim inn annonsen." },
   "for-mange":     { hjelp: "Du kan fortsatt lime inn annonsen." },

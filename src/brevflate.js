@@ -3,7 +3,7 @@
    angrehistorikk overlever hvert tastetrykk.
 
    Flaten er stablet, ikke delt i to kolonner: panelet er aldri bredere
-   enn 580 px. Fremdriftsraden og statuslinjen står fast øverst. Under
+   enn 580 px. Statuslinjen, som også er fremdriften, står fast øverst. Under
    dem ruller grunnlaget (CV, annonse, språk, én linje hver) og papiret
    som ett dokument: papiret vokser med brevet i stedet for å rulle inni
    seg selv, så det finnes bare én rullefelt å forholde seg til.
@@ -24,11 +24,27 @@ const tidspunkt = verdi => {
   return Number.isNaN(dato.getTime()) ? "" : dato.toLocaleString("nb-NO", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 };
 const tall = n => n.toLocaleString("nb-NO");
-/* Kjøringer som står og venter på neste trinn, kan fortsettes. De som
-   står midt i et trinn, eies av et annet vindu eller et brutt kall. */
-const VENTENDE = new Set(["klar", "venter", "skrevet"]);
+/* En kjøring som skriver, eies av et annet vindu eller et brutt kall,
+   og må avbrytes før en ny kan starte. En som ble stående før den var
+   ferdig, startes aldri av seg selv: et brev skrives bare når brukeren
+   ber om det. Den tilbys som «Skriv på nytt». «klar» er en kjøring som
+   aldri kom til skrivingen. «analyserer», «venter», «skrevet» og
+   «kontrollerer» er fra flyten i tre trinn, som ikke kan fortsettes. */
 const I_ARBEID = new Set(Object.values(FASE));
-const TEKSTER = { analyse: "Leser annonsen og CV-en…", skriv: "Skriver utkastet…", kontroller: "Leser gjennom utkastet…" };
+const UFERDIG = new Set(["klar", "avbrutt", "analyserer", "venter", "skrevet", "kontrollerer"]);
+/* Hva statuslinjen sier før og etter at teksten begynner å komme.
+   Modellen tenker gjennom grunnlaget før den skriver, og det kan ta en
+   god stund uten at noe vises. */
+const TEKSTER = {
+  utkast: { leser: "Leser annonsen og CV-en…", skriver: "Skriver utkastet…" },
+  versjon: { leser: "Leser brevet og ønsket ditt…", skriver: "Skriver den nye versjonen…" }
+};
+/* Feil fra hentingen av en annonse som manglet. Annonsen kan alltid
+   limes inn i stedet, så de får en vei dit. Nøkkelfeil får en vei til
+   nøkkelen. */
+const ANNONSEFEIL = new Set(["dod-lenke", "ikke-nettside", "henting", "tom-annonse", "ikke-annonse", "for-lang"]);
+const NØKKELFEIL = new Set(["mangler-nokkel", "nokkel"]);
+const kanHentes = lenke => /^https?:\/\//i.test(lenke);
 const GJENOPPRETTBAR = ["odelagt", "gjenoppretting", "versjon"];
 
 export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx = {}, påLukk,
@@ -44,7 +60,7 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
   let dokument = null, cv = null, aktiv = true, opptatt = false, blokkert = false;
   let endring = 0, lagret = 0, cvEndring = 0, cvLagret = 0, lagring = null, ventetid;
   let forespørsel = null, arbeidsnr = 0, modellarbeid = false;
-  let gjenoppretting = null, arbeid = null;
+  let gjenoppretting = null, arbeid = null, uferdig = null;
   let annonseHenter = false, annonseFokus = false;
   let stil = null, stilEndret = false, stilLastes = null;
   /* En annen fane kan sende hit for å få lagt inn CV-en («cv») eller
@@ -63,16 +79,11 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
   kropp.classList.add("skuff__kropp--brev");
   bunn.classList.add("skuff__bunn--brev");
   kropp.innerHTML = `
-    <div class="brev__flytrad">
-      <ol class="brev__flyt" id="brevFlyt" aria-label="Slik blir utkastet til">
-        <li class="brev__steg" data-steg="analyse" data-tilstand="kommende"><span class="brev__steg__navn">Leser annonsen og CV-en</span><span class="brev__steg__mikro"><span class="skjult">Gjenstår</span></span></li>
-        <li class="brev__steg" data-steg="skriv" data-tilstand="kommende"><span class="brev__steg__navn">Skriver</span><span class="brev__steg__mikro"><span class="skjult">Gjenstår</span></span></li>
-        <li class="brev__steg" data-steg="kontroll" data-tilstand="kommende"><span class="brev__steg__navn">Leser gjennom</span><span class="brev__steg__mikro"><span class="skjult">Gjenstår</span></span></li>
-      </ol>
-    </div>
-    <div class="brev__statusrad">
+    <div class="brev__statusrad" id="brevFremdrift" data-fase="hvile">
       <p class="brev__tilbakemelding" role="status" aria-live="polite"><span id="brevStatus">Henter grunnlaget…</span></p>
-      <button class="knapp knapp--stille brev__avbryt" type="button" data-brev="stopp" hidden>Avbryt</button>
+      <span class="brev__tid" id="brevTid" aria-hidden="true" hidden></span>
+      <button class="knapp knapp--stille brev__statusknapp" type="button" data-brev="skrivIgjen" hidden>Skriv på nytt</button>
+      <button class="knapp knapp--stille brev__statusknapp" type="button" data-brev="stopp" hidden>Avbryt</button>
     </div>
     <div class="brev__feil" id="brevFeil" role="alert" hidden></div>
     <div class="brev__gjenoppretting" id="brevGjenoppretting" hidden><button class="knapp" type="button" data-brev="gjenopprett">Gjenopprett forrige lagring</button><p class="felt__hjelp">Den forrige lokale sikkerhetskopien brukes. Originalfilen blir bevart.</p></div>
@@ -113,7 +124,7 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
         <p class="brev__endret" id="brevEndret" hidden>Grunnlaget er endret siden denne versjonen.</p>
         <div class="brev__papir">
           <label class="skjult" for="brevTekst">Søknadsbrevet ditt</label>
-          <textarea class="brev__tekst" id="brevTekst" maxlength="16000" spellcheck="true" disabled placeholder="Brevet vises her.\n\nLegg til CV og stillingsannonse, så skriver vi et utkast du kan gjøre til ditt eget."></textarea>
+          <textarea class="brev__tekst" id="brevTekst" maxlength="16000" spellcheck="true" disabled placeholder="Brevet vises her.\n\nIngenting skrives før du trykker Skriv utkast. Du får et utkast du kan gjøre til ditt eget."></textarea>
           <div class="brev__strom" id="brevStrom" aria-hidden="true" hidden><span id="brevStromTekst"></span><span class="brev__markor"></span></div>
         </div>
         <div class="brev__forbedring" id="brevForbedring" hidden><label class="felt__merke" for="brevInstruks">Hva vil du forbedre?</label><div class="brev__forbedringsrad"><textarea class="felt__omr" id="brevInstruks" maxlength="2000" rows="1" placeholder="For eksempel: Gjør åpningen mer konkret" aria-describedby="brevInstruksHjelp"></textarea><button class="knapp" type="button" data-brev="forbedre">Lag ny versjon</button></div><p class="skjult" id="brevInstruksHjelp">Tar utgangspunkt i teksten du ser nå. Tidligere versjoner beholdes i versjonslisten.</p></div>
@@ -150,7 +161,14 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
     </div>`;
   bunn.innerHTML = `<button class="knapp knapp--primar brev__generer" type="button" data-brev="skriv" aria-describedby="brevSkrivGrunn" disabled>Skriv utkast</button><span class="brev__grunn" id="brevSkrivGrunn"></span><span class="brev__ord" id="brevOrd"></span><span class="brev__kopistatus" id="brevKopistatus" role="status" aria-live="polite"></span><button class="knapp" type="button" data-brev="kopier" disabled>Kopier brev</button><details class="brev__nedlasting"><summary class="knapp knapp--primar">Last ned <span aria-hidden="true">⌄</span></summary><div class="brev__meny"><button type="button" data-brev="docx" disabled>Word (.docx)</button><button type="button" data-brev="pdf" disabled>PDF (.pdf)</button></div></details>`;
 
-  function melding(tekst = "") { if (aktiv) finn("#brevStatus").textContent = tekst; }
+  /* En ny melding tar over linjen. Prikken for en stoppet kjøring hører
+     til meldingen om det, og går med den. */
+  function melding(tekst = "") {
+    if (!aktiv) return;
+    const status = finn("#brevStatus");
+    if (fase === "stoppet" && status.textContent !== tekst) settFase("hvile");
+    status.textContent = tekst;
+  }
   function feil(feilen) {
     if (!aktiv || feilen?.name === "AbortError") return;
     finn("#brevFeil").textContent = typeof feilen === "string" ? feilen : feilen?.melding || feilen?.message || String(feilen);
@@ -158,36 +176,37 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
   }
   function ryddFeil() { finn("#brevFeil").hidden = true; }
 
-  /* ---- fremdriftsraden ----
-     Raden er modellens tre faser, med navn på det som faktisk skjer:
-     den leser annonsen og CV-en, skriver, og leser gjennom det den skrev.
-     Mikrolinjen under hvert navn sier om steget gjenstår, pågår, er
-     ferdig eller ble gjenbrukt fra en tidligere versjon. */
-  const STEG = ["analyse", "skriv", "kontroll"];
-  const steget = steg => finn(`[data-steg="${steg}"]`);
-  const tilstand = steg => steget(steg)?.dataset.tilstand;
-  function settSteg(steg, ny, mikro = "") {
-    const element = steget(steg); if (!element) return;
-    element.dataset.tilstand = ny;
-    element.querySelector(".brev__steg__mikro").innerHTML = mikro ? esc(mikro) : '<span class="skjult">Gjenstår</span>';
+  /* ---- fremdriften ----
+     Brevet er ett modellkall, så fremdriften er ett steg, og den bor i
+     statuslinjen: en prikk som puster mens noe pågår, teksten som sier
+     hva, og tiden som har gått. Mangler annonsen, hentes den først, og
+     linjen sier det. data-fase på raden er hvile, henter, skriver eller
+     stoppet. Tiden er mono og utenfor aria-live, så skjermlesere får
+     fasene, ikke sekundene. */
+  let fase = "hvile", tekster = TEKSTER.utkast, tekstKommet = false, startet = 0, ur = null;
+  function settFase(ny) { fase = ny; finn("#brevFremdrift").dataset.fase = ny; }
+  function visTid() {
+    const s = Math.floor((Date.now() - startet) / 1000);
+    finn("#brevTid").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   }
-  function flytKlar() { STEG.forEach(steg => settSteg(steg, "kommende")); }
-  /* Et avbrudd eller en feil skal etterlate raden ærlig: steget som var i
-     arbeid sier at det stoppet, resten står som de sto. */
-  function flytStoppet() { STEG.forEach(steg => { if (tilstand(steg) === "aktiv") settSteg(steg, "stoppet", "stoppet"); }); }
-  /* Ble analysen gjenbrukt, fyrte fasen aldri. Raden sier det rett ut i
-     stedet for å late som steget ikke fantes. */
-  function analyseForbi() { if (tilstand("analyse") !== "ferdig") settSteg("analyse", "ferdig", tilstand("analyse") === "kommende" ? "gjenbrukt" : "ferdig"); }
-  function påFase({ trinn, nullstill }) {
+  function startUr() { startet = Date.now(); visTid(); finn("#brevTid").hidden = false; clearInterval(ur); ur = setInterval(() => { if (aktiv) visTid(); }, 1000); }
+  function stoppUr() { clearInterval(ur); ur = null; if (aktiv) finn("#brevTid").hidden = true; }
+  function påFase({ nullstill }) {
     if (nullstill) strømTøm();
-    if (trinn === "analyse") settSteg("analyse", "aktiv", "pågår");
-    else if (trinn === "skriv") { analyseForbi(); settSteg("skriv", "aktiv", "pågår"); }
-    else if (trinn === "kontroller") { analyseForbi(); settSteg("skriv", "ferdig", "ferdig"); settSteg("kontroll", "aktiv", "pågår"); }
-    melding(TEKSTER[trinn] || "");
+    /* Kommer fasen etter en henting, er annonsen lagret på søknaden.
+       Panelet henter den, så grunnlaget og Annonse-fanen viser den. */
+    const hentet = fase === "henter";
+    settFase("skriver"); tekstKommet = false;
+    melding(tekster.leser);
+    tegnAnnonse();
+    if (hentet) lastDokument();
   }
+  /* Den første teksten sier at tenkningen er over. Statusen skifter da
+     også om brukeren har overtatt papiret og ikke ser strømmen. */
+  function førsteTekst() { if (tekstKommet || fase !== "skriver") return; tekstKommet = true; melding(tekster.skriver); }
 
   /* ---- strømmeflaten ----
-     Teksten modellen skriver er provisorisk: kontrollen kan forkaste den
+     Teksten modellen skriver er provisorisk: kontrollen i koden kan forkaste den
      etterpå, og et manuelt tastetrykk går alltid foran. Den legges derfor
      som et eget lag over papiret, aldri i #brevTekst, med nøyaktig samme
      typografi og innrykk, slik at ingen linje flytter seg når det ferdige
@@ -199,7 +218,7 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
   function strømTillegg(tekst) {
     if (strømAv || !tekst) return;
     const flate = finn("#brevStrom");
-    /* Et gjenopptatt trinn gir fase uten deltaer. Flaten avsløres derfor
+    /* Et trinn som allerede var ferdig, gir fase uten deltaer. Flaten avsløres derfor
        først når det finnes noe å vise. */
     if (flate.hidden) { flate.hidden = false; flate.scrollTop = 0; strømFølger = true; visPapiret(); }
     finn("#brevStromTekst").textContent += tekst;
@@ -228,8 +247,8 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
   function strømOverta() { if (!finn("#brevStrom").hidden) { strømAv = true; strømSkjul(); } }
   function lagMelder(nummer) {
     return {
-      påFase: fase => { if (nummer === arbeidsnr) påFase(fase); },
-      påDelta: tekst => { if (nummer === arbeidsnr) strømTillegg(tekst); }
+      påFase: data => { if (nummer === arbeidsnr) påFase(data); },
+      påDelta: tekst => { if (nummer === arbeidsnr) { førsteTekst(); strømTillegg(tekst); } }
     };
   }
 
@@ -239,22 +258,35 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
   const harCv = () => !!finn("#brevCvTekst").value.trim();
   const lenke = () => (jobb()?.lenke || "").trim();
   const dokVenter = () => !k.dok && !k.dokFeil;
+  /* Mangler annonsen, henter tjenesten den fra søknadens lenke før
+     brevet skrives. Det må være en nettadresse. */
+  const henterFørst = () => !harAnnonse() && kanHentes(lenke());
   /* Hvorfor «Skriv utkast» ikke kan trykkes. Står ved knappen, og er
      knappens beskrivelse for skjermlesere. Tom når alt er på plass. */
   function skrivGrunn() {
     if (!dokument || dokVenter()) return "";
-    if (!harCv() && !harAnnonse()) return "Legg til CV og annonse først";
+    const annonse = harAnnonse() || henterFørst();
+    if (!harCv() && !annonse) return "Legg til CV og annonse først";
     if (!harCv()) return "Legg til CV-en først";
-    if (!harAnnonse()) return "Legg til annonsen først";
+    if (!annonse) return "Legg til annonsen først";
     return "";
+  }
+  /* Står ved knappen når den kan trykkes, men gjør mer enn å skrive. */
+  function skrivMerknad() {
+    if (!dokument || dokVenter() || !henterFørst()) return "";
+    const v = vert(lenke());
+    return "Annonsen hentes fra " + (v || "lenken") + " først";
   }
   function tegnAnnonse() {
     if (!aktiv) return;
     const verdi = finn("#brevAnnonseVerdi"), handlinger = finn("#brevAnnonseHandlinger");
-    const av = annonseHenter || opptatt || !dokument;
+    /* Når brevet henter en annonse som manglet, sier raden det samme
+       som når den hentes herfra. */
+    const henter = annonseHenter || (fase === "henter" && opptatt);
+    const av = henter || opptatt || !dokument;
     const knapp = (hva, tekst) => `<button class="knapp knapp--stille brev__lenkeknapp" type="button" data-brev="${hva}"${av && hva !== "seAnnonse" ? " disabled" : ""}>${tekst}</button>`;
     let tekst, html = "", mangler = false;
-    if (annonseHenter) {
+    if (henter) {
       const v = vert(lenke());
       tekst = "Henter" + (v ? " fra " + v : "") + "…";
       html = knapp("hentAnnonse", "Hent") + knapp("limAnnonse", "Lim inn");
@@ -276,7 +308,7 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
     handlinger.innerHTML = html;
     /* Knappen man trykket på, kan ha byttet navn eller blitt borte.
        Fokus blir i raden i stedet for å falle ut til dokumentet. */
-    if ((fokusInne || annonseFokus) && !annonseHenter) { annonseFokus = false; handlinger.querySelector("button:not(:disabled)")?.focus({ preventScroll: true }); }
+    if ((fokusInne || annonseFokus) && !henter) { annonseFokus = false; handlinger.querySelector("button:not(:disabled)")?.focus({ preventScroll: true }); }
   }
   function oppdaterKnapper() {
     const tekst = finn("#brevTekst").value.trim();
@@ -286,7 +318,10 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
     skriv.textContent = tekst ? "Skriv nytt utkast" : "Skriv utkast";
     skriv.classList.toggle("knapp--primar", !tekst);
     skriv.disabled = opptatt || blokkert || !dokument || dokVenter() || !!grunn;
-    finn("#brevSkrivGrunn").textContent = opptatt ? "" : grunn;
+    finn("#brevSkrivGrunn").textContent = opptatt ? "" : grunn || skrivMerknad();
+    const igjen = finn('[data-brev="skrivIgjen"]');
+    igjen.hidden = !uferdig || opptatt || blokkert;
+    igjen.disabled = skriv.disabled;
     finn('[data-brev="forbedre"]').disabled = opptatt || blokkert || !dokument;
     finn("#brevOrd").textContent = tekst ? `${tekst.split(/\s+/u).length} ord` : "";
     ["kopier", "docx", "pdf"].forEach(handling => finn(`[data-brev="${handling}"]`).disabled = !tekst || (opptatt && handling !== "kopier"));
@@ -499,7 +534,7 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
   }
   async function avbryt() {
     arbeidsnr++; forespørsel?.abort();
-    strømSkjul(); flytStoppet();
+    strømSkjul(); stoppUr(); settFase("hvile");
     /* En kjøring fra et annet vindu eller et brutt kall har ingen
        forespørsel her å avbryte. Den stoppes hos tjenesten. */
     if (blokkert && dokument?.kjoring?.id) { try { await Brev.avbryt(id, dokument.kjoring.id); } catch (e) { if (aktiv) feil(e); } }
@@ -510,13 +545,31 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
     finn('[data-brev="stopp"]').textContent = "Avbryt";
     settOpptatt(false, "Skrivingen er avbrutt. Grunnlaget og tidligere brev er beholdt.");
   }
+  /* En feil fra kjøringen, med en vei videre der det finnes en. Feil fra
+     hentingen av annonsen bruker de samme ordene som Annonse-fanen. */
+  function feilMedVei({ tittel, hjelp = "" }, vei) {
+    const område = finn("#brevFeil"); område.hidden = false;
+    område.innerHTML = `<p>${esc(tittel)}</p>${hjelp ? `<p>${esc(hjelp)}</p>` : ""}<div class="brev__småhandlinger">${vei}</div>`;
+  }
+  const annonsefeil = e => feilMedVei(feilmelding(e), '<button class="knapp" type="button" data-brev="limAnnonse">Lim inn annonsen</button>');
+  function kjøringsfeil(e, fasen) {
+    if (!aktiv || e?.name === "AbortError") return;
+    const kode = e?.code;
+    if (ANNONSEFEIL.has(kode) || (fasen === "henter" && kode === "for-mange")) annonsefeil(e);
+    else if (NØKKELFEIL.has(kode)) feilMedVei({ tittel: e.melding || e.message || "Nøkkelen kunne ikke brukes." }, '<button class="knapp" type="button" data-brev="tilNøkkel">Legg til nøkkel</button>');
+    else feil(e);
+  }
   /* Utkast og forbedring går gjennom samme kjede. kjør() eier tilstanden
      rundt kallet: fremdriften, strømmen, avbruddet og hva som står igjen
-     når det er over. */
-  async function kjør({ start, kall, ferdig, stoppet, lagreFørst }) {
+     når det er over. Mangler annonsen, bruker tjenesten noen sekunder på
+     å hente den før fasen kommer, og linjen sier det i mellomtiden. */
+  async function kjør({ slags, kall, ferdig, stoppet, lagreFørst }) {
     const nummer = ++arbeidsnr;
-    forespørsel = new AbortController(); modellarbeid = true; strømAv = false;
-    flytKlar(); settOpptatt(true, start);
+    const henter = henterFørst(), v = vert(lenke());
+    forespørsel = new AbortController(); modellarbeid = true; strømAv = false; uferdig = null;
+    tekster = TEKSTER[slags]; tekstKommet = false;
+    settFase(henter ? "henter" : "skriver"); startUr();
+    settOpptatt(true, henter ? "Henter annonsen" + (v ? " fra " + v : "") + "…" : tekster.leser);
     try {
       if (lagreFørst) { await lagre(); if (!aktiv || nummer !== arbeidsnr) return false; }
       const resultat = await kall({ signal: forespørsel.signal, ...lagMelder(nummer) });
@@ -525,40 +578,62 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
       if (!aktiv || nummer !== arbeidsnr) return false;
       /* Først når den ferdige teksten står i feltet trekkes laget over den
          bort. Typografien er den samme, så ingen linje flytter seg. */
-      strømSkjul(); analyseForbi(); settSteg("skriv", "ferdig", "ferdig"); settSteg("kontroll", "ferdig", "ferdig");
+      strømSkjul(); settFase("hvile");
       finn("#brevEndret").hidden = true;
       melding(beholdt ? "Endringene dine er beholdt. Det nye forslaget ligger i versjonslisten." : ferdig);
       return true;
     } catch (e) {
-      if (nummer === arbeidsnr) { strømSkjul(); flytStoppet(); feil(e); await ferskRevisjon(); melding(stoppet); }
+      if (nummer === arbeidsnr) {
+        const fasen = fase;
+        strømSkjul(); kjøringsfeil(e, fasen); await ferskRevisjon();
+        melding(fasen === "henter" ? "Brevet er ikke skrevet, fordi annonsen ikke kunne hentes." : stoppet);
+        settFase("stoppet");
+      }
       return false;
-    } finally { if (nummer === arbeidsnr) { modellarbeid = false; forespørsel = null; if (aktiv) { settOpptatt(false, finn("#brevStatus").textContent); if (endring !== lagret) lagre().catch(feil); } } }
+    } finally {
+      if (nummer === arbeidsnr) {
+        modellarbeid = false; forespørsel = null; stoppUr();
+        if (aktiv) {
+          settOpptatt(false, finn("#brevStatus").textContent);
+          if (endring !== lagret) lagre().catch(feil);
+        }
+      }
+    }
   }
-  function lagUtkast({ gjenoppta = false } = {}) {
+  function lagUtkast() {
     if (opptatt) return;
     ryddFeil();
-    if (!gjenoppta) { const grunn = skrivGrunn(); if (grunn) { feil(grunn + "."); return; } endring++; }
+    const grunn = skrivGrunn(); if (grunn) { feil(grunn + "."); return; }
+    endring++;
     return kjør({
-      start: gjenoppta ? "Fortsetter utkastet som ble avbrutt…" : TEKSTER.analyse,
+      slags: "utkast",
       kall: valg => Brev.lagUtkast(id, valg),
       ferdig: "Utkastet er klart. Les gjennom og gjør teksten til din egen.",
       stoppet: "Skrivingen stoppet. Grunnlaget og tidligere brev er beholdt.",
-      lagreFørst: !gjenoppta
+      lagreFørst: true
     });
   }
-  async function forbedre(gjenopptatt = "") {
+  /* Uten argument er det ønsket i feltet. «Skriv på nytt» sender med
+     ønsket fra kjøringen som ikke ble ferdig. */
+  async function forbedre(ønske = "") {
     if (opptatt) return;
-    const instruks = gjenopptatt || finn("#brevInstruks").value.trim();
+    const instruks = ønske || finn("#brevInstruks").value.trim();
     if (!instruks) { feil("Skriv hva du vil forbedre først."); finn("#brevInstruks").focus(); return; }
     ryddFeil();
     const ok = await kjør({
-      start: gjenopptatt ? "Fortsetter den nye versjonen som ble avbrutt…" : "Lager en ny versjon…",
+      slags: "versjon",
       kall: valg => Brev.forbedre(id, instruks, valg),
       ferdig: "En ny versjon er klar. Den forrige ligger i versjonslisten.",
       stoppet: "Skrivingen stoppet. Teksten din er beholdt.",
-      lagreFørst: !gjenopptatt
+      lagreFørst: true
     });
-    if (ok && aktiv && !gjenopptatt) finn("#brevInstruks").value = "";
+    if (ok && aktiv && finn("#brevInstruks").value.trim() === instruks) finn("#brevInstruks").value = "";
+  }
+  /* Kjøringen som ikke ble ferdig, skrives på nytt fra kildene slik de
+     er nå. Det er et nytt kall, og det starter bare her. */
+  function skrivIgjen() {
+    const k = uferdig; if (!k) return;
+    return k.instruks ? forbedre(k.instruks) : lagUtkast();
   }
   async function hentAnnonse() {
     if (annonseHenter || opptatt) return;
@@ -577,9 +652,7 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
       if (!aktiv) return;
       annonseHenter = false; tegnAnnonse(); oppdaterKnapper(); melding("");
       if (e?.code === "utlogget") return;
-      const f = feilmelding(e);
-      const område = finn("#brevFeil"); område.hidden = false;
-      område.innerHTML = `<p>${esc(f.tittel)}</p>${f.hjelp ? `<p>${esc(f.hjelp)}</p>` : ""}`;
+      annonsefeil(e);
     }
   }
   async function bekreft(tekst, handling) {
@@ -630,6 +703,7 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
       });
     }
     if (handling === "skriv") { arbeid = lagUtkast(); return arbeid; }
+    if (handling === "skrivIgjen") { arbeid = skrivIgjen(); return arbeid; }
     if (handling === "forbedre") { arbeid = forbedre(); return arbeid; }
     if (opptatt && handling !== "kopier") return;
     if (handling === "hentAnnonse") return hentAnnonse();
@@ -677,6 +751,8 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
     if (felt === "brevCvTekst") { cvEndring++; if (!cv?.navn) cv = { ...cv, navn: "CV", format: "tekst" }; tegnCv(); endret(true); }
     else if (felt === "brevTekst") { strømOverta(); endret(); oppdaterKnapper(); finn("#brevKopistatus").textContent = ""; }
   });
+  /* Streken under statuslinjen trengs bare når noe har rullet under den. */
+  lytt(finn(".brev"), "scroll", () => finn(".brev").classList.toggle("er-rullet", finn(".brev").scrollTop > 0));
   /* Fokus i brevfeltet er brukerens krav på papiret, uansett om det kommer
      fra tastaturet, et klikk eller et skjermleserkall. */
   lytt(finn("#brevTekst"), "focus", strømOverta);
@@ -746,7 +822,7 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
   const avmeldØkt = Økt.påUtlogget(() => { rydd(); påLukk(); });
   function rydd() {
     if (!aktiv) return;
-    aktiv = false; arbeidsnr++; clearTimeout(ventetid); forespørsel?.abort(); liv.abort(); avmeldØkt();
+    aktiv = false; arbeidsnr++; clearTimeout(ventetid); clearInterval(ur); forespørsel?.abort(); liv.abort(); avmeldØkt();
     dokument = null; cv = null; stil = null;
     kropp.replaceChildren(); bunn.replaceChildren();
     kropp.classList.remove("skuff__kropp--brev"); bunn.classList.remove("skuff__bunn--brev", "har-brev");
@@ -787,10 +863,12 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
     fyllCv(); fyllDokument(); settOpptatt(false);
     brukHensikt();
     const kjøring = dokument.kjoring;
-    /* Et utkast som ble avbrutt mellom trinnene, fortsetter der det
-       stoppet. Trinn som er gjort, koster ikke et nytt modellkall. */
-    if (kjøring && VENTENDE.has(kjøring.status)) {
-      arbeid = kjøring.instruks ? forbedre(kjøring.instruks) : lagUtkast({ gjenoppta: true });
+    /* Å åpne brevet starter aldri et modellkall. En kjøring som ikke ble
+       ferdig, tilbys som «Skriv på nytt», og ingenting skjer før den
+       trykkes. */
+    if (kjøring && UFERDIG.has(kjøring.status)) {
+      uferdig = kjøring;
+      settOpptatt(false, kjøring.instruks ? "Den nye versjonen ble ikke ferdig." : "Utkastet ble ikke ferdig.");
     } else if (kjøring && I_ARBEID.has(kjøring.status)) {
       blokkert = true;
       finn('[data-brev="stopp"]').textContent = "Avbryt forrige kjøring";

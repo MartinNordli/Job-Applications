@@ -1086,7 +1086,7 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 
 /* ---------- søknadsbrevet ----------
    Brevet står i detaljpanelets Brev-fane, og panelet er aldri bredere
-   enn 580 px. Flaten er derfor stablet: fremdriften og statusen øverst,
+   enn 580 px. Flaten er derfor stablet: statusen, som også er fremdriften, øverst,
    så grunnlaget som tre korte linjer på kortet, og under det papiret i
    et innfelt spor, som får resten av høyden. Grunnlaget er data, ikke
    et skjema: én linje per kilde, med navnet, hva som er lagret, og det
@@ -1098,61 +1098,49 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .brev__inngang{margin-top:23px;padding-top:20px;border-top:1px solid var(--linje)}
 .skuff__kropp--brev{padding:0;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 
-/* ---------- fremdriftsraden ----------
+/* ---------- fremdriften ----------
    Huset avviser spinneren med rette: en lenkeimport haster ikke, den tar
-   bare litt tid. Et modellkall er en annen sak. Det varer i titalls
-   sekunder og har tre navngitte faser. Da er det ikke ventingen som skal
-   vises, men hvor i flyten vi er, og hva som gjenstår. Raden står fremme
-   hele tiden, også før man trykker, så den sier hva «Skriv utkast» gjør
-   og ingenting flytter seg når skrivingen starter.
+   bare litt tid. Et brev er ett modellkall som kan vare et par minutter,
+   mest tenkning før den første teksten kommer. Da må det synes at noe
+   skjer. Fremdriften er derfor statuslinjen selv: en prikk som puster,
+   ord som sier hva som skjer (henter annonsen, leser, skriver), og tiden
+   som har gått, i mono. Tilstanden bæres av ordene. Prikken er fullt
+   synlig i utgangspunktet, så linjen er like leselig uten bevegelse.
 
-   Tilstanden bæres av tekst og av prikkens form, aldri av bevegelse
-   alene. Prikken puster mens et steg er i arbeid, men den er fullt synlig
-   i utgangspunktet, så raden er like leselig når bevegelsen er skrudd av.
-   Mikrolinjen under navnet er mono, som resten av husets mikrostatus.
-
-   Kolonnene er aldri smalere enn navnet, så hvert navn står på én linje
-   også i et 390 px vindu. Plassen som er til overs, går til hårstrekene
-   mellom de to første stegene; det siste står inntil høyrekanten. */
-.brev__flytrad{flex:none;padding:16px 24px 2px}
-.brev__flyt{display:grid;grid-template-columns:minmax(max-content,1fr) minmax(max-content,1fr) max-content;
-            list-style:none;margin:0;padding:0}
-/* Prikken og hårstreken ligger på sin egen linje over navnet. Legges de
-   på samme linje, streker streken ut teksten den skal binde sammen. */
-.brev__steg{position:relative;min-width:0;padding:13px 16px 0 0;color:var(--blekk-3)}
-.brev__steg:last-child{padding-right:0}
-.brev__steg::before{content:"";position:absolute;left:0;top:3px;width:7px;height:7px;border-radius:50%;
-                    background:currentColor;opacity:.32}
-/* Hårstreken binder stegene til én rad og stopper før neste prikk. */
-.brev__steg:not(:last-child)::after{content:"";position:absolute;left:13px;top:6px;right:6px;
-                                    height:1px;background:var(--linje-2)}
-.brev__steg__navn{display:block;font-size:12px;line-height:1.35;color:inherit;white-space:nowrap}
-.brev__steg__mikro{display:block;min-height:15px;margin-top:2px;font-family:var(--mono);
-                   font-size:10.5px;line-height:1.4;color:var(--blekk-3)}
-.brev__steg[data-tilstand="ferdig"]{color:var(--blekk-2)}
-/* Ferdige steg fylles, som i stegraden øverst i panelet, og streken
-   mellom to steg som er passert får samme farge. */
-.brev__steg[data-tilstand="ferdig"]::before{opacity:1;background:var(--blekk-3)}
-.brev__steg[data-tilstand="ferdig"]:has(+ [data-tilstand="ferdig"], + [data-tilstand="aktiv"])::after{background:var(--blekk-3)}
-.brev__steg[data-tilstand="aktiv"]{color:var(--blekk)}
-.brev__steg[data-tilstand="aktiv"] .brev__steg__navn{font-weight:600}
-.brev__steg[data-tilstand="aktiv"]::before{opacity:1;background:var(--hav);animation:brevPuls 1.7s ease-in-out infinite}
-.brev__steg[data-tilstand="stoppet"]{color:var(--ild-t)}
-.brev__steg[data-tilstand="stoppet"]::before{opacity:1}
-.brev__steg[data-tilstand="stoppet"] .brev__steg__mikro{color:var(--ild-t)}
-@keyframes brevPuls{0%,100%{opacity:1}50%{opacity:.3}}
-/* Statuslinjen har plassen sin også når den er tom, og «Avbryt» står i
-   den, så raden over aldri må dele bredden med en knapp. */
-.brev__statusrad{flex:none;display:flex;align-items:center;gap:12px;min-height:30px;padding:0 24px 4px}
+   Linjen har plassen sin også når den er tom, og knappene står i den,
+   så ingenting flytter seg når skrivingen starter eller stopper. */
+/* Høyden rommer knappen, så raden er like høy med og uten den. */
+.brev__statusrad{flex:none;display:flex;align-items:center;gap:12px;min-height:44px;padding:8px 24px}
 .brev__tilbakemelding{flex:1;min-width:0;margin:0;color:var(--blekk-3);font-size:12px;line-height:1.45}
-.brev__avbryt{flex:none;font-size:12px;padding:5px 9px;margin-right:-9px}
+.brev__statusrad[data-fase="henter"] .brev__tilbakemelding,
+.brev__statusrad[data-fase="skriver"] .brev__tilbakemelding{color:var(--blekk)}
+/* Prikken står i marginen foran teksten, så teksten står på samme sted
+   med og uten den. */
+.brev__tilbakemelding{position:relative}
+.brev__statusrad:is([data-fase="henter"],[data-fase="skriver"],[data-fase="stoppet"]) .brev__tilbakemelding::before{
+  content:"";position:absolute;left:-14px;top:.62em;width:7px;height:7px;border-radius:50%;background:var(--hav)}
+.brev__statusrad:is([data-fase="henter"],[data-fase="skriver"]) .brev__tilbakemelding::before{animation:brevPuls 1.7s ease-in-out infinite}
+/* Feilen selv står i feltet under, i ild. Linjen sier bare at det
+   stoppet, med prikken i samme farge. */
+.brev__statusrad[data-fase="stoppet"] .brev__tilbakemelding{color:var(--blekk-2)}
+.brev__statusrad[data-fase="stoppet"] .brev__tilbakemelding::before{background:var(--ild-t)}
+@keyframes brevPuls{0%,100%{opacity:1}50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){
+  .brev__statusrad .brev__tilbakemelding::before{animation:none!important}
+}
+.brev__tid{flex:none;font-family:var(--mono);font-size:11px;color:var(--blekk-3);font-variant-numeric:tabular-nums}
+/* Avbryt og Skriv på nytt står aldri samtidig. */
+.brev__statusknapp{flex:none;font-size:12px;padding:5px 9px;margin-right:-9px}
 .brev__feil,.brev__lukkevalg{flex:none;margin:0 24px 12px;padding:12px 15px;background:var(--ild-vask);border-radius:var(--r-s);color:var(--ild-t);font-size:13px;line-height:1.5;max-height:160px;overflow:auto}
 .brev__feil p,.brev__lukkevalg p{margin:0 0 9px}
 .brev__feil p:last-child{margin-bottom:0}
 .brev__gjenoppretting{margin:0 24px 15px;flex:none}
 .brev__lukkevalg{background:var(--rav-vask);color:var(--blekk-2)}
 .brev__lukkevalg .knapp + .knapp{margin-left:6px}
-.brev{flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto;border-top:1px solid var(--linje)}
+.brev{flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto;border-top:1px solid transparent}
+/* I ro skilles statuslinjen og grunnlaget av luft. Ruller noe under
+   linjen, får kanten en strek. */
+.brev.er-rullet{border-top-color:var(--linje)}
 
 /* ---------- grunnlaget ----------
    Tre kolonner deles av alle linjene (subgrid), så navnene, verdiene og
@@ -1267,6 +1255,9 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .skuff__bunn--brev .knapp{font-size:13px;padding:10px 13px}
 .brev__grunn{font-size:12px;color:var(--blekk-2);line-height:1.4}
 .brev__grunn:empty{display:none}
+/* Med et brev er raden full av kopier og last ned. Grunnen får da en
+   egen linje under knappene, i stedet for å skyve dem ned én og én. */
+.skuff__bunn--brev.har-brev .brev__grunn{order:4;flex-basis:100%}
 .brev__ord{margin-right:auto;font-family:var(--mono);font-size:11px;color:var(--blekk-3);white-space:nowrap}
 .skuff__bunn--brev:not(.har-brev) .brev__nedlasting{display:none}
 .skuff__bunn--brev:not(.har-brev) [data-brev="kopier"]{display:none}
@@ -1293,7 +1284,9 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 /* Berøring: 44 px mål, og 16 px i feltene hindrer at iOS zoomer inn når
    man trykker i dem. */
 @media (pointer:coarse), (max-width:640px){
-  .skuff__bunn--brev .knapp,.brev__lenkeknapp,.brev__avbryt{min-height:44px}
+  .skuff__bunn--brev .knapp,.brev__lenkeknapp,.brev__statusknapp{min-height:44px}
+  /* Trykkflaten går ut i radens luft, så raden ikke blir høyere. */
+  .brev__statusknapp{margin-block:-8px}
   .brev__kilde{min-height:46px}
   .brev__meny button,.brev__importvalg{min-height:44px}
 }
