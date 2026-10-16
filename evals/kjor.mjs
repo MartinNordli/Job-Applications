@@ -1,21 +1,22 @@
 #!/usr/bin/env node
 /* Uten --live: kun oversikt, ingen nettverk eller nøkler leses.
-   Med --live kjøres hele kjeden (analyse, skriving og kontroll) per
-   tilfelle mot valgt leverandør. Det koster penger og gjøres bare
-   når brukeren har godkjent kostnaden.
+   Med --live skrives ett brev per tilfelle og repetisjon mot valgt
+   leverandør, med det ene modellkallet appen gjør (skrivBrev) og den
+   samme kodekontrollen. Det koster penger og gjøres bare når brukeren
+   har godkjent kostnaden.
 
-   --sammenlign <modell> kjører kjeden også med en annen modell, for
+   --sammenlign <modell> skriver brevet også med en annen modell, for
    eksempel den appen brukte før et modellbytte, og skriver en blind
    vurderingsfil ved siden av rapporten. --baseline er noe annet: ett
    enkelt kall med en naiv prompt på samme modell, som viser hva
-   kjeden tilfører. */
+   prompten og kontrollen tilfører. */
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { tilfeller } from "./tilfeller.mjs";
 import { sjekkBrev } from "./sjekker.mjs";
 import { dollar, medModell, fordel, blindfil, KURS, INNSATSER } from "./sammenligning.mjs";
-import { analyserGrunnlag, skrivUtkast, kontrollerUtkast, validerGrunnlag, BREVSKJEMA, LEVERANDORER, PROMPTVERSJON } from "../src/brevlogikk.mjs";
+import { skrivBrev, validerGrunnlag, BREVSKJEMA, LEVERANDORER, PROMPTVERSJON } from "../src/brevlogikk.mjs";
 import { leverandorFor } from "../src/brev-provider.mjs";
 
 const args = process.argv.slice(2);
@@ -23,22 +24,26 @@ const verdi = flagg => { const i = args.indexOf(flagg); return i === -1 ? null :
 const sum = (bruk, felt) => bruk.filter(Boolean).reduce((s, b) => s + (Number(b[felt]) || 0), 0);
 const feilAv = e => ({ code: e.code || e.navn || "feil", melding: e.message });
 
-/* Hele kjeden for ett tilfelle med én modell. Kaster aldri: en feil
-   blir en rad som må undersøkes. */
+/* Ett brev for ett tilfelle med én modell. Kaster aldri: en feil blir
+   en rad som må undersøkes. En kodekontroll som avviser brevet, er også
+   en feil her, slik den er det i appen. */
 async function kjede(t, g, kallModell){
   const rad = {}, start = Date.now();
+  // Bruken fanges også når kontrollen avviser brevet, så kostnaden blir riktig.
+  const bruk = [];
+  const målt = async p => { const r = await kallModell(p); bruk.push(r?.bruk ?? null); rad.modell ??= r?.modell; return r; };
   try{
-    const a = await analyserGrunnlag(g, { kallModell });
-    const u = await skrivUtkast(g, a, { kallModell });
-    const b = await kontrollerUtkast(g, a, u, { kallModell });
-    rad.modell = b.modell; rad.analyse = a; rad.brev = b;
+    const b = await skrivBrev(g, { kallModell: målt });
+    rad.modell = b.modell; rad.brev = b;
     rad.sjekker = sjekkBrev(t, b);
     rad.automatiskGodkjent = !rad.sjekker.length;
-    rad.bruk = [a.bruk, u.bruk, b.bruk];
-    // Hvor mye av kildeblokken og systemet som ble lest fra bufferen i trinn 2 og 3.
-    rad.hurtigbuffer = { lest: sum(rad.bruk, "cache_read_input_tokens"), skrevet: sum(rad.bruk, "cache_creation_input_tokens"), ubufret: sum(rad.bruk, "input_tokens") };
-    rad.dollar = dollar(rad.bruk, rad.modell);
   }catch(e){ rad.automatiskGodkjent = false; rad.feil = feilAv(e); }
+  rad.bruk = bruk;
+  /* Hvor mye av systemet, profilen og søknaden som ble lest fra bufferen.
+     Systemet er likt for alle tilfellene, så fra det andre tilfellet
+     innen fem minutter skal lest være større enn null. */
+  rad.hurtigbuffer = { lest: sum(bruk, "cache_read_input_tokens"), skrevet: sum(bruk, "cache_creation_input_tokens"), ubufret: sum(bruk, "input_tokens") };
+  rad.dollar = bruk.some(Boolean) ? dollar(bruk, rad.modell) : 0;
   rad.millisekunder = Date.now()-start;
   return rad;
 }
@@ -46,7 +51,7 @@ async function kjede(t, g, kallModell){
 if(!args.includes("--live")){
   // Grunnlagene valideres også her, så et ødelagt tilfelle oppdages uten å betale for det.
   for(const t of tilfeller) validerGrunnlag(t.grunnlag);
-  console.log(`${tilfeller.length} syntetiske tilfeller (promptversjon ${PROMPTVERSJON}). Ingen API-kall.\n${tilfeller.map(t => `${t.id} [${t.forventetSprak}] ${t.tema}`).join("\n")}\n\nKjør betalt evaluering eksplisitt:\nnode evals/kjor.mjs --live --leverandor anthropic --repetisjoner 3 --rapport /tmp/breveval.json\nLegg til --sammenlign claude-opus-5 for å kjøre kjeden også med en annen modell, med blind vurderingsfil.\nLegg til --baseline for ett ekstra kall per tilfelle med en naiv prompt på samme modell.`);
+  console.log(`${tilfeller.length} syntetiske tilfeller (promptversjon ${PROMPTVERSJON}). Ingen API-kall.\n${tilfeller.map(t => `${t.id} [${t.forventetSprak}] ${t.tema}`).join("\n")}\n\nKjør betalt evaluering eksplisitt:\nnode evals/kjor.mjs --live --leverandor anthropic --repetisjoner 3 --rapport /tmp/breveval.json\nLegg til --sammenlign claude-opus-5 for å skrive brevene også med en annen modell, med blind vurderingsfil.\nLegg til --baseline for ett ekstra kall per tilfelle med en naiv prompt på samme modell.`);
 }else{
   const leverandor = verdi("--leverandor");
   if(!Object.hasOwn(LEVERANDORER, leverandor || "")) throw new Error("Oppgi --leverandor anthropic eller openai.");
@@ -72,7 +77,7 @@ if(!args.includes("--live")){
   const tak = Number(verdi("--tak-dollar") ?? 20);
   if(!Number.isFinite(tak) || tak <= 0) throw new Error("--tak-dollar må være et positivt tall.");
   const kjeder = sammenlign ? 2 : 1;
-  console.error(`Betalt evaluering: ${leverandor}, ${valgte.length} tilfeller × ${repetisjoner}${sammenlign ? `, sammenlignet med ${sammenlign} (${sammenlignInnsats})` : ""}. Maks ${valgte.length*repetisjoner*(3*kjeder+(medBaseline?1:0))} modellkall, tak ${tak} dollar. Ingen automatiske forsøk eller leverandørbytte.`);
+  console.error(`Betalt evaluering: ${leverandor}, ${valgte.length} tilfeller × ${repetisjoner}${sammenlign ? `, sammenlignet med ${sammenlign} (${sammenlignInnsats})` : ""}. Maks ${valgte.length*repetisjoner*(kjeder+(medBaseline?1:0))} modellkall, tak ${tak} dollar. Ingen automatiske forsøk eller leverandørbytte.`);
   const { lagBrevModell } = await import("../server/brev-modell.mjs");
   // Ingen profildata. Kun eksplisitt valgt leverandørs miljønøkkel er tilgjengelig.
   const katalog = path.join(tmpdir(), `breveval-ingen-profildata-${process.pid}`);

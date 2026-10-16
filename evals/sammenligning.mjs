@@ -3,12 +3,11 @@
    kostnad og den blinde vurderingsfilen. Rene funksjoner, så de
    kan prøves i den vanlige testpakken uten nett.
 
-   Sammenligningen kjører hele kjeden (analyse, skriving, kontroll)
-   to ganger per tilfelle: én gang med forespørselen appen sender i
-   dag, og én gang med en annen modell og innsats, typisk den appen
-   brukte før et modellbytte. Bare modell og innsats byttes. Prompt,
-   skjema, kilder og hurtigbuffermerker er byte for byte de samme,
-   så forskjellen i brevene kommer fra modellen.
+   Sammenligningen skriver brevet to ganger per tilfelle: én gang med
+   forespørselen appen sender i dag, og én gang med en annen modell og
+   innsats, typisk den appen brukte før et modellbytte. Bare modell og
+   innsats byttes. Prompt, skjema, kilder og hurtigbuffermerker er byte
+   for byte de samme, så forskjellen i brevene kommer fra modellen.
    ============================================================ */
 
 /* Dollar per million tokens hos Anthropic, fra claude-api-skillen

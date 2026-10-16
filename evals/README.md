@@ -14,17 +14,19 @@ node evals/kjor.mjs --live --leverandor anthropic --repetisjoner 3 --rapport /tm
 node evals/kjor.mjs --live --leverandor openai --repetisjoner 3 --rapport /tmp/breveval-openai.json
 ```
 
-Hvert tilfelle bruker tre modellkall: analyse, skriving og kontroll.
-Det blir 69 kall per leverandør og repetisjon.
+Hvert tilfelle bruker ett modellkall, det samme appen gjør for et brev, og den samme kodekontrollen etterpå.
+Det blir 23 kall per leverandør og repetisjon.
+Et brev kodekontrollen avviser, regnes som feilet, med feilkoden (for eksempel `kildefeil` eller `kvalitetsfeil`) i rapporten.
 `--tilfelle 01` kjører bare ett tilfelle, og `--tilfelle 01,08,15` flere.
 Det er ingen automatiske nye forsøk, og rapporten overskriver aldri en eksisterende fil.
-Rapporten har med bruken per trinn og en oppsummering av hurtigbufferen (`lest`, `skrevet` og `ubufret`), så effekten av bufringen kan måles over analyse, skriving og kontroll.
+Rapporten har med bruken per kall og en oppsummering av hurtigbufferen (`lest`, `skrevet` og `ubufret`).
+Systemet er likt for alle tilfellene, så fra det andre tilfellet skal `lest` være større enn null, så lenge tilfellene kommer innen fem minutter etter hverandre.
 Den har også kostnaden i dollar og kroner, regnet av de faktiske tokentallene med prisene i `evals/sammenligning.mjs`.
 `--tak-dollar` (standard 20) stopper kjøringen før neste tilfelle når taket er nådd, så det overskrides med høyst ett tilfelle.
 
 ### Modellbytte
 
-`--sammenlign <modell>` kjører hele kjeden en gang til per tilfelle med en annen Anthropic-modell, typisk den appen brukte før byttet.
+`--sammenlign <modell>` skriver brevet en gang til per tilfelle med en annen Anthropic-modell, typisk den appen brukte før byttet.
 Forespørselen er den samme byte for byte, bortsett fra modellen og innsatsen (`--sammenlign-innsats`, standard `high`).
 Slik ble brevet bedt om før byttet til Opus 5.5: `claude-opus-5` uten innsats, som for den modellen betyr `high`.
 
@@ -38,7 +40,7 @@ Rapporten sier hvilken variant som er A og B (`variant` er `ny` eller `forrige`)
 `kostnad.perVariant` i rapporten viser kostnad, utdatatokens, bufring og beståtte automatiske sjekker for hver modell.
 
 `--baseline` er ikke en modellsammenligning.
-Det gir ett ekstra kall per tilfelle med en naiv prompt på samme modell, og viser hva kjeden med analyse og kontroll tilfører.
+Det gir ett ekstra kall per tilfelle med en naiv prompt på samme modell, og viser hva prompten og kodekontrollen tilfører.
 
 Tilfelle 22 og 23 ligger nær modellenes sikkerhetsfiltre (biologi og IT-sikkerhet), men er helt vanlige søknader.
 En avvisning der er en feil, og vises i rapporten som en feil med meldingen «Modellen kunne ikke skrive et brev fra dette grunnlaget.»
