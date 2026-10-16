@@ -12,7 +12,8 @@
 import * as Brev from "./brev.js";
 import * as Jobbdokumenter from "./jobbdokumenter.js";
 import * as Økt from "./okt.js";
-import { lesCvFil, eksporterBrev, lagreFil } from "./brev-dokumenter.mjs";
+import { eksporterBrev, lagreFil } from "./brev-dokumenter.mjs";
+import { CV_FILTYPER, cvNavn, medTekst, lesFil as lesCv, lagreCv, slettCv, påCvEndring } from "./cvflate.js";
 import { MAKS_STIL } from "./brevdata.mjs";
 import { FASE } from "./brevlogikk.mjs";
 import { feilmelding } from "./annonseflate.js";
@@ -82,7 +83,7 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
           <span class="brev__kildenavn">CV</span>
           <span class="brev__kildeverdi" id="brevCvNavn">Henter…</span>
           <span class="brev__kildehandlinger">
-            <label class="knapp knapp--stille brev__lenkeknapp brev__filknapp er-av"><span id="brevCvFilTekst" aria-hidden="true">Velg fil</span><input id="brevCvFil" type="file" aria-label="Velg CV-fil" aria-describedby="brevCvHjelp" disabled accept=".pdf,.docx,.txt,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></label>
+            <label class="knapp knapp--stille brev__lenkeknapp brev__filknapp er-av"><span id="brevCvFilTekst" aria-hidden="true">Velg fil</span><input id="brevCvFil" type="file" aria-label="Velg CV-fil" aria-describedby="brevCvHjelp" disabled accept="${CV_FILTYPER}"></label>
             <button class="knapp knapp--stille brev__lenkeknapp" type="button" data-brev="cvTekst" aria-expanded="false" aria-controls="brevCvPanel" disabled>Lim inn</button>
           </span>
         </div>
@@ -331,7 +332,7 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
   function tegnCv() {
     const har = harCv(), åpen = !finn("#brevCvPanel").hidden;
     const verdi = finn("#brevCvNavn");
-    verdi.textContent = har ? (cv?.navn && cv.navn !== "CV" ? cv.navn : "Lagt inn som tekst") : "Mangler";
+    verdi.textContent = cvNavn(cv, finn("#brevCvTekst").value);
     verdi.classList.toggle("er-tom", !har);
     finn("#brevCvFilTekst").textContent = har ? "Bytt fil" : "Velg fil";
     finn('[data-brev="cvTekst"]').textContent = åpen ? "Skjul teksten" : har ? "Se teksten" : "Lim inn";
@@ -437,7 +438,7 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
         finn("#brevLagret").textContent = "Lagrer…";
         if (cvEndring !== cvLagret) {
           const mitt = cvEndring;
-          const svar = await Brev.lagreCv({ ...cv, tekst: finn("#brevCvTekst").value, navn: cv?.navn || "CV", format: cv?.format || "tekst" });
+          const svar = await lagreCv(medTekst(cv, finn("#brevCvTekst").value), { fra: påCv });
           if (!aktiv) return;
           cv = cvEndring === mitt ? svar : { ...cv, revisjon: svar.revisjon }; cvLagret = mitt;
         }
@@ -490,9 +491,9 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
     if (!fil || opptatt) return;
     settOpptatt(true, "Leser CV-en…"); ryddFeil();
     try {
-      const lest = await lesCvFil(fil);
+      const lest = await lesCv(cv, fil);
       if (!aktiv) return;
-      cv = { ...cv, ...lest }; fyllCv(); cvEndring++; endret(true); await lagre(); melding("CV-en er klar. Se gjerne over teksten.");
+      cv = lest; fyllCv(); cvEndring++; endret(true); await lagre(); melding("CV-en er klar. Se gjerne over teksten.");
     } catch (e) { feil(e); }
     finally { if (aktiv) settOpptatt(false, finn("#brevStatus").textContent === "Leser CV-en…" ? "" : finn("#brevStatus").textContent); }
   }
@@ -654,7 +655,7 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
       const data = await Brev.eksporterData(); if (!aktiv) return;
       await lagreFil({ bytes: new TextEncoder().encode(JSON.stringify(data, null, 2)), mime: "application/json", navn: "soknadsbrev-sikkerhetskopi.json" });
     } else if (handling === "slettCv") {
-      await bekreft("Slett CV-en fra profilen? Tidligere brev og kildegrunnlaget i versjonene blir beholdt.", async () => { await lagre(); await Brev.slettCv(cv?.revisjon); if (!aktiv) return; cv = await Brev.hentCv(); if (!aktiv) return; cvEndring = cvLagret = 0; fyllCv(); melding("CV-en er slettet fra profilen."); });
+      await bekreft("Slett CV-en fra profilen? Tidligere brev og kildegrunnlaget i versjonene blir beholdt.", async () => { await lagre(); const tom = await slettCv(cv?.revisjon, { fra: påCv }); if (!aktiv) return; cv = tom; cvEndring = cvLagret = 0; fyllCv(); melding("CV-en er slettet fra profilen."); });
     } else if (handling === "slettBrev") {
       await bekreft("Slett brevet og alle versjonene for denne jobben? Dette kan ikke angres. CV-en og annonsen beholdes.", async () => { await lagre(); await Brev.slettBrev(id, dokument.revisjon); if (!aktiv) return; dokument = await Brev.hentBrev(id); if (!aktiv) return; endring = lagret = 0; fyllDokument(); melding("Brevet og versjonene er slettet."); });
     }
@@ -719,6 +720,14 @@ export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx 
       }).catch(e => feil(e instanceof SyntaxError ? "Filen inneholder ikke gyldig JSON." : e));
     }
   });
+  /* CV-en lagret eller slettet under Innstillinger. Det som er skrevet
+     her og ikke lagret ennå, går foran. */
+  function påCv(ny) {
+    if (!aktiv || !dokument || cvEndring !== cvLagret) return;
+    if (dokument.tekst && (ny?.tekst || "") !== (cv?.tekst || "")) finn("#brevEndret").hidden = false;
+    cv = ny; fyllCv();
+  }
+  påCvEndring(påCv, liv.signal);
   const slipp = finn("#brevCvRad");
   lytt(slipp, "dragover", hendelse => { hendelse.preventDefault(); if (!opptatt && dokument) slipp.classList.add("er-over"); });
   lytt(slipp, "dragleave", () => slipp.classList.remove("er-over"));

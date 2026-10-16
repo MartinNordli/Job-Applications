@@ -647,6 +647,34 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
 .innst .avkrys{margin-top:0;font-size:13.5px;color:var(--blekk)}
 .innst .felt__hjelp{margin-top:12px}
 .innst__tillat{margin-top:10px}
+/* CV-en under Innstillinger. Samme ordforråd som CV-linjen i Brev-fanen:
+   filnavnet, eller «Mangler» med ord, og lagringstilstanden i mono ved
+   siden av. Hele delen tar imot en fil som slippes på den. */
+.cvinnst{border-radius:var(--r-s);transition:background .12s ease,box-shadow .12s ease}
+.cvinnst.er-over{background:var(--innfelt);box-shadow:0 0 0 10px var(--innfelt)}
+.cvinnst__fil{display:flex;align-items:baseline;justify-content:space-between;gap:4px 12px;flex-wrap:wrap}
+.cvinnst__navn{min-width:0;font-size:14px;font-weight:600;color:var(--blekk);overflow-wrap:anywhere}
+.cvinnst__navn.er-tom{color:var(--blekk-2);font-weight:400}
+.cvinnst__status{padding:0}
+.innst .felt__hjelp.cvinnst__hjelp{margin:6px 0 12px}
+.cvinnst__handlinger{display:flex;flex-wrap:wrap;gap:8px}
+.cvinnst__slett{margin-left:auto}
+.cvinnst__panel{margin-top:12px}
+.felt__omr.cvinnst__tekst{min-height:200px;max-height:420px;font-family:var(--sans);font-size:13px;line-height:1.6}
+.cvinnst__bekreft{margin-top:12px;padding:12px 14px 14px;background:var(--innfelt);border-radius:var(--r-s)}
+.cvinnst__bekreft[hidden]{display:none}
+.cvinnst__bekreft p{margin:0 0 10px;font-size:13px;line-height:1.5;color:var(--blekk)}
+.cvinnst__valg{display:flex;flex-wrap:wrap;gap:8px}
+.cvinnst__feil{margin:12px 0 0}
+.cvinnst__feil p{margin:0 0 8px}
+.cvinnst__feil .knapp:not(.knapp--fare){color:var(--blekk)}
+.cvinnst .knapp{display:inline-flex;align-items:center;justify-content:center}
+@media (pointer:coarse), (max-width:640px){
+  .cvinnst .knapp{min-height:44px}
+}
+@media (pointer:coarse){
+  .cvinnst__tekst{font-size:16px}
+}
 .sidelenke__ikon{display:none}
 
 .felt{margin-bottom:15px}
@@ -1145,10 +1173,12 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 /* Knappeteksten står optisk i kant med høyremargen, ikke polstringen. */
 .brev__kildehandlinger{display:flex;justify-content:flex-end;align-items:center;gap:2px;margin-right:-9px}
 .brev__lenkeknapp{display:inline-flex;align-items:center;min-height:30px;padding:5px 9px;font-size:12.5px;white-space:nowrap}
-.brev__filknapp{position:relative;overflow:hidden}
-.brev__filknapp input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
-.brev__filknapp:has(input:focus-visible){outline:2px solid var(--hav);outline-offset:2px}
-.brev__filknapp.er-av{opacity:.45;pointer-events:none}
+/* En filvelger som ser ut som knappen den står i. Inputen ligger over
+   hele knappen, usynlig, så både klikk og tastatur treffer den. */
+.brev__filknapp,.filknapp{position:relative;overflow:hidden}
+.brev__filknapp input,.filknapp input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.brev__filknapp:has(input:focus-visible),.filknapp:has(input:focus-visible){outline:2px solid var(--hav);outline-offset:2px}
+.brev__filknapp.er-av,.filknapp.er-av{opacity:.45;pointer-events:none}
 /* Uten nettleserens egen pil står teksten kant i kant med etiketten
    til venstre, og pila er den samme som i filtrene. */
 .brev__velger,.brev__versjon{-webkit-appearance:none;appearance:none;border:0;cursor:pointer;

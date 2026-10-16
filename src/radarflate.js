@@ -25,6 +25,7 @@
    ============================================================ */
 import * as Radar from "./radarklient.js";
 import * as Brev from "./brev.js";
+import { påCvEndring, harCvTekst } from "./cvflate.js";
 import * as Varsling from "./varsling.js";
 import { valgtLeverandør } from "./jobbdokumenter.js";
 import * as F from "./formater.js";
@@ -77,7 +78,7 @@ export function lagRadarflate(api){
   let side = { går: false, url: "", feil: "" };
   let søk = { går: false, start: 0, tekst: "", feil: false };
   let grunnlag = { cv: null, nøkkel: null };   /* null: ukjent */
-  let stoppTimeplan = null, avmeld = null, profil = null;
+  let stoppTimeplan = null, avmeld = null, avmeldCv = null, profil = null;
   let klokketimer = null, pollTimer = null, grunnlagTimer = null;
   const utsatt = new Map();     /* «Ikke interessert» som venter på angrefristen */
   const legger = new Set();     /* rader som legges til nå */
@@ -168,6 +169,14 @@ export function lagRadarflate(api){
     stopp();
     profil = brukerId;
     avmeld = Radar.påEndring(settTilstand);
+    /* En CV lagt inn under Innstillinger eller i Brev-fanen tar bort
+       merknaden med en gang, og feilen fra et forslag som manglet den. */
+    avmeldCv = påCvEndring(cv => {
+      grunnlag = { ...grunnlag, cv: harCvTekst(cv?.tekst) };
+      if(grunnlag.cv && forslag.feil?.code === "mangler-cv") forslag = { ...forslag, feil: null };
+      if(grunnlag.cv && !søk.går && /CV-en/.test(søk.tekst)) søk = { ...søk, tekst: "", feil: false };
+      tegn();
+    });
     last();
     lastGrunnlag();
     startTimeplan();
@@ -182,6 +191,7 @@ export function lagRadarflate(api){
   function stopp(){
     stoppTimeplan?.(); stoppTimeplan = null;
     avmeld?.(); avmeld = null;
+    avmeldCv?.(); avmeldCv = null;
     clearTimeout(pollTimer); clearTimeout(grunnlagTimer); clearInterval(klokketimer);
     for(const id of [...utsatt.keys()]) fullførIkkeInteressert(id);
   }

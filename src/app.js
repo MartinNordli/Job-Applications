@@ -17,6 +17,7 @@ import { lagDetaljpanel } from "./detaljpanel.js";
 import { kommende as kommendeIntervjuer } from "./intervjuer.mjs";
 import { lagMeny } from "./radmeny.js";
 import { lagRadarflate } from "./radarflate.js";
+import { lagCvInnstilling } from "./cvflate.js";
 
 const NOKKEL = "jobbsoknader-2027";
 window.__jobbsoknaderKjorer = true;   /* se fallback-skriptet i index.html */
@@ -104,12 +105,13 @@ const radar = lagRadarflate({
   },
   ventPåLagring: () => ventPåLagring(),
   åpneSøknad: (id, valg) => panel.åpne(id, valg),
-  /* CV-en og nøkkelen bor i Brev-fanen, som Intervju-fanen sender til.
-     Radar har ingen søknad selv, så den åpnes på den panelet viser,
-     ellers den neste med frist, ellers den første. Uten søknader står
-     Anthropic-nøkkelen også under Innstillinger. */
-  tilCv: fra => brevFor("cv", fra),
-  tilNøkkel: fra => brevFor("nokkel", fra),
+  /* CV-en er profilens, og legges inn under Innstillinger, også før
+     det finnes en søknad. Nøkkelen bor i Brev-fanen, som Intervju-fanen
+     sender til. Radar har ingen søknad selv, så den åpnes på den
+     panelet viser, ellers den neste med frist, ellers den første. Uten
+     søknader står Anthropic-nøkkelen også under Innstillinger. */
+  tilCv: () => apneSkuff("innstillinger", null, { fokus: "cv" }),
+  tilNøkkel: fra => nøkkelFor(fra),
   varsle: (tekst, angreFn) => varsle(tekst, angreFn),
   fokuserTittel: () => $("#sidetittel").focus(),
   etterEndring: () => {
@@ -117,11 +119,10 @@ const radar = lagRadarflate({
     if(visning === "radar") $("#sideUnder").innerHTML = radar.undertittel();
   }
 });
-function brevFor(hensikt, fra){
+function nøkkelFor(fra){
   const id = panel.valgtId() || data.filter(p => p.status === "todo").sort(sorterFrist)[0]?.id || data[0]?.id;
-  if(id) return panel.åpne(id, { fane: "brev", hensikt, fra });
-  if(hensikt === "nokkel") return apneSkuff("innstillinger");
-  varsle("CV-en legges inn i Brev-fanen til en søknad. Legg til en søknad først.");
+  if(id) return panel.åpne(id, { fane: "brev", hensikt: "nokkel", fra });
+  apneSkuff("innstillinger");
 }
 
 /* ============================================================
@@ -781,6 +782,10 @@ const SKUFFTITTEL = {
 
 /* Hva skuffen skal gjøre når den lukkes, og hvor fokus skal tilbake. */
 let bekreftelse = null, fokusFor = null, fokusTid = null;
+/* CV-delen under Innstillinger lagrer selv, og må få gjøre det ferdig
+   før skuffen tegnes på nytt eller lukkes. */
+let cvInnst = null;
+function slippCv(){ cvInnst?.lukk(); cvInnst = null; }
 
 const FOKUSERBARE = 'a[href],summary,button:not([disabled]):not([tabindex="-1"]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 /* Listen er kommaseparert, og «#skuff » foran hele strengen ville bare
@@ -823,7 +828,7 @@ function oppdaterInert(){
   else if(v.classList.contains("er-apen")) v.removeAttribute("inert");
 }
 
-function apneSkuff(hva, id){
+function apneSkuff(hva, id, { fokus } = {}){
   meny.lukk();
   redigerer = id ? data.find(p => p.id === id) : null;
   if(hva === "rediger")   skuffModus = "skjema";
@@ -845,6 +850,7 @@ function apneSkuff(hva, id){
   clearTimeout(fokusTid);
   fokusTid = setTimeout(() => {
     if(!$("#skuff").classList.contains("er-apen")) return;
+    if(fokus === "cv" && cvInnst){ cvInnst.fokuser(); return; }
     const f = $$(I_SKUFF).find(synligFokus) || $("#skuff");
     if(f) f.focus();
   }, 60);
@@ -856,6 +862,7 @@ function lukkSkuff(){
   /* Lukkes et valg uten at det ble tatt, står lagringen fortsatt sperret.
      Da må det stå noe på skjermen — ellers ser en tom app helt normal ut. */
   if(skuffModus === "flytt" || skuffModus === "gjenopprett") minnOmValg();
+  slippCv();
   $("#skuff").classList.remove("er-apen");
   $("#skuff").setAttribute("aria-hidden", "true");
   $("#slor").classList.remove("er-apen");
@@ -870,6 +877,7 @@ function lukkSkuff(){
      naturlige stedet å lande. */
   if(fokusFor && document.contains(fokusFor)) fokusFor.focus();
   else if(panel.erÅpen()) panel.fokuser();
+  else $("#sidetittel").focus();
   fokusFor = null;
 }
 
@@ -885,6 +893,7 @@ function fokusfelle(e){
 
 function tegnSkuff(){
   const k = $("#skuffKropp"), b = $("#skuffBunn");
+  slippCv();
   if(skuffModus === "eksport"){
     k.innerHTML = '<p class="felt__hjelp" style="margin:0 0 24px">'
       + antall(data.length, "søknad ligger", "søknader ligger") + ' i <code>jobber.json</code> i kontoens katalog.</p>'
@@ -900,7 +909,8 @@ function tegnSkuff(){
 
   if(skuffModus === "innstillinger"){
     const valgt = lestTema();
-    k.innerHTML = '<section class="innst" aria-labelledby="temaTittel">'
+    k.innerHTML = '<section class="innst cvinnst" id="cvInnst" aria-labelledby="cvTittel"></section>'
+      + '<section class="innst" aria-labelledby="temaTittel">'
       + '<p class="merkelinje innst__tittel" id="temaTittel">Fargetema</p>'
       + '<fieldset class="temaer"><legend class="skjult">Fargetema</legend>'
       + window.TEMAER.map(t => '<label class="tema">'
@@ -922,6 +932,7 @@ function tegnSkuff(){
       + '<button class="knapp innst__tillat" type="button" data-gjor="tillatVarsler" id="varselTillat" hidden>Tillat varsler</button></section>'
       + '<section class="innst" id="apiNokkel" aria-labelledby="nokkelTittel"></section>';
     b.innerHTML = '<button class="knapp" data-gjor="lukk">Lukk</button>';
+    cvInnst = lagCvInnstilling($("#cvInnst"), { varsle });
     visVarsel();
     visNokkel();
     return;

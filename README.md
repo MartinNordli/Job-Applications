@@ -208,6 +208,16 @@ For eldre søknader kan du krysse av for **Fikk intervju** når du redigerer dem
 Fargetemaet velges under **Innstillinger** i sidepanelet.
 På smal skjerm er innstillingene et ikon i toppstripa.
 
+### CV-en under Innstillinger
+
+CV-en er felles for profilen, og øverst under **Innstillinger** kan den legges inn uten at du har en søknad.
+Det er den samme CV-en som på CV-linjen i Brev-fanen, og den gjelder brevene, vurderingen av hver søknad og Radar.
+**Velg fil** tar PDF, Word (`.docx`) eller tekst, og du kan også slippe filen på delen; **Lim inn** åpner et tekstfelt.
+Teksten lagres et øyeblikk etter at du slutter å skrive, og alltid når skuffen lukkes.
+Linjen ved navnet sier når den sist ble lagret.
+**Slett CV** må bekreftes, og brevene du har skrevet, beholdes.
+Endres CV-en i et annet vindu mens du skriver, står teksten din igjen, og du velger om den skal erstatte den andre.
+
 | Tema | Hva det er |
 | --- | --- |
 | System | Lin eller Sot, etter hva Macen står på |
@@ -453,7 +463,8 @@ Du bestemmer selv om en stilling blir en søknad: **Legg til** lager søknaden, 
 
 **Radar** står i sidepanelet under Oversikt, med antallet nye stillinger ved siden av navnet.
 Er Radar av, forklarer visningen hva den gjør, og **Slå på Radar** setter den i gang.
-Øverst står hva Radar gjør nå og **Søk nå**, og under det merknadene: CV-en eller API-nøkkelen som mangler, med vei til Brev-fanen der de legges inn, søkeord som mangler, og kilder som feilet ved siste søk.
+Øverst står hva Radar gjør nå og **Søk nå**, og under det merknadene: CV-en eller API-nøkkelen som mangler, med vei dit de legges inn, søkeord som mangler, og kilder som feilet ved siste søk.
+**Legg inn CV** åpner [CV-en under Innstillinger](#cv-en-under-innstillinger), så Radar kan tas i bruk før du har en eneste søknad, og merknaden går bort så snart CV-en er lagret.
 Innstillingene ligger i ett kort som er sammenfoldet når Radar er i gang, med et sammendrag av hva som gjelder.
 Der står søkeord, steder og ekskluderte ord som lister du kan redigere, terskelen, NAV og Jobbnorge (med fylker), karrieresidene, forbruket i dag mot døgntaket og de fem siste kjøringene med treff og kostnad i kroner.
 **Foreslå fra CV** fyller listene med stiplede forslag, og ingenting lagres før du trykker **Lagre innstillingene**.
@@ -471,6 +482,7 @@ Hver stilling viser prosenten, selskapet, stillingen, stedet, kilden, når den b
 - **Karrieresider**: Greenhouse, Lever, Teamtailor og sider med strukturerte data (JSON-LD).
   Du limer inn adressen, og Radar finner ut hvilken type det er.
   En side Radar ikke kan lese, avvises med en forklaring.
+  Feiler en side fem ganger på rad, slår Radar den av og sier hvorfor, og **Slå på igjen** ved grunnen får den med i neste søk.
 - Radar leser bare disse API-ene, og bare over https til vertene som hører til kilden.
   Den henter ikke vilkårlige sider.
 - Står NAV-annonsen som inaktiv, fjernes den fra innboksen, slik NAVs vilkår krever.
