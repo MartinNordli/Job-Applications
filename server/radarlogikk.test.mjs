@@ -9,7 +9,7 @@ import { tomCv } from "../src/brevdata.mjs";
 import { tomRadar, tomeRadarinnstillinger } from "../src/jobbdokument.mjs";
 import { validerSoknad } from "../src/felles.mjs";
 import { forfilter, fingeravtrykk, nøklerFor, hukommelse, tolkVurdering, varseltekst, kjørRadar,
-         ikkeInteressert, markerLagtTil, soknadFraRad, leggTilKarriereside, MAKS_VARSEL } from "../src/radarlogikk.mjs";
+         ikkeInteressert, markerLagtTil, soknadFraRad, leggTilKarriereside, søkNå, MAKS_VARSEL } from "../src/radarlogikk.mjs";
 
 /* ============================================================
    Radarkjernen mot et ekte lager i en midlertidig katalog, med falskt
@@ -312,4 +312,15 @@ test("karrieresider legges til med typen funnet fra adressen eller siden, og Web
 
   const tom = { hentSide: async url => ({ status: 200, sluttUrl: url, html: "<html></html>" }) };
   await assert.rejects(leggTilKarriereside(lager, { url: "https://www.example.no/jobb", nett: tom }), /strukturerte data/);
+});
+
+test("«Søk nå»: en kjøring som stoppet før kildene (ingen CV), sperrer ikke, men en som nådde dem gjør det", async t => {
+  const nå = new Date("2026-10-17T10:00:00Z");
+  const kjoring = kilder => ({ start: new Date(nå.getTime() - 10_000).toISOString(), slutt: null, kandidater: 0, nye: 0,
+    vurdert: 0, treff: 0, utenVurdering: 0, kilder, bruk: null, feil: kilder.length ? [] : ["Legg inn CV-en din."] });
+  const a = await oppsett(t, { pa: false }, { kjoringer: [kjoring([])] });
+  const r = await søkNå({ dokumenter: a.lager, jobber: [], nå: () => nå });
+  assert.equal(r.grunn, "av", "kom forbi pausen og til kjøringen");
+  const b = await oppsett(t, { pa: false }, { kjoringer: [kjoring([{ kilde: "nav", navn: "", hentet: 3, feil: null }])] });
+  await assert.rejects(søkNå({ dokumenter: b.lager, jobber: [], nå: () => nå }), e => e.code === "for-mange");
 });

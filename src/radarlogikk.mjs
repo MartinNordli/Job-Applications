@@ -808,7 +808,10 @@ export async function søkNå(args){
   const iMinnet = sisteSøk.get(dokumenter) ?? 0;
   if(nå - iMinnet < SOK_NA_PAUSE) throw for_mange(iMinnet);
   sisteSøk.set(dokumenter, nå);
-  const sist = Date.parse((await dokumenter.les(RADARFIL)).kjoringer[0]?.start) || 0;
+  /* Bare kjøringer som nådde kildene, teller. En som stoppet før, for
+     eksempel fordi CV-en manglet, har ikke spurt noen og skal ikke
+     sperre «Søk nå» når CV-en er lagt inn. */
+  const sist = Date.parse((await dokumenter.les(RADARFIL)).kjoringer.find(k => k.kilder.length)?.start) || 0;
   if(nå - sist < SOK_NA_PAUSE) throw for_mange(sist);
   return kjørRadar(args);
 }
