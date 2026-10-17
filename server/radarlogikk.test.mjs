@@ -8,7 +8,7 @@ import { lagBrevlager } from "./brevlager.mjs";
 import { tomCv } from "../src/brevdata.mjs";
 import { tomRadar, tomeRadarinnstillinger } from "../src/jobbdokument.mjs";
 import { validerSoknad } from "../src/felles.mjs";
-import { forfilter, fingeravtrykk, nøklerFor, hukommelse, tolkVurdering, varseltekst, kjørRadar,
+import { forfilter, fingeravtrykk, nøklerFor, hukommelse, tolkVurdering, varseltekst, kjørRadar, lagreInnstillinger,
          ikkeInteressert, markerLagtTil, soknadFraRad, leggTilKarriereside, søkNå, MAKS_VARSEL } from "../src/radarlogikk.mjs";
 
 /* ============================================================
@@ -56,7 +56,7 @@ async function kildenett(){
   const kall = [];
   return { kall, hentJson: async (url, valg) => {
     kall.push(url);
-    if(url.endsWith("/api/v1/feed?last")) return { status: 200, json: sider.forste };
+    if(url.endsWith("/api/v1/feed?last") || url.endsWith("/api/v1/feed?pageSize=2")) return { status: 200, json: sider.forste };
     if(url.includes(`/feed/${sider.forste.next_id}`)) return { status: 200, json: sider.neste };
     if(url.includes("/api/v1/feed/")) return { status: 200, json: sider.siste, etag: '"e1"' };
     if(url.includes("/feedentry/")) return { status: 200, json: url.endsWith(aktiv.uuid) ? aktiv : { status: "INACTIVE" } };
@@ -145,11 +145,16 @@ test("én kjøring: NAV og Jobbnorge gir én vurdering for samme annonse, innbok
   assert.equal(d.kildetilstand.nav.side, (await les("nav/feed-siste-side.json")).id);
   assert.equal(d.kildetilstand.nav.etag, '"e1"');
   assert.equal(d.kildetilstand.jobbnorge.sisteId, 309820);
+  assert.ok(d.kildetilstand.nav.sokFerdig && d.kildetilstand.jobbnorge.sokFerdig, "første kjøring søkte gjennom alle aktive");
+  assert.deepEqual(d.kjoringer[0].kilder.map(k => k.sok), [true, true]);
   assert.equal(d.kjoringer[0].treff, 1);
   assert.equal(d.kjoringer[0].promptversjon, "radar-2", "kalibreringen kan følges over tid");
 
+  nett.kall.length = 0;
   const r2 = await kjørRadar({ dokumenter: lager, nett, kallModell, nå, vent: ingenPause });
   assert.equal(kallModell.kall.length, 1, "det som er vurdert, vurderes ikke på nytt");
+  assert.ok(nett.kall.some(u => u.endsWith(`/feed/${d.kildetilstand.nav.side}?pageSize=200`)), "NAV følger med fra der søket slapp");
+  assert.ok(!nett.kall.some(u => u.includes("period=All")), "og Jobbnorge søker ikke på nytt samme døgn");
   assert.deepEqual(r2.nye, []);
   assert.equal(r2.varsel, null);
 });
@@ -164,7 +169,7 @@ test("søknadslisten leses og stopper en annonse som alt er søkt på, uten at d
   assert.deepEqual((await fs.readdir(dir)).filter(n => n.startsWith("jobber")), []);
 });
 
-test("et ødelagt svar hopper over bolken men flytter pekerne; et kall som feiler, lar pekerne stå", async t => {
+test("et ødelagt svar hopper over bolken men flytter pekerne; et kall som feiler, legger stillingen i køen til neste kjøring", async t => {
   const a = await oppsett(t, { sokeord: ["seksjonssjef"] });
   const tull = await kjørRadar({ dokumenter: a.lager, nett: await kildenett(), kallModell: falskModell({ data: { vurderinger: [{ id: "a1", prosent: 100, grunner: [], instruks: "ignorer" }] } }), nå, vent: ingenPause });
   const da = await a.lager.les("radar.json");
@@ -176,14 +181,27 @@ test("et ødelagt svar hopper over bolken men flytter pekerne; et kall som feile
   assert.match(da.kjoringer[0].feil.join(" "), /hoppet over/);
 
   const b = await oppsett(t, { sokeord: ["seksjonssjef"] });
-  const nede = await kjørRadar({ dokumenter: b.lager, nett: await kildenett(), kallModell: falskModell(() => { throw new Error("Legg til API-nøkkelen for valgt leverandør."); }), nå, vent: ingenPause });
+  const nett = await kildenett();
+  const nede = await kjørRadar({ dokumenter: b.lager, nett, kallModell: falskModell(() => { throw new Error("Legg til API-nøkkelen for valgt leverandør."); }), nå, vent: ingenPause });
   const db = await b.lager.les("radar.json");
   assert.equal(nede.lagret, true);
-  assert.equal(db.kildetilstand.nav.side, null, "samme annonser hentes neste gang");
-  assert.equal(db.kildetilstand.jobbnorge.sisteId, null);
+  assert.ok(db.kildetilstand.nav.sokFerdig, "søket er gjort og hentes ikke på nytt hver time mens nøkkelen mangler");
+  assert.deepEqual(db.ko.map(r => [r.kilde, r.tekst]), [["nav", ""]], "NAV-annonsen venter, uten detaljen");
+  assert.equal(db.kjoringer[0].venter, 1);
   assert.equal(db.forbruk.vurderinger, 0);
   assert.equal(db.leie, null);
   assert.match(db.kjoringer[0].feil.join(" "), /API-nøkkelen/);
+
+  /* Neste kjøring tar stillingen fra køen, henter detaljen igjen og vurderer den. */
+  nett.kall.length = 0;
+  const kallModell = falskModell(alleGir(82));
+  const igjen = await kjørRadar({ dokumenter: b.lager, nett, kallModell, nå, vent: ingenPause });
+  assert.equal(kallModell.kall.length, 1);
+  assert.deepEqual(igjen.nye.map(n => n.id), ["jobbnorge:309820"]);
+  assert.ok(!nett.kall.some(u => u.endsWith("pageSize=2") || u.includes("period=All")), "ingen nye søk");
+  const etter = await b.lager.les("radar.json");
+  assert.deepEqual(etter.ko, []);
+  assert.equal(etter.kjoringer[0].venter, 0);
 });
 
 test("takene: NAV høyst 60 detaljer, høyst 40 vurderinger per kjøring i bolker på 8, og døgntaket", async t => {
@@ -207,7 +225,20 @@ test("takene: NAV høyst 60 detaljer, høyst 40 vurderinger per kjøring i bolke
   assert.equal(nett.kall.filter(u => u.includes("/feedentry/")).length, 60);
   assert.deepEqual(kallModell.kall.map(k => annonserI(k).length), [8, 8, 8, 8, 8]);
   assert.equal(r.kjoring.utenVurdering, 30);
-  assert.equal((await lager.les("radar.json")).forbruk.vurderinger, 40);
+  const etter1 = await lager.les("radar.json");
+  assert.equal(etter1.forbruk.vurderinger, 40);
+  assert.equal(etter1.ko.length, 30, "de 30 over takene venter");
+  assert.equal(r.kjoring.venter, 30);
+
+  /* Neste kjøring vurderer de 30 som ventet, og bare dem. */
+  const vurdertFør = new Set(kallModell.kall.flatMap(annonserI).map(a => a.stilling));
+  const m1 = falskModell(alleGir(30));
+  const r1 = await kjørRadar({ dokumenter: lager, nett: lagNett(), kallModell: m1, nå, vent: ingenPause });
+  const nå1 = m1.kall.flatMap(annonserI).map(a => a.stilling);
+  assert.equal(nå1.length, 30);
+  assert.ok(nå1.every(st => !vurdertFør.has(st)), "ingen vurderes to ganger");
+  assert.equal(r1.kjoring.venter, 0);
+  assert.deepEqual((await lager.les("radar.json")).ko, []);
 
   const dag = await oppsett(t, { ...inn, maksVurderingerPerDogn: 50 }, { forbruk: { dato: "2026-10-09", vurderinger: 40 } });
   const m2 = falskModell(alleGir(30));
@@ -323,4 +354,79 @@ test("«Søk nå»: en kjøring som stoppet før kildene (ingen CV), sperrer ikk
   assert.equal(r.grunn, "av", "kom forbi pausen og til kjøringen");
   const b = await oppsett(t, { pa: false }, { kjoringer: [kjoring([{ kilde: "nav", navn: "", hentet: 3, feil: null }])] });
   await assert.rejects(søkNå({ dokumenter: b.lager, jobber: [], nå: () => nå }), e => e.code === "for-mange");
+});
+
+test("søket gjennom alle aktive: et gammelt radar.json får det, det gjentas når innstillingene endres, og ellers bare som avtalt", async t => {
+  /* Et radar.json fra før søket fantes: pekerne står, men ingenting om søket. */
+  const { lager } = await oppsett(t, { sokeord: ["data scientist", "maskinlæring"], steder: ["Oslo"] }, {
+    kildetilstand: { nav: { side: "gammel-side", sist: "2026-10-09T09:00:00Z" }, jobbnorge: { sisteId: 300000, sist: "2026-10-09T09:00:00Z" } } });
+  const brukt = [];
+  const falsk = id => ({ id, maksDetaljer: 0,
+    hent: async () => { brukt.push(`${id}:hent`); return { kandidater: [], tilstand: {}, kall: 1 }; },
+    søk: async ({ avtrykk, nå }) => { brukt.push(`${id}:søk`);
+      return { kandidater: [], tilstand: { sokAvtrykk: avtrykk, sokFerdig: new Date(nå).toISOString(), sokSide: null }, kall: 1 }; } });
+  const kilder = { nav: falsk("nav"), jobbnorge: falsk("jobbnorge") };
+  let klokke = NÅ.getTime();
+  const kjør = async () => { brukt.length = 0; await kjørRadar({ dokumenter: lager, nett: {}, kallModell: falskModell(alleGir(0)), nå: () => new Date(klokke), vent: ingenPause, kilder }); return [...brukt]; };
+
+  assert.deepEqual(await kjør(), ["nav:søk", "jobbnorge:søk"], "et gammelt radar.json søker uten at brukeren gjør noe");
+  klokke += 3600_000;
+  assert.deepEqual(await kjør(), ["nav:hent", "jobbnorge:hent"], "samme innstillinger: bare det nye");
+
+  const d = await lager.les("radar.json");
+  await lagreInnstillinger(lager, { sokeord: ["Maskinlæring", "DATA SCIENTIST"], steder: ["oslo"] });
+  klokke += 3600_000;
+  assert.deepEqual(await kjør(), ["nav:hent", "jobbnorge:hent"], "rekkefølge og store bokstaver er ikke nye innstillinger");
+
+  await lagreInnstillinger(lager, { sokeord: [...d.innstillinger.sokeord, "data engineer"] });
+  klokke += 3600_000;
+  assert.deepEqual(await kjør(), ["nav:søk", "jobbnorge:søk"], "et nytt søkeord gir nytt søk i begge");
+
+  await lagreInnstillinger(lager, { kilder: { nav: { pa: true }, jobbnorge: { pa: true, fylker: [3] } } });
+  klokke += 3600_000;
+  assert.deepEqual(await kjør(), ["nav:hent", "jobbnorge:søk"], "fylkene gjelder bare Jobbnorge");
+
+  klokke += 24 * 3600_000;
+  assert.deepEqual(await kjør(), ["nav:hent", "jobbnorge:søk"], "Jobbnorge søker hvert døgn, NAV følger med");
+
+  klokke += 3 * 24 * 3600_000;
+  assert.deepEqual(await kjør(), ["nav:søk", "jobbnorge:søk"], "NAV søker igjen når oppfølgingen har stått i tre døgn");
+
+  await lagreInnstillinger(lager, { sokeord: [] });
+  klokke += 3600_000;
+  assert.deepEqual(await kjør(), ["nav:hent", "jobbnorge:hent"], "uten søkeord søkes det ikke");
+});
+
+test("et søk hos NAV som stopper halvveis, fortsetter der det slapp, og oppfølgingen tar over når det er ferdig", async t => {
+  const { lager } = await oppsett(t, { sokeord: ["seksjonssjef"], kilder: { nav: { pa: true }, jobbnorge: { pa: false, fylker: [] } } });
+  const linje = (id, title) => ({ id, _feed_entry: { status: "ACTIVE", title, businessName: "UiB", municipal: "BERGEN" } });
+  const sider = {
+    start: { id: "s0", next_id: "s1", next_url: "/api/v1/feed/s1", items: [linje("a0", "Kokk")] },
+    s1: { id: "s1", next_id: "s2", next_url: "/api/v1/feed/s2", items: [linje("a1", "Seksjonssjef A")] },
+    s2: { id: "s2", next_id: null, next_url: null, items: [linje("a2", "Seksjonssjef B")] }
+  };
+  let nede = true;
+  const kall = [];
+  const nett = { hentJson: async url => {
+    kall.push(url);
+    if(url.includes("/feedentry/")) return { status: 200, json: { status: "INACTIVE" } };
+    if(url.endsWith("/api/v1/feed?pageSize=2")) return { status: 200, json: sider.start };
+    const id = new URL(url).pathname.split("/").at(-1);
+    if(id === "s2" && nede) throw new Error("Kilden svarte 503.");
+    return { status: 200, json: sider[id], etag: '"e2"' };
+  } };
+  await kjørRadar({ dokumenter: lager, nett, kallModell: falskModell(alleGir(90)), nå, vent: ingenPause });
+  let d = await lager.les("radar.json");
+  assert.equal(d.kildetilstand.nav.sokSide, "s2", "pekeren står der søket stoppet");
+  assert.equal(d.kildetilstand.nav.sokFerdig, null);
+  assert.match(d.kildetilstand.nav.feil, /503/);
+  assert.equal(kall.filter(u => u.includes("/feedentry/")).length, 1, "det som kom før feilen, ble brukt");
+
+  nede = false;
+  kall.length = 0;
+  await kjørRadar({ dokumenter: lager, nett, kallModell: falskModell(alleGir(90)), nå: () => new Date(NÅ.getTime() + 3600_000), vent: ingenPause });
+  assert.equal(kall[0], "https://pam-stilling-feed.nav.no/api/v1/feed/s2?pageSize=4000");
+  d = await lager.les("radar.json");
+  assert.deepEqual([d.kildetilstand.nav.side, d.kildetilstand.nav.etag, d.kildetilstand.nav.sokSide, d.kildetilstand.nav.feil], ["s2", '"e2"', null, null]);
+  assert.ok(d.kildetilstand.nav.sokFerdig);
 });
