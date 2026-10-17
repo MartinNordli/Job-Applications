@@ -20,11 +20,16 @@ const nett = {
   hentJson: async url => ({ status: 200, json: url.endsWith("/jobs") ? full : full.jobs.find(j => url.endsWith(`/${j.id}`)) }),
   hentSide: async () => { throw new Error("Ingen nett i denne testen."); }
 };
-const kall = { forslag: 0, vurdering: 0, annet: 0 };
+const kall = { forslag: 0, vurdering: 0, match: 0, annet: 0 };
 const brevModellFor = () => async valg => {
   if(valg.trinn === "radarforslag"){
     kall.forslag++;
     return { data: { sokeord: ["Engineer", "Account Executive"], steder: [], ekskluder: ["lærling"] }, bruk: { input_tokens: 700, output_tokens: 30 } };
+  }
+  /* «Legg til» starter vanlig match på den nye søknaden i bakgrunnen. */
+  if(valg.formal === "vurdering"){
+    kall.match++;
+    return { data: { prosent: 78, oppsummering: "Kravene er oppfylt.", styrker: [], mangler: [], sprak: "nb" }, bruk: { input_tokens: 900, output_tokens: 60 } };
   }
   let annonser;
   try{ annonser = JSON.parse(valg.innhold).annonser; }catch{ /* ikke en radarvurdering */ }
@@ -118,6 +123,8 @@ try{
   assert.ok(dok.annonse.tekst.length > 50, "annonsen ligger i jobbdokumentet");
   assert.equal((await radar()).innboks.find(r => r.id === radId).status, "lagtTil");
   assert.equal((await page.locator("#tallRadar").textContent()).trim(), String(antallNye - 1));
+  for(let i = 0; i < 50 && !kall.match; i++) await page.waitForTimeout(100);
+  assert.equal(kall.match, 1, "«Legg til» starter match på søknaden");
 
   /* ---------- Ikke interessert, med angre ---------- */
   const neste = page.locator('[data-radar-id]:has([data-radar="ikke"])').first();
