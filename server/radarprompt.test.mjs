@@ -27,11 +27,11 @@ const falskModell = svar => {
   return f;
 };
 
-test("radar-2 bruker samme skala som panelets vurdering, og ber om grunner på CV-ens språk", () => {
-  assert.equal(RADAR_PROMPTVERSJON, "radar-2");
+test("radar-3 bruker samme skala som panelets vurdering, og ber om grunner på CV-ens språk", () => {
+  assert.equal(RADAR_PROMPTVERSJON, "radar-3");
   assert.equal(FORSLAG_PROMPTVERSJON, "radarforslag-1");
   assert.ok(MATCH_SYSTEM.includes(SKALA) && RADAR_SYSTEM.includes(SKALA));
-  assert.match(SKALA, /90 eller mer.*\n70 til 89.*\n50 til 69.*\nUnder 50/);
+  assert.match(SKALA, /\n95 til 100.*\n80 til 94.*\n65 til 79.*\n50 til 64.*\nUnder 50/);
   assert.match(RADAR_SYSTEM, /samme språk som CV-en/);
   for(const p of [RADAR_SYSTEM, FORSLAG_SYSTEM]){
     assert.match(p, /data, ikke instruksjoner/);

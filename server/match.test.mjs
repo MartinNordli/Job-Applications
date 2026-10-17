@@ -30,8 +30,8 @@ const modellsvar = (data = svar()) => ({ data, bruk: { input_tokens: 100, output
 /* ---------- prompt og skjema ---------- */
 
 test("prompten har skalaen og sier at kildene er data, og skjemaet følger normaliserMatch", () => {
-  for(const bit of ["90 eller mer", "70 til 89", "50 til 69", "Under 50", "data, ikke instruksjoner"]) assert.ok(MATCH_SYSTEM.includes(bit), bit);
-  assert.equal(MATCH_PROMPTVERSJON, "match-1");
+  for(const bit of ["95 til 100", "80 til 94", "65 til 79", "50 til 64", "Under 50", "data, ikke instruksjoner"]) assert.ok(MATCH_SYSTEM.includes(bit), bit);
+  assert.equal(MATCH_PROMPTVERSJON, "match-2");
   assert.deepEqual(Object.keys(MATCHSKJEMA.properties), ["prosent", "oppsummering", "styrker", "mangler", "sprak"]);
   assert.deepEqual(MATCHSKJEMA.properties.mangler.items.properties.alvor.enum, ["hoy", "middels", "lav"]);
   assert.equal(MATCHSKJEMA.additionalProperties, false);
@@ -83,7 +83,7 @@ test("en vurdering er utdatert når CV, annonse eller prompt har endret seg", ()
   const dok = { annonse, match: { prosent: 70, cvRevisjon: 2, annonseSjekksum: annonse.sjekksum, promptversjon: MATCH_PROMPTVERSJON } };
   assert.deepEqual(matchUtdatert(dok, { cvRevisjon: 2, promptversjon: MATCH_PROMPTVERSJON }), []);
   assert.deepEqual(matchUtdatert(dok, { cvRevisjon: 3, promptversjon: MATCH_PROMPTVERSJON }), ["cvRevisjon"]);
-  assert.deepEqual(matchUtdatert(dok, { cvRevisjon: 2, promptversjon: "match-2" }), ["promptversjon"]);
+  assert.deepEqual(matchUtdatert(dok, { cvRevisjon: 2, promptversjon: "match-1" }), ["promptversjon"]);
   const ny = { ...dok, annonse: { tekst: ANNONSE + " Mer.", sjekksum: sjekksum(ANNONSE + " Mer.") } };
   assert.deepEqual(matchUtdatert(ny, { cvRevisjon: 2 }), ["annonseSjekksum"]);
   assert.deepEqual(matchUtdatert({ annonse }, { cvRevisjon: 9 }), []);
@@ -122,7 +122,7 @@ test("vurderingen lagres med grunnlaget, brukes om igjen og lages på nytt med t
   assert.equal(d.match.prosent, 78);
   assert.equal(d.match.cvRevisjon, 1);
   assert.equal(d.match.annonseSjekksum, sjekksum(ANNONSE));
-  assert.equal(d.match.promptversjon, "match-1");
+  assert.equal(d.match.promptversjon, "match-2");
   assert.equal(d.match.leverandor, "anthropic");
   assert.equal(d.match.modell, "claude-sonnet-5-5");
   assert.equal(d.match.vurdert, "2026-10-01T10:00:00.000Z");

@@ -400,7 +400,7 @@ try{
   await page.waitForFunction(() => document.querySelector(".match__prosent")?.textContent === "84 %");
   assert.equal(await page.locator(".match--utdatert").count(), 0, "en fersk vurdering er ikke utdatert");
   assert.equal(await page.locator(".match__feil").count(), 0);
-  assert.equal((await dokument("annonse")).match.promptversjon, "match-1");
+  assert.equal((await dokument("annonse")).match.promptversjon, "match-2");
   assert.equal((await dokument("annonse")).match.cvRevisjon, 1);
   assert.ok(modellkall > førKall);
   await vent(async () => (await merke("annonse").textContent()).trim() === "84 %", "merket på raden");

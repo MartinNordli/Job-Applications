@@ -148,7 +148,7 @@ test("én kjøring: NAV og Jobbnorge gir én vurdering for samme annonse, innbok
   assert.ok(d.kildetilstand.nav.sokFerdig && d.kildetilstand.jobbnorge.sokFerdig, "første kjøring søkte gjennom alle aktive");
   assert.deepEqual(d.kjoringer[0].kilder.map(k => k.sok), [true, true]);
   assert.equal(d.kjoringer[0].treff, 1);
-  assert.equal(d.kjoringer[0].promptversjon, "radar-2", "kalibreringen kan følges over tid");
+  assert.equal(d.kjoringer[0].promptversjon, "radar-3", "kalibreringen kan følges over tid");
 
   nett.kall.length = 0;
   const r2 = await kjørRadar({ dokumenter: lager, nett, kallModell, nå, vent: ingenPause });

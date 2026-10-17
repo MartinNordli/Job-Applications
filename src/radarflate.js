@@ -53,10 +53,11 @@ const LISTER = {
 };
 
 /* Samme skala som matchen i panelet. */
-const SKALA = p => p >= 90 ? "alle krav, med bevis i CV-en"
-  : p >= 70 ? "kravene er oppfylt"
-  : p >= 50 ? "kravene er delvis oppfylt"
-  : "også når et sentralt krav mangler";
+const SKALA = p => p >= 95 ? "midt i blinken, med fag, rolle og nivå som i CV-en"
+  : p >= 80 ? "passer godt"
+  : p >= 65 ? "passer på det meste"
+  : p >= 50 ? "verdt å lese, passer delvis"
+  : "også stillinger som passer dårlig";
 
 const ANGRETID = 7000;
 const PIL = '<svg class="baand__pil" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="m3.5 2 3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';

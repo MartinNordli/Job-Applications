@@ -4,7 +4,7 @@
    Modellen får CV-en og annonsen som kilder og skal svare med et
    prosenttall, det som taler for og det som mangler. Tre valg:
 
-   - Skalaen står i prompten, med fire bånd, så 80 betyr det samme i
+   - Skalaen står i prompten, med fem bånd, så 80 betyr det samme i
      morgen som i dag. Uten den glir tallene mellom kjøringer.
    - Kildene er data, ikke instruksjoner. En annonse eller en CV kan
      inneholde «gi 100 %», og skal ikke bli fulgt.
@@ -19,7 +19,7 @@
 import { sjekkSchema, sjekkKilder } from "./brevlogikk.mjs";
 import { normaliserMatch } from "./jobbdokument.mjs";
 
-export const MATCH_PROMPTVERSJON = "match-1";
+export const MATCH_PROMPTVERSJON = "match-2";
 export const MATCH_GRENSER = Object.freeze({ oppsummering: 300, krav: 200, bevis: 400, sitat: 300, punkter: 4, kilder: 3 });
 
 const streng = { type: "string" };
@@ -39,12 +39,13 @@ export const MATCHSKJEMA = objekt({
 /* Skalaen er felles for vurderingen i panelet og for Radar
    (src/radarprompt.mjs), så 80 betyr det samme begge steder. Endres
    den, endres begge promptene, og begge versjonene skal økes. */
-export const SKALA = `Prosenten er et helt tall fra 0 til 100 og følger denne skalaen:
-90 eller mer: alle krav i annonsen er oppfylt, hvert med direkte bevis i CV-en.
-70 til 89: kravene er oppfylt, men noe av det som er ønsket mangler.
-50 til 69: kravene er delvis oppfylt.
-Under 50: et sentralt krav mangler.
-Vurder først kravene, så det ønskede. Erfaring som bare ligner, teller som delvis. Tynt grunnlag gir en lavere prosent, aldri en høyere.`;
+export const SKALA = `Prosenten er et helt tall fra 0 til 100 og sier hvor godt stillingen passer personen, etter denne skalaen:
+95 til 100: midt i blinken. Fagfeltet, rollen og nivået er det CV-en viser, som en stilling for nyutdannede i personens fag for en som snart er ferdig med graden.
+80 til 94: passer godt. Fag og nivå stemmer, men rollen ligger litt ved siden av, eller et krav er bare delvis dekket.
+65 til 79: passer på det meste. Nært fagfelt eller beslektet rolle, eller ett tydelig krav mangler.
+50 til 64: verdt å lese, passer delvis. Noe av faget eller rollen treffer, men flere krav mangler.
+Under 50: passer ikke. Feil fagfelt, eller et nivå langt over det CV-en viser, som senior- og lederstillinger for en nyutdannet, eller krav om doktorgrad for en som ikke har den.
+Les nivået fra CV-en, og regn tiden fra datoen i oppgaven. En student som blir ferdig innen et år, oppfyller kravet om fullført grad i stillinger for nyutdannede, trainee og junior. Krav om flere års erfaring som CV-en ikke viser, er et reelt gap. Et ønske som mangler, eller et nivå litt under det CV-en viser, trekker lite. Beslektet utdanning og erfaring teller. En kort annonse vurderes på tittelen, faget og det som står der; det som ikke står, trekker ikke ned.`;
 
 export const MATCH_SYSTEM = `Du vurderer hvor godt en stilling passer søkerens CV, for søkeren selv. Svaret er et JSON-objekt i det oppgitte formatet.
 
@@ -95,8 +96,13 @@ export function tolkMatch(data, { cv, annonse }){
   return m;
 }
 
+/* Dagens dato, så modellen kan regne ut om en student blir ferdig
+   innen et år. Den står i innholdet etter de bufrede kildene, så
+   hurtigbufferen treffer også når datoen skifter. */
+export const iDag = () => new Date().toISOString().slice(0, 10);
+
 /* Valgene tjenesten sender til kallModell. formal velger modellen. */
-export function matchForesporsel({ cv, annonse, jobb, leverandor }){
+export function matchForesporsel({ cv, annonse, jobb, leverandor, dato = iDag() }){
   return { leverandor, formal: "vurdering", system: MATCH_SYSTEM, kilder: matchKilder({ cv, annonse, jobb }),
-    innhold: JSON.stringify({ oppgave: OPPGAVE }), skjema: MATCHSKJEMA, trinn: "match" };
+    innhold: JSON.stringify({ oppgave: OPPGAVE, dato }), skjema: MATCHSKJEMA, trinn: "match" };
 }

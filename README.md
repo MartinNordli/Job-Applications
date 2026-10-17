@@ -141,7 +141,9 @@ Sletting, statusbytte, flytting til arkivet og tilbakestilling kan angres fra va
 Oversikt-fanen viser en prosent for hvor godt stillingen passer CV-en din, med en kort oppsummering, styrker og det som mangler.
 Vurderingen kjøres av seg selv når en annonse er lagret, så sant CV-en og API-nøkkelen finnes.
 Ellers trykker du «Vurder», og «Vurder på nytt» lager en ny.
-Prosenten følger en fast skala: 90 og over betyr at alle krav er oppfylt med direkte bevis, 70 til 89 at kravene er oppfylt men noe av det ønskede mangler, 50 til 69 delvis, og under 50 at et sentralt krav mangler.
+Prosenten sier hvor godt stillingen passer deg, og følger en fast skala: 95 til 100 er midt i blinken (fagfelt, rolle og nivå er det CV-en viser), 80 til 94 passer godt, 65 til 79 passer på det meste, 50 til 64 er verdt å lese og passer delvis, og under 50 passer ikke (feil fagfelt, eller et nivå langt over CV-en, som senior for en nyutdannet).
+Nivået leses fra CV-en og dagens dato, så en student som blir ferdig innen et år, regnes som kvalifisert for stillinger for nyutdannede, trainee og junior.
+Krav om flere års erfaring du ikke har, trekker ned, mens et ønske som mangler, trekker lite, og en kort annonse med riktig tittel og fag straffes ikke for det som ikke står der.
 Styrkene har ordrette sitater fra CV-en og annonsen, og et sitat som ikke finnes i kildene, gir ingen vurdering.
 Annonsen og CV-en er data for modellen, ikke instruksjoner.
 Raden i listen har et lite prosentmerke ved siden av nedtellingen.
@@ -543,7 +545,7 @@ Radar sorterer først uten modell: stillingen må være aktiv, fristen ikke pass
 Så fjernes duplikater mot søknadslisten, innboksen, det du har avvist og mellom kildene, også en Jobbnorge-annonse som ligger i NAV.
 Bare det som er igjen, vurderes av modellen mot CV-en din, åtte om gangen, med Haiku hos Anthropic.
 Prosenten følger samme skala som [vurderingen i panelet](#hvor-godt-passer-stillingen), så 75 % betyr det samme begge steder, og hver stilling får høyst tre korte grunner på CV-ens språk.
-Stillinger over terskelen (70 % som standard, der kravene regnes som oppfylt) havner i innboksen.
+Stillinger over terskelen (70 % som standard, der stillingen passer på det meste) havner i innboksen.
 En kjøring som gir treff, gir ett varsel med de beste først.
 
 ### Søkeord fra CV-en
