@@ -62,6 +62,41 @@ const ANGRETID = 7000;
 const PIL = '<svg class="baand__pil" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="m3.5 2 3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const KRYSS = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
 
+const DØGN = 86_400_000;
+const tallTekst = n => Number(n).toLocaleString("nb-NO");
+/* Et tall brytes ikke bort fra ordet eller prosenttegnet etter. */
+const bind = s => s.replace(/(\d|<\/span>) (?=[\p{L}%])/gu, "$1\u00a0");
+
+/* Det som avgjør om Radar søker gjennom alle aktive på nytt, grovt brettet.
+   Serveren bretter grundigere, så et lite avvik gir bare en tekst for mye. */
+const søkeavtrykk = i => {
+  const l = v => [...new Set((v ?? []).map(o => String(o).trim().toLocaleLowerCase("nb")))].sort();
+  return JSON.stringify([l(i.sokeord), l(i.ekskluder), l(i.steder), [...(i.kilder?.jobbnorge?.fylker ?? [])].sort((a, b) => a - b)]);
+};
+
+/* Hva én kjøring gjorde, i én setning. Søket gjennom alle aktive sier
+   hvor mange det gikk gjennom; oppfølgingen sier hvor mange som var nye.
+   tall formaterer hvert tall (ren tekst i statuslinjen, et mono-spenn i
+   listen), og terskel er med bare når den er den kjøringen brukte.
+   Kjøringer fra før passet fantes, sier bare hvor mange som ble vurdert. */
+function kjøringstekst(k, { tall: t = tallTekst, tid = "", terskel = null } = {}){
+  const hentet = k.kandidater ?? 0, vurdert = k.vurdert ?? 0, treff = k.treff ?? 0, passet = k.passet;
+  const deler = [];
+  if(hentet && passet != null) deler.push(passet ? t(passet) + " passet søkeordene" : "ingen passet søkeordene");
+  if(vurdert){
+    deler.push(t(vurdert) + (passet === 0 ? " vurdert fra køen" : " vurdert"));
+    deler.push(terskel != null ? (treff ? t(treff) : "ingen") + " nådde " + t(terskel) + " %" : treff ? t(treff) + " treff" : "ingen treff");
+  }else if(passet && !k.nye) deler.push("alle var sett før");
+  const resten = deler.join(", ");
+  if(k.kilder?.some(s => s.sok))
+    return (hentet ? "Søkte gjennom " + t(hentet) + (hentet === 1 ? " aktiv stilling" : " aktive stillinger") : "Fant ingen aktive stillinger")
+      + (tid ? " " + tid : "") + "."
+      + (resten ? " " + resten[0].toLocaleUpperCase("nb") + resten.slice(1) + "." : "");
+  const nye = hentet ? t(hentet) + (hentet === 1 ? " ny stilling" : " nye stillinger") : "ingen nye stillinger";
+  const setning = [nye, resten].filter(Boolean).join(", ");
+  return (tid ? tid + ": " + setning : setning[0].toLocaleUpperCase("nb") + setning.slice(1)) + ".";
+}
+
 const to = n => String(n).padStart(2, "0");
 const klokke = d => to(d.getHours()) + ":" + to(d.getMinutes());
 
@@ -80,6 +115,7 @@ export function lagRadarflate(api){
   let grunnlag = { cv: null, nøkkel: null };   /* null: ukjent */
   let stoppTimeplan = null, avmeld = null, avmeldCv = null, profil = null;
   let klokketimer = null, pollTimer = null, grunnlagTimer = null;
+  let søkEndret = 0;             /* når søkeordene, stedene eller fylkene sist ble lagret på nytt */
   const utsatt = new Map();     /* «Ikke interessert» som venter på angrefristen */
   const legger = new Set();     /* rader som legges til nå */
   const slårPå = new Set();     /* karrieresider som slås på igjen nå */
@@ -257,7 +293,7 @@ export function lagRadarflate(api){
   }
   function tegnStatus(){
     const el = rot?.querySelector("#radarStatus");
-    if(el) el.textContent = statustekst();
+    if(el) el.textContent = bind(statustekst());
     const k = rot?.querySelector("#radarSokNa");
     if(k){ k.disabled = søk.går || !!t?.kjorerNa; k.textContent = søk.går || t?.kjorerNa ? "Søker…" : "Søk nå"; }
     rot?.querySelector(".radar__kontroll")?.toggleAttribute("data-soker", søk.går || !!t?.kjorerNa);
@@ -277,19 +313,55 @@ export function lagRadarflate(api){
     return (diff === 0 ? "i dag" : diff === 1 ? "i går" : d.getDate() + ". " + MND_K[d.getMonth()]) + " " + klokke(d);
   }
   const tidHtml = iso => '<time class="radar__tid" datetime="' + esc(iso) + '">' + esc(når(iso)) + '</time>';
+  /* Kildene neste kjøring søker gjennom alle aktive stillinger hos, med
+     samme regel som skalSøke i radarlogikk.mjs så langt tilstanden viser
+     den: søket er aldri gjort, NAV-søket er ikke ferdig, Jobbnorge er
+     søkt for over et døgn siden, NAV har ikke hentet på tre døgn, eller
+     søkeordene, stedene eller fylkene er lagret på nytt siden siste
+     kjøring. Fingeravtrykket ligger ikke i tilstanden, så det siste
+     vet bare denne fanen. */
+  function søkerAlle(){
+    const i = innstillinger();
+    if(!i?.sokeord?.length) return [];
+    const nå = Date.now(), siste = sisteKjøring();
+    const endretSiden = søkEndret && (!siste || Date.parse(siste.start) < søkEndret);
+    const ut = [];
+    const nav = t.kilder?.nav ?? {}, jn = t.kilder?.jobbnorge ?? {};
+    if(i.kilder.nav.pa && (endretSiden || !nav.sokFerdig || nav.sokPagar || !nav.sist || nå - Date.parse(nav.sist) >= 3 * DØGN)) ut.push("NAV");
+    if(i.kilder.jobbnorge.pa && (endretSiden || !jn.sokFerdig || nå - Date.parse(jn.sokFerdig) >= DØGN)) ut.push("Jobbnorge");
+    return ut;
+  }
+  const og = liste => liste.length > 1 ? liste.slice(0, -1).join(", ") + " og " + liste.at(-1) : liste.join("");
+
+  /* Det som venter i køen, sagt med det som avgjør når det tas. */
+  function ventertekst(n, når = " og tas ved neste søk"){
+    if(!n) return "";
+    const f = t?.forbruk;
+    return " " + tallTekst(n) + " venter på vurdering" + (f && f.vurderinger >= f.tak ? ". Døgntaket er nådd, så de tas i morgen." : når + ".");
+  }
+  const fortsettertekst = (når = "ved neste kjøring") => t?.kilder?.nav?.sokPagar && innstillinger()?.kilder.nav.pa
+    ? " Søket gjennom NAV fortsetter " + når + "." : "";
+
   function statustekst(){
-    if(søk.går) return "Søker i kildene og vurderer det som passer. Det tar gjerne et minutt.";
+    if(søk.går){
+      const alle = søk.alle ?? [];
+      return alle.length
+        ? "Søker gjennom alle aktive stillinger hos " + og(alle) + " og vurderer det som passer. Det tar gjerne et minutt."
+        : "Ser etter nye stillinger og vurderer det som passer.";
+    }
     if(t?.kjorerNa) return "Radar søker nå, startet fra en annen fane eller fra serveren.";
     if(søk.tekst) return søk.tekst;
     const s = sisteKjøring();
     if(!s) return "Ikke søkt ennå. Første søk starter av seg selv mens Hired er åpen.";
     const neste = new Date(Date.parse(s.start) + Radar.TIME);
-    return "Sist søkt " + når(s.start) + ". Søker igjen rundt " + klokke(neste) + " mens Hired er åpen.";
+    return "Sist søkt " + når(s.start) + ". Søker igjen rundt " + klokke(neste) + " mens Hired er åpen."
+      + (fortsettertekst("da") || (søkerAlle().length ? " Neste søk går gjennom alle aktive stillinger." : ""))
+      + ventertekst(t.venter ?? 0, "");
   }
   function kontrollHtml(){
     const går = søk.går || !!t.kjorerNa;
     return '<div class="radar__kontroll"' + (går ? " data-soker" : "") + (søk.feil && !går ? " data-feil" : "") + '>'
-      + '<p class="radar__status" id="radarStatus" role="status" aria-live="polite">' + esc(statustekst()) + '</p>'
+      + '<p class="radar__status" id="radarStatus" role="status" aria-live="polite">' + esc(bind(statustekst())) + '</p>'
       + '<span class="radar__klokke" id="radarKlokke" aria-hidden="true"></span>'
       + '<button class="knapp knapp--liten radar__sok" type="button" id="radarSokNa" data-radar="sok" data-fokus="sok"'
       + (går ? " disabled" : "") + '>' + (går ? "Søker…" : "Søk nå") + '</button></div>';
@@ -412,7 +484,10 @@ export function lagRadarflate(api){
   function kildeLinje(id){
     const k = t.kilder?.[id] ?? {};
     if(k.feil) return '<span class="kilde__feil">Feilet ved siste søk: ' + esc(k.feil) + '</span>';
-    return k.sist ? "Sist hentet " + tidHtml(k.sist) : "Ikke hentet ennå";
+    if(!k.sist) return "Ikke hentet ennå";
+    return "Sist hentet " + tidHtml(k.sist) + "."
+      + (k.sokPagar ? " Søket gjennom alle aktive fortsetter ved neste kjøring."
+        : k.sokFerdig ? " Alle aktive gjennomgått " + tidHtml(k.sokFerdig) + "." : "");
   }
   function kilderHtml(g){
     const jn = g.kilder.jobbnorge;
@@ -486,15 +561,16 @@ export function lagRadarflate(api){
   function kjøringerHtml(){
     const k = t.kjoringer ?? [];
     if(!k.length) return '<p class="felt__hjelp radar__ingen">Ingen kjøringer ennå.</p>';
+    const tallHtml = n => '<span class="kjoringer__tall">' + esc(tallTekst(n)) + '</span>';
     return '<table class="kjoringer"><caption class="skjult">De fem siste kjøringene</caption>'
-      + '<thead><tr><th scope="col">Når</th><th scope="col" class="kjoringer__tall">Hentet</th><th scope="col" class="kjoringer__tall">Vurdert</th>'
-      + '<th scope="col" class="kjoringer__tall">Treff</th><th scope="col" class="kjoringer__tall">Kostnad</th></tr></thead><tbody>'
+      + '<thead><tr><th scope="col">Når</th><th scope="col">Hva skjedde</th><th scope="col" class="kjoringer__kost">Kostnad</th></tr></thead><tbody>'
       + k.map(x => {
           const feil = [...x.kilder.filter(s => s.feil).map(s => (s.navn || KILDENAVN[s.kilde] || s.kilde) + ": " + s.feil), ...x.feil];
-          return '<tr><td class="kjoringer__nar">' + esc(når(x.start)) + '</td><td class="kjoringer__tall">' + x.kandidater + '</td>'
-            + '<td class="kjoringer__tall">' + x.vurdert + '</td><td class="kjoringer__tall">' + x.treff + '</td>'
-            + '<td class="kjoringer__tall">' + kr(x.kostnad) + '</td></tr>'
-            + (feil.length ? '<tr class="kjoringer__feil"><td colspan="5"><span class="kilde__feil">Feil:</span> ' + esc(feil.slice(0, 3).join(" ")) + '</td></tr>' : "");
+          const venter = x.venter ? " " + tallHtml(x.venter) + " ventet på vurdering." : "";
+          return '<tr><td class="kjoringer__nar">' + esc(når(x.start)) + '</td>'
+            + '<td class="kjoringer__hva">' + bind(kjøringstekst(x, { tall: tallHtml }) + venter) + '</td>'
+            + '<td class="kjoringer__kost">' + kr(x.kostnad) + '</td></tr>'
+            + (feil.length ? '<tr class="kjoringer__feil"><td colspan="3"><span class="kilde__feil">Feil:</span> ' + esc(feil.slice(0, 3).join(" ")) + '</td></tr>' : "");
         }).join("") + '</tbody></table>';
   }
 
@@ -710,6 +786,7 @@ export function lagRadarflate(api){
     const fra = utkast;
     try{
       const ny = await Radar.lagreInnstillinger(fra);
+      if(søkeavtrykk(fra) !== søkeavtrykk(fraTilstand())) søkEndret = Date.now();
       if(utkast === fra){ utkast = null; foreslått = new Set(); }
       lagrer = false;
       settTilstand(ny);
@@ -757,7 +834,7 @@ export function lagRadarflate(api){
 
   async function søkNå(){
     if(søk.går || t?.kjorerNa) return;
-    søk = { går: true, start: Date.now(), tekst: "", feil: false };
+    søk = { går: true, start: Date.now(), tekst: "", feil: false, alle: søkerAlle() };
     tegnStatus();
     try{
       const svar = await Radar.sokNa();
@@ -777,13 +854,10 @@ export function lagRadarflate(api){
         ? "Radar søker allerede, fra en annen fane eller fra serveren." : svar?.grunn === "av" ? "Radar er av." : "" };
     }else{
       const tid = k?.start ? klokke(new Date(k.start)) : "";
-      const n = svar.antallNye ?? 0;
-      const ord = n ? antall(n, "ny stilling", "nye stillinger") + " fra " + innstillinger().terskel + " %"
-        : "ingen nye fra " + innstillinger().terskel + " %";
       const feil = k?.feil?.length ? " " + k.feil[0] : "";
       søk = { ...søk, går: false, feil: !!feil || !svar.lagret,
-        tekst: "Søkte " + tid + ": " + ord + ", " + (k?.vurdert ?? 0) + " vurdert av " + antall(k?.kandidater ?? 0, "hentet", "hentet") + "."
-          + (svar.lagret ? "" : " Resultatet ble ikke lagret.") + feil };
+        tekst: (k ? kjøringstekst(k, { tid, terskel: innstillinger().terskel }) : "Søket er ferdig.")
+          + (svar.lagret ? fortsettertekst() + ventertekst(k?.venter ?? 0) : " Resultatet ble ikke lagret.") + feil };
       if(/CV-en/.test(feil) && grunnlag.cv !== false){ grunnlag.cv = false; tegnMerknader(); }
     }
     tegnStatus();

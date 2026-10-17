@@ -101,12 +101,14 @@ try{
   /* Slå-på-kjøringen uten CV har allerede brukt minuttet, så klokken flyttes. */
   nåMs += 120_000;
   await page.locator("#radarSokNa").click();
-  await page.locator("#radarStatus", { hasText: /^Søkte/ }).waitFor();
+  /* Bare karrieresiden er på, så kjøringen er en oppfølging, ikke et søk gjennom alle aktive. */
+  await page.locator("#radarStatus", { hasText: /^\d\d:\d\d: / }).waitFor();
   const antallNye = full.jobs.length;
   await page.locator("[data-radar-id]").first().waitFor();
   assert.equal(await page.locator("[data-radar-id]").count(), antallNye);
   assert.equal((await page.locator("#tallRadar").textContent()).trim(), String(antallNye));
-  assert.match(await page.locator("#radarStatus").textContent(), /ny/);
+  assert.match((await page.locator("#radarStatus").textContent()).replace(/\u00a0/g, " "),
+    new RegExp(`^\\d\\d:\\d\\d: ${antallNye} nye stillinger, ${antallNye} passet søkeordene, ${antallNye} vurdert, ${antallNye} nådde 70 %\\.$`));
   assert.equal(kall.vurdering, 1);
 
   /* ---------- Legg til: én søknad med annonse, raden merkes ---------- */

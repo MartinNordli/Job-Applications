@@ -533,6 +533,9 @@ Det som passer, men ikke rekker å bli vurdert i én kjøring, venter i en kø o
 Det gjelder det som er over takene for detaljer og vurderinger, og alt når modellen ikke svarer.
 Køen rommer 300 stillinger, og en stilling venter høyst 30 dager.
 Kjøringsloggen viser hvor mange aktive stillinger som ble hentet, hvor mange som passet forfilteret, hvor mange som ble vurdert og hvor mange som venter.
+Etter **Søk nå** sier linjen øverst hva som skjedde: hvor mange aktive stillinger Radar søkte gjennom, eller hvor mange som var nye siden sist, hvor mange som passet søkeordene, hvor mange som ble vurdert og hvor mange som nådde terskelen.
+Mens søket gjennom alle aktive pågår, står det der, siden det gjerne tar et minutt.
+De fem siste kjøringene under Innstillinger beskrives med de samme ordene.
 
 ### Slik går en kjøring
 

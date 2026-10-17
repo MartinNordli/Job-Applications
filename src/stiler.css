@@ -1450,8 +1450,10 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .kjoringer td{padding:7px 0;box-shadow:inset 0 1px 0 var(--linje);vertical-align:baseline}
 .kjoringer th + th,.kjoringer td + td{padding-left:12px}
 .kjoringer__nar{font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--blekk)}
-.kjoringer .kjoringer__tall{text-align:right;font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.kjoringer th.kjoringer__tall{font-family:var(--sans);font-size:12px}
+.kjoringer__hva{line-height:1.5}
+.kjoringer__tall{font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--blekk)}
+.kjoringer .kjoringer__kost{text-align:right;font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.kjoringer th.kjoringer__kost{font-family:var(--sans);font-size:12px}
 .kjoringer__feil td{padding:0 0 8px;box-shadow:none;font-size:12px;line-height:1.5;color:var(--blekk-2)}
 .radar__ingen{margin:0}
 
