@@ -230,7 +230,10 @@ export function validerJobbdokument(id, inn){
    leverandor), så Rust-jobben kan lese dem uten omveier.
 
    Hukommelsen har tak i både tid og antall: «sett» i 200 dager og
-   «avvist» i ett år. Antallstakene her er det siste vernet; selve
+   «avvist» i ett år. «ko» er stillingene fra NAV og Jobbnorge som
+   besto forfilteret, men ikke rakk å bli vurdert (et tak, eller en
+   modell som ikke svarte). De ligger der uten annonseteksten, og
+   detaljen hentes på nytt når de vurderes. Antallstakene her er det siste vernet; selve
    rydderegelen står i src/radarlogikk.mjs, som også holder dokumentet
    under 4 MiB før det skrives.
 */
@@ -239,7 +242,8 @@ export const RADAR = Object.freeze({
   innboks: 200, sett: 4000, avvist: 5000, avvistFingeravtrykk: 5000, kjoringer: 20,
   karrieresider: 40, ord: 40, ordlengde: 80, fylker: 30, navn: 200,
   tekst: 6000, grunner: 3, grunn: 300, lenker: 5, nokler: 4, nokkel: 2000, fingeravtrykk: 420,
-  feilRad: 5, kjoringsfeil: 10, kildelogg: 60, melding: 300
+  feilRad: 5, kjoringsfeil: 10, kildelogg: 60, melding: 300,
+  ko: 300, koTekst: 600
 });
 export const RADARKILDER = ["nav", "jobbnorge", "greenhouse", "lever", "teamtailor", "jsonld"];
 export const KARRIERETYPER = ["greenhouse", "lever", "teamtailor", "jsonld"];
@@ -316,17 +320,24 @@ function innstillinger(v){
   };
 }
 
+/* sokAvtrykk og sokFerdig sier hvilke innstillinger søket gjennom alle
+   aktive stillinger sist ble gjort for, og når det ble ferdig. NAVs søk
+   går over flere kjøringer, og sokSide er siden det fortsetter fra. Et
+   eldre radar.json uten feltene får null, og da søker neste kjøring. */
 export const tomKildetilstand = () => ({
-  nav: { side: null, etag: null, sistEndret: null, sist: null, feil: null },
-  jobbnorge: { sisteId: null, sist: null, feil: null }
+  nav: { side: null, etag: null, sistEndret: null, sist: null, feil: null, sokAvtrykk: null, sokSide: null, sokFerdig: null },
+  jobbnorge: { sisteId: null, sist: null, feil: null, sokAvtrykk: null, sokFerdig: null }
 });
+const avtrykk = v => typeof v === "string" && /^[a-z0-9-]{1,64}$/.test(v) ? v : null;
 function kildetilstand(v){
   if(!erObjekt(v)) return tomKildetilstand();
   const n = erObjekt(v.nav) ? v.nav : {}, j = erObjekt(v.jobbnorge) ? v.jobbnorge : {};
   return {
     nav: { side: erId(n.side) ? n.side : null, etag: valgfriTekst(n.etag, 200), sistEndret: valgfriTekst(n.sistEndret, 64),
-      sist: tid(n.sist), feil: valgfriTekst(n.feil, RADAR.melding) },
-    jobbnorge: { sisteId: heltall(j.sisteId), sist: tid(j.sist), feil: valgfriTekst(j.feil, RADAR.melding) }
+      sist: tid(n.sist), feil: valgfriTekst(n.feil, RADAR.melding),
+      sokAvtrykk: avtrykk(n.sokAvtrykk), sokSide: erId(n.sokSide) ? n.sokSide : null, sokFerdig: tid(n.sokFerdig) },
+    jobbnorge: { sisteId: heltall(j.sisteId), sist: tid(j.sist), feil: valgfriTekst(j.feil, RADAR.melding),
+      sokAvtrykk: avtrykk(j.sokAvtrykk), sokFerdig: tid(j.sokFerdig) }
   };
 }
 
@@ -343,6 +354,16 @@ function innboksrad(r){
   };
 }
 
+/* En stilling i køen: det listen ga, uten detaljen. */
+const KOKILDER = ["nav", "jobbnorge"];
+function korad(r){
+  const kilde = blantt(r.kilde, KOKILDER), kildeId = valgfriTekst(r.kildeId, 160), url = lenke(r.url), d = dato(r.dato);
+  if(!kilde || !kildeId || !url || !d) return null;
+  return { kilde, kildeId, url, lenker: lenker(r.lenker), selskap: navn(r.selskap), stilling: navn(r.stilling), sted: navn(r.sted),
+    frist: dato(r.frist), publisert: tid(r.publisert), tekst: kort(r.tekst, RADAR.koTekst), dato: d,
+    forsok: Math.min(heltall(r.forsok) ?? 0, 10) };
+}
+
 function minne(r){
   const d = dato(r.dato), n = nokler(r.nokler);
   if(!d || !n.length) return null;
@@ -357,7 +378,7 @@ function avvistFingeravtrykk(r){
   return d && f ? { fingeravtrykk: f, dato: d } : null;
 }
 
-export const KJORINGSTELLERE = ["kandidater", "nye", "vurdert", "treff", "utenVurdering"];
+export const KJORINGSTELLERE = ["kandidater", "passet", "nye", "vurdert", "treff", "utenVurdering", "venter"];
 function kjoring(r){
   const start = tid(r.start);
   if(!start) return null;
@@ -365,7 +386,8 @@ function kjoring(r){
   for(const k of KJORINGSTELLERE) ut[k] = heltall(r[k]) ?? 0;
   ut.kilder = unike(r.kilder, RADAR.kildelogg, k => {
     const kilde = blantt(k.kilde, RADARKILDER);
-    return kilde ? { kilde, navn: navn(k.navn), hentet: heltall(k.hentet) ?? 0, feil: valgfriTekst(k.feil, RADAR.melding) } : null;
+    return kilde ? { kilde, navn: navn(k.navn), hentet: heltall(k.hentet) ?? 0, sok: k.sok === true,
+      feil: valgfriTekst(k.feil, RADAR.melding) } : null;
   });
   ut.bruk = bruk(r.bruk);
   ut.feil = tekstliste(r.feil, RADAR.kjoringsfeil, RADAR.melding);
@@ -389,6 +411,7 @@ export function validerRadar(inn){
     innstillinger: innstillinger(inn.innstillinger),
     kildetilstand: kildetilstand(inn.kildetilstand),
     innboks: unike(inn.innboks, RADAR.innboks, innboksrad, r => r.id),
+    ko: unike(inn.ko, RADAR.ko, korad, r => `${r.kilde}:${r.kildeId}`),
     sett: unike(inn.sett, RADAR.sett, minne),
     avvist: unike(inn.avvist, RADAR.avvist, avvistRad),
     avvistFingeravtrykk: unike(inn.avvistFingeravtrykk, RADAR.avvistFingeravtrykk, avvistFingeravtrykk, r => r.fingeravtrykk),
@@ -410,7 +433,7 @@ export const harJobbinnhold = d => !!(d?.annonse?.tekst || d?.annonse?.url || d?
 export function harRadarinnhold(d){
   if(!erObjekt(d)) return false;
   const tom = tomRadar();
-  return ["innstillinger", "kildetilstand", "innboks", "sett", "avvist", "avvistFingeravtrykk", "kjoringer"]
+  return ["innstillinger", "kildetilstand", "innboks", "ko", "sett", "avvist", "avvistFingeravtrykk", "kjoringer"]
     .some(k => d[k] !== undefined && JSON.stringify(d[k]) !== JSON.stringify(tom[k]));
 }
 

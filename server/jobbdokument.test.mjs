@@ -208,9 +208,10 @@ test("radar.json får hele formen med standardverdier", () => {
   const d = validerRadar({ revisjon: 0 });
   assert.deepEqual(d.innstillinger, { pa: false, terskel: 70, maksVurderingerPerDogn: 150, sokeord: [], ekskluder: [], steder: [],
     kilder: { nav: { pa: true }, jobbnorge: { pa: true, fylker: [] } }, karrieresider: [] });
-  assert.deepEqual(d.kildetilstand, { nav: { side: null, etag: null, sistEndret: null, sist: null, feil: null },
-    jobbnorge: { sisteId: null, sist: null, feil: null } });
-  for(const k of ["innboks", "sett", "avvist", "avvistFingeravtrykk", "kjoringer"]) assert.deepEqual(d[k], []);
+  assert.deepEqual(d.kildetilstand, {
+    nav: { side: null, etag: null, sistEndret: null, sist: null, feil: null, sokAvtrykk: null, sokSide: null, sokFerdig: null },
+    jobbnorge: { sisteId: null, sist: null, feil: null, sokAvtrykk: null, sokFerdig: null } });
+  for(const k of ["innboks", "ko", "sett", "avvist", "avvistFingeravtrykk", "kjoringer"]) assert.deepEqual(d[k], []);
   assert.deepEqual(d.forbruk, { dato: null, vurderinger: 0 });
   assert.equal(d.leie, null);
   // Det gamle formatet fra før Radar fantes, blir et gyldig dokument.
@@ -224,7 +225,13 @@ test("radar.json normaliseres tilgivende og dropper det som ikke passer", () => 
       karrieresider: [{ id: "s1", url: "https://boards.greenhouse.io/cognite", type: "greenhouse", navn: "Cognite" },
         { id: "s1", url: "https://example.no", type: "jsonld" }, { id: "../x", url: "https://example.no", type: "jsonld" },
         { id: "s2", url: "javascript:alert(1)", type: "jsonld" }, { id: "s3", url: "https://example.no", type: "workday" }] },
-    kildetilstand: { nav: { side: "../../etc", etag: "W/\"x\"" }, jobbnorge: { sisteId: "9" } },
+    kildetilstand: { nav: { side: "../../etc", etag: "W/\"x\"", sokSide: "../x", sokAvtrykk: "nav-1\r\nX: y", sokFerdig: "aldri" },
+      jobbnorge: { sisteId: "9", sokAvtrykk: "jobbnorge-0a1b2c3d", sokFerdig: "2026-10-09T10:00:00.000Z" } },
+    ko: [{ kilde: "nav", kildeId: "a1", url: "https://arbeidsplassen.nav.no/stillinger/stilling/a1", stilling: "Data Engineer", tekst: "x".repeat(2000), dato: "2026-10-09", forsok: 99 },
+      { kilde: "nav", kildeId: "a1", url: "https://arbeidsplassen.nav.no/stillinger/stilling/a1", dato: "2026-10-09" },
+      { kilde: "greenhouse", kildeId: "g1", url: "https://boards.greenhouse.io/x/jobs/1", dato: "2026-10-09" },
+      { kilde: "jobbnorge", kildeId: "1", url: "javascript:alert(1)", dato: "2026-10-09" },
+      { kilde: "jobbnorge", kildeId: "2", url: "https://www.jobbnorge.no/ledige-stillinger/stilling/2" }],
     innboks: [rad(), rad(), rad({ id: "nav:a2", prosent: 101 }), rad({ id: "nav:a3", url: "file:///etc/passwd" }),
       rad({ id: "nav:a4", status: "slettet", grunner: ["a", "b", "c", "d"], tekst: "x".repeat(7000), lenker: ["https://a.no", "ftp://b.no"] })],
     sett: [{ nokler: ["nav:a1"], dato: "2026-10-09" }, { nokler: [], dato: "2026-10-09" }, { nokler: ["x"], dato: "i går" }],
@@ -240,6 +247,10 @@ test("radar.json normaliseres tilgivende og dropper det som ikke passer", () => 
     pa: true, feilRad: 0, sist: null, grunn: null }]);
   assert.equal(d.kildetilstand.nav.side, null);
   assert.equal(d.kildetilstand.jobbnorge.sisteId, null);
+  assert.deepEqual([d.kildetilstand.nav.sokSide, d.kildetilstand.nav.sokAvtrykk, d.kildetilstand.nav.sokFerdig], [null, null, null]);
+  assert.deepEqual([d.kildetilstand.jobbnorge.sokAvtrykk, d.kildetilstand.jobbnorge.sokFerdig], ["jobbnorge-0a1b2c3d", "2026-10-09T10:00:00.000Z"]);
+  assert.deepEqual(d.ko.map(r => [r.kilde, r.kildeId, r.tekst.length, r.forsok]), [["nav", "a1", RADAR.koTekst, 10]],
+    "køen tar bare NAV og Jobbnorge, med lenke og dato, én gang hver og uten lang tekst");
   assert.deepEqual(d.innboks.map(r => r.id), ["nav:a1", "nav:a4"]);
   const a4 = d.innboks[1];
   assert.equal(a4.status, "ny");
@@ -249,7 +260,7 @@ test("radar.json normaliseres tilgivende og dropper det som ikke passer", () => 
   assert.equal(d.sett.length, 1);
   assert.equal(d.avvistFingeravtrykk.length, 1);
   assert.equal(d.kjoringer.length, 1);
-  assert.deepEqual(d.kjoringer[0].kilder, [{ kilde: "nav", navn: "", hentet: 5, feil: null }]);
+  assert.deepEqual(d.kjoringer[0].kilder, [{ kilde: "nav", navn: "", hentet: 5, sok: false, feil: null }]);
   assert.equal(d.leie, null);
 });
 

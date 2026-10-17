@@ -2,7 +2,14 @@
    Radarkildene: én adapter per kilde, alle med samme form.
 
      { id, maksDetaljer, hent(ktx) → { kandidater, tilstand, kall },
+       søk?(ktx) → { kandidater, tilstand, kall, feil? },
        detalj?(kandidat, ktx) → kandidat }
+
+   hent følger med på det som er nytt siden sist. søk, som bare NAV og
+   Jobbnorge har, går gjennom alle aktive stillinger hos kilden, og
+   brukes når søkeordene, stedene eller fylkene er nye (se skalSøke i
+   src/radarlogikk.mjs). ktx.avtrykk er fingeravtrykket av de
+   innstillingene søket gjøres for, og det lagres i tilstanden.
 
    ktx er { nett, tilstand, side, innstillinger, nå, vent, signal }.
    nett er { hentJson, hentSide } fra src/radarnett.mjs, så samme kode
@@ -42,7 +49,9 @@ export const LEVER_BASE = "https://api.lever.co";
 /* Takene per kjøring, fra målingene i spiken. */
 export const GRENSER = Object.freeze({
   navSider: 20, navSidestorrelse: 200, navDetaljer: 60,
+  navSokDager: 90, navSokSider: 60, navSokSidestorrelse: 4000,
   jobbnorgeSider: 3, jobbnorgeResultater: 50, jobbnorgeDetaljer: 20,
+  jobbnorgeSokSider: 5, jobbnorgeSokResultater: 1000,
   karriereDetaljer: 10, pause: 1000, tekst: 12_000
 });
 
@@ -122,6 +131,26 @@ function sjekkAvbrudd(signal){
    304 kommer bare når If-Modified-Since er etter sidens siste endring,
    og tjeneren sammenlikner med millisekunder mens hodet er rundet ned
    til hele sekunder. Derfor ett sekund til.
+
+   Søket gjennom alle aktive stillinger. Feeden er NAVs eneste
+   offisielle vei til annonsene, og den har ikke søk: vilkårene og
+   dokumentasjonen sier at filtreringen gjøres hos den som henter, og at
+   den som vil ha alle aktive annonser, går feeden fra et punkt bakover
+   i tid (en annonse er aktiv i høyst seks måneder). Det som var tregt i
+   spiken, var store sider sammen med If-Modified-Since. Med pageSize=2
+   tar oppslaget av startpunktet halvannet sekund også 180 dager
+   tilbake, og sidene etter det hentes med side-id uten hodet, 4000
+   linjer (rundt 2 MB) på et par tidels sekund.
+
+   Søket går 90 dager tilbake. Målt 17. oktober 2026 var 98 % av de
+   aktive annonsene sist endret innenfor det, og alle som passet et
+   søk med «data engineer», «machine learning» og lignende. 90 dager
+   er rundt 180 000 linjer og 90 MB. Én kjøring tar høyst 60 sider;
+   resten tas i neste, fra sokSide. Når søket når enden av feeden, blir
+   den siste siden pekeren videre, så den timevise oppfølgingen
+   fortsetter der søket slapp, og ingenting mellom faller bort.
+   Annonser som var aktive da linjen ble skrevet, men er stoppet
+   senere, sier detaljen fra om før noe går til modellen.
 */
 export function plussEttSekund(sistEndret){
   const ms = Date.parse(String(sistEndret ?? ""));
@@ -131,12 +160,19 @@ export function plussEttSekund(sistEndret){
 /* next_url er relativ. Den settes sammen med NAVs vert og må bli
    værende der; hentJson ville avvist en annen vert uansett, men her
    blir feilen forståelig. */
-function navSide(rel){
+function navSide(rel, størrelse = GRENSER.navSidestorrelse){
   let u;
   try{ u = new URL(String(rel ?? ""), NAV_BASE); }catch{ throw ukjentFormat("NAV"); }
   if(u.origin !== NAV_BASE || !u.pathname.startsWith("/api/v1/feed/")) throw new Kildefeil("NAV pekte videre til en ukjent adresse.");
-  if(!u.searchParams.has("pageSize")) u.searchParams.set("pageSize", String(GRENSER.navSidestorrelse));
+  u.searchParams.set("pageSize", String(størrelse));
   return u.href;
+}
+const gyldigSide = side => erObjekt(side) && Array.isArray(side.items) && typeof side.id === "string" && ID.test(side.id);
+const harNeste = side => typeof side.next_id === "string" && ID.test(side.next_id) && !!side.next_url;
+
+/* Datoen søket starter fra, i formen NAV leser (RFC 1123). */
+export function navSokStart(nå, dager = GRENSER.navSokDager){
+  return new Date(new Date(nå).getTime() - dager * 86_400_000).toUTCString();
 }
 
 /* Linjene fra feeden, én per annonse, den siste vinner. */
@@ -158,6 +194,11 @@ export function navLinjer(items){
 }
 
 const navLenke = id => `https://arbeidsplassen.nav.no/stillinger/stilling/${id}`;
+const navKandidater = items => navLinjer(items).map(l => kandidat({
+  kilde: "nav", kildeId: l.id, url: navLenke(l.id), selskap: l.selskap,
+  stilling: l.status === "aktiv" ? l.tittel : "", sted: l.status === "aktiv" ? tittelform(l.sted) : "",
+  status: l.status
+})).filter(Boolean);
 
 export const nav = {
   id: "nav",
@@ -196,9 +237,9 @@ export const nav = {
       kall++;
       if(svar?.status === 304) break;
       const side = svar?.json;
-      if(!erObjekt(side) || !Array.isArray(side.items) || typeof side.id !== "string" || !ID.test(side.id)) throw ukjentFormat("NAV");
+      if(!gyldigSide(side)) throw ukjentFormat("NAV");
       items.push(...side.items);
-      if(typeof side.next_id === "string" && ID.test(side.next_id) && side.next_url){
+      if(harNeste(side)){
         url = navSide(side.next_url);
         ny = { side: side.next_id, etag: null, sistEndret: null };
         etag = sistEndret = null;
@@ -207,12 +248,59 @@ export const nav = {
         url = null;
       }
     }
-    const kandidater = navLinjer(items).map(l => kandidat({
-      kilde: "nav", kildeId: l.id, url: navLenke(l.id), selskap: l.selskap,
-      stilling: l.status === "aktiv" ? l.tittel : "", sted: l.status === "aktiv" ? tittelform(l.sted) : "",
-      status: l.status
-    })).filter(Boolean);
-    return { kandidater, tilstand: ny, kall };
+    return { kandidater: navKandidater(items), tilstand: ny, kall };
+  },
+
+  /* Søket gjennom alle aktive stillinger, se over. Fortsetter fra
+     sokSide når et søk for de samme innstillingene er påbegynt, og
+     starter ellers 90 dager tilbake. Feiler en side etter at noe er
+     hentet, gis det som kom, med pekeren der det stoppet og feilen, så
+     neste kjøring fortsetter derfra i stedet for å begynne på nytt.
+     Feiler første side av et påbegynt søk, startes det på nytt én gang,
+     som for oppfølgingen. */
+  async søk({ nett, tilstand = {}, avtrykk = null, nå = new Date(), vent = sov, signal } = {}){
+    const start = () => ({ url: `${NAV_BASE}/api/v1/feed?pageSize=2`, sistEndret: navSokStart(nå) });
+    const fortsett = tilstand?.sokAvtrykk === avtrykk && !tilstand?.sokFerdig && ID.test(tilstand?.sokSide ?? "");
+    let { url, sistEndret } = fortsett
+      ? { url: `${NAV_BASE}/api/v1/feed/${tilstand.sokSide}?pageSize=${GRENSER.navSokSidestorrelse}`, sistEndret: null }
+      : start();
+    let fraLagret = fortsett, kall = 0, sider = 0, feil = null;
+    let ny = { sokAvtrykk: avtrykk, sokSide: fortsett ? tilstand.sokSide : null, sokFerdig: null };
+    const items = [];
+    while(url && sider < GRENSER.navSokSider){
+      sjekkAvbrudd(signal);
+      if(kall) await vent(GRENSER.pause);
+      let svar;
+      try{
+        svar = await nett.hentJson(url, { kilde: "nav", sistEndret });
+      }catch(e){
+        if(signal?.aborted) throw e;
+        if(fraLagret && !sider){ fraLagret = false; ({ url, sistEndret } = start()); ny.sokSide = null; kall++; continue; }
+        if(!sider) throw e;
+        feil = e;
+        break;
+      }
+      kall++;
+      const side = svar?.json;
+      if(svar?.status === 304 || !gyldigSide(side)){
+        if(!sider) throw ukjentFormat("NAV");
+        feil = ukjentFormat("NAV");
+        break;
+      }
+      sider++;
+      sistEndret = null;
+      items.push(...side.items);
+      if(harNeste(side)){
+        url = navSide(side.next_url, GRENSER.navSokSidestorrelse);
+        ny = { ...ny, sokSide: side.next_id };
+      }else{
+        /* Enden av feeden: søket er ferdig, og oppfølgingen tar over herfra. */
+        ny = { sokAvtrykk: avtrykk, sokSide: null, sokFerdig: new Date(nå).toISOString(),
+          side: side.id, etag: svar.etag ?? null, sistEndret: svar.sistEndret ?? null };
+        url = null;
+      }
+    }
+    return { kandidater: navKandidater(items), tilstand: ny, kall, ...(feil ? { feil } : {}) };
   },
 
   /* Detaljen har hele teksten, frist og lenkene. Kontaktlisten leses
@@ -245,11 +333,18 @@ export const nav = {
    søkeord: «term» treffer bare hele ord, og norske sammensetninger
    («dataingeniør») ville falt bort. Forfilteret gjør jobben i stedet.
 
-   Første gang en uke tilbake, deretter ett døgn. Neste side hentes
-   bare når hele siden var nyere enn den høyeste id-en vi har sett.
+   Oppfølgingen henter ett døgn tilbake (en uke hvis det aldri er søkt).
+   Neste side hentes bare når hele siden var nyere enn den høyeste
+   id-en vi har sett.
+
+   Søket gjennom alle aktive stillinger er period=All i sider på 1000.
+   Jobbnorge hadde 1189 aktive stillinger 17. oktober 2026, rundt 1,2 MB
+   per side, så hele listen er to kall. Derfor trengs verken term eller
+   fylker utledet av stedene: stedene sjekkes av forfilteret, som for
+   de andre kildene. Fylkene brukeren har valgt, gjelder fortsatt.
 */
-export function jobbnorgeSøk({ side = 0, periode = "Day", fylker = [] } = {}){
-  const p = new URLSearchParams({ orderby: "Published", period: periode, results: String(GRENSER.jobbnorgeResultater), page: String(side) });
+export function jobbnorgeSøk({ side = 0, periode = "Day", fylker = [], resultater = GRENSER.jobbnorgeResultater } = {}){
+  const p = new URLSearchParams({ orderby: "Published", period: periode, results: String(resultater), page: String(side) });
   for(const f of fylker) if(Number.isInteger(f) && f > 0) p.append("county", String(f));
   return `${JOBBNORGE_BASE}/v3/jobs?${p}`;
 }
@@ -293,6 +388,32 @@ export const jobbnorge = {
       if(jobs.length < GRENSER.jobbnorgeResultater || !alleNye) break;
     }
     return { kandidater, tilstand: { sisteId: høyeste }, kall };
+  },
+
+  /* Alle aktive, se over. Høyeste id flyttes, så oppfølgingen etterpå
+     ikke henter det samme. En feil stopper søket uten at noe lagres,
+     og neste kjøring prøver igjen: hele søket er bare et par kall. */
+  async søk({ nett, tilstand = {}, innstillinger, avtrykk = null, nå = new Date(), vent = sov, signal } = {}){
+    const fylker = innstillinger?.kilder?.jobbnorge?.fylker ?? [];
+    const R = GRENSER.jobbnorgeSokResultater;
+    const kandidater = [];
+    let høyeste = Number.isSafeInteger(tilstand?.sisteId) ? tilstand.sisteId : null, kall = 0;
+    for(let side = 0; side < GRENSER.jobbnorgeSokSider; side++){
+      sjekkAvbrudd(signal);
+      if(kall) await vent(GRENSER.pause);
+      const svar = await nett.hentJson(jobbnorgeSøk({ side, periode: "All", fylker, resultater: R }), { kilde: "jobbnorge" });
+      kall++;
+      const jobs = svar?.json?.jobs;
+      if(!Array.isArray(jobs)) throw ukjentFormat("Jobbnorge");
+      for(const j of jobs){
+        const k = jobbnorgeKandidat(j);
+        if(!k) continue;
+        kandidater.push(k);
+        høyeste = Math.max(høyeste ?? 0, Number(k.kildeId));
+      }
+      if(jobs.length < R) break;
+    }
+    return { kandidater, tilstand: { sisteId: høyeste, sokAvtrykk: avtrykk, sokFerdig: new Date(nå).toISOString() }, kall };
   },
 
   /* Annonseteksten er overskriftene og tekstene i komponentene, i

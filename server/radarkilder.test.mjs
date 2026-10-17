@@ -133,6 +133,49 @@ test("Jobbnorge: søket gir kandidater og høyeste id, og detaljen setter sammen
   assert.equal(new URL(neste.kall[0].url).searchParams.get("period"), "Day");
 });
 
+test("NAV-søket: startpunktet 90 dager tilbake med en liten side, så store sider uten hodet, høyst 60 per kjøring", async () => {
+  const nå = new Date("2026-10-17T12:00:00Z");
+  let n = 0;
+  const nett = falskNett({ json: () => { n++; return { status: 200, json: { id: `side${n}`, next_id: `side${n + 1}`, next_url: `/api/v1/feed/side${n + 1}`,
+    items: [{ id: `ad${n}`, _feed_entry: { status: "ACTIVE", title: "Data Engineer", businessName: "X", municipal: "OSLO" } }] } }; } });
+  const r = await nav.søk({ nett, tilstand: {}, avtrykk: "nav-1", nå, vent: ingenPause });
+  assert.equal(nett.kall[0].url, `${NAV_BASE}/api/v1/feed?pageSize=2`);
+  assert.equal(nett.kall[0].sistEndret, "Sun, 19 Jul 2026 12:00:00 GMT");
+  assert.equal(nett.kall[1].url, `${NAV_BASE}/api/v1/feed/side2?pageSize=${GRENSER.navSokSidestorrelse}`);
+  assert.equal(nett.kall[1].sistEndret, null, "If-Modified-Since bare på oppslaget av startpunktet");
+  assert.equal(nett.kall.length, GRENSER.navSokSider);
+  assert.deepEqual(r.tilstand, { sokAvtrykk: "nav-1", sokSide: `side${GRENSER.navSokSider + 1}`, sokFerdig: null });
+  assert.equal(r.kandidater.length, GRENSER.navSokSider);
+
+  /* Neste kjøring fortsetter, men nye innstillinger begynner på nytt. */
+  const videre = falskNett({ json: () => ({ status: 200, json: { id: "slutt", next_id: null, items: [] }, etag: '"e"' }) });
+  const r2 = await nav.søk({ nett: videre, tilstand: r.tilstand, avtrykk: "nav-1", nå, vent: ingenPause });
+  assert.equal(videre.kall[0].url, `${NAV_BASE}/api/v1/feed/side${GRENSER.navSokSider + 1}?pageSize=${GRENSER.navSokSidestorrelse}`);
+  assert.deepEqual(r2.tilstand, { sokAvtrykk: "nav-1", sokSide: null, sokFerdig: nå.toISOString(), side: "slutt", etag: '"e"', sistEndret: null });
+  const nytt = falskNett({ json: () => ({ status: 200, json: { id: "s", next_id: null, items: [] } }) });
+  await nav.søk({ nett: nytt, tilstand: r.tilstand, avtrykk: "nav-2", nå, vent: ingenPause });
+  assert.equal(nytt.kall[0].url, `${NAV_BASE}/api/v1/feed?pageSize=2`);
+
+  /* next_url til en annen vert stopper også søket. */
+  const ond = falskNett({ json: () => ({ status: 200, json: { id: "a", next_id: "b", next_url: "https://evil.example/api/v1/feed/b", items: [] } }) });
+  await assert.rejects(nav.søk({ nett: ond, tilstand: {}, avtrykk: "nav-1", nå, vent: ingenPause }), /ukjent adresse/);
+});
+
+test("Jobbnorge-søket: alle aktive i sider på 1000 med fylkene brukeren valgte, og høyeste id flyttes", async () => {
+  const side0 = await json("jobbnorge/jobs-v3-side0.json");
+  const full = { jobs: Array.from({ length: 1000 }, (_, i) => ({ ...side0.jobs[0], id: 400000 + i })) };
+  const nett = falskNett({ json: (url, _, nr) => ({ status: 200, json: nr === 1 ? full : side0 }) });
+  const nå = new Date("2026-10-17T12:00:00Z");
+  const r = await jobbnorge.søk({ nett, tilstand: { sisteId: 309000 }, innstillinger: { kilder: { jobbnorge: { fylker: [3, 50] } } }, avtrykk: "jobbnorge-1", nå, vent: ingenPause });
+  assert.equal(nett.kall.length, 2, "en side med færre enn 1000 er den siste");
+  const u = new URL(nett.kall[1].url);
+  assert.deepEqual([u.searchParams.get("period"), u.searchParams.get("results"), u.searchParams.get("page"), u.searchParams.getAll("county").join(",")],
+    ["All", "1000", "1", "3,50"]);
+  assert.equal(u.searchParams.has("term"), false, "søkeordene sjekkes av forfilteret, ikke av term");
+  assert.deepEqual(r.tilstand, { sisteId: 400999, sokAvtrykk: "jobbnorge-1", sokFerdig: nå.toISOString() });
+  assert.equal(r.kandidater.length, 1000 + side0.jobs.length);
+});
+
 test("Greenhouse: listen hentes uten content, og detaljen avkodes én gang", async () => {
   const full = await json("greenhouse/cognite-jobs-content.json");
   const uten = { ...full, jobs: full.jobs.map(({ content, ...j }) => j) };
