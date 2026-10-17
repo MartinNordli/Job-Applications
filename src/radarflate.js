@@ -495,8 +495,8 @@ export function lagRadarflate(api){
       + '<output class="terskel__verdi" for="radarTerskel" id="radarTerskelVerdi">' + g.terskel + ' %</output></div>'
       + '<p class="felt__hjelp" id="radarTerskelHjelp">' + esc(terskeltekst(g.terskel)) + '</p></div>';
   }
-  const terskeltekst = p => "Fra " + p + " %: " + SKALA(p) + ". Samme skala som vurderingen i panelet."
-    + (p > 40 ? " Stillinger fra 40 til " + (p - 1) + " % står under terskelen, nederst i innboksen." : "");
+  const terskeltekst = p => bind("Fra " + p + " %: " + SKALA(p) + ". Samme skala som vurderingen i panelet."
+    + (p > 40 ? " Stillinger fra 40 til " + (p - 1) + " % står under terskelen, nederst i innboksen." : ""));
 
   function kildeLinje(id){
     const k = t.kilder?.[id] ?? {};
