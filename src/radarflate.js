@@ -1037,8 +1037,9 @@ export function lagRadarflate(api){
 
   function undertittel(){
     if(!t) return lastFeil ? "Kunne ikke leses" : "";
-    if(!innstillinger().pa) return "Av" + (lagtTil().length || nye().length ? " · <b>" + nye().length + "</b> nye i innboksen" : "");
-    return "<b>" + nye().length + "</b> nye · <b>" + lagtTil().length + "</b> lagt til";
+    const n = nye().length, ord = n === 1 ? " ny" : " nye";
+    if(!innstillinger().pa) return "Av" + (lagtTil().length || n ? " · <b>" + n + "</b>" + ord + " i innboksen" : "");
+    return "<b>" + n + "</b>" + ord + " · <b>" + lagtTil().length + "</b> lagt til";
   }
   /* Tallet i sidepanelet: bare når Radar er på, eller har noe å vise. */
   function tall(){
