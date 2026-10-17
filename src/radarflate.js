@@ -18,6 +18,10 @@
    - Innboksen i to bånd, «Nye» og «Lagt til», i samme materiale som
      listen. Prosenten står i venstrekolonnen, der listen har datoen:
      den er det man skanner etter.
+   - «Under terskelen» sammenfoldet nederst, som de utgåtte fristene i
+     listen: det Radar vurderte til mellom 40 % og terskelen. Radene er
+     de samme, ett trinn dempet, så en lav terskel aldri gjør at noe
+     forsvinner uten spor.
 
    Kulør følger resten av appen: en frist som haster, og ingenting
    annet. Prosenten er opplysning og står i samme dempede merke som
@@ -79,7 +83,8 @@ const søkeavtrykk = i => {
    hvor mange det gikk gjennom; oppfølgingen sier hvor mange som var nye.
    tall formaterer hvert tall (ren tekst i statuslinjen, et mono-spenn i
    listen), og terskel er med bare når den er den kjøringen brukte.
-   Kjøringer fra før passet fantes, sier bare hvor mange som ble vurdert. */
+   Kjøringer fra før passet fantes, sier bare hvor mange som ble vurdert,
+   og de fra før det gjemte fantes, ingenting om det under terskelen. */
 function kjøringstekst(k, { tall: t = tallTekst, tid = "", terskel = null } = {}){
   const hentet = k.kandidater ?? 0, vurdert = k.vurdert ?? 0, treff = k.treff ?? 0, passet = k.passet;
   const deler = [];
@@ -87,6 +92,8 @@ function kjøringstekst(k, { tall: t = tallTekst, tid = "", terskel = null } = {
   if(vurdert){
     deler.push(t(vurdert) + (passet === 0 ? " vurdert fra køen" : " vurdert"));
     deler.push(terskel != null ? (treff ? t(treff) : "ingen") + " nådde " + t(terskel) + " %" : treff ? t(treff) + " treff" : "ingen treff");
+    /* under er null for kjøringer fra før det gjemte fantes. */
+    if(k.under) deler.push(t(k.under) + " under terskelen");
   }else if(passet && !k.nye) deler.push("alle var sett før");
   const resten = deler.join(", ");
   if(k.kilder?.some(s => s.sok))
@@ -109,6 +116,7 @@ export function lagRadarflate(api){
   let foreslått = new Set();    /* ord forslaget la til, til de er lagret */
   let skriver = { sokeord: "", steder: "", ekskluder: "" };
   let innstÅpen = null;         /* null: følg regelen; ellers brukerens valg */
+  let underÅpen = false;        /* «Under terskelen» står sammenfoldet til brukeren åpner den */
   let lagrer = false, lagreFeil = "";
   let forslag = { går: false, tekst: "", feil: null };
   let side = { går: false, url: "", feil: "" };
@@ -137,7 +145,11 @@ export function lagRadarflate(api){
 
   const nye = () => (t?.innboks ?? []).filter(r => r.status === "ny" && !utsatt.has(r.id));
   const lagtTil = () => (t?.innboks ?? []).filter(r => r.status !== "ny");
+  const under = () => (t?.under ?? []).filter(r => !utsatt.has(r.id));
   const antallNye = () => t ? nye().length : null;
+  /* Handlingene på en rad virker likt i innboksen og under terskelen. */
+  const radFor = id => t?.innboks.find(r => r.id === id) ?? t?.under?.find(r => r.id === id);
+  const erUnder = id => !!t?.under?.some(r => r.id === id);
 
   /* Søknaden en rad ble til. Lenken er annonsens adresse, og står i
      søknaden slik soknadFraRad la den dit. */
@@ -245,7 +257,10 @@ export function lagRadarflate(api){
       rot.addEventListener("change", endring);
       rot.addEventListener("keydown", tast);
       rot.addEventListener("paste", lim);
-      rot.addEventListener("toggle", e => { if(e.target.id === "radarInnst") innstÅpen = e.target.open; }, true);
+      rot.addEventListener("toggle", e => {
+        if(e.target.id === "radarInnst") innstÅpen = e.target.open;
+        else if(e.target.id === "radarUnder" && e.target.isConnected) underÅpen = e.target.open;
+      }, true);
       if(t) lastGrunnlag();
       if(t) Radar.hentTilstand().then(settTilstand, () => {});
       tegn();
@@ -480,7 +495,8 @@ export function lagRadarflate(api){
       + '<output class="terskel__verdi" for="radarTerskel" id="radarTerskelVerdi">' + g.terskel + ' %</output></div>'
       + '<p class="felt__hjelp" id="radarTerskelHjelp">' + esc(terskeltekst(g.terskel)) + '</p></div>';
   }
-  const terskeltekst = p => "Fra " + p + " %: " + SKALA(p) + ". Samme skala som vurderingen i panelet.";
+  const terskeltekst = p => "Fra " + p + " %: " + SKALA(p) + ". Samme skala som vurderingen i panelet."
+    + (p > 40 ? " Stillinger fra 40 til " + (p - 1) + " % står under terskelen, nederst i innboksen." : "");
 
   function kildeLinje(id){
     const k = t.kilder?.[id] ?? {};
@@ -578,7 +594,7 @@ export function lagRadarflate(api){
   function lagrelinjeHtml(){
     const e = endret();
     return '<div class="radarinnst__bunn"' + (e ? " data-endret" : "") + '>'
-      + '<p class="radarinnst__lagret" id="radarLagret" role="status" aria-live="polite"' + (lagreFeil ? ' data-t="feil"' : e ? ' data-t="endret"' : "") + '>'
+      + '<p class="radarinnst__lagret" id="radarLagret" role="status" aria-live="polite" tabindex="-1"' + (lagreFeil ? ' data-t="feil"' : e ? ' data-t="endret"' : "") + '>'
       + esc(lagreFeil || (lagrer ? "Lagrer…" : e ? "Endringene er ikke lagret" : "Alt er lagret")) + '</p>'
       + '<button class="knapp knapp--stille knapp--liten" type="button" data-radar="forkast" data-fokus="forkast"' + (e && !lagrer ? "" : " disabled") + '>Forkast</button>'
       + '<button class="knapp knapp--primar knapp--liten" type="button" data-radar="lagre" data-fokus="lagre"' + (e && !lagrer ? "" : " disabled") + '>Lagre innstillingene</button></div>';
@@ -631,24 +647,50 @@ export function lagRadarflate(api){
   }
 
   function innboksHtml(){
-    const n = nye(), l = lagtTil();
-    const på = innstillinger().pa;
+    const n = nye(), l = lagtTil(), u = under();
+    const på = innstillinger().pa, terskel = innstillinger().terskel;
     let h = "";
     if(!n.length && på){
       const s = sisteKjøring();
-      const tekst = !s ? "Første søk starter av seg selv, eller trykk Søk nå. Stillinger som passer fra " + innstillinger().terskel + " %, havner her."
-        : "Radar har ikke funnet noe som passer fra " + innstillinger().terskel + " % ennå. "
+      /* Det som ble vurdert lavere, nevnes først: uten det ser en tom
+         innboks ut som at Radar ikke virker. */
+      const tekst = !s ? "Første søk starter av seg selv, eller trykk Søk nå. Stillinger som passer fra " + terskel + " %, havner her."
+        : u.length ? "Radar har ikke funnet noe som passer fra " + terskel + " % ennå, men " + antall(u.length, "stilling", "stillinger")
+          + " ble vurdert lavere. " + (u.length === 1 ? "Den står" : "De står") + " nederst, og kommer hit om du senker terskelen."
+        : "Radar har ikke funnet noe som passer fra " + terskel + " % ennå. "
           + (l.length ? "Det du har lagt til, står under." : "Blir det stille lenge, kan du legge til søkeord eller senke terskelen.");
-      h += '<div class="tomt tomt--lav radar__tomt"><p class="tomt__tittel">' + (l.length ? "Ingenting nytt" : "Ingen treff ennå") + '</p>'
-        + '<p class="tomt__tekst">' + esc(tekst) + '</p></div>';
+      h += '<div class="tomt tomt--lav radar__tomt"><p class="tomt__tittel">' + (l.length ? "Ingenting nytt" : s && u.length ? "Ingenting over terskelen" : "Ingen treff ennå") + '</p>'
+        + '<p class="tomt__tekst">' + esc(bind(tekst)) + '</p></div>';
     }
-    if(n.length) h += baand("Nye", n, "ny stilling", "nye stillinger", n.map(funnHtml).join(""));
-    if(l.length) h += baand("Lagt til", l, "stilling lagt til", "stillinger lagt til", l.map(funnHtml).join(""));
+    if(n.length) h += baand("Nye", n, "ny stilling", "nye stillinger", n.map(r => funnHtml(r)).join(""));
+    if(l.length) h += baand("Lagt til", l, "stilling lagt til", "stillinger lagt til", l.map(r => funnHtml(r)).join(""));
+    if(u.length) h += underHtml(u, terskel);
     return h;
   }
 
-  function funnHtml(r){
-    const lagt = r.status !== "ny";
+  /* Samme bånd som over, gjort til en <summary> slik de utgåtte fristene
+     i listen er det. Navnet står ett trinn dempet, og tallet er det
+     vanlige. Det som står her, haster ikke før brukeren vil se det. */
+  function underHtml(rader, terskel){
+    return '<section class="baandblokk baandblokk--under" aria-label="Under terskelen">'
+      + '<details class="radarunder" id="radarUnder"' + (underÅpen ? " open" : "") + '>'
+      + '<summary class="baand baand--fold" data-fokus="under">' + PIL
+        + '<h3 class="merkelinje baand__navn">Under terskelen</h3>'
+        + '<span class="baand__strek" aria-hidden="true"></span>'
+        + '<span class="baand__tall" aria-label="' + antall(rader.length, "stilling", "stillinger") + '">' + rader.length + '</span></summary>'
+      + '<div class="utgatt__rad">'
+        + '<p class="utgatt__tekst">' + esc(bind("Radar vurderte " + (rader.length === 1 ? "denne" : "disse") + " lavere enn " + terskel + " %. "
+          + (rader.length === 1 ? "Den står" : "De står") + " her i 30 dager, og flytter opp i innboksen om du senker terskelen.")) + '</p>'
+        + '<button class="knapp knapp--liten" type="button" data-radar="tilTerskel" data-fokus="tilTerskel">Endre terskelen</button>'
+      + '</div>'
+      + '<div class="stabel">' + rader.map(r => funnHtml(r, "under")).join("") + '</div>'
+      + '</details></section>';
+  }
+
+  /* del er "under" for rader under terskelen: samme handlinger, ett
+     trinn dempet. */
+  function funnHtml(r, del = "innboks"){
+    const lagt = r.status !== "ny", erU = del === "under";
     const iDag = api.iDag();
     const meta = [];
     if(r.sted) meta.push('<span class="funn__sted">' + esc(r.sted) + '</span>');
@@ -676,24 +718,25 @@ export function lagRadarflate(api){
         + (legger.has(r.id) ? " disabled" : "") + '>' + (legger.has(r.id) ? "Legger til…" : jobbFor.has(r.id) ? "Prøv igjen" : "Legg til") + '</button>'
         + '<button class="handling handling--stille" type="button" data-radar="ikke" data-id="' + esc(r.id) + '" data-fokus="ikke-' + esc(r.id) + '">Ikke interessert</button>'
         + åpne;
-    return '<article class="funn' + (lagt ? " funn--lagt" : "") + '" data-radar-id="' + esc(r.id) + '" aria-labelledby="' + tittelId + '">'
+    return '<article class="funn' + (lagt ? " funn--lagt" : erU ? " funn--under" : "") + '" data-radar-id="' + esc(r.id) + '" aria-labelledby="' + tittelId + '">'
       + '<div class="funn__prosent"><span class="rad__match" title="Hvor godt stillingen passer CV-en">' + r.prosent + ' %</span></div>'
       + '<div class="funn__hoved-kol">'
         + '<h4 class="funn__tittel" id="' + tittelId + '"><span class="funn__selskap">' + esc(r.selskap || "Ukjent arbeidsgiver") + '</span>'
         + '<span class="skjult">, </span><span class="funn__stilling">' + esc(r.stilling) + '</span></h4>'
         + '<p class="funn__meta">' + meta.join("") + '</p>'
-        + (grunner.length ? '<ul class="funn__grunner" aria-label="Hvorfor den passer">' + grunner.map(g => '<li>' + esc(g) + '</li>').join("") + '</ul>' : "")
+        + (grunner.length ? '<ul class="funn__grunner" aria-label="' + (erU ? "Vurderingen" : "Hvorfor den passer") + '">' + grunner.map(g => '<li>' + esc(g) + '</li>').join("") + '</ul>' : "")
         + (lagt && jobbId ? '<p class="funn__lagtinn">Lagt til i søknadene dine.</p>' : "")
       + '</div>'
       + '<div class="funn__handlinger">' + handlinger + '</div>'
       + '</article>';
   }
 
-  /* Etter at en rad har gått ut av «Nye», går fokus til neste rad, så
-     man kan gå gjennom innboksen med tastaturet uten å miste plassen. */
-  function fokuserEtter(id, liste){
+  /* Etter at en rad har gått ut av «Nye» eller «Under terskelen», går
+     fokus til neste rad i samme del, så man kan gå gjennom den med
+     tastaturet uten å miste plassen. */
+  function fokuserEtter(id, liste, del = nye){
     const i = liste.findIndex(r => r.id === id);
-    const igjen = nye();
+    const igjen = del();
     const neste = igjen[i] || igjen[i - 1];
     requestAnimationFrame(() => {
       const el = neste ? rot?.querySelector('[data-fokus="legg-' + CSS.escape(neste.id) + '"]') : null;
@@ -704,9 +747,9 @@ export function lagRadarflate(api){
   /* ---------- handlingene ---------- */
 
   async function leggTil(id){
-    const rad = t.innboks.find(r => r.id === id);
+    const rad = radFor(id);
     if(!rad || legger.has(id)) return;
-    const hvem = profil, før = nye();
+    const hvem = profil, del = erUnder(id) ? under : nye, før = del();
     legger.add(id);
     tegnInnboks();
     try{
@@ -725,7 +768,7 @@ export function lagRadarflate(api){
       legger.delete(id);
       settTilstand(ny);
       api.varsle("La til " + (rad.selskap || "stillingen") + " i søknadene");
-      fokuserEtter(id, før);
+      fokuserEtter(id, før, del);
     }catch(e){
       legger.delete(id);
       if(e?.code === "utlogget" || hvem !== profil) return;
@@ -738,15 +781,18 @@ export function lagRadarflate(api){
   /* «Ikke interessert» kan ikke tas tilbake av Radar. Kallet venter
      derfor til angrefristen er ute; så lenge står raden bare skjult. */
   function ikkeInteressert(id){
-    const rad = t.innboks.find(r => r.id === id);
+    const rad = radFor(id);
     if(!rad || utsatt.has(id)) return;
-    const før = nye();
+    const del = erUnder(id) ? under : nye, før = del();
     utsatt.set(id, setTimeout(() => fullførIkkeInteressert(id), ANGRETID));
     tegnInnboks();
-    fokuserEtter(id, før);
-    api.varsle("Fjernet " + (rad.selskap || "stillingen") + " fra innboksen", () => {
+    fokuserEtter(id, før, del);
+    api.varsle("Fjernet " + (rad.selskap || "stillingen") + (del === nye ? " fra innboksen" : ""), () => {
       clearTimeout(utsatt.get(id));
       utsatt.delete(id);
+      /* Raden kan ha flyttet under terskelen i mellomtiden; den skal
+         stå synlig når fokus settes tilbake på den. */
+      if(erUnder(id)) underÅpen = true;
       tegnInnboks();
       requestAnimationFrame(() => rot?.querySelector('[data-fokus="legg-' + CSS.escape(id) + '"]')?.focus());
     });
@@ -781,8 +827,18 @@ export function lagRadarflate(api){
     }
   }
 
+  /* Knappen er avslått mens det lagres, og etterpå når alt er lagret,
+     så fokus som stod på den, ville havnet på <body>. Det settes på
+     knappen igjen om den kan trykkes, ellers på statusen ved siden av. */
+  function fokusTilLagrelinje(){
+    if(rot?.contains(document.activeElement)) return;
+    const k = rot?.querySelector('[data-fokus="lagre"]');
+    (k && !k.disabled ? k : rot?.querySelector("#radarLagret"))?.focus({ preventScroll: true });
+  }
+
   async function lagre(){
     if(!endret() || lagrer) return;
+    const fraKnapp = document.activeElement?.dataset?.fokus === "lagre";
     lagrer = true; lagreFeil = ""; tegnLagrelinje();
     const fra = utkast;
     try{
@@ -799,6 +855,7 @@ export function lagRadarflate(api){
       lagreFeil = "Ikke lagret. " + (e?.message || "");
       tegnLagrelinje();
     }
+    if(fraKnapp) fokusTilLagrelinje();
   }
 
   async function foreslå(){
@@ -831,6 +888,16 @@ export function lagRadarflate(api){
     tegn();
     const mål = forslag.feil ? rot?.querySelector('[data-fokus="foresla"]') : rot?.querySelector('[data-fokus="inn-sokeord"]');
     if(mål && !rot.contains(document.activeElement)) mål.focus();
+  }
+
+  /* Fra «Under terskelen» til glideren: innstillingene foldes ut, og
+     glideren får fokus, så piltastene flytter den med en gang. */
+  function tilTerskel(){
+    innstÅpen = true;
+    tegn();
+    const g = rot?.querySelector("#radarTerskel");
+    g?.focus({ preventScroll: true });
+    g?.closest(".radarinnst__del")?.scrollIntoView({ block: "center" });
   }
 
   async function søkNå(){
@@ -932,6 +999,8 @@ export function lagRadarflate(api){
        nytt i mellomtiden, skal det nye stå slik brukeren ville. */
     const topp = e.target.closest(".radarinnst__topp");
     if(topp) innstÅpen = !topp.parentElement.open;
+    const fold = e.target.closest("#radarUnder > summary");
+    if(fold) underÅpen = !fold.parentElement.open;
     /* Hele flaten rundt brikkene er feltet. */
     if(e.target.classList.contains("ordliste__flate") || e.target.classList.contains("ordliste__ord"))
       e.target.closest(".ordliste__flate").querySelector(".ordliste__inn")?.focus();
@@ -962,6 +1031,7 @@ export function lagRadarflate(api){
     else if(hva === "leggTil") leggTil(b.dataset.id);
     else if(hva === "ikke") ikkeInteressert(b.dataset.id);
     else if(hva === "apneSoknad") api.åpneSøknad(b.dataset.jobb, { fra: b });
+    else if(hva === "tilTerskel") tilTerskel();
     else if(hva === "tilCv") api.tilCv(b);
     else if(hva === "tilNokkel") api.tilNøkkel(b);
   }
