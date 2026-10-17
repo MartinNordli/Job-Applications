@@ -547,6 +547,7 @@ Bare det som er igjen, vurderes av modellen mot CV-en din, åtte om gangen, med 
 Prosenten følger samme skala som [vurderingen i panelet](#hvor-godt-passer-stillingen), så 75 % betyr det samme begge steder, og hver stilling får høyst tre korte grunner på CV-ens språk.
 Stillinger over terskelen (50 % som standard, der stillingen er verdt å lese) havner i innboksen.
 Det som ble vurdert til 40 % eller mer, men havnet under terskelen, gjemmes i stedet for å forsvinne, og kommer fram igjen når du senker terskelen.
+Det gjemte står sammenfoldet nederst i innboksen under «Under terskelen», med den høyeste prosenten først, og er innboksen tom, sier den hvor mange som står der.
 Radar vurderer det ikke på nytt, så flyttingen koster ingenting, og du får ikke varsel om det.
 Hever du terskelen, går nye stillinger som nå er under den, tilbake til det gjemte.
 Det gjemte kan du legge til eller si nei til på samme måte som i innboksen.
