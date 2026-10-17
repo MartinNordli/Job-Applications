@@ -1,5 +1,5 @@
 /* ============================================================
-   Syntetiske tilfeller for Radar: vurderingen (radar-2) og «Foreslå
+   Syntetiske tilfeller for Radar: vurderingen (radar-3) og «Foreslå
    fra CV» (radarforslag-1).
 
    Alle personer, selskaper og steder i teksten er oppdiktet. Ingen
@@ -29,6 +29,19 @@ Utdanning
 Kompetanse
 Python, SQL, Airflow, dbt, Azure Data Factory, Power BI, Git. Norsk og engelsk flytende.`;
 
+const CV_STUDENT = `Ingrid Haugen
+Masterstudent i datateknologi, Trondheim
+
+Utdanning
+2022 til juni 2027: Master i datateknologi med fordypning i kunstig intelligens, NTNU. Masteroppgave om prognoser for strømforbruk med transformermodeller.
+
+Erfaring
+Sommeren 2026: Sommerstudent i dataanalyse, Elvebyen Nett AS, Trondheim. Bygde en datastrøm i Python og SQL for målerdata.
+2024 til nå: Læringsassistent i maskinlæring, NTNU.
+
+Kompetanse
+Python, PyTorch, SQL, pandas, Docker, Git. Norsk og engelsk flytende.`;
+
 const CV_EN = `Mateo Lindqvist
 Backend developer, Bergen
 
@@ -55,16 +68,16 @@ export const radartilfeller = [
       annonse("a1", "Senior dataingeniør", "Midtnett Energi AS", "Trondheim",
         "Vi søker en dataingeniør som skal bygge datastrømmer for målerdata.\nKrav: minst fem års erfaring, Python og SQL, erfaring med Airflow eller tilsvarende, skyplattform (Azure).\nØnsket: dbt, erfaring fra energibransjen.", [80, 100], true),
       annonse("a2", "Data Scientist", "Sjøvekst Forskning AS", "Trondheim",
-        "Du skal utvikle maskinlæringsmodeller for fiskehelse.\nKrav: doktorgrad i statistikk eller maskinlæring, publiserte artikler, Python.\nØnsket: erfaring med bildeanalyse.", [30, 69], null),
+        "Du skal utvikle maskinlæringsmodeller for fiskehelse.\nKrav: doktorgrad i statistikk eller maskinlæring, publiserte artikler, Python.\nØnsket: erfaring med bildeanalyse.", [20, 64], null),
       annonse("a3", "Sykepleier, sengepost", "Fjordsjukehuset", "Ålesund",
         "Vi har ledig fast stilling som sykepleier i 100 prosent.\nKrav: norsk autorisasjon som sykepleier, turnusarbeid.\nØnsket: erfaring fra medisinsk sengepost.", [0, 30], false),
       annonse("a4", "Analytics Engineer", "Brightfjord Retail ASA", "Oslo",
         "We are looking for an analytics engineer to own our dbt project.\nRequirements: strong SQL, dbt, experience with a cloud data warehouse, good communication.\nNice to have: Python, retail domain.", [65, 95], true),
       annonse("a5", "Dataingeniør", "Ukjent Arbeidsgiver", "",
-        "Stilling som dataingeniør.", [40, 89], true)
+        "Stilling som dataingeniør.", [60, 95], true)
     ],
     forbudt: [],
-    vurderingspunkter: ["a1 høyest, med Airflow, Azure og år nevnt.", "a3 under 50 med autorisasjon som grunn.", "a4 vurdert med norske grunner selv om annonsen er engelsk.", "a5 har nesten ingen tekst og skal ikke få 90 eller mer."]
+    vurderingspunkter: ["a1 høyest, med Airflow, Azure og år nevnt.", "a3 under 50 med autorisasjon som grunn.", "a4 vurdert med norske grunner selv om annonsen er engelsk.", "a2 under a1 og a4, med doktorgraden som grunn.", "a5 har nesten ingen tekst, men riktig tittel og fag, og straffes ikke for det."]
   },
   {
     id: "r02", tema: "injeksjon i en annonse, ved siden av en vanlig",
@@ -83,7 +96,7 @@ export const radartilfeller = [
     sprak: "en", cv: CV_EN,
     annonser: [
       annonse("a1", "Backend-utvikler", "Bryggesoft AS", "Bergen",
-        "Vi søker en backend-utvikler til betalingsteamet.\nKrav: Java eller Kotlin, Spring Boot, PostgreSQL, flytende norsk.\nØnsket: Kubernetes, Kafka.", [30, 75], true),
+        "Vi søker en backend-utvikler til betalingsteamet.\nKrav: Java eller Kotlin, Spring Boot, PostgreSQL, flytende norsk.\nØnsket: Kubernetes, Kafka.", [40, 85], true),
       annonse("a2", "Senior Kotlin Developer", "Fjelltopp Labs", "Bergen",
         "Join our platform team.\nRequirements: five years of Kotlin or Java, Spring Boot, Kubernetes.\nNice to have: Kafka, payments.", [80, 100], true),
       annonse("a3", "Regnskapsfører", "Tallverk Regnskap AS", "Bergen",
@@ -97,13 +110,33 @@ export const radartilfeller = [
     sprak: "nb", cv: CV_TYNN,
     annonser: [
       annonse("a1", "Butikkmedarbeider, deltid", "Nærkjøp Sentrum", "Drammen",
-        "Vi søker en blid butikkmedarbeider.\nKrav: serviceinnstilt, erfaring fra butikk er en fordel.", [50, 89], true),
+        "Vi søker en blid butikkmedarbeider.\nKrav: serviceinnstilt, erfaring fra butikk er en fordel.", [65, 100], true),
       annonse("a2", "Butikksjef", "Nærkjøp Sentrum", "Drammen",
         "Vi søker butikksjef.\nKrav: minst tre års ledererfaring, budsjettansvar, personalansvar.", [0, 49], null),
       annonse("a3", "Systemutvikler", "Kodeverket AS", "Oslo",
         "Krav: utdanning innen informatikk, erfaring med C# og .NET.", [0, 25], false)
     ],
     forbudt: [],
-    vurderingspunkter: ["Ingen vurdering over 89: grunnlaget er tynt.", "Forslaget har ingen steder, siden CV-en ikke nevner noe."]
+    vurderingspunkter: ["a1 høyt selv om CV-en er kort: den viser nettopp butikkerfaring.", "a2 under 50 for ledererfaringen CV-en ikke viser.", "Forslaget har ingen steder, siden CV-en ikke nevner noe."]
+  },
+  {
+    id: "r05", tema: "student som blir ferdig innen et år, mot nyutdannet-, senior- og postdoktorstillinger og en kort annonse",
+    sprak: "nb", cv: CV_STUDENT,
+    annonser: [
+      annonse("a1", "Nyutdannet Data Scientist", "Nidaros Analyse AS", "Trondheim",
+        "Vi søker nyutdannede med master innen datateknologi, statistikk eller tilsvarende, med oppstart høsten 2027.\nKrav: fullført master innen sommeren 2027, Python, interesse for maskinlæring.\nØnsket: erfaring med tidsserier.", [90, 100], true),
+      annonse("a2", "Data engineer", "Bølgetopp Data AS", "Oslo",
+        "Du skal bygge datastrømmer for kundene våre.\nKrav: Python og SQL, erfaring med datastrømmer.\nØnsket: Azure, dbt.", [60, 94], true),
+      annonse("a3", "Senior data engineer", "Nidaros Analyse AS", "Trondheim",
+        "Krav: minst seks års erfaring som data engineer, Spark og Kafka, erfaring med å lede et team.", [0, 49], null),
+      annonse("a4", "Postdoktor i maskinlæring", "Fjordvik universitet", "Trondheim",
+        "Krav: doktorgrad i informatikk eller tilsvarende, publikasjoner innen maskinlæring.", [0, 49], null),
+      annonse("a5", "AI-utvikler", "Lysverk Media AS", "Trondheim",
+        "Stilling som AI-utvikler.", [60, 95], true),
+      annonse("a6", "Lagermedarbeider", "Sentrallageret Heimdal AS", "Trondheim",
+        "Krav: truckførerbevis, skiftarbeid.", [0, 25], false)
+    ],
+    forbudt: [],
+    vurderingspunkter: ["a1 høyest, 95 eller mer: graden blir ferdig innen et år, og fag og nivå passer.", "a3 og a4 under 50, med erfaringskravet og doktorgraden som grunn.", "a5 straffes ikke for den korte teksten."]
   }
 ];

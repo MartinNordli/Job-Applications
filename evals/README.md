@@ -99,7 +99,7 @@ Feiler et mønster, rett produktprompten og vurder hele settet på nytt.
 ## Radar
 
 `node evals/radar-kjor.mjs` viser de syntetiske Radar-tilfellene i `radar-tilfeller.mjs`, bygger forespørslene slik appen bygger dem og anslår størrelsen, uten nettverk.
-Tilfellene dekker en rik norsk CV (gulltilfellet r01), en annonse med injeksjonsforsøk (r02), en engelsk CV mot norske annonser (r03) og en tynn CV uten sted (r04), med en åpenbart feil bransje i hvert sett.
+Tilfellene dekker en rik norsk CV (gulltilfellet r01), en annonse med injeksjonsforsøk (r02), en engelsk CV mot norske annonser (r03) en tynn CV uten sted (r04) og en student som blir ferdig innen et år, mot stillinger for nyutdannede, senior og postdoktor (r05), med en åpenbart feil bransje i hvert sett.
 `server/radarprompt.test.mjs` sjekker at tilfellene er gyldige, at forespørselen bygges og bufres riktig, at fiendtlige svar avvises og at sjekkene gjør det de sier.
 
 En betalt kjøring gjøres bare når brukeren har godkjent kostnaden:
@@ -119,4 +119,4 @@ Repetisjon to kommer rett etter den første med samme CV, så rapporten viser om
 - forslaget slipper de relevante annonsene gjennom forfilteret og stenger ute den åpenbart feile bransjen
 
 Båndene er vide med vilje.
-Hvert tilfelle har `vurderingspunkter` for den menneskelige vurderingen: om grunnene er konkrete, om rekkefølgen mellom annonsene er rimelig, og om tynt grunnlag holder prosenten nede.
+Hvert tilfelle har `vurderingspunkter` for den menneskelige vurderingen: om grunnene er konkrete, om rekkefølgen mellom annonsene er rimelig, om nivået leses riktig fra CV-en, og om en kort annonse med riktig tittel og fag får en rimelig prosent.
