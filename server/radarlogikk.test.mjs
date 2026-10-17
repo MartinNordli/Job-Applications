@@ -6,10 +6,11 @@ import path from "node:path";
 
 import { lagBrevlager } from "./brevlager.mjs";
 import { tomCv } from "../src/brevdata.mjs";
-import { tomRadar, tomeRadarinnstillinger } from "../src/jobbdokument.mjs";
+import { tomRadar, tomeRadarinnstillinger, RADAR } from "../src/jobbdokument.mjs";
+import { RADAR_PROMPTVERSJON } from "../src/radarprompt.mjs";
 import { validerSoknad } from "../src/felles.mjs";
 import { forfilter, fingeravtrykk, nøklerFor, hukommelse, tolkVurdering, varseltekst, kjørRadar, lagreInnstillinger,
-         ikkeInteressert, markerLagtTil, soknadFraRad, leggTilKarriereside, søkNå, MAKS_VARSEL } from "../src/radarlogikk.mjs";
+         ikkeInteressert, markerLagtTil, soknadFraRad, leggTilKarriereside, søkNå, MAKS_VARSEL, tilstandFra, rydd, holdUnderTak } from "../src/radarlogikk.mjs";
 
 /* ============================================================
    Radarkjernen mot et ekte lager i en midlertidig katalog, med falskt
@@ -148,7 +149,7 @@ test("én kjøring: NAV og Jobbnorge gir én vurdering for samme annonse, innbok
   assert.ok(d.kildetilstand.nav.sokFerdig && d.kildetilstand.jobbnorge.sokFerdig, "første kjøring søkte gjennom alle aktive");
   assert.deepEqual(d.kjoringer[0].kilder.map(k => k.sok), [true, true]);
   assert.equal(d.kjoringer[0].treff, 1);
-  assert.equal(d.kjoringer[0].promptversjon, "radar-3", "kalibreringen kan følges over tid");
+  assert.equal(d.kjoringer[0].promptversjon, RADAR_PROMPTVERSJON, "kalibreringen kan følges over tid");
 
   nett.kall.length = 0;
   const r2 = await kjørRadar({ dokumenter: lager, nett, kallModell, nå, vent: ingenPause });
@@ -429,4 +430,91 @@ test("et søk hos NAV som stopper halvveis, fortsetter der det slapp, og oppføl
   d = await lager.les("radar.json");
   assert.deepEqual([d.kildetilstand.nav.side, d.kildetilstand.nav.etag, d.kildetilstand.nav.sokSide, d.kildetilstand.nav.feil], ["s2", '"e2"', null, null]);
   assert.ok(d.kildetilstand.nav.sokFerdig);
+});
+
+/* ---------- under terskelen ---------- */
+
+const urad = (id, prosent, funnet = NÅ.toISOString()) => ({ id, kilde: "nav", kildeId: id, url: `https://arbeidsplassen.nav.no/stillinger/stilling/${id}`,
+  lenker: [], selskap: "Eksempel AS", stilling: `Stilling ${id}`, sted: "Oslo", frist: null, publisert: null, tekst: "Tekst.", prosent,
+  grunner: ["Grunn."], status: "ny", funnet, nokler: [id], fingeravtrykk: `eksempel|${id}`, promptversjon: RADAR_PROMPTVERSJON });
+
+test("det som er vurdert under terskelen, gjemmes og kommer fram når terskelen senkes, uten nye modellkall", async t => {
+  const { lager } = await oppsett(t, { sokeord: ["seksjonssjef"], terskel: 90 });
+  const kallModell = falskModell(alleGir(82));
+  const r = await kjørRadar({ dokumenter: lager, nett: await kildenett(), kallModell, nå, vent: ingenPause });
+  assert.deepEqual(r.nye, []);
+  assert.equal(r.varsel, null);
+  let d = await lager.les("radar.json");
+  assert.equal(d.innboks.length, 0);
+  assert.deepEqual(d.under.map(x => [x.id, x.prosent, x.promptversjon]), [["jobbnorge:309820", 82, RADAR_PROMPTVERSJON]]);
+  assert.equal(d.sett[0].promptversjon, RADAR_PROMPTVERSJON);
+  assert.equal(d.kjoringer[0].treff, 0);
+  assert.equal(d.kjoringer[0].under, 1);
+  assert.equal(tilstandFra(d, NÅ).antallNye, 0);
+
+  /* Neste kjøring kjenner den igjen og vurderer ikke på nytt. */
+  await kjørRadar({ dokumenter: lager, nett: await kildenett(), kallModell, nå, vent: ingenPause });
+  assert.equal(kallModell.kall.length, 1);
+  assert.equal((await lager.les("radar.json")).under.length, 1);
+
+  d = await lagreInnstillinger(lager, { terskel: 70 });
+  assert.deepEqual(d.innboks.map(x => [x.id, x.status]), [["jobbnorge:309820", "ny"]]);
+  assert.deepEqual(d.under, []);
+  d = await lagreInnstillinger(lager, { terskel: 85 });
+  assert.deepEqual(d.innboks, []);
+  assert.equal(d.under.length, 1);
+  assert.equal(kallModell.kall.length, 1, "flyttingen koster ikke noe");
+});
+
+test("en rad som er lagt til, flyttes ikke tilbake når terskelen heves", async t => {
+  const { lager } = await oppsett(t, { terskel: 50 }, { innboks: [{ ...urad("a1", 60), status: "lagtTil" }, urad("a2", 65)] });
+  const d = await lagreInnstillinger(lager, { terskel: 80 });
+  assert.deepEqual(d.innboks.map(x => x.id), ["a1"]);
+  assert.deepEqual(d.under.map(x => x.id), ["a2"]);
+});
+
+test("«Legg til» og «Ikke interessert» virker på en rad under terskelen, og raden kommer ikke tilbake", async t => {
+  const { lager } = await oppsett(t, { terskel: 90 }, { under: [urad("a1", 60), urad("a2", 70), urad("a3", 75)] });
+  let d = await markerLagtTil(lager, "a1");
+  assert.deepEqual(d.innboks.map(x => [x.id, x.status]), [["a1", "lagtTil"]]);
+  assert.deepEqual(d.under.map(x => x.id).sort(), ["a2", "a3"]);
+  d = await ikkeInteressert(lager, "a2", { nå });
+  assert.deepEqual(d.under.map(x => x.id), ["a3"]);
+  assert.equal(d.avvist.length, 1);
+  /* Senkes terskelen, kommer ikke de to tilbake som nye. */
+  d = await lagreInnstillinger(lager, { terskel: 50 });
+  assert.deepEqual(d.innboks.map(x => [x.id, x.status]).sort(), [["a1", "lagtTil"], ["a3", "ny"]]);
+  assert.deepEqual(tilstandFra(d, NÅ).under, []);
+});
+
+test("tilstanden gir det under terskelen med høyest prosent først", async t => {
+  const { lager } = await oppsett(t, {}, { under: [urad("a1", 45), urad("a2", 70), urad("a3", 55)] });
+  assert.deepEqual(tilstandFra(await lager.les("radar.json"), NÅ).under.map(x => x.prosent), [70, 55, 45]);
+});
+
+test("en vurdering gjort med en annen promptversjon stopper ikke en ny vurdering", async t => {
+  const sett = promptversjon => [{ nokler: ["jobbnorge:309820"], fingeravtrykk: null, dato: "2026-10-01", ...(promptversjon ? { promptversjon } : {}) }];
+  for(const [versjon, ventet] of [["radar-1", 1], [null, 1], [RADAR_PROMPTVERSJON, 0]]){
+    const { lager } = await oppsett(t, { sokeord: ["seksjonssjef"], terskel: 60 }, { sett: sett(versjon) });
+    const kallModell = falskModell(alleGir(82));
+    await kjørRadar({ dokumenter: lager, nett: await kildenett(), kallModell, nå, vent: ingenPause });
+    assert.equal(kallModell.kall.length, ventet, `promptversjon ${versjon}`);
+  }
+  /* Er stillingen vurdert på nytt og nå over terskelen, forlater den «under». */
+  const { lager } = await oppsett(t, { sokeord: ["seksjonssjef"], terskel: 60 },
+    { under: [{ ...urad("jobbnorge:309820", 45), promptversjon: "radar-1" }] });
+  await kjørRadar({ dokumenter: lager, nett: await kildenett(), kallModell: falskModell(alleGir(82)), nå, vent: ingenPause });
+  const d = await lager.les("radar.json");
+  assert.deepEqual([d.innboks.map(x => x.id), d.under.length], [["jobbnorge:309820"], 0]);
+});
+
+test("under terskelen har tak i antall og alder, og dokumentet holder seg under taket", () => {
+  const dag = n => new Date(NÅ.getTime() - n * 86_400_000).toISOString();
+  const radar = { ...tomRadar(), under: [urad("ny", 60, dag(1)), urad("gammel", 60, dag(31))] };
+  assert.deepEqual(rydd(radar, NÅ).under.map(x => x.id), ["ny"]);
+  const stor = { ...tomRadar(), under: Array.from({ length: 100 }, (_, i) => ({ ...urad(`u${i}`, 60), tekst: "x".repeat(RADAR.tekst) })),
+    sett: Array.from({ length: 50 }, (_, i) => ({ nokler: [`n${i}`], dato: "2026-10-01", promptversjon: RADAR_PROMPTVERSJON })) };
+  const kuttet = holdUnderTak(stor, 200_000);
+  assert.ok(new TextEncoder().encode(JSON.stringify(kuttet, null, 2)).byteLength <= 200_000);
+  assert.ok(kuttet.under.length < 100 && kuttet.sett.length === 50, "det under terskelen kortes før hukommelsen");
 });

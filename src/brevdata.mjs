@@ -80,7 +80,7 @@ const TYPER = {
     harInnhold: d => !!(d.tekst || d.annonse?.tekst || d.kontekst || d.versjoner?.length || d.kjoring) },
   jobb: { skjema: JOBB_SKJEMA, tom: navn => tomtJobbdokument(dokumentId(navn)), valider: (navn, d) => validerJobbdokument(dokumentId(navn), d),
     harInnhold: harJobbinnhold },
-  radar: { skjema: RADAR_SKJEMA, tom: () => tomRadar(), valider: (navn, d) => validerRadar(d), harInnhold: harRadarinnhold }
+  radar: { skjema: RADAR_SKJEMA, eldre: [1], tom: () => tomRadar(), valider: (navn, d) => validerRadar(d), harInnhold: harRadarinnhold }
 };
 function type(navn){ return TYPER[dokumenttype(dokumentnavn(navn))]; }
 export const skjemaFor = navn => type(navn).skjema;
@@ -91,6 +91,7 @@ export function lesDokument(navn, rå){
   if(rå == null) return t.tom(navn);
   let d;
   try{ d = JSON.parse(rå); }catch{ throw new Brevfeil("odelagt", "Dokumentet kunne ikke leses. Originalen er bevart. Gjenopprett fra sikkerhetskopi.", 503); }
-  if(d?.skjemaVersjon !== t.skjema) throw new Brevfeil("versjon", "Dokumentformatet støttes ikke av denne appversjonen.", 409);
+  /* eldre: versjoner som valideringen selv løfter til gjeldende (radar.json 1 til 2). */
+  if(d?.skjemaVersjon !== t.skjema && !(t.eldre ?? []).includes(d?.skjemaVersjon)) throw new Brevfeil("versjon", "Dokumentformatet støttes ikke av denne appversjonen.", 409);
   return t.valider(navn, d);
 }

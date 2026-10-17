@@ -108,7 +108,7 @@ try{
   assert.equal(await page.locator("[data-radar-id]").count(), antallNye);
   assert.equal((await page.locator("#tallRadar").textContent()).trim(), String(antallNye));
   assert.match((await page.locator("#radarStatus").textContent()).replace(/\u00a0/g, " "),
-    new RegExp(`^\\d\\d:\\d\\d: ${antallNye} nye stillinger, ${antallNye} passet søkeordene, ${antallNye} vurdert, ${antallNye} nådde 70 %\\.$`));
+    new RegExp(`^\\d\\d:\\d\\d: ${antallNye} nye stillinger, ${antallNye} passet søkeordene, ${antallNye} vurdert, ${antallNye} nådde 50 %\\.$`));
   assert.equal(kall.vurdering, 1);
 
   /* ---------- Legg til: én søknad med annonse, raden merkes ---------- */

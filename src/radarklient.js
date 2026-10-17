@@ -180,7 +180,8 @@ export async function fjernKarriereside(id){
 /* Søknaden er lagret i listen av flaten (bare flaten skriver jobber.json).
    Her: annonsen på jobbdokumentet, så raden, så vanlig match i bakgrunnen. */
 export async function lagtTil(radId, jobbId){
-  const rad = (await hentTilstand()).innboks.find(r => r.id === radId);
+  const tilstand = await hentTilstand();
+  const rad = tilstand.innboks.find(r => r.id === radId) ?? tilstand.under.find(r => r.id === radId);
   if(!rad) throw new Brevfeil("finnes-ikke", "Stillingen er ikke i innboksen lenger.", 404);
   const marker = async id => I_APP ? markerLagtTil(lokal().lager, id)
     : http("/api/radar/lagt-til", { method: "POST", body: { id } });

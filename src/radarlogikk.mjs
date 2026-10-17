@@ -62,6 +62,8 @@ export const BOLK = 8;
 export const MAKS_VURDERINGER_PER_KJORING = 40;
 export const SETT_DAGER = 200;
 export const AVVIST_DAGER = 365;
+/* Det under terskelen gjemmes så lenge som en stilling typisk er ute. */
+export const UNDER_DAGER = 30;
 export const KO_DAGER = 30;
 export const KO_FORSOK = 3;
 export const TAK_FOR_LAGRING = 3.5 * 1024 * 1024;
@@ -173,7 +175,12 @@ export function hukommelse(radar, jobber = []){
     const f = fingeravtrykk(j?.selskap, j?.stilling);
     if(f) avtrykk.add(f);
   }
-  for(const r of [...(radar?.sett ?? []), ...(radar?.avvist ?? []), ...(radar?.innboks ?? [])]){
+  /* Det som ble vurdert med en annen prompt (sett og under), teller ikke:
+     en ny prompt skal få vurdere stillingen på nytt. Avvist og innboksen
+     gjelder uansett, for brukeren har tatt stilling til dem. */
+  const nåværende = r => r.promptversjon === RADAR_PROMPTVERSJON;
+  for(const r of [...(radar?.sett ?? []).filter(nåværende), ...(radar?.under ?? []).filter(nåværende),
+    ...(radar?.avvist ?? []), ...(radar?.innboks ?? [])]){
     for(const n of r.nokler ?? []) nøkler.add(n);
     if(r.id) nøkler.add(r.id);
     if(r.fingeravtrykk) avtrykk.add(r.fingeravtrykk);
@@ -359,7 +366,32 @@ export function innboksrad(k, v, nå){
   return { id: n[0], kilde: k.kilde, kildeId: k.kildeId, url: k.url, lenker: k.lenker, selskap: k.selskap,
     stilling: k.stilling, sted: k.sted, frist: k.frist, publisert: k.publisert,
     tekst: kortTekst(k.tekst), prosent: v.prosent, grunner: v.grunner,
-    status: "ny", funnet: new Date(nå).toISOString(), nokler: n, fingeravtrykk: fingeravtrykk(k.selskap, k.stilling) };
+    status: "ny", funnet: new Date(nå).toISOString(), nokler: n, fingeravtrykk: fingeravtrykk(k.selskap, k.stilling),
+    promptversjon: RADAR_PROMPTVERSJON };
+}
+
+/* Raden under terskelen er en innboksrad; promptversjonen på den lar en
+   ny prompt vurdere stillingen på nytt. Nyest først, og høyst RADAR.under. */
+export function slåInnIUnder(under, nye){
+  const ny = new Set(nye.map(r => r.id));
+  return [...nye, ...under.filter(r => !ny.has(r.id))]
+    .sort((a, b) => (a.funnet < b.funnet ? 1 : a.funnet > b.funnet ? -1 : 0)).slice(0, RADAR.under);
+}
+
+/*
+   Terskelen er endret: det som nå er over den, går fra «under» til
+   innboksen som nytt, og det nye i innboksen som nå er under, går
+   tilbake. Ingen modellkall og ingen varsel. Lagt til-rader står. Lavere
+   enn RADAR.underMin gjemmes ikke (validerRadar fjerner dem).
+*/
+export function flyttVedTerskel(radar, terskel){
+  const opp = radar.under.filter(r => r.prosent >= terskel);
+  const ned = radar.innboks.filter(r => r.status === "ny" && r.prosent < terskel);
+  if(!opp.length && !ned.length) return radar;
+  const nedId = new Set(ned.map(r => r.id)), oppId = new Set(opp.map(r => r.id));
+  return { ...radar,
+    innboks: slåInnIInnboks(radar.innboks.filter(r => !nedId.has(r.id)), opp.map(r => ({ ...r, status: "ny" }))),
+    under: slåInnIUnder(radar.under.filter(r => !oppId.has(r.id)), ned.map(r => ({ ...r, status: "ny" }))) };
 }
 
 /* Nye rader først, en rad som alt finnes beholdes som den er (den kan
@@ -387,11 +419,12 @@ export function fjernInaktive(innboks, nøkler){
 /* «Ikke interessert»: ut av innboksen, og husket både på lenke og på
    selskap og stilling i ett år. */
 export function avvis(radar, id, nå){
-  const rad = radar.innboks.find(r => r.id === id);
+  const rad = radar.innboks.find(r => r.id === id) ?? radar.under.find(r => r.id === id);
   if(!rad) return radar;
   const dato = lokalDato(new Date(nå));
   return { ...radar,
     innboks: radar.innboks.filter(r => r.id !== id),
+    under: radar.under.filter(r => r.id !== id),
     avvist: [{ nokler: rad.nokler.length ? rad.nokler : [rad.id], dato }, ...radar.avvist],
     avvistFingeravtrykk: rad.fingeravtrykk && !radar.avvistFingeravtrykk.some(a => a.fingeravtrykk === rad.fingeravtrykk)
       ? [{ fingeravtrykk: rad.fingeravtrykk, dato }, ...radar.avvistFingeravtrykk] : radar.avvistFingeravtrykk };
@@ -401,8 +434,10 @@ export function avvis(radar, id, nå){
 export function rydd(radar, nå){
   const grense = dager => lokalDato(new Date(new Date(nå).getTime() - dager * DAG));
   const sett = grense(SETT_DAGER), avvist = grense(AVVIST_DAGER);
+  const underFra = new Date(new Date(nå).getTime() - UNDER_DAGER * DAG).toISOString();
   const nyestFørst = (a, b) => (a.dato < b.dato ? 1 : a.dato > b.dato ? -1 : 0);
   return { ...radar,
+    under: radar.under.filter(r => (r.funnet ?? "") >= underFra).slice(0, RADAR.under),
     sett: radar.sett.filter(r => r.dato >= sett).sort(nyestFørst).slice(0, RADAR.sett),
     avvist: radar.avvist.filter(r => r.dato >= avvist).sort(nyestFørst).slice(0, RADAR.avvist),
     avvistFingeravtrykk: radar.avvistFingeravtrykk.filter(r => r.dato >= avvist).sort(nyestFørst).slice(0, RADAR.avvistFingeravtrykk) };
@@ -410,11 +445,12 @@ export function rydd(radar, nå){
 
 /* Dokumentet har et tak på 4 MiB, og en kjøring som ikke får lagret,
    ville feilet på nytt hver time. Derfor kortes hukommelsen, eldste
-   først, til det er god plass. Innboksen og innstillingene røres ikke. */
+   først, til det er god plass; det under terskelen går først, for det
+   kan vurderes på nytt. Innboksen og innstillingene røres ikke. */
 const størrelse = d => new TextEncoder().encode(JSON.stringify(d, null, 2)).byteLength;
 export function holdUnderTak(radar, tak = TAK_FOR_LAGRING){
   let d = radar;
-  for(const felt of ["sett", "avvist", "avvistFingeravtrykk"]){
+  for(const felt of ["under", "sett", "avvist", "avvistFingeravtrykk"]){
     while(størrelse(d) > tak && d[felt].length){
       d = { ...d, [felt]: d[felt].slice(0, Math.floor(d[felt].length * 0.9)) };
     }
@@ -510,7 +546,7 @@ function fnv(tekst){
 
 export function søkeavtrykk(kilde, inn){
   const liste = v => [...new Set((Array.isArray(v) ? v : []).map(brett).filter(Boolean))].sort();
-  const del = { v: SOK.versjon, sokeord: liste(inn?.sokeord), ekskluder: liste(inn?.ekskluder), steder: liste(inn?.steder) };
+  const del = { v: SOK.versjon, p: RADAR_PROMPTVERSJON, sokeord: liste(inn?.sokeord), ekskluder: liste(inn?.ekskluder), steder: liste(inn?.steder) };
   if(kilde === "jobbnorge") del.fylker = [...new Set(inn?.kilder?.jobbnorge?.fylker ?? [])].sort((a, b) => a - b);
   return `${kilde}-${fnv(JSON.stringify(del))}`;
 }
@@ -608,7 +644,7 @@ export async function kjørRadar({ dokumenter, jobber = [], nett, kallModell, le
   };
 
   const inn = leid.innstillinger;
-  const logg = { start: stempel, slutt: null, promptversjon: RADAR_PROMPTVERSJON, kandidater: 0, passet: 0, nye: 0, vurdert: 0, treff: 0,
+  const logg = { start: stempel, slutt: null, promptversjon: RADAR_PROMPTVERSJON, kandidater: 0, passet: 0, nye: 0, vurdert: 0, treff: 0, under: 0,
     utenVurdering: 0, venter: 0, kilder: [], bruk: null, feil: [] };
   const feil = new Set(), utfall = new Map(), inaktive = new Set();
   /* tilKo er det fra NAV og Jobbnorge som ikke ble vurdert; igjen er
@@ -721,8 +757,7 @@ export async function kjørRadar({ dokumenter, jobber = [], nett, kallModell, le
   logg.vurdert = vurdert.length;
   logg.venter = pekereGjelder ? nyKø.length : leid.ko.length;
   logg.feil = [...feil].slice(0, RADAR.kjoringsfeil);
-  const over = vurdert.filter(x => x.v.prosent >= inn.terskel);
-  let nye = [];
+  let nye = [], gjemt = [];
 
   /* 7. Legg kjøringen oppå siste versjon og slipp leien i samme skriving.
      Har en annen kjøring tatt leien imens, skrives ingenting: da er det
@@ -731,7 +766,14 @@ export async function kjørRadar({ dokumenter, jobber = [], nett, kallModell, le
     if(d.leie?.eier !== eier && leieGyldig(d.leie, nå())) return null;
     /* Brukeren kan ha avvist eller lagt til noe mens kjøringen pågikk. */
     const sistKjent = hukommelse({ avvist: d.avvist, avvistFingeravtrykk: d.avvistFingeravtrykk, innboks: d.innboks }, jobber);
-    nye = over.filter(x => !sistKjent.kjenner(x.k)).map(x => innboksrad(x.k, x.v, start));
+    /* Terskelen kan være endret mens kjøringen pågikk: den siste gjelder. */
+    const terskel = d.innstillinger.terskel;
+    const ukjente = vurdert.filter(x => !sistKjent.kjenner(x.k));
+    nye = ukjente.filter(x => x.v.prosent >= terskel).map(x => innboksrad(x.k, x.v, start));
+    gjemt = ukjente.filter(x => x.v.prosent < terskel && x.v.prosent >= RADAR.underMin).map(x => innboksrad(x.k, x.v, start));
+    /* En stilling som kommer i innboksen nå, forlater «under». */
+    const iInnboksen = new Set(nye.map(r => r.id));
+    const underFør = d.under.filter(r => !iInnboksen.has(r.id));
     const kildetilstand = { ...d.kildetilstand };
     for(const id of ["nav", "jobbnorge"]) kildetilstand[id] = nyKildetilstand(d.kildetilstand[id], utfall.get(id), pekereGjelder, stempel);
     const sideGjelder = s => pekereGjelder && !modellFeil && !igjen.has(s.id);
@@ -739,16 +781,19 @@ export async function kjørRadar({ dokumenter, jobber = [], nett, kallModell, le
       ...d, leie: null, kildetilstand, ko: pekereGjelder ? nyKø : d.ko,
       innstillinger: { ...d.innstillinger,
         karrieresider: d.innstillinger.karrieresider.map(s => nySide(s, utfall.get(s.id), sideGjelder(s), stempel)) },
-      sett: [...vurdert.map(x => ({ nokler: lagringsnøkler(x.k), fingeravtrykk: fingeravtrykk(x.k.selskap, x.k.stilling), dato: iDag })), ...d.sett],
+      sett: [...vurdert.map(x => ({ nokler: lagringsnøkler(x.k), fingeravtrykk: fingeravtrykk(x.k.selskap, x.k.stilling), dato: iDag,
+        promptversjon: RADAR_PROMPTVERSJON })), ...d.sett],
       innboks: slåInnIInnboks(fjernInaktive(d.innboks, inaktive), nye),
+      under: slåInnIUnder(fjernInaktive(underFør, inaktive), gjemt),
       forbruk: d.forbruk.dato === iDag ? { dato: iDag, vurderinger: d.forbruk.vurderinger + sendt } : { dato: iDag, vurderinger: sendt },
-      kjoringer: [{ ...logg, treff: nye.length, slutt: nå().toISOString() }, ...d.kjoringer].slice(0, RADAR.kjoringer)
+      kjoringer: [{ ...logg, treff: nye.length, under: gjemt.length, slutt: nå().toISOString() }, ...d.kjoringer].slice(0, RADAR.kjoringer)
     };
     return holdUnderTak(rydd(neste, start));
   }).catch(e => { logg.feil.push(`Lagringen: ${melding(e)}`); return null; });
   if(!lagret) await slippLeie(dokumenter, { eier }).catch(() => {});
 
   logg.treff = lagret ? nye.length : 0;
+  logg.under = lagret ? gjemt.length : 0;
   logg.slutt = nå().toISOString();
   return { kjort: true, lagret: !!lagret, kjoring: logg, nye: lagret ? nye : [], varsel: lagret ? varseltekst(nye) : null };
 }
@@ -757,7 +802,7 @@ export async function kjørRadar({ dokumenter, jobber = [], nett, kallModell, le
 
 /* «Ikke interessert». Gir dokumentet etter endringen. */
 export async function ikkeInteressert(dokumenter, id, { nå = () => new Date() } = {}){
-  const d = await medNyeForsøk(dokumenter, r => r.innboks.some(x => x.id === id) ? avvis(r, id, nå()) : null);
+  const d = await medNyeForsøk(dokumenter, r => r.innboks.some(x => x.id === id) || r.under.some(x => x.id === id) ? avvis(r, id, nå()) : null);
   if(!d) throw new Brevfeil("finnes-ikke", "Stillingen er ikke i innboksen lenger.", 404);
   return d;
 }
@@ -773,8 +818,13 @@ export function soknadFraRad(rad, { nå = new Date() } = {}){
 export async function markerLagtTil(dokumenter, id){
   const d = await medNyeForsøk(dokumenter, r => {
     const rad = r.innboks.find(x => x.id === id);
-    if(!rad || rad.status === "lagtTil") return null;
-    return { ...r, innboks: r.innboks.map(x => x.id === id ? { ...x, status: "lagtTil" } : x) };
+    if(rad?.status === "lagtTil") return null;
+    if(rad) return { ...r, innboks: r.innboks.map(x => x.id === id ? { ...x, status: "lagtTil" } : x) };
+    /* Fra «under»: raden flyttes til innboksen som lagt til. */
+    const under = r.under.find(x => x.id === id);
+    if(!under) return null;
+    return { ...r, under: r.under.filter(x => x.id !== id),
+      innboks: slåInnIInnboks(r.innboks, [{ ...under, status: "lagtTil" }]) };
   });
   return d ?? await dokumenter.les(RADARFIL);
 }
@@ -856,6 +906,7 @@ export function tilstandFra(radar, nå = new Date()){
     revisjon: radar.revisjon,
     innstillinger: radar.innstillinger,
     innboks,
+    under: [...radar.under].sort((a, b) => b.prosent - a.prosent),
     antallNye: radar.innboks.filter(r => r.status === "ny").length,
     karrieresider: radar.innstillinger.karrieresider,
     kilder: {
@@ -880,7 +931,8 @@ export async function lagreInnstillinger(dokumenter, inn){
   const feltene = Object.fromEntries(INNSTILLINGSFELT.filter(f => inn[f] !== undefined).map(f => [f, inn[f]]));
   const d = await medNyeForsøk(dokumenter, r => {
     const ny = validerRadar({ ...r, innstillinger: { ...r.innstillinger, ...feltene, karrieresider: r.innstillinger.karrieresider } });
-    return { ...r, innstillinger: ny.innstillinger };
+    const endret = { ...r, innstillinger: ny.innstillinger };
+    return ny.innstillinger.terskel === r.innstillinger.terskel ? endret : flyttVedTerskel(endret, ny.innstillinger.terskel);
   });
   if(!d) throw new Brevfeil("opptatt", "Radar-dokumentet ble endret samtidig. Prøv igjen.", 409);
   return d;

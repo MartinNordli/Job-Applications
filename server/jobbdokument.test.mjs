@@ -76,7 +76,7 @@ test("et tomt eller minimalt dokument får hele formen", () => {
   assert.deepEqual(lesDokument("radar.json", JSON.stringify({ skjemaVersjon: 1, revisjon: 2, oppdatert: null })),
     { ...tomRadar(), revisjon: 2 });
   assert.equal(skjemaFor("jobb-j1.json"), 1);
-  assert.equal(skjemaFor("radar.json"), 1);
+  assert.equal(skjemaFor("radar.json"), 2);
 });
 
 test("lesDokument velger validator etter navnet og avviser ukjent skjema", () => {
@@ -206,16 +206,28 @@ const rad = (over = {}) => ({ id: "nav:a1", kilde: "nav", kildeId: "a1", url: "h
 
 test("radar.json får hele formen med standardverdier", () => {
   const d = validerRadar({ revisjon: 0 });
-  assert.deepEqual(d.innstillinger, { pa: false, terskel: 70, maksVurderingerPerDogn: 150, sokeord: [], ekskluder: [], steder: [],
+  assert.deepEqual(d.innstillinger, { pa: false, terskel: 50, maksVurderingerPerDogn: 150, sokeord: [], ekskluder: [], steder: [],
     kilder: { nav: { pa: true }, jobbnorge: { pa: true, fylker: [] } }, karrieresider: [] });
   assert.deepEqual(d.kildetilstand, {
     nav: { side: null, etag: null, sistEndret: null, sist: null, feil: null, sokAvtrykk: null, sokSide: null, sokFerdig: null },
     jobbnorge: { sisteId: null, sist: null, feil: null, sokAvtrykk: null, sokFerdig: null } });
-  for(const k of ["innboks", "ko", "sett", "avvist", "avvistFingeravtrykk", "kjoringer"]) assert.deepEqual(d[k], []);
+  for(const k of ["innboks", "under", "ko", "sett", "avvist", "avvistFingeravtrykk", "kjoringer"]) assert.deepEqual(d[k], []);
   assert.deepEqual(d.forbruk, { dato: null, vurderinger: 0 });
   assert.equal(d.leie, null);
   // Det gamle formatet fra før Radar fantes, blir et gyldig dokument.
-  assert.equal(validerRadar({ skjemaVersjon: 1, revisjon: 2, innstillinger: { pa: true, terskel: 70 }, ukjent: 1 }).innstillinger.terskel, 70);
+  assert.equal(validerRadar({ skjemaVersjon: 1, revisjon: 2, innstillinger: { pa: true, terskel: 60 }, ukjent: 1 }).innstillinger.terskel, 60);
+});
+
+test("en terskel på 70 i skjema 1 var den gamle standarden og blir 50, men bare der", () => {
+  const med = (skjemaVersjon, terskel) => validerRadar({ skjemaVersjon, revisjon: 1, innstillinger: { terskel } }).innstillinger.terskel;
+  assert.equal(med(1, 70), 50);
+  assert.equal(med(undefined, 70), 50);
+  assert.equal(med(2, 70), 70);
+  assert.equal(med(1, 65), 65);
+  // Et skjema 1-dokument på disk kan fortsatt leses, og løftes ved lesing.
+  assert.equal(lesDokument("radar.json", JSON.stringify({ skjemaVersjon: 1, revisjon: 3, innstillinger: { terskel: 70 } })).innstillinger.terskel, 50);
+  assert.equal(lesDokument("radar.json", JSON.stringify({ skjemaVersjon: 2, revisjon: 3, innstillinger: { terskel: 70 } })).innstillinger.terskel, 70);
+  assert.throws(() => lesDokument("radar.json", JSON.stringify({ skjemaVersjon: 3 })), e => e.code === "versjon");
 });
 
 test("radar.json normaliseres tilgivende og dropper det som ikke passer", () => {
@@ -239,7 +251,7 @@ test("radar.json normaliseres tilgivende og dropper det som ikke passer", () => 
     kjoringer: [{ start: "2026-10-09T10:00:00.000Z", vurdert: 3, kilder: [{ kilde: "nav", hentet: 5 }, { kilde: "finn" }], feil: ["Kilden svarte 500."] }, { start: "nå" }],
     leie: { eier: "a", utloper: "aldri" } });
   assert.equal(d.innstillinger.pa, false);
-  assert.equal(d.innstillinger.terskel, 70);
+  assert.equal(d.innstillinger.terskel, 50);
   assert.equal(d.innstillinger.maksVurderingerPerDogn, 150);
   assert.deepEqual(d.innstillinger.sokeord, ["data", "ki"]);
   assert.deepEqual(d.innstillinger.kilder, { nav: { pa: false }, jobbnorge: { pa: true, fylker: [3, 42] } });

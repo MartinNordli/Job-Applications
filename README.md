@@ -545,7 +545,13 @@ Radar sorterer først uten modell: stillingen må være aktiv, fristen ikke pass
 Så fjernes duplikater mot søknadslisten, innboksen, det du har avvist og mellom kildene, også en Jobbnorge-annonse som ligger i NAV.
 Bare det som er igjen, vurderes av modellen mot CV-en din, åtte om gangen, med Haiku hos Anthropic.
 Prosenten følger samme skala som [vurderingen i panelet](#hvor-godt-passer-stillingen), så 75 % betyr det samme begge steder, og hver stilling får høyst tre korte grunner på CV-ens språk.
-Stillinger over terskelen (70 % som standard, der stillingen passer på det meste) havner i innboksen.
+Stillinger over terskelen (50 % som standard, der stillingen er verdt å lese) havner i innboksen.
+Det som ble vurdert til 40 % eller mer, men havnet under terskelen, gjemmes i stedet for å forsvinne, og kommer fram igjen når du senker terskelen.
+Radar vurderer det ikke på nytt, så flyttingen koster ingenting, og du får ikke varsel om det.
+Hever du terskelen, går nye stillinger som nå er under den, tilbake til det gjemte.
+Det gjemte kan du legge til eller si nei til på samme måte som i innboksen.
+Det gjemte rommer 150 stillinger og huskes i 30 dager.
+Endres prompten som vurderer stillingene, vurderes de på nytt ved neste kjøring, som søker gjennom alle aktive stillinger igjen.
 En kjøring som gir treff, gir ett varsel med de beste først.
 
 ### Søkeord fra CV-en
@@ -587,7 +593,7 @@ Det er ett kall til Haiku, høyst ti i timen.
 - NAV: høyst 60 detaljoppslag per kjøring. Jobbnorge: 20. Karrieresider: 10 hver.
 - NAV-søket: høyst 60 sider på 4000 linjer per kjøring. Jobbnorge-søket: høyst 5 sider på 1000.
 - Karrieresider hentes høyst hver sjette time, og en side som feiler fem ganger på rad, slås av med forklaring.
-- Innboksen rommer 200 stillinger. Det Radar har sett huskes i 200 dager, og det du har avvist i ett år.
+- Innboksen rommer 200 stillinger, og det gjemte under terskelen 150. Det Radar har sett huskes i 200 dager, og det du har avvist i ett år.
 - Høyst ti forslag fra CV-en i timen.
 - Alle svar fra kildene har tak på størrelse og tid, og modellsvaret sjekkes strengt: et svar med feil form, eller med en lenke fra en annonse i grunnene, forkastes.
 - En kjøring med 40 vurderinger koster omtrent ti øre med Haiku 5.5, og et forslag fra CV-en omtrent ett øre. Kostnaden for hver kjøring står i kjøringsloggen.

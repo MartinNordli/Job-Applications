@@ -33,7 +33,7 @@ import { Brevfeil, revisjon } from "./dokumentfeil.mjs";
 import { erId } from "./dokumentnavn.mjs";
 
 export const SKJEMA = 1;
-export const RADAR_SKJEMA = 1;
+export const RADAR_SKJEMA = 2;
 export const MAKS_JOBBDOKUMENT = 4 * 1024 * 1024;
 export const MAKS_RADAR = 4 * 1024 * 1024;
 export const MAKS_ANNONSE = 100000;
@@ -236,10 +236,19 @@ export function validerJobbdokument(id, inn){
    detaljen hentes på nytt når de vurderes. Antallstakene her er det siste vernet; selve
    rydderegelen står i src/radarlogikk.mjs, som også holder dokumentet
    under 4 MiB før det skrives.
+
+   «under» er stillinger som ble vurdert, men havnet under terskelen.
+   De har samme form som innboksrader, og ligger der fra underMin
+   (glideren går fra 40) til terskelen senkes, så de kan flyttes til
+   innboksen uten nytt modellkall. Lavere enn underMin er feil fagfelt.
+
+   Skjemaversjon 2: standardterskelen gikk fra 70 til 50. En terskel på
+   70 i et dokument med eldre versjon er den gamle standarden, ikke et
+   valg, og blir 50 én gang. Verdien brukeren setter etterpå, står.
 */
 export const RADAR = Object.freeze({
-  terskel: 70, maksVurderingerPerDogn: 150,
-  innboks: 200, sett: 4000, avvist: 5000, avvistFingeravtrykk: 5000, kjoringer: 20,
+  terskel: 50, underMin: 40, maksVurderingerPerDogn: 150,
+  innboks: 200, under: 150, sett: 4000, avvist: 5000, avvistFingeravtrykk: 5000, kjoringer: 20,
   karrieresider: 40, ord: 40, ordlengde: 80, fylker: 30, navn: 200,
   tekst: 6000, grunner: 3, grunn: 300, lenker: 5, nokler: 4, nokkel: 2000, fingeravtrykk: 420,
   feilRad: 5, kjoringsfeil: 10, kildelogg: 60, melding: 300,
@@ -299,7 +308,7 @@ function karriereside(k){
     feilRad: Math.min(heltall(k.feilRad) ?? 0, 1000), sist: tid(k.sist), grunn: valgfriTekst(k.grunn, RADAR.melding) };
 }
 
-function innstillinger(v){
+function innstillinger(v, eldreSkjema = false){
   const t = tomeRadarinnstillinger();
   if(!erObjekt(v)) return t;
   const k = erObjekt(v.kilder) ? v.kilder : {};
@@ -307,7 +316,7 @@ function innstillinger(v){
   const terskel = prosent(v.terskel), tak = heltall(v.maksVurderingerPerDogn);
   return {
     pa: bool(v.pa, t.pa),
-    terskel: terskel ?? t.terskel,
+    terskel: eldreSkjema && terskel === 70 ? t.terskel : terskel ?? t.terskel,
     maksVurderingerPerDogn: tak !== null && tak <= 1000 ? tak : t.maksVurderingerPerDogn,
     sokeord: ord(v.sokeord), ekskluder: ord(v.ekskluder), steder: ord(v.steder),
     kilder: {
@@ -350,8 +359,15 @@ function innboksrad(r){
     frist: dato(r.frist), publisert: tid(r.publisert), tekst: kort(r.tekst, RADAR.tekst),
     prosent: p, grunner: tekstliste(r.grunner, RADAR.grunner, RADAR.grunn),
     status: blantt(r.status, INNBOKSSTATUS, "ny"), funnet: tid(r.funnet),
-    nokler: nokler(r.nokler), fingeravtrykk: valgfriTekst(r.fingeravtrykk, RADAR.fingeravtrykk)
+    nokler: nokler(r.nokler), fingeravtrykk: valgfriTekst(r.fingeravtrykk, RADAR.fingeravtrykk),
+    promptversjon: valgfriTekst(r.promptversjon, 40)
   };
+}
+
+/* Under terskelen: samme rad, men aldri lavere enn underMin. */
+function underrad(r){
+  const rad = innboksrad(r);
+  return rad && rad.prosent >= RADAR.underMin ? { ...rad, status: "ny" } : null;
 }
 
 /* En stilling i køen: det listen ga, uten detaljen. */
@@ -367,7 +383,8 @@ function korad(r){
 function minne(r){
   const d = dato(r.dato), n = nokler(r.nokler);
   if(!d || !n.length) return null;
-  return { nokler: n, fingeravtrykk: valgfriTekst(r.fingeravtrykk, RADAR.fingeravtrykk), dato: d };
+  return { nokler: n, fingeravtrykk: valgfriTekst(r.fingeravtrykk, RADAR.fingeravtrykk), dato: d,
+    promptversjon: valgfriTekst(r.promptversjon, 40) };
 }
 function avvistRad(r){
   const d = dato(r.dato), n = nokler(r.nokler);
@@ -378,13 +395,13 @@ function avvistFingeravtrykk(r){
   return d && f ? { fingeravtrykk: f, dato: d } : null;
 }
 
-export const KJORINGSTELLERE = ["kandidater", "passet", "nye", "vurdert", "treff", "utenVurdering", "venter"];
-const NYERE_TELLERE = new Set(["passet", "venter"]);
+export const KJORINGSTELLERE = ["kandidater", "passet", "nye", "vurdert", "treff", "under", "utenVurdering", "venter"];
+const NYERE_TELLERE = new Set(["passet", "venter", "under"]);
 function kjoring(r){
   const start = tid(r.start);
   if(!start) return null;
   const ut = { start, slutt: tid(r.slutt), promptversjon: valgfriTekst(r.promptversjon, 40) };
-  /* passet og venter kom senere. En kjøring fra før har dem ikke, og
+  /* passet, venter og under kom senere. En kjøring fra før har dem ikke, og
      skal vise «ukjent», ikke «ingen passet». */
   for(const k of KJORINGSTELLERE) ut[k] = heltall(r[k]) ?? (NYERE_TELLERE.has(k) ? null : 0);
   ut.kilder = unike(r.kilder, RADAR.kildelogg, k => {
@@ -411,9 +428,10 @@ export function validerRadar(inn){
   if(!erObjekt(inn)) throw new Brevfeil("ugyldig", "Radar-dokumentet mangler.");
   const d = {
     skjemaVersjon: RADAR_SKJEMA, revisjon: revisjon(inn.revisjon),
-    innstillinger: innstillinger(inn.innstillinger),
+    innstillinger: innstillinger(inn.innstillinger, !(heltall(inn.skjemaVersjon) >= RADAR_SKJEMA)),
     kildetilstand: kildetilstand(inn.kildetilstand),
     innboks: unike(inn.innboks, RADAR.innboks, innboksrad, r => r.id),
+    under: unike(inn.under, RADAR.under, underrad, r => r.id),
     ko: unike(inn.ko, RADAR.ko, korad, r => `${r.kilde}:${r.kildeId}`),
     sett: unike(inn.sett, RADAR.sett, minne),
     avvist: unike(inn.avvist, RADAR.avvist, avvistRad),
@@ -436,7 +454,7 @@ export const harJobbinnhold = d => !!(d?.annonse?.tekst || d?.annonse?.url || d?
 export function harRadarinnhold(d){
   if(!erObjekt(d)) return false;
   const tom = tomRadar();
-  return ["innstillinger", "kildetilstand", "innboks", "ko", "sett", "avvist", "avvistFingeravtrykk", "kjoringer"]
+  return ["innstillinger", "kildetilstand", "innboks", "under", "ko", "sett", "avvist", "avvistFingeravtrykk", "kjoringer"]
     .some(k => d[k] !== undefined && JSON.stringify(d[k]) !== JSON.stringify(tom[k]));
 }
 
