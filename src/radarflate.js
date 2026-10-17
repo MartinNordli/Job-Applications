@@ -38,6 +38,7 @@ import { påCvEndring, harCvTekst } from "./cvflate.js";
 import * as Varsling from "./varsling.js";
 import { valgtLeverandør } from "./jobbdokumenter.js";
 import * as F from "./formater.js";
+import { oppdaterFlyt } from "./flyt.js";
 import { esc, antall, vert, MND_K } from "./formater.js";
 
 /* Fylkene med fylkesnummeret fra 2024, som Jobbnorge får som «county».
@@ -84,6 +85,7 @@ const KRYSS = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-
 const IKON_KRYSS = '<svg class="ikon" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 const IKON_UT = '<svg class="ikon" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4.5 2.75h4.75v4.75M9 3 3 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const TRAKTPIL = '<svg class="radartrakt__pil" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="m4.5 2.5 3.5 3.5-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const HVORFORPIL = '<svg class="funn__hvorforpil" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="m2.5 3.75 2.5 2.5 2.5-2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 /* Blinken i introkortet: fire ringer i treff-trinnene rundt en prikk. */
 const MOTIV = '<svg class="radar__motiv" width="76" height="76" viewBox="0 0 76 76" aria-hidden="true">'
   + [36, 27, 18, 9, 2.6].map((r, i) => '<circle class="radar__ring" data-ring="' + i + '" cx="38" cy="38" r="' + r + '"/>').join("") + '</svg>';
@@ -327,6 +329,7 @@ export function lagRadarflate(api){
         + (visFaner() ? fanerHtml() + '<div class="radar__panel" id="radarPanel" role="tabpanel" tabindex="0" aria-labelledby="radarFane-' + aktivFane() + '">'
           + panelHtml() + '</div>' : "");
     });
+    oppdaterFlyt(rot);
     tegnKlokke();
   }
   function tegnMerknader(){
@@ -342,15 +345,18 @@ export function lagRadarflate(api){
       panel.setAttribute("aria-labelledby", "radarFane-" + aktivFane());
       panel.innerHTML = panelHtml();
     });
+    oppdaterFlyt(rot);
   }
   /* Når innboksen endres, følger tallene i fanene med, og panelet hvis
      det viser en av listene. Innstillingene tegnes ikke på nytt for det. */
   function tegnInnboks(){
     if(rot && t){
+      const skala = rot.querySelector("#radarSkala");
+      if(skala) skala.innerHTML = skalaHtml();
       const faner = rot.querySelector("#radarFaner");
       if(!faner){ if(visFaner()) tegn(); }
       else if(erListe(aktivFane())) tegnFaner();
-      else medFokus(() => { faner.outerHTML = fanerHtml(); });
+      else{ medFokus(() => { faner.outerHTML = fanerHtml(); }); oppdaterFlyt(rot); }
     }
     api.etterEndring();
   }
@@ -476,15 +482,18 @@ export function lagRadarflate(api){
       + '<button class="knapp knapp--liten radar__sok" type="button" id="radarSokNa" data-radar="sok" data-fokus="sok"'
       + (går ? " disabled" : "") + '>' + (går ? "Søker…" : "Søk nå") + '</button></div>'
       + traktHtml()
+      + '<div id="radarSkala">' + skalaHtml() + '</div>'
       + '<p class="radar__notat" id="radarNotat" aria-hidden="true"' + (notat ? "" : " hidden") + '>' + notat + '</p>'
       + '<p class="skjult" id="radarStatus" role="status" aria-live="polite">' + esc(bind(statustekst())) + '</p>'
       + '</div>';
   }
 
   /* Trakten fra siste kjøring: fra alt som ble hentet, ned til det som
-     nådde terskelen. Stolpene er logaritmiske, så både 11 010 og 5 synes,
-     og blir mørkere mot treff-4. Når en ny kjøring er kommet siden
-     trakten sist ble tegnet, vokser de fram én gang. */
+     nådde terskelen. Stolpene er lineære, så de er ærlige om hvor lite
+     som blir igjen; et lite tall får likevel en tynn strek. Bare det
+     siste trinnet er i treff-farge, fordi bare det er treff. Når en ny
+     kjøring er kommet siden trakten sist ble tegnet, vokser de fram én
+     gang. */
   function traktHtml(){
     const k = sisteKjøring();
     const alle = !!k?.kilder?.some(s => s.sok);
@@ -499,12 +508,22 @@ export function lagRadarflate(api){
     animert = k?.start ?? "";
     return '<ol class="radartrakt"' + (ny ? " data-ny" : "") + ' aria-label="Siste kjøring">' + trinnene.map(([n, navn], i) => {
       const har = n != null;
-      const l = har && n > 0 ? Math.log10(n + 1) / Math.log10(maks + 1) : 0;
-      return '<li class="radartrakt__trinn" data-trinn="' + (i + 1) + '">' + (i ? TRAKTPIL : "")
+      const l = har && n > 0 ? n / maks : 0;
+      return '<li class="radartrakt__trinn">' + (i ? TRAKTPIL : "")
         + '<span class="radartrakt__tall">' + (har ? esc(tallTekst(n)) : '<span aria-hidden="true">–</span><span class="skjult">ikke kjent</span>') + '</span>'
         + '<span class="radartrakt__navn">' + navn + '</span>'
-        + '<span class="radartrakt__stolpe" aria-hidden="true"><i style="--l:' + l.toFixed(3) + '"></i></span></li>';
+        + '<span class="radartrakt__stolpe" aria-hidden="true"><i style="--l:' + l.toFixed(4) + '"' + (har && n > 0 ? " data-har" : "") + '></i></span></li>';
     }).join("") + '</ol>';
+  }
+
+  /* Det som står i innboksen nå, per trinn i skalaen, og det under
+     terskelen. Prikken har trinnets farge; tallet står alltid ved den. */
+  function skalaHtml(){
+    const n = nye(), u = under();
+    const poster = [4, 3, 2, 1, 0].map(tr => [tr, n.filter(r => trinn(r.prosent) === tr).length]).filter(([, a]) => a)
+      .map(([tr, a]) => '<li data-trinn="' + tr + '"><span class="prikk" aria-hidden="true"></span>' + TRINN[tr].navn + ' <b>' + a + '</b></li>');
+    if(u.length) poster.push('<li><span class="prikk prikk--hul" aria-hidden="true"></span>Under terskelen <b>' + u.length + '</b></li>');
+    return poster.length ? '<ul class="radar__skala" aria-label="Innboksen etter hvor godt det passer">' + poster.join("") + '</ul>' : "";
   }
 
   function tegnKlokke(){
@@ -535,7 +554,7 @@ export function lagRadarflate(api){
   function fanerHtml(){
     const valgt = aktivFane();
     const tall = { innboks: nye().length, under: under().length, lagt: lagtTil().length };
-    return '<div class="radar__faner" id="radarFaner" role="tablist" aria-label="Radar">' + FANER.map(([id, navn]) => {
+    return '<div class="radar__faner flyt" id="radarFaner" role="tablist" aria-label="Radar">' + FANER.map(([id, navn]) => {
       const er = id === valgt;
       return '<button class="radar__fane" type="button" role="tab" id="radarFane-' + id + '" data-radar="fane" data-fane="' + id + '"'
         + ' data-fokus="fane-' + id + '" aria-selected="' + er + '" tabindex="' + (er ? "0" : "-1") + '"' + (er ? ' aria-controls="radarPanel"' : "") + '>'
@@ -562,6 +581,7 @@ export function lagRadarflate(api){
     const el = rot?.querySelector("#radarFane-" + id);
     if(fokus) el?.focus();
     el?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    oppdaterFlyt(rot);
   }
 
   /* ---------- innstillingene ---------- */
@@ -580,7 +600,7 @@ export function lagRadarflate(api){
       + lagrelinjeHtml()
       + '</section>';
   }
-  const delHtml = (tittel, innhold) => '<section class="radarinnst__del"><h4 class="merkelinje radarinnst__deltittel">' + tittel + '</h4>'
+  const delHtml = (tittel, innhold) => '<section class="radarinnst__del"><h4 class="radarinnst__deltittel">' + tittel + '</h4>'
     + '<div class="radarinnst__innhold">' + innhold + '</div></section>';
 
   function varselhjelp(på){
@@ -876,7 +896,7 @@ export function lagRadarflate(api){
       handlinger = (jobbId ? '<button class="handling handling--hoved" type="button" data-radar="apneSoknad" data-jobb="' + esc(jobbId) + '" data-fokus="soknad-' + id + '">Åpne søknaden</button>'
         : '<span class="funn__borte">Søknaden er slettet</span>') + ut;
     }else handlinger = '<button class="handling handling--stille funn__hvorfor" type="button" data-radar="hvorfor" data-id="' + id + '" data-fokus="hvorfor-' + id + '"'
-        + ' aria-expanded="' + åpen + '" aria-controls="' + merId + '">Hvorfor</button>'
+        + ' aria-expanded="' + åpen + '" aria-controls="' + merId + '">Hvorfor' + HVORFORPIL + '</button>'
       + leggTilKnapp(r, "handling handling--hoved")
       + '<button class="handling handling--stille handling--ikon" type="button" data-radar="ikke" data-id="' + id + '" data-fokus="ikke-' + id + '"'
         + ' aria-label="Ikke interessert i ' + esc(r.stilling) + ' hos ' + selskap + '" title="Ikke interessert">' + IKON_KRYSS + '</button>'

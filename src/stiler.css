@@ -1326,7 +1326,7 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .radar [data-trinn="2"]{--farge:var(--treff-2)}
 .radar [data-trinn="1"]{--farge:var(--treff-1)}
 .radar [data-trinn="0"]{--farge:var(--blekk-3)}
-.radar .prikk{flex:none;display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--farge)}
+.radar .prikk{flex:none;display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--farge)}
 .radar__laster{margin:22px 0 0}
 
 /* Toppen: linjen med siste og neste søk, og trakten under. */
@@ -1341,17 +1341,21 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .radar__klokke:empty{display:none}
 .radar__sok{flex:none;margin-left:auto;min-width:92px}
 
-.radartrakt{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:16px 0 0;padding:0;list-style:none;transition:opacity .16s ease}
+/* Trakten: fire like brede kolonner, pila i mellomrommet mellom dem. */
+.radartrakt{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0 40px;margin:16px 0 0;padding:0;list-style:none;
+            transition:opacity .16s ease}
 .radar__topp[data-soker] .radartrakt{opacity:.45}
-.radartrakt__trinn{position:relative;min-width:0;padding:0 20px 0 30px}
-.radartrakt__trinn:first-child{padding-left:0}
-.radartrakt__pil{position:absolute;left:4px;top:12px;color:var(--blekk-3)}
-.radartrakt__tall{display:block;font-family:var(--mono);font-size:30px;font-weight:600;letter-spacing:-.045em;line-height:1.1;
+.radartrakt__trinn{position:relative;min-width:0}
+.radartrakt__pil{position:absolute;left:-26px;top:12px;color:var(--blekk-3)}
+.radartrakt__tall{display:block;font-family:var(--mono);font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1.1;
                   font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--blekk)}
 .radartrakt__trinn:last-child .radartrakt__tall{color:var(--treff-4)}
 .radartrakt__navn{display:block;margin-top:3px;font-size:12.5px;line-height:1.35;color:var(--blekk-2)}
+/* Stolpene er nøytrale og lineære; bare det som nådde terskelen er treff. */
 .radartrakt__stolpe{display:block;height:6px;margin-top:11px;border-radius:3px;background:var(--linje)}
-.radartrakt__stolpe i{display:block;height:100%;width:calc(var(--l) * 100%);border-radius:3px;background:var(--farge);transform-origin:left center}
+.radartrakt__stolpe i{display:block;height:100%;width:calc(var(--l) * 100%);border-radius:3px;background:var(--blekk-3);transform-origin:left center}
+.radartrakt__stolpe i[data-har]{min-width:3px}
+.radartrakt__trinn:last-child .radartrakt__stolpe i{background:var(--treff-4)}
 /* Det ene bevegelsesmomentet: når en kjøring er ferdig, vokser
    stolpene fram, den neste et lite øyeblikk etter den forrige. */
 .radartrakt[data-ny] .radartrakt__stolpe i{animation:stolpeFram .14s cubic-bezier(.2,.8,.2,1) both}
@@ -1359,16 +1363,21 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .radartrakt[data-ny] .radartrakt__trinn:nth-child(3) i{animation-delay:.04s}
 .radartrakt[data-ny] .radartrakt__trinn:nth-child(4) i{animation-delay:.06s}
 @keyframes stolpeFram{from{transform:scaleX(0)}}
+/* Innboksen per trinn: prikken i trinnets farge, navnet og tallet. */
+.radar__skala{display:flex;flex-wrap:wrap;gap:8px 22px;margin:20px 0 0;padding:0;list-style:none;font-size:13px;color:var(--blekk-2)}
+.radar__skala li{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.radar__skala b{font-family:var(--mono);font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--blekk)}
+.radar .prikk--hul{background:none;box-shadow:inset 0 0 0 1.5px var(--blekk-3)}
 .radar__notat{margin:14px 0 0;font-size:12.5px;line-height:1.5;color:var(--blekk-2)}
 .radar__topp[data-feil] .radar__notat{color:var(--ild-t)}
 @container radar (max-width:600px){
   .radar__del{display:block}
   .radar__skille{display:none}
-  .radartrakt{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:20px}
-  .radartrakt__trinn:nth-child(3){padding-left:0}
+  .radartrakt{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 32px}
+  .radartrakt__pil{left:-22px}
   .radartrakt__trinn:nth-child(3) .radartrakt__pil{display:none}
   .radartrakt__tall{font-size:26px}
-  .radartrakt__trinn{padding-right:12px}
+  .radar__skala{gap:8px 16px}
 }
 
 /* Radar av: vasken og blinken sier hva siden er, før teksten gjør det. */
@@ -1394,6 +1403,11 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .radar__faner{display:flex;gap:2px;width:fit-content;max-width:100%;margin:2px 0 18px;padding:3px;border-radius:var(--r-s);
               background:var(--innfelt-2);overflow-x:auto;scrollbar-width:none}
 .radar__faner::-webkit-scrollbar{display:none}
+/* Flyter fanene over, toner kanten ut på den siden det er mer (se flyt.js). */
+.flyt[data-flyt-slutt]{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 36px),transparent)}
+.flyt[data-flyt-start]{-webkit-mask-image:linear-gradient(to left,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(to left,#000 calc(100% - 36px),transparent)}
+.flyt[data-flyt-start][data-flyt-slutt]{-webkit-mask-image:linear-gradient(to right,transparent,#000 36px,#000 calc(100% - 36px),transparent);
+                                        mask-image:linear-gradient(to right,transparent,#000 36px,#000 calc(100% - 36px),transparent)}
 .radar__fane{flex:none;display:flex;align-items:center;gap:7px;min-height:34px;padding:6px 13px;border:0;border-radius:var(--r-xs);
              background:none;font-size:13.5px;font-weight:600;color:var(--blekk-2);cursor:pointer;white-space:nowrap;
              transition:background .12s ease,color .12s ease}
@@ -1410,7 +1424,7 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .radarinnst{padding:0;margin-bottom:16px;container:radarinnst / inline-size}
 .radarinnst__kropp{padding:22px 20px 6px}
 .radarinnst__del{padding:0 0 26px}
-.radarinnst__deltittel{margin:0 0 12px}
+.radarinnst__deltittel{margin:0 0 12px;font-size:14px;font-weight:600;letter-spacing:-.01em;line-height:1.35;color:var(--blekk)}
 .radarinnst__innhold > :last-child{margin-bottom:0}
 .radarinnst .avkrys{margin-top:0;font-size:13.5px;color:var(--blekk);min-height:28px}
 @container radarinnst (max-width:460px){
@@ -1419,7 +1433,7 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 }
 @container radarinnst (min-width:620px){
   .radarinnst__del{display:grid;grid-template-columns:150px minmax(0,1fr);gap:0 24px}
-  .radarinnst__deltittel{padding-top:2px;line-height:1.45}
+  .radarinnst__deltittel{padding-top:3px}
 }
 /* Lagringen står nederst i kortet også når alt er lagret, så ingenting
    hopper. Er noe endret, fester den seg til bunnen av vinduet mens man
@@ -1552,7 +1566,7 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .toppfunn{display:grid;grid-template-columns:minmax(132px,auto) minmax(0,1fr) auto;gap:18px 30px;align-items:start;
           margin:0 0 12px;padding:26px 26px 24px 28px;border-radius:var(--r);background:var(--treff-vask);box-shadow:var(--loft)}
 .toppfunn + .radarbaand .baand{padding-top:18px}
-.toppfunn__stor{margin:0;font-family:var(--mono);font-size:80px;font-weight:600;letter-spacing:-.06em;line-height:.84;
+.toppfunn__stor{margin:0;font-family:var(--mono);font-size:80px;font-weight:600;letter-spacing:-.04em;line-height:.84;
                 font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--treff-4)}
 .toppfunn__pst{margin-left:4px;font-size:22px;font-weight:500;letter-spacing:0}
 .toppfunn__trinn{display:flex;align-items:center;gap:7px;margin:16px 0 0;font-size:13px;font-weight:600;color:var(--blekk);white-space:nowrap}
@@ -1580,14 +1594,14 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 
 /* Raden: prosenten og måleren, stillingen og hvem, fristen, og
    handlingene. To linjer tekst; grunnene ligger bak «Hvorfor». */
-.funn{position:relative;display:grid;grid-template-columns:72px minmax(0,1fr) 96px auto;gap:0 16px;align-items:center;
+.funn{position:relative;display:grid;grid-template-columns:108px minmax(0,1fr) 96px auto;gap:0 16px;align-items:center;
       padding:11px 12px 11px 18px;transition:background .12s ease}
 .funn + .funn{box-shadow:inset 0 1px 0 var(--linje)}
 .funn:hover,.funn:focus-within{background:var(--innfelt)}
-.funn__maal{display:flex;align-items:center;gap:9px}
+.funn__maal{display:flex;align-items:center;gap:10px}
 .funn__tall{min-width:2ch;font-family:var(--mono);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--blekk)}
-.maaler{position:relative;flex:none;display:block;width:34px;height:4px;border-radius:2px;background:var(--innfelt-2);overflow:hidden}
-.maaler i{position:absolute;inset:0 auto 0 0;border-radius:2px;background:var(--farge)}
+.maaler{position:relative;flex:none;display:block;width:72px;height:6px;border-radius:3px;background:var(--innfelt-2);overflow:hidden}
+.maaler i{position:absolute;inset:0 auto 0 0;border-radius:3px;background:var(--farge)}
 .funn:hover .maaler,.funn:focus-within .maaler{background:var(--linje-2)}
 .funn__kropp{min-width:0}
 .funn__stilling{margin:0;font-size:14.5px;font-weight:600;letter-spacing:-.01em;line-height:1.3;overflow-wrap:anywhere}
@@ -1603,7 +1617,12 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .funn .handling:disabled{cursor:default;opacity:.6}
 .funn .handling--ikon{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0}
 .ikon{display:block}
-.funn__hvorfor[aria-expanded="true"]{background:var(--innfelt-2);color:var(--blekk)}
+/* «Hvorfor» er en bryter, ikke en knapp ved siden av «Legg til»: åpen
+   sies med blekk og en pil som snur, aldri med fyll. */
+.funn .funn__hvorfor{display:inline-flex;align-items:center;gap:5px;margin-right:8px}
+.funn .funn__hvorfor:hover,.funn .funn__hvorfor[aria-expanded="true"]{background:none;color:var(--blekk)}
+.funn__hvorforpil{flex:none;transition:transform .12s ease-out}
+.funn__hvorfor[aria-expanded="true"] .funn__hvorforpil{transform:rotate(180deg)}
 .funn__mer{grid-column:2 / -1;padding:8px 0 3px}
 .funn__grunner{display:grid;gap:3px;max-width:68ch;margin:0;padding:0;list-style:none;font-size:13px;line-height:1.45;color:var(--blekk-2)}
 .funn__grunner li{display:flex;gap:9px}
@@ -1628,9 +1647,9 @@ a.handling{display:inline-flex;align-items:center;text-decoration:none}
 
 /* Smal liste: handlingene får egen linje, fristen står under hvem. */
 @container liste (max-width:640px){
-  .funn{grid-template-columns:44px minmax(0,1fr);align-items:start;padding:13px 12px 8px 14px}
+  .funn{grid-template-columns:48px minmax(0,1fr);align-items:start;padding:13px 12px 8px 14px}
   .funn__maal{flex-direction:column;align-items:flex-start;gap:7px;padding-top:1px}
-  .funn .maaler{width:28px}
+  .funn .maaler{width:44px}
   .funn__frist{grid-column:2;flex-direction:row;align-items:baseline;gap:8px;margin-top:4px}
   .funn__frist:empty{display:none}
   .funn__handlinger{grid-column:2;justify-content:flex-start;flex-wrap:wrap;margin:6px 0 0 -9px}
@@ -1649,6 +1668,10 @@ a.handling{display:inline-flex;align-items:center;text-decoration:none}
   .radarinnst .avkrys,.fylker__topp,.radarinnst .fylker__post{min-height:44px}
   .funn .handling,.kside__fjern,.kside__pa{min-height:44px}
   .funn .handling--ikon{width:44px;height:44px}
+  /* Den fylte knappen holder samme synlige høyde som på skrivebordet;
+     treffflaten når 44 px med en usynlig kant over og under. */
+  .funn .handling--hoved{position:relative;min-width:0;min-height:34px;padding:7px 16px}
+  .funn .handling--hoved::after{content:"";position:absolute;inset:-5px 0}
   .terskel__glider{height:44px}
 }
 @media (pointer:coarse){
@@ -1784,6 +1807,16 @@ a.handling{display:inline-flex;align-items:center;text-decoration:none}
         padding:9px 16px;box-shadow:0 1px 0 var(--linje);z-index:30;overflow-x:auto}
   .nav{flex-direction:row;gap:4px;flex:1}
   .nav__merke,.nav__tall{display:none}
+  /* Stripa ruller sidelengs. Den står over innholdet, så en maske ville
+     latt listen skinne gjennom i kantene; fadene tegnes derfor i stripas
+     egen farge, på den siden det er mer (se flyt.js). Netto bredde er
+     null: den negative margen tar igjen både bredden og mellomrommet. */
+  .side.flyt[data-flyt-start],.side.flyt[data-flyt-slutt]{-webkit-mask-image:none;mask-image:none}
+  .side::before,.side::after{content:"";position:sticky;z-index:1;flex:none;align-self:stretch;width:28px;margin:-9px 0;
+                             pointer-events:none;opacity:0;transition:opacity .12s ease}
+  .side::before{order:-1;left:0;margin-right:-40px;background:linear-gradient(to right,var(--kort),transparent)}
+  .side::after{order:99;right:0;margin-left:-40px;background:linear-gradient(to left,var(--kort),transparent)}
+  .side[data-flyt-start]::before,.side[data-flyt-slutt]::after{opacity:1}
   /* Sidefoten faller bort, men lagringstilstanden og innstillingene
      følger med opp i toppstripa: begge må være innen rekkevidde uansett
      skjermbredde. */

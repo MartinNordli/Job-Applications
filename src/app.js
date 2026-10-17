@@ -17,6 +17,7 @@ import { lagDetaljpanel } from "./detaljpanel.js";
 import { kommende as kommendeIntervjuer } from "./intervjuer.mjs";
 import { lagMeny } from "./radmeny.js";
 import { lagRadarflate } from "./radarflate.js";
+import { oppdaterFlyt } from "./flyt.js";
 import { lagCvInnstilling } from "./cvflate.js";
 
 const NOKKEL = "jobbsoknader-2027";
@@ -1700,6 +1701,7 @@ function settNav(){
   $$("#faner .nav__post").forEach(f => f.setAttribute("aria-selected", String(f.dataset.visning === visning)));
   /* På smal skjerm ruller toppstripa sidelengs; den valgte fanen skal stå synlig. */
   $('#faner [aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  oppdaterFlyt($(".side"));
 }
 
 /* Sørger for at raden til en søknad står i listen: bytter til visningen

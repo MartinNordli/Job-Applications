@@ -493,7 +493,8 @@ Du bestemmer selv om en stilling blir en søknad: **Legg til** lager søknaden, 
 Er Radar av, sier et kort hva den gjør, hva som sendes og hva det koster, og **Slå på Radar** setter den i gang.
 Øverst står når Radar sist søkte og søker igjen, hvor mange vurderinger som er brukt i dag, og **Søk nå**.
 Under det står trakten fra siste kjøring: fire tall med en stolpe hver, fra alle aktive stillinger Radar søkte gjennom (eller de nye siden sist) via dem som passet søkeordene og dem som ble vurdert mot CV-en, ned til dem som nådde terskelen.
-Stolpene er logaritmiske, så både titusener og en håndfull synes, og når en kjøring er ferdig, vokser de fram.
+Stolpene er lineære og grå, så de viser ærlig hvor lite som blir igjen, og bare det som nådde terskelen står i petrol; når en kjøring er ferdig, vokser de fram.
+Under trakten står hvor mange som ligger i innboksen på hvert trinn av skalaen, med en prikk i trinnets farge, og hvor mange som står under terskelen.
 Mens Radar søker, pulserer et punkt med en klokke ved siden av; en feil, en kø som venter eller et NAV-søk som fortsetter, står med ord under trakten.
 Under trakten står merknadene: CV-en eller API-nøkkelen som mangler, med vei dit de legges inn, søkeord som mangler, og kilder som feilet ved siste søk.
 **Legg inn CV** åpner [CV-en under Innstillinger](#cv-en-under-innstillinger), så Radar kan tas i bruk før du har en eneste søknad, og merknaden går bort så snart CV-en er lagret.
