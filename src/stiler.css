@@ -1270,7 +1270,9 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .brev__meny button{display:block;width:100%;text-align:left;border:0;background:none;border-radius:var(--r-xs);font-size:13px;padding:11px 12px;cursor:pointer}
 .brev__meny button:hover{background:var(--innfelt)}
 .brev__meny button:disabled{opacity:.45;cursor:default}
-.brev .knapp:disabled,.skuff__bunn--brev .knapp:disabled{opacity:.45;cursor:default;box-shadow:none}
+/* Låst knapp beholder formen med en hårfin ring, ellers forsvinner den mot papiret, særlig i mørkt tema. */
+.brev .knapp:disabled,.skuff__bunn--brev .knapp:disabled{opacity:.55;cursor:default;box-shadow:inset 0 0 0 1px var(--linje-2)}
+.brev .knapp--primar:disabled,.skuff__bunn--brev .knapp--primar:disabled{box-shadow:none}
 /* Smalt panel: papiret får mer av bredden. Under 440 px går «Skriv nytt
    utkast» ned på sin egen linje i stedet for å presse kopier og last
    ned sammen. */
