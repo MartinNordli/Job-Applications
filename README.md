@@ -537,6 +537,23 @@ Det er ett kall til Haiku, høyst ti i timen.
 - **Node-serveren** kjører Radar hver time for hver profil som har den på, og ved oppstart hvis forrige kjøring er mer enn en time gammel. Serveren varsler ikke selv.
 - **Mac-appen** kjører den i appen mens den er åpen: ved start hvis forrige kjøring er gammel, og så hver time. Treff kommer som Mac-varsel.
 - **Nettleseren** gjør det samme mens fanen er åpen, og varsler hvis du har gitt nettleseren lov.
+- **Mac-appen i bakgrunnen** kjører den også når appen er lukket.
+  Appen legger en bakgrunnsjobb i `~/Library/LaunchAgents/no.nordli.jobbsoknader.radar.plist` første gang den startes fra `/Applications`.
+  Jobben starter appen hver time med `--radar`, uten vindu, uten Dock-ikon og uten å ta fokus fra det du holder på med.
+  Den leser først `radar.json` i profilene og avslutter med en gang hvis ingen har Radar på, eller hvis appen allerede er åpen og kjører Radar selv.
+  Ellers kjører den Radar for profilene som har den på og avslutter, senest etter ti minutter.
+  Treff kommer som samme Mac-varsel som fra den åpne appen.
+  Klikker du på Hired i Dock mens den kjører, åpnes et vanlig vindu og kjøringen får fullføre.
+  Loggen ligger i `~/Library/Logs/Hired/radar.log`, og resultatet av hver kjøring står i kjøringene under Radar.
+  Radar i bakgrunnen krever macOS 14 eller nyere.
+  Macen kjører ikke jobben mens den sover, og kjøringene du gikk glipp av, slås sammen til én når den våkner.
+- Radar i bakgrunnen slås av ved å avinstallere jobben:
+  ```
+  launchctl bootout gui/$(id -u)/no.nordli.jobbsoknader.radar
+  rm ~/Library/LaunchAgents/no.nordli.jobbsoknader.radar.plist
+  ```
+  Appen legger jobben inn igjen neste gang den startes, så fjern også appen fra `/Applications` hvis du ikke vil ha den tilbake.
+  Å slå av Radar i Radar-visningen er nok for å stoppe kjøringene, jobben avslutter da straks.
 - Bare én kjøring om gangen får kjøre for en profil. Radar-dokumentet har en leie på 15 minutter, så appen og serveren aldri kjører samtidig.
 - **Søk nå** starter en kjøring med en gang.
 
@@ -867,6 +884,8 @@ src-tauri/src/lib.rs     filoperasjonene appen bruker
 src-tauri/src/nett.rs    henting og modellkall for importen i appen
 src-tauri/src/brev.rs    brevfiler, nøkler, modellkall og nedlasting i appen
 src-tauri/src/varsel.rs  fristvarselet i macOS og bakgrunnsjobben
+src-tauri/src/radar_bakgrunn.rs  Radar i bakgrunnen: agent, valg av modus, skjult vindu, vakthund
+src/radar-bakgrunn.html  den skjulte siden Radar kjører i når appen er lukket
 
 scripts/bygg-front.mjs       samler frontenden i dist/ for Tauri
 scripts/bygg-dokumenter.mjs  pakker dokumentmotoren med esbuild
