@@ -516,6 +516,24 @@ Hver stilling viser prosenten, selskapet, stillingen, stedet, kilden, når den b
   En tom fil betyr at det åpne tokenet brukes.
   Tokenet forlater aldri Node eller Rust.
 
+### Slik finner den stillingene
+
+Første gang Radar kjører, og hver gang du endrer søkeordene, de ekskluderte ordene, stedene eller fylkene, søker den gjennom alle aktive stillinger hos NAV og Jobbnorge.
+Mellom søkene følger den med på det som er nytt eller endret, hver time.
+Hos NAV går søket gjennom stillingsfeeden 90 dager tilbake, fordi feeden er NAVs eneste offisielle vei til annonsene og ikke har søk.
+Det er rundt 90 MB og tar omtrent ett minutt, og blir det for mye for én kjøring, fortsetter neste kjøring der den slapp.
+NAV søkes også på nytt hvis Radar ikke har kjørt på tre døgn.
+Hos Jobbnorge er hele listen over aktive stillinger to kall, og den hentes på nytt hvert døgn.
+Søkeordene og stedene sjekkes av Radar selv, så «data» treffer også «Dataingeniør».
+Før detaljen kjenner Radar bare tittelen på en NAV-annonse, så søkeordet må stå i tittelen.
+Uten søkeord søker ikke Radar gjennom alle aktive, bare det som er nytt.
+Et radar.json fra før søket fantes, får søket ved neste kjøring.
+
+Det som passer, men ikke rekker å bli vurdert i én kjøring, venter i en kø og går først neste gang.
+Det gjelder det som er over takene for detaljer og vurderinger, og alt når modellen ikke svarer.
+Køen rommer 300 stillinger, og en stilling venter høyst 30 dager.
+Kjøringsloggen viser hvor mange aktive stillinger som ble hentet, hvor mange som passet forfilteret, hvor mange som ble vurdert og hvor mange som venter.
+
 ### Slik går en kjøring
 
 Radar sorterer først uten modell: stillingen må være aktiv, fristen ikke passert, et søkeord må treffe, ingen ekskluderte ord må treffe tittel eller selskap, og stedet må passe.
@@ -562,6 +580,7 @@ Det er ett kall til Haiku, høyst ti i timen.
 - Høyst én **Søk nå** i minuttet.
 - Høyst 40 vurderinger per kjøring, og et døgntak du setter selv (150 som standard, aldri over 1000). Når taket er nådd, vurderes ikke flere før neste døgn.
 - NAV: høyst 60 detaljoppslag per kjøring. Jobbnorge: 20. Karrieresider: 10 hver.
+- NAV-søket: høyst 60 sider på 4000 linjer per kjøring. Jobbnorge-søket: høyst 5 sider på 1000.
 - Karrieresider hentes høyst hver sjette time, og en side som feiler fem ganger på rad, slås av med forklaring.
 - Innboksen rommer 200 stillinger. Det Radar har sett huskes i 200 dager, og det du har avvist i ett år.
 - Høyst ti forslag fra CV-en i timen.
@@ -572,7 +591,8 @@ Det er ett kall til Haiku, høyst ti i timen.
 
 - CV-en din og teksten i annonsene som består forfilteret, sendes til modellleverandøren du har lagt inn nøkkel for. Ingenting annet går ut.
 - Kontaktpersoner i NAV-annonser leses aldri ut, lagres ikke og går ikke til modellen.
-- Uten API-nøkkel eller CV kjører Radar ikke vurderingen, og kildene regnes som uhentet slik at de samme annonsene hentes neste gang.
+- Uten CV kjører Radar ikke i det hele tatt.
+  Uten API-nøkkel henter den fra kildene, men stillingene som passer, venter i køen til nøkkelen er lagt inn, og karrieresidene hentes igjen neste gang.
 - Hver profil har sin egen `radar.json`, og ingen profil ser en annens innboks.
 - `radar.json` er med i sikkerhetskopien.
 
