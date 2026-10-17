@@ -379,11 +379,14 @@ function avvistFingeravtrykk(r){
 }
 
 export const KJORINGSTELLERE = ["kandidater", "passet", "nye", "vurdert", "treff", "utenVurdering", "venter"];
+const NYERE_TELLERE = new Set(["passet", "venter"]);
 function kjoring(r){
   const start = tid(r.start);
   if(!start) return null;
   const ut = { start, slutt: tid(r.slutt), promptversjon: valgfriTekst(r.promptversjon, 40) };
-  for(const k of KJORINGSTELLERE) ut[k] = heltall(r[k]) ?? 0;
+  /* passet og venter kom senere. En kjøring fra før har dem ikke, og
+     skal vise «ukjent», ikke «ingen passet». */
+  for(const k of KJORINGSTELLERE) ut[k] = heltall(r[k]) ?? (NYERE_TELLERE.has(k) ? null : 0);
   ut.kilder = unike(r.kilder, RADAR.kildelogg, k => {
     const kilde = blantt(k.kilde, RADARKILDER);
     return kilde ? { kilde, navn: navn(k.navn), hentet: heltall(k.hentet) ?? 0, sok: k.sok === true,

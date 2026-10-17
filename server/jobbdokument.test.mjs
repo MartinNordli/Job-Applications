@@ -261,6 +261,7 @@ test("radar.json normaliseres tilgivende og dropper det som ikke passer", () => 
   assert.equal(d.avvistFingeravtrykk.length, 1);
   assert.equal(d.kjoringer.length, 1);
   assert.deepEqual(d.kjoringer[0].kilder, [{ kilde: "nav", navn: "", hentet: 5, sok: false, feil: null }]);
+  assert.deepEqual([d.kjoringer[0].passet, d.kjoringer[0].venter], [null, null], "en kjøring fra før passet fantes, er ukjent, ikke null treff");
   assert.equal(d.leie, null);
 });
 
