@@ -1159,7 +1159,7 @@ function ventPåLagring(){
     av = Lagring.påTilstand(t => {
       if(t.navn === "lagret" && !Lagring.harUlagret()) slutt(ok);
       else if(["ulagret", "frakoblet", "konflikt", "utlogget", "blokkert"].includes(t.navn)){
-        const e = new Error("Intervjuet er ikke lagret ennå. " + (t.melding || "Prøv igjen når lagringen er i orden."));
+        const e = new Error("Endringen er ikke lagret ennå. " + (t.melding || "Prøv igjen når lagringen er i orden."));
         e.code = t.navn === "utlogget" ? "utlogget" : "ulagret";
         slutt(() => feil(e));
       }

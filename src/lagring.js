@@ -227,6 +227,10 @@ async function kjør(flukt){
   const nå = ventende;
   ventende = null;
   meld("lagrer");
+  /* «lagret» meldes først etter finally, når sender er false igjen. Ellers
+     ville harUlagret() fortsatt sagt ja i det øyeblikket lytterne hører
+     at det er lagret, og den som venter på lagringen, ventet for alltid. */
+  let lagret = false;
 
   try{
     const r = I_APP ? await skrivLokalt(nå) : await skrivOverHttp(nå, flukt);
@@ -235,7 +239,7 @@ async function kjør(flukt){
       versjon = r.kropp.versjon;
       overstyrOdelagt = false;
       avbrytNyttForsok();
-      if(ventende === null) meld("lagret");
+      lagret = true;
     }else if(r.utfall === "konflikt"){
       /* Noen andre har skrevet. Vi overtar bevisst IKKE versjonen
          herfra — da ville neste tastetrykk blitt godtatt og skrevet
@@ -270,6 +274,7 @@ async function kjør(flukt){
   }finally{
     sender = false;
   }
+  if(lagret && ventende === null) meld("lagret");
 
   if(vilPrøveIgjen){ vilPrøveIgjen = false; avbrytNyttForsok(); kjør(); return; }
   if(ventende !== null && !blokkert
