@@ -1404,6 +1404,8 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
               background:var(--innfelt-2);overflow-x:auto;scrollbar-width:none}
 .radar__faner::-webkit-scrollbar{display:none}
 /* Flyter fanene over, toner kanten ut på den siden det er mer (se flyt.js). */
+/* Den valgte fanen rulles fram med plass til fadene, så den aldri står under dem. */
+.flyt{scroll-padding-inline:44px}
 .flyt[data-flyt-slutt]{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 36px),transparent)}
 .flyt[data-flyt-start]{-webkit-mask-image:linear-gradient(to left,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(to left,#000 calc(100% - 36px),transparent)}
 .flyt[data-flyt-start][data-flyt-slutt]{-webkit-mask-image:linear-gradient(to right,transparent,#000 36px,#000 calc(100% - 36px),transparent);
