@@ -1,0 +1,1036 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-17T18:08:11.416Z",
+  "title": "Design System: Hired",
+  "extensions": {
+    "colorMeta": {
+      "bunn": {
+        "role": "neutral",
+        "displayName": "Bunnen",
+        "canonical": "light-dark(#EBE8E1, #16130F)",
+        "light": "#EBE8E1",
+        "dark": "#16130F",
+        "approxOklchLight": "oklch(93.1% 0.010 87.5)",
+        "tonalRamp": [
+          "oklch(15% 0.010 87.5)",
+          "oklch(26% 0.010 87.5)",
+          "oklch(37% 0.010 87.5)",
+          "oklch(48% 0.010 87.5)",
+          "oklch(59% 0.010 87.5)",
+          "oklch(70% 0.010 87.5)",
+          "oklch(82% 0.010 87.5)",
+          "oklch(95% 0.010 87.5)"
+        ]
+      },
+      "kort": {
+        "role": "neutral",
+        "displayName": "Kortet",
+        "canonical": "light-dark(#FFFFFF, #1E1A15)",
+        "light": "#FFFFFF",
+        "dark": "#1E1A15",
+        "approxOklchLight": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "oklch(15% 0.000 89.9)",
+          "oklch(26% 0.000 89.9)",
+          "oklch(37% 0.000 89.9)",
+          "oklch(48% 0.000 89.9)",
+          "oklch(59% 0.000 89.9)",
+          "oklch(70% 0.000 89.9)",
+          "oklch(82% 0.000 89.9)",
+          "oklch(95% 0.000 89.9)"
+        ]
+      },
+      "innfelt": {
+        "role": "neutral",
+        "displayName": "Innfelt spor",
+        "canonical": "light-dark(#F3F1EB, #171410)",
+        "light": "#F3F1EB",
+        "dark": "#171410",
+        "approxOklchLight": "oklch(95.8% 0.008 91.5)",
+        "tonalRamp": [
+          "oklch(15% 0.008 91.5)",
+          "oklch(26% 0.008 91.5)",
+          "oklch(37% 0.008 91.5)",
+          "oklch(48% 0.008 91.5)",
+          "oklch(59% 0.008 91.5)",
+          "oklch(70% 0.008 91.5)",
+          "oklch(82% 0.008 91.5)",
+          "oklch(95% 0.008 91.5)"
+        ]
+      },
+      "innfelt-2": {
+        "role": "neutral",
+        "displayName": "Innfelt, trinn 2",
+        "canonical": "light-dark(#E6E3DA, #2E271C)",
+        "light": "#E6E3DA",
+        "dark": "#2E271C",
+        "approxOklchLight": "oklch(91.6% 0.013 91.5)",
+        "tonalRamp": [
+          "oklch(15% 0.013 91.5)",
+          "oklch(26% 0.013 91.5)",
+          "oklch(37% 0.013 91.5)",
+          "oklch(48% 0.013 91.5)",
+          "oklch(59% 0.013 91.5)",
+          "oklch(70% 0.013 91.5)",
+          "oklch(82% 0.013 91.5)",
+          "oklch(95% 0.013 91.5)"
+        ]
+      },
+      "blekk": {
+        "role": "neutral",
+        "displayName": "Blekk",
+        "canonical": "light-dark(#17181A, #F2EEE8)",
+        "light": "#17181A",
+        "dark": "#F2EEE8",
+        "approxOklchLight": "oklch(20.9% 0.004 264.5)",
+        "tonalRamp": [
+          "oklch(15% 0.004 264.5)",
+          "oklch(26% 0.004 264.5)",
+          "oklch(37% 0.004 264.5)",
+          "oklch(48% 0.004 264.5)",
+          "oklch(59% 0.004 264.5)",
+          "oklch(70% 0.004 264.5)",
+          "oklch(82% 0.004 264.5)",
+          "oklch(95% 0.004 264.5)"
+        ]
+      },
+      "blekk-2": {
+        "role": "neutral",
+        "displayName": "Dempet blekk",
+        "canonical": "light-dark(#4A4E54, #B8B0A5)",
+        "light": "#4A4E54",
+        "dark": "#B8B0A5",
+        "approxOklchLight": "oklch(42.2% 0.011 258.4)",
+        "tonalRamp": [
+          "oklch(15% 0.011 258.4)",
+          "oklch(26% 0.011 258.4)",
+          "oklch(37% 0.011 258.4)",
+          "oklch(48% 0.011 258.4)",
+          "oklch(59% 0.011 258.4)",
+          "oklch(70% 0.011 258.4)",
+          "oklch(82% 0.011 258.4)",
+          "oklch(95% 0.011 258.4)"
+        ]
+      },
+      "blekk-3": {
+        "role": "neutral",
+        "displayName": "Etikettblekk",
+        "canonical": "light-dark(#5C6166, #968F84)",
+        "light": "#5C6166",
+        "dark": "#968F84",
+        "approxOklchLight": "oklch(49.0% 0.010 248.0)",
+        "tonalRamp": [
+          "oklch(15% 0.010 248.0)",
+          "oklch(26% 0.010 248.0)",
+          "oklch(37% 0.010 248.0)",
+          "oklch(48% 0.010 248.0)",
+          "oklch(59% 0.010 248.0)",
+          "oklch(70% 0.010 248.0)",
+          "oklch(82% 0.010 248.0)",
+          "oklch(95% 0.010 248.0)"
+        ]
+      },
+      "linje": {
+        "role": "neutral",
+        "displayName": "Hårstrek",
+        "canonical": "light-dark(#E3E0D8, #2A251E)",
+        "light": "#E3E0D8",
+        "dark": "#2A251E",
+        "approxOklchLight": "oklch(90.7% 0.011 89.7)",
+        "tonalRamp": [
+          "oklch(15% 0.011 89.7)",
+          "oklch(26% 0.011 89.7)",
+          "oklch(37% 0.011 89.7)",
+          "oklch(48% 0.011 89.7)",
+          "oklch(59% 0.011 89.7)",
+          "oklch(70% 0.011 89.7)",
+          "oklch(82% 0.011 89.7)",
+          "oklch(95% 0.011 89.7)"
+        ]
+      },
+      "linje-2": {
+        "role": "neutral",
+        "displayName": "Hårstrek, trinn 2",
+        "canonical": "light-dark(#D2CEC4, #39322A)",
+        "light": "#D2CEC4",
+        "dark": "#39322A",
+        "approxOklchLight": "oklch(85.2% 0.014 88.7)",
+        "tonalRamp": [
+          "oklch(15% 0.014 88.7)",
+          "oklch(26% 0.014 88.7)",
+          "oklch(37% 0.014 88.7)",
+          "oklch(48% 0.014 88.7)",
+          "oklch(59% 0.014 88.7)",
+          "oklch(70% 0.014 88.7)",
+          "oklch(82% 0.014 88.7)",
+          "oklch(95% 0.014 88.7)"
+        ]
+      },
+      "ild": {
+        "role": "secondary",
+        "displayName": "Ild (frist og feil)",
+        "canonical": "light-dark(#C63A2E, #FF7A45)",
+        "light": "#C63A2E",
+        "dark": "#FF7A45",
+        "approxOklchLight": "oklch(55.5% 0.179 29.0)",
+        "tonalRamp": [
+          "oklch(15% 0.080 29.0)",
+          "oklch(26% 0.112 29.0)",
+          "oklch(37% 0.145 29.0)",
+          "oklch(48% 0.178 29.0)",
+          "oklch(59% 0.179 29.0)",
+          "oklch(70% 0.154 29.0)",
+          "oklch(82% 0.118 29.0)",
+          "oklch(95% 0.080 29.0)"
+        ]
+      },
+      "ild-t": {
+        "role": "secondary",
+        "displayName": "Ild, tekst",
+        "canonical": "light-dark(#B8342A, #FF8A5C)",
+        "light": "#B8342A",
+        "dark": "#FF8A5C",
+        "approxOklchLight": "oklch(52.4% 0.170 28.7)",
+        "tonalRamp": [
+          "oklch(15% 0.077 28.7)",
+          "oklch(26% 0.108 28.7)",
+          "oklch(37% 0.139 28.7)",
+          "oklch(48% 0.170 28.7)",
+          "oklch(59% 0.170 28.7)",
+          "oklch(70% 0.148 28.7)",
+          "oklch(82% 0.114 28.7)",
+          "oklch(95% 0.077 28.7)"
+        ]
+      },
+      "ild-vask": {
+        "role": "secondary",
+        "displayName": "Ildvask",
+        "canonical": "light-dark(#FAE7E4, #3A2118)",
+        "light": "#FAE7E4",
+        "dark": "#3A2118",
+        "approxOklchLight": "oklch(94.2% 0.021 28.3)",
+        "tonalRamp": [
+          "oklch(15% 0.021 28.3)",
+          "oklch(26% 0.021 28.3)",
+          "oklch(37% 0.021 28.3)",
+          "oklch(48% 0.021 28.3)",
+          "oklch(59% 0.021 28.3)",
+          "oklch(70% 0.021 28.3)",
+          "oklch(82% 0.021 28.3)",
+          "oklch(95% 0.021 28.3)"
+        ]
+      },
+      "ild-trykk": {
+        "role": "secondary",
+        "displayName": "Ild, trykket",
+        "canonical": "light-dark(#9E2C22, #E0602B)",
+        "light": "#9E2C22",
+        "dark": "#E0602B",
+        "approxOklchLight": "oklch(46.9% 0.152 29.1)",
+        "tonalRamp": [
+          "oklch(15% 0.071 29.1)",
+          "oklch(26% 0.098 29.1)",
+          "oklch(37% 0.126 29.1)",
+          "oklch(48% 0.152 29.1)",
+          "oklch(59% 0.152 29.1)",
+          "oklch(70% 0.134 29.1)",
+          "oklch(82% 0.103 29.1)",
+          "oklch(95% 0.071 29.1)"
+        ]
+      },
+      "rav": {
+        "role": "secondary",
+        "displayName": "Rav (frist nærmer seg)",
+        "canonical": "light-dark(#B0790F, #CE8B3A)",
+        "light": "#B0790F",
+        "dark": "#CE8B3A",
+        "approxOklchLight": "oklch(61.7% 0.126 76.0)",
+        "tonalRamp": [
+          "oklch(15% 0.062 76.0)",
+          "oklch(26% 0.085 76.0)",
+          "oklch(37% 0.108 76.0)",
+          "oklch(48% 0.126 76.0)",
+          "oklch(59% 0.126 76.0)",
+          "oklch(70% 0.114 76.0)",
+          "oklch(82% 0.089 76.0)",
+          "oklch(95% 0.062 76.0)"
+        ]
+      },
+      "rav-t": {
+        "role": "secondary",
+        "displayName": "Rav, tekst",
+        "canonical": "light-dark(#8B600C, #DC9C4C)",
+        "light": "#8B600C",
+        "dark": "#DC9C4C",
+        "approxOklchLight": "oklch(52.2% 0.105 76.9)",
+        "tonalRamp": [
+          "oklch(15% 0.055 76.9)",
+          "oklch(26% 0.074 76.9)",
+          "oklch(37% 0.094 76.9)",
+          "oklch(48% 0.105 76.9)",
+          "oklch(59% 0.105 76.9)",
+          "oklch(70% 0.099 76.9)",
+          "oklch(82% 0.078 76.9)",
+          "oklch(95% 0.055 76.9)"
+        ]
+      },
+      "rav-vask": {
+        "role": "secondary",
+        "displayName": "Ravvask",
+        "canonical": "light-dark(#F7EEDA, #33260F)",
+        "light": "#F7EEDA",
+        "dark": "#33260F",
+        "approxOklchLight": "oklch(95.1% 0.028 86.6)",
+        "tonalRamp": [
+          "oklch(15% 0.028 86.6)",
+          "oklch(26% 0.028 86.6)",
+          "oklch(37% 0.028 86.6)",
+          "oklch(48% 0.028 86.6)",
+          "oklch(59% 0.028 86.6)",
+          "oklch(70% 0.028 86.6)",
+          "oklch(82% 0.028 86.6)",
+          "oklch(95% 0.028 86.6)"
+        ]
+      },
+      "mose": {
+        "role": "secondary",
+        "displayName": "Mose (Sendt og Tilbud)",
+        "canonical": "light-dark(#2E7D57, #7D9E7A)",
+        "light": "#2E7D57",
+        "dark": "#7D9E7A",
+        "approxOklchLight": "oklch(53.0% 0.098 159.2)",
+        "tonalRamp": [
+          "oklch(15% 0.053 159.2)",
+          "oklch(26% 0.071 159.2)",
+          "oklch(37% 0.089 159.2)",
+          "oklch(48% 0.098 159.2)",
+          "oklch(59% 0.098 159.2)",
+          "oklch(70% 0.094 159.2)",
+          "oklch(82% 0.074 159.2)",
+          "oklch(95% 0.053 159.2)"
+        ]
+      },
+      "mose-t": {
+        "role": "secondary",
+        "displayName": "Mose, tekst",
+        "canonical": "light-dark(#2B7652, #8CAE89)",
+        "light": "#2B7652",
+        "dark": "#8CAE89",
+        "approxOklchLight": "oklch(50.9% 0.094 159.2)",
+        "tonalRamp": [
+          "oklch(15% 0.051 159.2)",
+          "oklch(26% 0.069 159.2)",
+          "oklch(37% 0.086 159.2)",
+          "oklch(48% 0.094 159.2)",
+          "oklch(59% 0.094 159.2)",
+          "oklch(70% 0.091 159.2)",
+          "oklch(82% 0.072 159.2)",
+          "oklch(95% 0.051 159.2)"
+        ]
+      },
+      "mose-vask": {
+        "role": "secondary",
+        "displayName": "Mosevask",
+        "canonical": "light-dark(#E1F0E8, #202A1F)",
+        "light": "#E1F0E8",
+        "dark": "#202A1F",
+        "approxOklchLight": "oklch(94.2% 0.019 162.9)",
+        "tonalRamp": [
+          "oklch(15% 0.019 162.9)",
+          "oklch(26% 0.019 162.9)",
+          "oklch(37% 0.019 162.9)",
+          "oklch(48% 0.019 162.9)",
+          "oklch(59% 0.019 162.9)",
+          "oklch(70% 0.019 162.9)",
+          "oklch(82% 0.019 162.9)",
+          "oklch(95% 0.019 162.9)"
+        ]
+      },
+      "hav": {
+        "role": "primary",
+        "displayName": "Havblå interaksjon",
+        "canonical": "light-dark(#3D52D5, #7391A8)",
+        "light": "#3D52D5",
+        "dark": "#7391A8",
+        "approxOklchLight": "oklch(50.5% 0.201 270.4)",
+        "tonalRamp": [
+          "oklch(15% 0.087 270.4)",
+          "oklch(26% 0.124 270.4)",
+          "oklch(37% 0.161 270.4)",
+          "oklch(48% 0.198 270.4)",
+          "oklch(59% 0.201 270.4)",
+          "oklch(70% 0.171 270.4)",
+          "oklch(82% 0.131 270.4)",
+          "oklch(95% 0.087 270.4)"
+        ]
+      },
+      "hav-t": {
+        "role": "primary",
+        "displayName": "Hav, tekst",
+        "canonical": "light-dark(#3949C0, #8CAAC1)",
+        "light": "#3949C0",
+        "dark": "#8CAAC1",
+        "approxOklchLight": "oklch(46.9% 0.185 271.3)",
+        "tonalRamp": [
+          "oklch(15% 0.082 271.3)",
+          "oklch(26% 0.116 271.3)",
+          "oklch(37% 0.150 271.3)",
+          "oklch(48% 0.184 271.3)",
+          "oklch(59% 0.185 271.3)",
+          "oklch(70% 0.159 271.3)",
+          "oklch(82% 0.122 271.3)",
+          "oklch(95% 0.082 271.3)"
+        ]
+      },
+      "hav-vask": {
+        "role": "primary",
+        "displayName": "Havvask",
+        "canonical": "light-dark(#E6E9FB, #1E2830)",
+        "light": "#E6E9FB",
+        "dark": "#1E2830",
+        "approxOklchLight": "oklch(93.7% 0.024 278.4)",
+        "tonalRamp": [
+          "oklch(15% 0.024 278.4)",
+          "oklch(26% 0.024 278.4)",
+          "oklch(37% 0.024 278.4)",
+          "oklch(48% 0.024 278.4)",
+          "oklch(59% 0.024 278.4)",
+          "oklch(70% 0.024 278.4)",
+          "oklch(82% 0.024 278.4)",
+          "oklch(95% 0.024 278.4)"
+        ]
+      },
+      "graf-1": {
+        "role": "tertiary",
+        "displayName": "Diagram 1",
+        "canonical": "light-dark(#A7B0EC, #49575F)",
+        "light": "#A7B0EC",
+        "dark": "#49575F",
+        "approxOklchLight": "oklch(77.2% 0.086 277.6)",
+        "tonalRamp": [
+          "oklch(15% 0.049 277.6)",
+          "oklch(26% 0.065 277.6)",
+          "oklch(37% 0.080 277.6)",
+          "oklch(48% 0.086 277.6)",
+          "oklch(59% 0.086 277.6)",
+          "oklch(70% 0.085 277.6)",
+          "oklch(82% 0.068 277.6)",
+          "oklch(95% 0.049 277.6)"
+        ]
+      },
+      "graf-2": {
+        "role": "tertiary",
+        "displayName": "Diagram 2",
+        "canonical": "light-dark(#7A8AE2, #5F7583)",
+        "light": "#7A8AE2",
+        "dark": "#5F7583",
+        "approxOklchLight": "oklch(65.9% 0.132 274.4)",
+        "tonalRamp": [
+          "oklch(15% 0.064 274.4)",
+          "oklch(26% 0.088 274.4)",
+          "oklch(37% 0.112 274.4)",
+          "oklch(48% 0.132 274.4)",
+          "oklch(59% 0.132 274.4)",
+          "oklch(70% 0.119 274.4)",
+          "oklch(82% 0.093 274.4)",
+          "oklch(95% 0.064 274.4)"
+        ]
+      },
+      "graf-3": {
+        "role": "tertiary",
+        "displayName": "Diagram 3 (hav)",
+        "canonical": "light-dark(#3D52D5, #7391A8)",
+        "light": "#3D52D5",
+        "dark": "#7391A8",
+        "approxOklchLight": "oklch(50.5% 0.201 270.4)",
+        "tonalRamp": [
+          "oklch(15% 0.087 270.4)",
+          "oklch(26% 0.124 270.4)",
+          "oklch(37% 0.161 270.4)",
+          "oklch(48% 0.198 270.4)",
+          "oklch(59% 0.201 270.4)",
+          "oklch(70% 0.171 270.4)",
+          "oklch(82% 0.131 270.4)",
+          "oklch(95% 0.087 270.4)"
+        ]
+      },
+      "graf-4": {
+        "role": "tertiary",
+        "displayName": "Diagram 4",
+        "canonical": "light-dark(#2A3A97, #9DBAD1)",
+        "light": "#2A3A97",
+        "dark": "#9DBAD1",
+        "approxOklchLight": "oklch(39.6% 0.153 270.3)",
+        "tonalRamp": [
+          "oklch(15% 0.071 270.3)",
+          "oklch(26% 0.099 270.3)",
+          "oklch(37% 0.127 270.3)",
+          "oklch(48% 0.153 270.3)",
+          "oklch(59% 0.153 270.3)",
+          "oklch(70% 0.134 270.3)",
+          "oklch(82% 0.104 270.3)",
+          "oklch(95% 0.071 270.3)"
+        ]
+      },
+      "treff-1": {
+        "role": "tertiary",
+        "displayName": "Petrol 1, verdt å lese",
+        "canonical": "light-dark(#76BFCB, #2A616C)",
+        "light": "#76BFCB",
+        "dark": "#2A616C",
+        "approxOklchLight": "oklch(76.1% 0.075 209.0)",
+        "tonalRamp": [
+          "#005266",
+          "#00778C",
+          "#359BAE",
+          "#76BFCB",
+          "#EAF8FB"
+        ]
+      },
+      "treff-2": {
+        "role": "tertiary",
+        "displayName": "Petrol 2, passer på det meste",
+        "canonical": "light-dark(#359BAE, #368794)",
+        "light": "#359BAE",
+        "dark": "#368794",
+        "approxOklchLight": "oklch(63.9% 0.095 212.5)",
+        "tonalRamp": [
+          "#005266",
+          "#00778C",
+          "#359BAE",
+          "#76BFCB",
+          "#EAF8FB"
+        ]
+      },
+      "treff-3": {
+        "role": "tertiary",
+        "displayName": "Petrol 3, passer godt",
+        "canonical": "light-dark(#00778C, #50AEBA)",
+        "light": "#00778C",
+        "dark": "#50AEBA",
+        "approxOklchLight": "oklch(52.4% 0.093 215.7)",
+        "tonalRamp": [
+          "#005266",
+          "#00778C",
+          "#359BAE",
+          "#76BFCB",
+          "#EAF8FB"
+        ]
+      },
+      "treff-4": {
+        "role": "tertiary",
+        "displayName": "Petrol 4, midt i blinken",
+        "canonical": "light-dark(#005266, #8EDADE)",
+        "light": "#005266",
+        "dark": "#8EDADE",
+        "approxOklchLight": "oklch(40.6% 0.075 221.5)",
+        "tonalRamp": [
+          "#005266",
+          "#00778C",
+          "#359BAE",
+          "#76BFCB",
+          "#EAF8FB"
+        ]
+      },
+      "treff-vask": {
+        "role": "tertiary",
+        "displayName": "Petrolvask",
+        "canonical": "light-dark(#EAF8FB, #10272C)",
+        "light": "#EAF8FB",
+        "dark": "#10272C",
+        "approxOklchLight": "oklch(97.0% 0.015 212.0)",
+        "tonalRamp": [
+          "#005266",
+          "#00778C",
+          "#359BAE",
+          "#76BFCB",
+          "#EAF8FB"
+        ]
+      },
+      "primar": {
+        "role": "primary",
+        "displayName": "Primærfyll",
+        "canonical": "light-dark(#17181A, #F2EEE8)",
+        "light": "#17181A",
+        "dark": "#F2EEE8",
+        "approxOklchLight": "oklch(20.9% 0.004 264.5)",
+        "tonalRamp": [
+          "oklch(15% 0.004 264.5)",
+          "oklch(26% 0.004 264.5)",
+          "oklch(37% 0.004 264.5)",
+          "oklch(48% 0.004 264.5)",
+          "oklch(59% 0.004 264.5)",
+          "oklch(70% 0.004 264.5)",
+          "oklch(82% 0.004 264.5)",
+          "oklch(95% 0.004 264.5)"
+        ]
+      },
+      "primar-blekk": {
+        "role": "primary",
+        "displayName": "Tekst på primærfyll",
+        "canonical": "light-dark(#FFFFFF, #1E1A15)",
+        "light": "#FFFFFF",
+        "dark": "#1E1A15",
+        "approxOklchLight": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "oklch(15% 0.000 89.9)",
+          "oklch(26% 0.000 89.9)",
+          "oklch(37% 0.000 89.9)",
+          "oklch(48% 0.000 89.9)",
+          "oklch(59% 0.000 89.9)",
+          "oklch(70% 0.000 89.9)",
+          "oklch(82% 0.000 89.9)",
+          "oklch(95% 0.000 89.9)"
+        ]
+      },
+      "primar-hover": {
+        "role": "primary",
+        "displayName": "Primærfyll, peker",
+        "canonical": "light-dark(#2E3238, #DED8CF)",
+        "light": "#2E3238",
+        "dark": "#DED8CF",
+        "approxOklchLight": "oklch(31.6% 0.012 258.4)",
+        "tonalRamp": [
+          "oklch(15% 0.012 258.4)",
+          "oklch(26% 0.012 258.4)",
+          "oklch(37% 0.012 258.4)",
+          "oklch(48% 0.012 258.4)",
+          "oklch(59% 0.012 258.4)",
+          "oklch(70% 0.012 258.4)",
+          "oklch(82% 0.012 258.4)",
+          "oklch(95% 0.012 258.4)"
+        ]
+      },
+      "varsel-bunn": {
+        "role": "neutral",
+        "displayName": "Varselflate",
+        "canonical": "light-dark(#1B1D21, #2C2620)",
+        "light": "#1B1D21",
+        "dark": "#2C2620",
+        "approxOklchLight": "oklch(23.0% 0.008 264.4)",
+        "tonalRamp": [
+          "oklch(15% 0.008 264.4)",
+          "oklch(26% 0.008 264.4)",
+          "oklch(37% 0.008 264.4)",
+          "oklch(48% 0.008 264.4)",
+          "oklch(59% 0.008 264.4)",
+          "oklch(70% 0.008 264.4)",
+          "oklch(82% 0.008 264.4)",
+          "oklch(95% 0.008 264.4)"
+        ]
+      },
+      "varsel-blekk": {
+        "role": "neutral",
+        "displayName": "Varseltekst",
+        "canonical": "light-dark(#F4F3F0, #F2EEE8)",
+        "light": "#F4F3F0",
+        "dark": "#F2EEE8",
+        "approxOklchLight": "oklch(96.4% 0.004 91.4)",
+        "tonalRamp": [
+          "oklch(15% 0.004 91.4)",
+          "oklch(26% 0.004 91.4)",
+          "oklch(37% 0.004 91.4)",
+          "oklch(48% 0.004 91.4)",
+          "oklch(59% 0.004 91.4)",
+          "oklch(70% 0.004 91.4)",
+          "oklch(82% 0.004 91.4)",
+          "oklch(95% 0.004 91.4)"
+        ]
+      }
+    },
+    "themes": {
+      "lin": {
+        "scheme": "light",
+        "source": ":root light-dark(), lys side"
+      },
+      "sot": {
+        "scheme": "dark",
+        "source": ":root light-dark(), mørk side; ring i stedet for skygge"
+      },
+      "ink": {
+        "scheme": "light",
+        "overrides": {
+          "bunn": "#F7F5F0",
+          "kort": "#FFFFFF",
+          "innfelt": "#FAF8F4",
+          "innfelt-2": "#E9E3D8",
+          "blekk": "#1A2232",
+          "blekk-2": "#4A5263",
+          "blekk-3": "#5B6373",
+          "linje": "#E8E4DB",
+          "linje-2": "#D6D0C4",
+          "ild": "#C2392D",
+          "ild-t": "#B3332A",
+          "ild-vask": "#FAE6E2",
+          "ild-trykk": "#9A2B22",
+          "rav": "#A8740E",
+          "rav-t": "#85600C",
+          "rav-vask": "#F6EDD9",
+          "mose": "#2D7A55",
+          "mose-t": "#2A7350",
+          "mose-vask": "#E0EFE7",
+          "hav": "#1A2232",
+          "hav-t": "#1A2232",
+          "hav-vask": "#E9E3D8",
+          "graf-1": "#A9B1C1",
+          "graf-2": "#7A869C",
+          "graf-3": "#4D5970",
+          "graf-4": "#1A2232",
+          "varsel-bunn": "#1A2232",
+          "varsel-blekk": "#F7F5F0",
+          "primar": "#1A2232",
+          "primar-blekk": "#FFFFFF",
+          "primar-hover": "#2C3650"
+        },
+        "note": "Aksenten er blekket selv; treff bruker de lyse trinnene."
+      },
+      "blush": {
+        "scheme": "light",
+        "overrides": {
+          "bunn": "#FBF5F6",
+          "kort": "#FFFFFF",
+          "innfelt": "#FCF7F8",
+          "innfelt-2": "#F5E6E9",
+          "blekk": "#2B2226",
+          "blekk-2": "#5E4E55",
+          "blekk-3": "#6E5E65",
+          "linje": "#F0E4E7",
+          "linje-2": "#E2D0D5",
+          "ild": "#C8431F",
+          "ild-t": "#B23C1C",
+          "ild-vask": "#FBE7DF",
+          "ild-trykk": "#9A3318",
+          "rav": "#A8740E",
+          "rav-t": "#85600C",
+          "rav-vask": "#F7EDDA",
+          "mose": "#2E7A57",
+          "mose-t": "#2A7350",
+          "mose-vask": "#E2F0E8",
+          "hav": "#A84D62",
+          "hav-t": "#913F54",
+          "hav-vask": "#F4D6DC",
+          "graf-1": "#DDA9B5",
+          "graf-2": "#C27A8C",
+          "graf-3": "#A84D62",
+          "graf-4": "#6F2F40",
+          "varsel-bunn": "#2B2226",
+          "varsel-blekk": "#FBF5F6",
+          "primar": "#A84D62",
+          "primar-blekk": "#FFFFFF",
+          "primar-hover": "#934155"
+        },
+        "note": "Rosebær er aksent og primærfyll; ild er dratt mot oransje."
+      },
+      "midnatt": {
+        "scheme": "dark",
+        "overrides": {
+          "bunn": "#0F1520",
+          "kort": "#1B2230",
+          "innfelt": "#141B28",
+          "innfelt-2": "#2A3344",
+          "blekk": "#F5F2EC",
+          "blekk-2": "#B4BCCB",
+          "blekk-3": "#97A0B1",
+          "linje": "#232B3A",
+          "linje-2": "#313B4D",
+          "ild": "#FF7A5C",
+          "ild-t": "#FF8D73",
+          "ild-vask": "#3A1F22",
+          "ild-trykk": "#E0603F",
+          "rav": "#D9A350",
+          "rav-t": "#E2B266",
+          "rav-vask": "#33291A",
+          "mose": "#84AE8F",
+          "mose-t": "#94BE9F",
+          "mose-vask": "#1C2B25",
+          "hav": "#D8C3A1",
+          "hav-t": "#E3D2B5",
+          "hav-vask": "#2A3344",
+          "graf-1": "#5E5443",
+          "graf-2": "#8C7B60",
+          "graf-3": "#D8C3A1",
+          "graf-4": "#F0E2C8",
+          "varsel-bunn": "#2A3344",
+          "varsel-blekk": "#F5F2EC",
+          "primar": "#D8C3A1",
+          "primar-blekk": "#1A2232",
+          "primar-hover": "#E6D5B8"
+        },
+        "note": "Sand er aksent og primærfyll; ring i stedet for skygge; treff bruker de mørke trinnene."
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Toppfunnets prosent",
+        "purpose": "Bare prosenten i Radars toppfunn; 56 px under 620 px panelbredde."
+      },
+      "numeral": {
+        "displayName": "Trakttall",
+        "purpose": "De fire tallene i Radar-trakten; 26 px på smalt."
+      },
+      "headline": {
+        "displayName": "Sidetittel",
+        "purpose": "Tittelen øverst i hver visning."
+      },
+      "title": {
+        "displayName": "Tittel",
+        "purpose": "Skuff, tomtilstand, Radar-intro; toppfunnets stilling er 21 px 700."
+      },
+      "row-title": {
+        "displayName": "Radtittel",
+        "purpose": "Selskap eller stilling i en rad, båndnavn i Radar."
+      },
+      "body": {
+        "displayName": "Brødtekst",
+        "purpose": "Løpende tekst."
+      },
+      "body-sm": {
+        "displayName": "Liten tekst",
+        "purpose": "Undertekster, metalinjer, grunner."
+      },
+      "data": {
+        "displayName": "Data",
+        "purpose": "Datoer, nedtelling, tellinger, kostnad."
+      },
+      "label": {
+        "displayName": "Etikettstemmen",
+        "purpose": "Versaler; navngir et bånd, en flis eller en gruppe, aldri som kicker over en overskrift."
+      }
+    },
+    "shadows": [
+      {
+        "name": "loft",
+        "value": "0 1px 2px rgba(24,26,30,.05), 0 4px 14px rgba(24,26,30,.07)",
+        "dark": "0 0 0 1px #262019, 0 1px 3px rgba(0,0,0,.34)",
+        "purpose": "Kort, bånd, felt, knapper i ro, valgt fane."
+      },
+      {
+        "name": "loft-2",
+        "value": "0 2px 4px rgba(24,26,30,.06), 0 10px 28px rgba(24,26,30,.10)",
+        "dark": "0 0 0 1px #2F281F, 0 4px 12px rgba(0,0,0,.42)",
+        "purpose": "Peker på knapp og nedtrekk, menyer."
+      },
+      {
+        "name": "loft-3",
+        "value": "0 8px 16px rgba(24,26,30,.08), 0 24px 60px rgba(24,26,30,.16)",
+        "dark": "0 0 0 1px #362E24, 0 14px 44px rgba(0,0,0,.62)",
+        "purpose": "Skuffen og varselet."
+      }
+    ],
+    "motion": [
+      {
+        "name": "tilstand",
+        "value": ".12s ease",
+        "purpose": "Bakgrunn og farge på peker og valg."
+      },
+      {
+        "name": "skuff",
+        "value": ".26s cubic-bezier(.4,0,.2,1)",
+        "purpose": "Skuffen glir inn og ut."
+      },
+      {
+        "name": "stolpe-fram",
+        "value": ".14s cubic-bezier(.2,.8,.2,1), 20 ms forskjøvet per trinn",
+        "purpose": "Radars eneste bevegelsesmoment: traktstolpene vokser fram etter en kjøring."
+      },
+      {
+        "name": "redusert",
+        "value": "prefers-reduced-motion: alt til .001ms",
+        "purpose": "All bevegelse slås av."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "bred",
+        "value": "1600px"
+      },
+      {
+        "name": "detaljpanel",
+        "value": "1100px"
+      },
+      {
+        "name": "toppstripe",
+        "value": "900px"
+      },
+      {
+        "name": "telefon",
+        "value": "640px"
+      },
+      {
+        "name": "liste-smal (container)",
+        "value": "640px"
+      },
+      {
+        "name": "liste-telefon (container)",
+        "value": "430px"
+      },
+      {
+        "name": "radarpanel (container)",
+        "value": "620px"
+      },
+      {
+        "name": "minste bredde",
+        "value": "390px"
+      }
+    ],
+    "provenance": {
+      "source": "Skrevet etter bygget, fra src/stiler.css, src/skrifter.css og src/radarflate.js på feat/radar-ny-side.",
+      "seed": "skipped: brukeren valgte retningen i designforslaget (specs/radar/designforslag.html) før denne økten",
+      "rasters": "Ingen: bygget lagde ingen rasterbilder som sendes med appen. Skjermbildene i .impeccable/review/ er gjennomgangsbevis, ikke leveranse.",
+      "review": "Sluttgjennomgang: fix; alle åtte materielle rettelser er lagt inn."
+    }
+  },
+  "components": [
+    {
+      "name": "Primærknapp",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Den ene fylte handlingen på en flate.",
+      "html": "<button class=\"ds-knapp ds-knapp--primar\">Legg til</button>",
+      "css": ".ds-knapp{padding:10px 15px;border:0;border-radius:var(--r-s,9px);font-family:var(--sans);font-weight:600;font-size:14px;cursor:pointer;transition:background .12s ease,box-shadow .12s ease}.ds-knapp--primar{background:var(--primar,#17181A);color:var(--primar-blekk,#FFFFFF)}.ds-knapp--primar:hover{background:var(--primar-hover,#2E3238)}.ds-knapp:focus-visible{outline:2px solid var(--hav,#3D52D5);outline-offset:2px}"
+    },
+    {
+      "name": "Knapp",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Hvit knapp på kortet, løftes ved peker.",
+      "html": "<button class=\"ds-knapp-hvit\">Søk nå</button>",
+      "css": ".ds-knapp-hvit{padding:10px 15px;border:0;border-radius:var(--r-s,9px);background:var(--kort,#fff);color:var(--blekk,#17181A);font-family:var(--sans);font-weight:600;font-size:14px;cursor:pointer;box-shadow:var(--loft,0 1px 2px rgba(24,26,30,.05),0 4px 14px rgba(24,26,30,.07));transition:box-shadow .12s ease}.ds-knapp-hvit:hover{box-shadow:var(--loft-2,0 2px 4px rgba(24,26,30,.06),0 10px 28px rgba(24,26,30,.10))}.ds-knapp-hvit:focus-visible{outline:2px solid var(--hav,#3D52D5);outline-offset:2px}"
+    },
+    {
+      "name": "Radhandling",
+      "kind": "button",
+      "refersTo": "row-action",
+      "description": "Stille brikke i hver rad.",
+      "html": "<button class=\"ds-handling\">Legg til</button>",
+      "css": ".ds-handling{padding:6px 11px;border:0;border-radius:var(--r-xs,7px);background:var(--innfelt,#F3F1EB);color:var(--blekk-2,#4A4E54);font-family:var(--sans);font-size:12.5px;font-weight:600;cursor:pointer;transition:background .12s ease,color .12s ease}.ds-handling:hover{background:var(--linje-2,#D2CEC4);color:var(--blekk,#17181A)}.ds-handling:focus-visible{outline:2px solid var(--hav,#3D52D5);outline-offset:2px}"
+    },
+    {
+      "name": "Felt",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Innfelt felt som blir kort ved fokus.",
+      "html": "<input class=\"ds-felt\" placeholder=\"Søkeord\">",
+      "css": ".ds-felt{width:100%;padding:10px 12px;background:var(--innfelt,#F3F1EB);border:1px solid var(--linje,#E3E0D8);border-radius:var(--r-s,9px);font-family:var(--sans);font-size:14px;color:var(--blekk,#17181A)}.ds-felt::placeholder{color:var(--blekk-3,#5C6166)}.ds-felt:focus{border-color:var(--hav,#3D52D5);background:var(--kort,#fff);outline:2px solid var(--hav,#3D52D5);outline-offset:1px}"
+    },
+    {
+      "name": "Segmenterte faner",
+      "kind": "nav",
+      "refersTo": "segmented-tab",
+      "description": "Fanerekken i Radar og skuffen.",
+      "html": "<div class=\"ds-faner\" role=\"tablist\"><button class=\"ds-fane\" aria-selected=\"true\">Innboks <span class=\"ds-tall\">7</span></button><button class=\"ds-fane\" aria-selected=\"false\">Lagt til <span class=\"ds-tall\">2</span></button></div>",
+      "css": ".ds-faner{display:inline-flex;gap:2px;padding:3px;border-radius:var(--r-s,9px);background:var(--innfelt-2,#E6E3DA)}.ds-fane{display:flex;align-items:center;gap:7px;min-height:34px;padding:6px 13px;border:0;border-radius:var(--r-xs,7px);background:none;font-family:var(--sans);font-size:13.5px;font-weight:600;color:var(--blekk-2,#4A4E54);cursor:pointer;transition:background .12s ease,color .12s ease}.ds-fane:hover{color:var(--blekk,#17181A)}.ds-fane[aria-selected=\"true\"]{background:var(--kort,#fff);color:var(--blekk,#17181A);box-shadow:var(--loft,0 1px 2px rgba(24,26,30,.05),0 4px 14px rgba(24,26,30,.07))}.ds-fane:focus-visible{outline:2px solid var(--hav,#3D52D5);outline-offset:-2px}.ds-tall{font-family:var(--mono);font-size:11px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--blekk-3,#5C6166)}"
+    },
+    {
+      "name": "Statusmerke",
+      "kind": "chip",
+      "refersTo": "status-chip-sent",
+      "description": "Pille med prikk; mose betyr Sendt eller Tilbud.",
+      "html": "<span class=\"ds-merkelapp\">Sendt</span>",
+      "css": ".ds-merkelapp{display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 8px;border-radius:100px;font-family:var(--sans);font-size:11.5px;font-weight:600;background:var(--mose-vask,#E1F0E8);color:var(--mose-t,#2B7652)}.ds-merkelapp::before{content:\"\";width:6px;height:6px;border-radius:50%;background:currentColor}"
+    },
+    {
+      "name": "Bånd med rader",
+      "kind": "card",
+      "refersTo": "band-card",
+      "description": "Båndoverskrift, ett kort per bånd, hårstrek mellom radene.",
+      "html": "<div class=\"ds-baand\"><span class=\"ds-baand__navn\">Denne uka</span><span class=\"ds-baand__strek\"></span><span class=\"ds-baand__tall\">2</span></div><div class=\"ds-stabel\"><div class=\"ds-rad\"><b>Havbris Energi</b><span class=\"ds-om\">om 2 dager</span></div><div class=\"ds-rad\"><b>Bølge AS</b><span class=\"ds-om\">om 9 dager</span></div></div>",
+      "css": ".ds-baand{display:flex;align-items:center;gap:12px;padding:16px 0 9px}.ds-baand__navn{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.11em;text-transform:uppercase;color:var(--blekk,#17181A)}.ds-baand__strek{flex:1;height:1px;background:var(--linje-2,#D2CEC4)}.ds-baand__tall{font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;color:var(--blekk-3,#5C6166)}.ds-stabel{background:var(--kort,#fff);border-radius:var(--r,14px);box-shadow:var(--loft,0 1px 2px rgba(24,26,30,.05),0 4px 14px rgba(24,26,30,.07));overflow:hidden}.ds-rad{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;font-family:var(--sans);font-size:14.5px;transition:background .12s ease}.ds-rad+.ds-rad{box-shadow:inset 0 1px 0 var(--linje,#E3E0D8)}.ds-rad:hover{background:var(--innfelt,#F3F1EB)}.ds-om{font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;color:var(--ild-t,#B8342A);font-weight:500}"
+    },
+    {
+      "name": "Radar-funn med måler",
+      "kind": "custom",
+      "refersTo": "fit-meter",
+      "description": "Prosent i mono ved en fylt måler i trinnets petrolfarge.",
+      "html": "<div class=\"ds-funn\"><span class=\"ds-funn__tall\">89</span><span class=\"ds-maaler\"><i style=\"width:89%\"></i></span><span class=\"ds-funn__stilling\">Dataingeniør</span></div>",
+      "css": ".ds-funn{display:flex;align-items:center;gap:12px;padding:11px 18px;background:var(--kort,#fff);font-family:var(--sans)}.ds-funn__tall{font-family:var(--mono);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--blekk,#17181A)}.ds-maaler{position:relative;width:72px;height:6px;border-radius:3px;background:var(--innfelt-2,#E6E3DA);overflow:hidden}.ds-maaler i{position:absolute;inset:0 auto 0 0;border-radius:3px;background:var(--treff-3,#00778C)}.ds-funn__stilling{font-size:14.5px;font-weight:600;letter-spacing:-.01em}"
+    },
+    {
+      "name": "Toppfunn",
+      "kind": "card",
+      "refersTo": "top-find",
+      "description": "Det beste funnet på petrolvask, prosenten i display-størrelse.",
+      "html": "<div class=\"ds-topp\"><p class=\"ds-topp__stor\">96<span>%</span></p><div><p class=\"ds-topp__stilling\">Senior dataingeniør</p><p class=\"ds-topp__hvem\">Havbris Energi, Oslo</p></div></div>",
+      "css": ".ds-topp{display:flex;gap:30px;align-items:flex-start;padding:26px 26px 24px 28px;border-radius:var(--r,14px);background:var(--treff-vask,#EAF8FB);box-shadow:var(--loft,0 1px 2px rgba(24,26,30,.05),0 4px 14px rgba(24,26,30,.07));font-family:var(--sans)}.ds-topp__stor{margin:0;font-family:var(--mono);font-size:80px;font-weight:600;letter-spacing:-.04em;line-height:.84;font-variant-numeric:tabular-nums;color:var(--treff-4,#005266)}.ds-topp__stor span{margin-left:4px;font-size:22px;font-weight:500;letter-spacing:0}.ds-topp__stilling{margin:0;font-size:21px;font-weight:700;letter-spacing:-.024em;color:var(--blekk,#17181A)}.ds-topp__hvem{margin:6px 0 0;font-size:14px;color:var(--blekk-2,#4A4E54)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Arbeidsbordet med frister",
+    "overview": "Hired er et rolig arbeidsverktøy på varmt papir, der det som haster eller passer best skal sees før det leses.\nFlatene er nøytrale og lagdelte, og nesten all tekst står i blekk; kulør er sjelden og betyr alltid noe bestemt.\nTettheten er høy uten å bli trang: en rad er rundt 56 px, ett kort holder et helt bånd, og hårstreker skiller radene inni det.\nSkriften bærer mye av karakteren.\nFamiljen Grotesk gir overskrifter og navn en litt kantete, menneskelig tyngde, og Geist Mono står for alle tall, datoer og tellinger, så de står i kolonner og kan skummes.\nRadar la til én ny farge, en petrolskala i fire trinn som bare sier hvor godt en stilling passer, og som aldri står uten tallet ved siden av.\nSystemet har fem temaer (Lin, Sot, Ink og elfenben, Blush, Midnatt), og alle må virke.\nLin og Sot står én gang i `light-dark()`, og de tre navngitte temaene setter hvert token selv.",
+    "keyCharacteristics": [
+      "Tre flatenivåer (bunn, kort, innfelt) som skiller seg ved nivå, aldri ved ramme.",
+      "Kulør med faste betydninger: frist, sendt, interaksjon og treff.",
+      "Alle tall i Geist Mono med tabulære siffer.",
+      "Ett kort per bånd, hårstreker mellom radene.",
+      "Korte, stille overganger (0,12 s) og høyst ett bevegelsesmoment per flate."
+    ],
+    "rules": [
+      {
+        "name": "The Kulør Means One Thing Rule",
+        "body": "Ild og rav betyr bare frist, mose betyr bare Sendt eller Tilbud, hav betyr bare interaksjon, og treff betyr bare hvor godt noe passer.",
+        "section": "colors"
+      },
+      {
+        "name": "The Number Beside The Color Rule",
+        "body": "Treff-fargen står aldri alene: prosenten eller trinnets navn står alltid ved siden av, og en frist sies alltid også med dato og tekst.",
+        "section": "colors"
+      },
+      {
+        "name": "The Radar Only Rule",
+        "body": "Treff-skalaen brukes bare i Radar; resten av Hired viser match som et dempet mono-merke på innfelt flate, aldri i kulør.",
+        "section": "colors"
+      },
+      {
+        "name": "The Calm Ending Rule",
+        "body": "Det som har gått ut eller er trukket, haster ikke lenger og mister kulør; det sies i blekk og tekst.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Counts Rule",
+        "body": "Alt som er et tall, en dato eller en telling står i Geist Mono med `tabular-nums`, så tallene står i kolonne.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tracking Floor Rule",
+        "body": "Negativ sperring går aldri strammere enn -0,04em, selv i display-størrelse.",
+        "section": "typography"
+      },
+      {
+        "name": "The Label Names The Block Rule",
+        "body": "Etikettstemmen er selve overskriften for et bånd eller en gruppe, aldri en liten linje over en annen overskrift; Radars innstillinger bruker vanlige overskrifter i setningsform.",
+        "section": "typography"
+      },
+      {
+        "name": "The Level Not Line Rule",
+        "body": "Flater skilles av nivå, aldri av ramme; hårstreker brukes bare til å dele rader inni én flate.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Ring In The Dark Rule",
+        "body": "I Sot og Midnatt bærer en ring på 1 px avgrensningen, og skyggen er bare dybde bak den.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** skill flater med nivå (bunn, kort, innfelt) og del rader inni ett kort med hårstrek i linje.",
+      "**Do** sett alle tall, datoer og tellinger i Geist Mono med tabulære siffer.",
+      "**Do** bruk treff-1 til treff-4 bare i Radar, og alltid med prosenten eller trinnets navn ved siden av.",
+      "**Do** si en frist med dato og tekst i tillegg til ild eller rav.",
+      "**Do** hold overganger på 0,12 s, og slå av bevegelse når brukeren ber om redusert bevegelse.",
+      "**Do** prøv nye tokens i alle fem temaer, og hold tekst på minst 4,5:1 mot flaten i hvert av dem.",
+      "**Do** gi berøringsmål 44 px når pekeren er grov."
+    ],
+    "donts": [
+      "**Don't** bruk ild, rav eller mose til pynt, til merkevare eller for å vise valg.",
+      "**Don't** la hav stå for et varsel eller en feil.",
+      "**Don't** legg kulør på det som har gått ut eller er trukket.",
+      "**Don't** sett ramme rundt en flate for å skille den fra en annen.",
+      "**Don't** sett mer enn én fylt primærknapp på samme flate.",
+      "**Don't** stram sperringen mer enn -0,04em.",
+      "**Don't** legg en etikett i versaler over en overskrift som en kicker.",
+      "**Don't** før fargestripa på forkanten av fristradene videre til nye flater; Radar sier frist med mono-tekst i ild-t og rav-t.",
+      "**Don't** bruk tegn som ikoner; ikoner er SVG-streker i `currentColor`.",
+      "**Don't** hent skrift, skript eller bilder fra nett."
+    ]
+  }
+}
