@@ -26,7 +26,7 @@ STORY: Brukeren ser trakten (alle aktive, passet søkeordene, vurdert, nådde te
 
 FIRST VIEWPORT: Tittel, tellingen og «Søk nå» øverst. Trakten som én rad med fire store tall i mono og pil mellom, med siste og neste søk over. Fanene Innboks, Under terskelen, Lagt til, Kjøringer, Innstillinger. Så toppkortet i full bredde: prosent på rundt 80 px til venstre, stilling og selskap, alle grunnene, og «Legg til» som eneste primærknapp til høyre. Første bånd begynner under.
 
-FORM: B med trakt og faner, valgt av brukeren blant fire retninger i designforslaget (B var anbefalingen, nummer én). seed: none (unavailable)
+FORM: B med trakt og faner, valgt av brukeren blant fire retninger i designforslaget (B var anbefalingen, nummer én). seed: none (skipped: retningen ble valgt av brukeren i designforslaget før denne økten, så ingen trekning ble gjort)
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
