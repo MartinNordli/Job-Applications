@@ -27,6 +27,7 @@ use tauri::{AppHandle, Manager};
 mod nett;
 mod brev;
 pub mod varsel;
+pub mod radar_bakgrunn;
 
 /// Filen API-nøkkelen ligger i, ved siden av datafilen — i profilens
 /// katalog, ikke i rota. Rust leser den selv når modellen skal spørres,
@@ -227,17 +228,31 @@ async fn radar_varsel(tekst: String) -> Result<bool, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    /* Hovedvinduet står med `create: false` i tauri.conf.json og lages
+       her, så `--radar` aldri åpner det. main() har alt avgjort om dette
+       er en bakgrunnskjøring (og har avsluttet hvis det ikke var noe å
+       gjøre). */
+    let radar = radar_bakgrunn::profiler_i_kjøring().is_some();
+    #[allow(unused_mut)]
+    let mut app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .setup(|_| {
-            /* Bakgrunnsjobben som varsler når appen er lukket. En feil
-               her skal ikke stoppe appen; varselet kommer fortsatt
-               mens den er åpen. */
-            std::thread::spawn(|| {
-                if let Err(e) = varsel::installer_agent() {
-                    eprintln!("fristvarselet i bakgrunnen ble ikke satt opp: {e}");
-                }
-            });
+        .setup(move |app| {
+            if radar {
+                radar_bakgrunn::start(app.handle())?;
+            } else {
+                /* Info.plist har LSUIElement, så appen starter uten
+                   Dock-ikon. Et vanlig vindu gjør den til en vanlig app. */
+                #[cfg(target_os = "macos")]
+                app.set_activation_policy(tauri::ActivationPolicy::Regular);
+                radar_bakgrunn::lag_hovedvindu(app.handle())?;
+                /* Bakgrunnsjobbene som varsler og leter når appen er
+                   lukket. En feil her skal ikke stoppe appen. */
+                std::thread::spawn(|| {
+                    if let Err(e) = varsel::installer_agent() {
+                        eprintln!("bakgrunnsjobbene ble ikke satt opp: {e}");
+                    }
+                });
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -250,6 +265,9 @@ pub fn run() {
             spor_modell,
             sjekk_frister,
             radar_varsel,
+            radar_bakgrunn::radar_profiler,
+            radar_bakgrunn::radar_logg,
+            radar_bakgrunn::radar_ferdig,
             brev::brev_les,
             brev::brev_skriv,
             brev::brev_slett,
@@ -263,8 +281,24 @@ pub fn run() {
             brev::brev_lagre_fil,
             brev::dokument_utdrag
         ])
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .expect("appen klarte ikke å starte");
+
+    /* Før hendelsesløkka starter, ellers setter tao standarden Regular
+       tilbake og Dock-ikonet blinker. */
+    #[cfg(target_os = "macos")]
+    if radar {
+        app.set_activation_policy(radar_bakgrunn::policy_for_bakgrunn());
+    }
+
+    app.run(move |handle, hendelse| match hendelse {
+        /* Klikk på Dock-ikonet mens Radar kjører i bakgrunnen. */
+        #[cfg(target_os = "macos")]
+        tauri::RunEvent::Reopen { .. } if radar => radar_bakgrunn::ved_gjenåpning(handle),
+        _ => {
+            let _ = handle;
+        }
+    });
 }
 
 #[cfg(test)]

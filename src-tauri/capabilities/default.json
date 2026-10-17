@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Rettighetene appvinduet trenger.",
-  "windows": ["main"],
+  "windows": ["main", "radar"],
   "permissions": [
     "core:default",
     "opener:allow-open-url",

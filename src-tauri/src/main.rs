@@ -15,5 +15,8 @@ fn main() {
             }
         }
     }
+    /* `--radar`: avslutter her hvis det ikke er noe å gjøre, ellers
+       settes aktiveringspolicyen før noe vindu eller NSApplication finnes. */
+    jobbsoknader_lib::radar_bakgrunn::forbered();
     jobbsoknader_lib::run()
 }

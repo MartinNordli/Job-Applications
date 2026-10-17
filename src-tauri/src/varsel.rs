@@ -303,7 +303,7 @@ fn sjekk_profil(dir: &Path, nå_lokal: NaiveDateTime, nå: &str, frister: bool, 
 
 /// Profilene i registeret. Id-ene går gjennom bruker_katalog_i, som
 /// er stedet en sti blir til og stedet den sjekkes.
-fn profiler(rot: &Path) -> Result<Vec<String>, String> {
+pub(crate) fn profiler(rot: &Path) -> Result<Vec<String>, String> {
     let Some(Value::Object(reg)) = les_i(rot, REGISTERFIL)?.and_then(|t| serde_json::from_str(&t).ok()) else {
         return Ok(Vec::new());
     };
@@ -437,10 +437,16 @@ fn nå_iso() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
+/// Datakatalogen slik Tauri finner den på macOS. Bakgrunnsjobbene leser
+/// den før noe Tauri-oppsett finnes, så de kan avslutte uten å starte et vindu.
+pub(crate) fn datarot() -> Result<PathBuf, String> {
+    let hjem = std::env::var_os("HOME").ok_or("HOME er ikke satt")?;
+    Ok(PathBuf::from(hjem).join("Library/Application Support").join(IDENTIFIKATOR))
+}
+
 /// Bakgrunnsjobben: alle profilene, uten vindu.
 pub fn kjør_i_bakgrunnen() -> Result<usize, String> {
-    let hjem = std::env::var_os("HOME").ok_or("HOME er ikke satt")?;
-    let rot = PathBuf::from(hjem).join("Library/Application Support").join(IDENTIFIKATOR);
+    let rot = datarot()?;
     let lokal = Local::now().naive_local();
     /* Fristene varsles etter kl. 09, som da jobben gikk en gang om dagen.
        Intervjuene sjekkes hver gang, for de kan komme tre timer før start. */
@@ -467,7 +473,7 @@ pub fn agentetikett() -> String {
     format!("{IDENTIFIKATOR}.fristvarsel")
 }
 
-fn xml(t: &str) -> String {
+pub(crate) fn xml(t: &str) -> String {
     t.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
 }
 
@@ -507,29 +513,28 @@ pub fn bør_installere(exe: &Path) -> bool {
     !cfg!(debug_assertions) && s.contains(".app/Contents/MacOS/") && !s.contains("/AppTranslocation/")
 }
 
+/// Skriver én agent og laster den, men bare når innholdet er endret.
+/// Å laste en agent på nytt avlaster en kjøring som pågår, og en med
+/// RunAtLoad kjører med en gang; ingen av delene skal skje ved hver
+/// oppstart av appen.
 #[cfg(target_os = "macos")]
-pub fn installer_agent() -> Result<(), String> {
+fn installer_plist(etikett: &str, innhold: &str) -> Result<(), String> {
     use std::process::Command;
 
-    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-    if !bør_installere(&exe) {
-        return Ok(());
-    }
     let hjem = std::env::var_os("HOME").ok_or("HOME er ikke satt")?;
     let katalog = PathBuf::from(hjem).join("Library/LaunchAgents");
-    let sti = katalog.join(format!("{}.plist", agentetikett()));
-    let innhold = agentplist(&exe);
-    if std::fs::read_to_string(&sti).ok().as_deref() == Some(innhold.as_str()) {
+    let sti = katalog.join(format!("{etikett}.plist"));
+    if std::fs::read_to_string(&sti).ok().as_deref() == Some(innhold) {
         return Ok(());
     }
     std::fs::create_dir_all(&katalog).map_err(|e| e.to_string())?;
-    std::fs::write(&sti, &innhold).map_err(|e| e.to_string())?;
+    std::fs::write(&sti, innhold).map_err(|e| e.to_string())?;
 
     /* Ut med den gamle (finnes den ikke, er feilen uten betydning),
        inn med den nye. */
     let domene = format!("gui/{}", unsafe { libc::getuid() });
     let _ = Command::new("/bin/launchctl")
-        .args(["bootout", &format!("{domene}/{}", agentetikett())])
+        .args(["bootout", &format!("{domene}/{etikett}")])
         .output();
     let ut = Command::new("/bin/launchctl")
         .args(["bootstrap", &domene, &sti.to_string_lossy()])
@@ -539,6 +544,19 @@ pub fn installer_agent() -> Result<(), String> {
         return Err(format!("launchctl bootstrap: {}", String::from_utf8_lossy(&ut.stderr).trim()));
     }
     Ok(())
+}
+
+/// Fristvarselet og Radar i bakgrunnen. Feiler den ene, prøves den andre
+/// likevel; den første feilen er den som meldes.
+#[cfg(target_os = "macos")]
+pub fn installer_agent() -> Result<(), String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    if !bør_installere(&exe) {
+        return Ok(());
+    }
+    let frist = installer_plist(&agentetikett(), &agentplist(&exe));
+    let radar = installer_plist(&crate::radar_bakgrunn::agentetikett(), &crate::radar_bakgrunn::agentplist(&exe));
+    frist.and(radar)
 }
 
 #[cfg(not(target_os = "macos"))]

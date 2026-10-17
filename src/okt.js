@@ -109,6 +109,12 @@ function app(){
 
 export function nåværendeBruker(){ return bruker; }
 
+/* Bakgrunnskjøringen av Radar (src/radar-bakgrunn.js) har ingen innlogging:
+   ingen skriver et passord, og dataene ligger på brukerens egen maskin.
+   Rust sier hvilke profiler som har Radar på, og siden velger dem én og én
+   her. Brukes ellers ingen steder. */
+export function settBakgrunnsbruker(id){ husk({ id: String(id) }); }
+
 export function påUtlogget(fn){
   lyttere.add(fn);
   return () => lyttere.delete(fn);
