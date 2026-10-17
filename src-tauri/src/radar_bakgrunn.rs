@@ -223,7 +223,12 @@ pub fn brukeren_har_overtatt() -> bool {
 
 /* ---------- loggen ---------- */
 
+/* Testene kjører vakthunden og resten av koden som skriver hit, men skal
+   aldri skrive i brukerens ekte logg. */
 fn loggfil() -> Option<PathBuf> {
+    if cfg!(test) {
+        return None;
+    }
     Some(PathBuf::from(std::env::var_os("HOME")?).join("Library/Logs/Hired/radar.log"))
 }
 
