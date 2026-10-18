@@ -24,10 +24,10 @@ colors:
   hav: "light-dark(#3D52D5, #7391A8)"
   hav-t: "light-dark(#3949C0, #8CAAC1)"
   hav-vask: "light-dark(#E6E9FB, #1E2830)"
-  graf-1: "light-dark(#A7B0EC, #49575F)"
-  graf-2: "light-dark(#7A8AE2, #5F7583)"
-  graf-3: "light-dark(#3D52D5, #7391A8)"
-  graf-4: "light-dark(#2A3A97, #9DBAD1)"
+  graf-1: "light-dark(#8A8176, #A39A8E)"
+  graf-2: "light-dark(#5C7A68, #93AE9B)"
+  graf-3: "light-dark(#3F5C83, #8FA9CC)"
+  graf-4: "light-dark(#1A1815, #F4EFE6)"
   utvalg: "light-dark(#1A1815, #26211B)"
   utvalg-2: "light-dark(#2E2A23, #352E25)"
   utvalg-blekk: "#F4EFE6"
@@ -130,6 +130,11 @@ typography:
     fontWeight: 500
     lineHeight: 1.25
     fontFeature: "tnum"
+  tile-label:
+    fontFamily: "Familjen Grotesk, Helvetica Neue, Arial, sans-serif"
+    fontSize: "13.5px"
+    fontWeight: 600
+    lineHeight: 1.3
   label:
     fontFamily: "Geist Mono, IBM Plex Mono, ui-monospace, SF Mono, Menlo, monospace"
     fontSize: "10.5px"
@@ -266,6 +271,14 @@ components:
   tier-chip-blink:
     backgroundColor: "{colors.utvalg}"
     textColor: "{colors.metall}"
+  tall-next-deadline:
+    backgroundColor: "{colors.utvalg}"
+    textColor: "{colors.metall}"
+    rounded: "{rounded.utvalg}"
+    padding: "17px 19px 19px"
+  tall-tile-label:
+    textColor: "{colors.blekk-2}"
+    typography: "{typography.tile-label}"
   employer-chip:
     backgroundColor: "{colors.arbeid-1}"
     textColor: "{colors.arbeid-1-t}"
@@ -278,6 +291,7 @@ components:
 <!-- Seed: seed:3ab3da59f904a2e2, bekreftet på denne maskinen fra trekningsloggen i hovedrepoet. Hånden fra trekningen ble avvist av brukeren; retningen kom fra en idérunde på designflaten etterpå, og brukeren godkjente det finpussede forslaget («Dagens utvalg») og siden prototypen man sveiper i. -->
 <!-- Sluttgjennomgang for «Dagens utvalg»: fix. Rettelsene er lagt inn: seed-linjen i kontrakten, ordlyden om første skjermbilde i kontrakten, og grunnene i kortet fordelt over kolonner så kortet ikke har et tomt felt midt i. -->
 <!-- Sluttgjennomgang for sveipingen: fix. Rettelsene er lagt inn: nabokortene går helt ut til kanten, det valgte minikortet er merket med metall i de mørke temaene, og datoene i brikkene på det store kortet står i brikkens grotesk. -->
+<!-- Oppdatert etter at Tall fikk Radars farger etter ønske fra brukeren, fra koden som ble sendt på feat/tall-radarfarger (commit a83a21f): avdelingstonene er diagramskalaen, «Neste frist» står på det mørke kortet med metall, og flisene har vanlige overskrifter. Ingen sluttgjennomgang ble kjørt for denne endringen, og ingen rasterbilder sendes med; skjermbildene tall-*.png i .impeccable/review/ er bare bevis. I Midnatt er utvalg og kort samme farge (#1B2230), så flisen «Neste frist» skilles fra de andre flisene bare av hjørnene, sirkelen og metalltallet; det er ikke rettet her. -->
 <!-- Bilder: bygget lagde ingen rasterbilder som sendes med appen; skjermbildene i .impeccable/review/ er bare gjennomgangsbevis. -->
 
 # Design System: Hired
@@ -297,14 +311,15 @@ Radar har sitt eget uttrykk inni den samme verdenen: «Dagens utvalg», ett funn
 Funnet i fokus står på et mørkt, edelt kort med en metallaksent på ringen, hakene og primærknappen, og man sveiper sidelengs til neste med styreflaten, fingeren eller J og K.
 Nabokortene vises bare som en mørk kant i sidemargen, og en rekke med små lyse kort under viser alle funnene og hvor man er.
 Hvor godt noe passer, sies med tre dempede avdelingstoner (skifer, salvie, stein), og arbeidsgiverne får dempede bokstavbrikker.
-Det mørke kortet og metallet er forbeholdt Radar; resten av appen beholder papiret og blekket.
+Tall låner det samme uttrykket: avdelingstonene er diagramskalaen der, og flisen «Neste frist» står på det mørke kortet med metall.
+Det mørke kortet og metallet er forbeholdt Radar og Tall; resten av appen beholder papiret og blekket.
 
 Systemet har fem temaer (Lin, Sot, Ink og elfenben, Blush, Midnatt), og alle må virke.
 Lin og Sot står én gang i `light-dark()`, og de tre navngitte temaene setter hvert token selv.
 
 **Key Characteristics:**
 - Tre flatenivåer (bunn, kort, innfelt) som skiller seg ved nivå, aldri ved ramme.
-- Kulør med faste betydninger: frist, sendt, interaksjon, og i Radar hvor godt noe passer.
+- Kulør med faste betydninger: frist, sendt, interaksjon, i Radar hvor godt noe passer, og under Tall hvor langt noe har kommet.
 - Alle tall i Geist Mono med tabulære siffer.
 - Ett kort per bånd, hårstreker mellom radene.
 - I Radar ett mørkt kort i fokus som man sveiper i, og en rekke små lyse kort under der det valgte er mørkt med metall.
@@ -325,7 +340,7 @@ Avdelingstonene og arbeidsgiverbrikkene følger `color-scheme`, og Blush og Midn
 
 ### Primary
 - **Blekket** (blekk / primar): primærknappen i Lin, Sot og Ink er blekket selv, fylt og uten kulør, så kulør fortsatt er forbeholdt det som betyr noe.
-- **Havblå interaksjon** (hav, hav-t, hav-vask): valgt navigasjon, fokusring, valgt rad, glidere og avkrysning, og diagramfyll; aldri et varsel.
+- **Havblå interaksjon** (hav, hav-t, hav-vask): valgt navigasjon, fokusring, valgt rad, glidere og avkrysning; aldri et varsel, og ikke diagramfyll.
 
 ### Secondary
 - **Ild** (ild, ild-t, ild-vask, ild-trykk): frist som haster eller er passert, feil som må rettes, og farlige handlinger når pekeren er på dem; i Radar bare en frist innen en uke.
@@ -333,14 +348,18 @@ Avdelingstonene og arbeidsgiverbrikkene følger `color-scheme`, og Blush og Midn
 - **Mose** (mose, mose-t, mose-vask): søknaden er sendt eller tilbudet er tatt imot.
 
 ### Tertiary
-- **Det mørke kortet** (utvalg, utvalg-2, utvalg-blekk i tre trinn, utvalg-kant): Radars mørke kort, kanten av nabokortene og det valgte minikortet, med egne teksttrinn som holder 4,5:1 på kortet, og utvalg-2 for brikker, monogram og knapper på det.
+- **Det mørke kortet** (utvalg, utvalg-2, utvalg-blekk i tre trinn, utvalg-kant): Radars mørke kort, kanten av nabokortene, det valgte minikortet og flisen «Neste frist» under Tall, med egne teksttrinn som holder 4,5:1 på kortet, og utvalg-2 for brikker, monogram og knapper på det.
 - **Metallet** (metall, metall-blekk, metall-svak): kortets eneste aksent, på ringbuen, hakene, avdelingsnavnet i ringen, monogrammet, fokusringen på kortet og fyllet i «Legg til i søknadene»; på det valgte minikortet er det prosenten, monogrammet, en innvendig hårstrek (metall blandet til 55 %) og, i de mørke temaene, tungen opp mot kortet; metall-svak tegner de tynne sirklene bak ringen og glorien når pekeren er på en metallknapp.
-- **Frist på kortet** (utvalg-ild, utvalg-ild-vask): en frist innen en uke, som brikke på det mørke kortet og som tekst på det valgte minikortet.
+Under Tall er metallet tallet i flisen «Neste frist», og metall-svak tegner den tynne sirkelen i flisens hjørne.
+- **Frist på kortet** (utvalg-ild, utvalg-ild-vask): en frist innen en uke, som brikke på det mørke kortet, som tekst på det valgte minikortet og som tallet i flisen «Neste frist».
 - **Søkepillen** (sok, sok-blekk, sok-ikon): «Søk etter nye» er kortets blekk med metallikon på lyse flater, og metallfylt med mørk tekst på mørke.
 - **Avdelingstonene** (skifer, salvie, stein med -vask og -t): skifer er «passer godt» (fra 80 %), salvie «passer på det meste» (fra 65 %), stein «verdt å lese» (fra 50 %); de står som prikk og brikke, alltid med navnet eller prosenten.
 - **Midt i blinken** (blink): det øverste trinnet (fra 95 %) har ingen egen kulør; det er selve det mørke kortet, mørk prikk med metallring på lyse flater og metall på mørke.
 - **Arbeidsgiverbrikkene** (arbeid-1 til arbeid-6 med -t): seks dempede par for bokstavbrikkene, valgt fra navnet, uten betydning utover å skille arbeidsgivere fra hverandre.
-- **Diagramskala** (graf-1 til graf-4): én kulør i fire trinn fra minst til mest forpliktet, med hav som midttrinn, for diagrammene under Tall.
+- **Diagramskala** (graf-1 til graf-4): Radars avdelingstoner i fire trinn fra minst til mest forpliktet for diagrammene under Tall: en mørkere diagramstein (#8A8176 på lyse flater, #8B7C81 i Blush), salvie, skifer og kortets blekk (det mørke blekket i de lyse temaene, det lyseste i de mørke).
+Enkeltserier står i skifer, og det andre leddet i en todelt søyle i stein.
+Ingen tema overstyrer skalaen utover steinen i Blush, og hvert trinn holder minst 3,8:1 mot kortet i alle fem temaene.
+Forbruksstreken i Radars innstillinger følger graf-3.
 
 ### Neutral
 - **Bunnen** (bunn): papiret under alt, også under båndoverskriftene som klistrer seg.
@@ -351,10 +370,10 @@ Avdelingstonene og arbeidsgiverbrikkene følger `color-scheme`, og Blush og Midn
 - **Varselet** (varsel-bunn, varsel-blekk): kvitteringen nederst er sin egen mørke flate i alle temaer.
 
 ### Named Rules
-**The Kulør Means One Thing Rule.** Ild og rav betyr bare frist, mose betyr bare Sendt eller Tilbud, hav betyr bare interaksjon, og avdelingstonene betyr bare hvor godt noe passer.
-**The Name Beside The Tone Rule.** En avdelingstone står aldri alene: navnet eller prosenten står alltid ved siden av, og en frist sies alltid også med dato eller tekst.
+**The Kulør Means One Thing Rule.** Ild og rav betyr bare frist, mose betyr bare Sendt eller Tilbud, hav betyr bare interaksjon, og avdelingstonene betyr bare hvor godt noe passer i Radar og hvor langt noe har kommet i diagrammene under Tall.
+**The Name Beside The Tone Rule.** En avdelingstone står aldri alene: navnet eller prosenten står alltid ved siden av, i diagrammene trinnets navn og tallet, og en frist sies alltid også med dato eller tekst.
 **The Red Is One Week Rule.** I Radar er bare en frist innen en uke rød; en frist innen tre uker løftes i rangeringen, men står nøytral, og rav brukes ikke i Radar.
-**The Metal Stays On The Card Rule.** Metallet og det mørke kortet brukes bare i Radar, og metallet bare på det mørke kortet, det valgte minikortet og i søkepillen; det er aldri pynt på Hireds lyse flater.
+**The Metal Stays On The Card Rule.** Metallet og det mørke kortet brukes bare i Radar og under Tall, og metallet bare på det mørke kortet, det valgte minikortet, i søkepillen og i flisen «Neste frist»; det er aldri pynt på Hireds lyse flater.
 **The Calm Ending Rule.** Det som har gått ut eller er trukket, haster ikke lenger og mister kulør; det sies i blekk og tekst.
 
 ## Typography
@@ -375,15 +394,16 @@ Begge ligger lokalt som variable woff2-filer, latin og latin-ext, og hentes aldr
 - **Title** (Familjen Grotesk 600 til 700, 18 til 22 px): «Dagens utvalg» i Radar (22 px), skuff- og tomtilstandstitler.
 - **Row title** (Familjen Grotesk 600 til 700, 14,5 til 15,5 px): selskap eller stilling i en rad, og stillingen i minikortet (700, 15,5 px, høyst to linjer).
 - **Body** (Familjen Grotesk 400, 15 px, linjehøyde 1,45): løpende tekst, med 44 til 68 tegn i bredden der teksten er lang; grunnene på det mørke kortet står i 15,5 px.
+- **Tile label** (Familjen Grotesk 600, 13,5 px, linjehøyde 1,3, blekk-2): navnet på hver flis under Tall, i setningsform; på det mørke kortet i utvalg-blekk-3.
 - **Body small** (13 til 13,5 px): undertekster, metalinjer og stedet under arbeidsgiveren.
 - **Data** (Geist Mono 400 til 600, 10,5 til 14 px, tabulære siffer): datoer, nedtelling, tellinger, kostnad og klokkeslett, også telleren «3 av 7» og prosenten og fristen i minikortene.
-- **Label** (Geist Mono 500, 10,5 px, 0,11em sperring, versaler): etikettstemmen i skallet, som navngir båndene i fristlistene, navigasjonsgruppen og «Neste frist»-flisen; Radar bruker den ikke.
+- **Label** (Geist Mono 500, 10,5 px, 0,11em sperring, versaler): etikettstemmen i skallet, som navngir båndene i fristlistene, navigasjonsgruppen og «Neste frist» i sidepanelet; Radar og flisene under Tall bruker den ikke.
 
 ### Named Rules
 **The Mono Counts Rule.** Alt som er et tall, en dato eller en telling står i Geist Mono med `tabular-nums`, så tallene står i kolonne.
 Unntaket er en dato inni en brikke der den står i en kort frase («Frist 5. nov», «Publisert 14. okt» på det mørke kortet): der står datoen i brikkens grotesk, så brikken leses som én frase.
 **The Tracking Floor Rule.** Negativ sperring går aldri strammere enn -0,04em, selv i display-størrelse.
-**The Sentence Case Heading Rule.** Nye flater navngir seksjoner med vanlige overskrifter i setningsform («Dagens utvalg», «Hvorfor den passer»), aldri med en etikett i versaler over en annen overskrift.
+**The Sentence Case Heading Rule.** Nye flater navngir seksjoner med vanlige overskrifter i setningsform («Dagens utvalg», «Hvorfor den passer», «Neste frist» i flisene under Tall), aldri med en etikett i versaler over en annen overskrift.
 
 ## Layout
 
@@ -416,21 +436,21 @@ Luften følger et tett, uregelmessig mønster rundt 4, 9, 14, 18 og 26 px, ikke 
 Systemet er tonalt lagdelt, med en svak, myk skygge som bare sier at noe ligger over bunnen.
 Flater skilles av nivå: kortet ligger over bunnen, innfelte spor ligger i kortet.
 I mørke temaer overlever ikke skygge inverteringen, så bæreren byttes til en hårfin ring på 1 px med skyggen bare som dybde bak.
-Det mørke kortet i Radar er det eneste som får en dyp skygge, og søkepillen har sin egen.
+Det mørke kortet i Radar og flisen «Neste frist» under Tall er de eneste som får en dyp skygge, og søkepillen har sin egen.
 
 ### Shadow Vocabulary
 - **Loft** (`0 1px 2px rgba(24,26,30,.05), 0 4px 14px rgba(24,26,30,.07)`): kort, bånd, minikort, felt, knapper i ro og valgt fane.
 - **Loft 2** (`0 2px 4px rgba(24,26,30,.06), 0 10px 28px rgba(24,26,30,.10)`): knapp, minikort og nedtrekk når pekeren er på dem, og menyer.
 - **Loft 3** (`0 8px 16px rgba(24,26,30,.08), 0 24px 60px rgba(24,26,30,.16)`): skuffen og varselet.
 - **Utvalg-loft** (`0 2px 6px rgba(26,24,21,.12), 0 24px 60px rgba(26,24,21,.22)`): det rolige mørke kortet (tom innboks, Radar av); i Sot og Midnatt en metallring på 1 px (`0 0 0 1px rgba(231,210,166,.14)`) med mørk dybde bak.
-- **Sveip-loft** (`0 2px 6px rgba(26,24,21,.12), 0 18px 36px -10px rgba(26,24,21,.32)`): kortet i midten av utvalget og det valgte minikortet; samme dybde som utvalg-loft, men smalere, så skyggen får plass i kanten flaten går ut i, og i Sot og Midnatt den samme metallringen med mørk dybde bak; satt i alle fem temaene.
+- **Sveip-loft** (`0 2px 6px rgba(26,24,21,.12), 0 18px 36px -10px rgba(26,24,21,.32)`): kortet i midten av utvalget, det valgte minikortet og flisen «Neste frist» under Tall; samme dybde som utvalg-loft, men smalere, så skyggen får plass i kanten flaten går ut i, og i Sot og Midnatt den samme metallringen med mørk dybde bak; satt i alle fem temaene.
 Nabokortene har ingen skygge, bare utvalg-ring på 1 px (gjennomsiktig i de lyse temaene).
 - **Søk-loft** (`0 1px 2px rgba(26,24,21,.2), 0 10px 24px rgba(26,24,21,.18)`): søkepillen, med en glorie på 3 px i metall-svak når pekeren er på den.
 
 ### Named Rules
 **The Level Not Line Rule.** Flater skilles av nivå, aldri av ramme; hårstreker brukes bare til å dele rader inni én flate.
 **The Ring In The Dark Rule.** I Sot og Midnatt bærer en ring på 1 px avgrensningen, og skyggen er bare dybde bak den; ringen rundt det mørke kortet og det valgte minikortet er i metallet.
-**The One Deep Card Rule.** Bare det mørke kortet i fokus og det valgte minikortet får den dype skyggen; nabokortene har ingen, og de andre minikortene og listene ligger på vanlig loft.
+**The One Deep Card Rule.** Bare det mørke kortet i fokus, det valgte minikortet og flisen «Neste frist» får den dype skyggen; nabokortene har ingen, og de andre minikortene og listene ligger på vanlig loft.
 
 ## Shapes
 
@@ -440,6 +460,7 @@ Statusmerker, avdelingsbrikker, brikkene på det mørke kortet og søkepillen er
 Prikker er runde (5 til 10 px) og bærer trinn og tilstand.
 Ringen er Radars form: en bue på 13 px strek med runde ender på det mørke kortet (208 px, 104 px på smalt), med en tynn indre sirkel i metall-svak.
 Bak ringen står to tynne sirkler i metall-svak som går ut over kortets kant.
+Flisen «Neste frist» under Tall har de samme 28 px hjørnene og én slik sirkel som skjæres av flisens kant.
 Tungen på det valgte minikortet er en rombe på 12 px med 2 px hjørner som stikker 6 px opp mot kortet over.
 Monogrammet er en avrundet bokstavbrikke: 46 px på det mørke kortet, 36 px i listene, 30 px i minikortet, og 32 px i resten av appen.
 Ikoner er tynne SVG-streker på 1,4 til 2 px med runde ender, i `currentColor`.
@@ -465,8 +486,8 @@ Ikoner er tynne SVG-streker på 1,4 til 2 px med runde ender, i `currentColor`.
 - **Ordbrikker:** i Radars ordlister står brikkene i innfelt-2 inni ett innfelt felt; et foreslått ord har stiplet kant til det lagres.
 
 ### Cards / Containers
-- **Corner Style:** 14 px i skallet, 22 px i Radar, 18 px for minikortene.
-- **Background:** kort; det mørke kortet, det rolige kortet (tom innboks, Radar av) og det valgte minikortet står på utvalg.
+- **Corner Style:** 14 px i skallet, 22 px i Radar, 18 px for minikortene, 28 px for det mørke kortet og flisen «Neste frist».
+- **Background:** kort; det mørke kortet, det rolige kortet (tom innboks, Radar av), det valgte minikortet og flisen «Neste frist» under Tall står på utvalg.
 - **Shadow Strategy:** loft, se Elevation & Depth.
 - **Border:** ingen; rader inni kortet skilles av en hårstrek på 1 px i linje.
 - **Internal Padding:** 20 til 22 px i kort, 16 px i minikort, 34 px 38 px i det mørke kortet (24 px 22 px på smalt).
@@ -501,6 +522,12 @@ Rekken under er en liste med ett minikort per funn: monogram og arbeidsgiver, st
 Det valgte minikortet er mørkt som kortet over, med en innvendig hårstrek i metall og en tunge opp mot kortet; tungen er kortets mørke flate i de lyse temaene og metall i de mørke, der flaten ligger for nær de andre kortene til å skille seg selv.
 Under rekken står forklaringen av avdelingene (prikk og navn) og lenken «N under terskelen».
 
+### Nøkkelflisene under Tall
+Sju fliser i fire kolonner, der «Neste frist» tar to, så første rad er det som ligger foran deg og andre rad det du har sendt.
+Hver flis har navnet som en vanlig overskrift, tallet i grotesken (29 px) og en linje under i blekk-2.
+«Neste frist» er det mørke kortet: tallet i metall, eller i utvalg-ild når fristen er innen en uke, og i utvalg-blekk-3 når det ikke finnes noen frist.
+De andre flisene står hvite med loft, og en frist innen en uke gir tallet ild-t.
+
 ### Search Pill
 «Søk etter nye» er en pille på 52 px med radarikonet i metall, og står til høyre for fanene med sist søkt og neste søk i mono ved siden av.
 Mens det søkes, pulserer kjernen i ikonet (1,2 s) og klokken teller; det er Radars eneste bevegelsesmoment.
@@ -510,8 +537,8 @@ Mens det søkes, pulserer kjernen i ikonet (1,2 s) og klokken teller; det er Rad
 ### Do:
 - **Do** skill flater med nivå (bunn, kort, innfelt) og del rader inni ett kort med hårstrek i linje.
 - **Do** sett alle tall, datoer og tellinger i Geist Mono med tabulære siffer.
-- **Do** bruk skifer, salvie og stein bare i Radar, og alltid med avdelingens navn eller prosenten ved siden av.
-- **Do** hold metallet på det mørke kortet, det valgte minikortet og i søkepillen: ring, haker, monogram, fokusring og primærknappen der.
+- **Do** bruk skifer, salvie og stein bare i Radar og som diagramskalaen under Tall, og alltid med avdelingens navn, prosenten eller trinnets navn og tallet ved siden av.
+- **Do** hold metallet på det mørke kortet, det valgte minikortet og i søkepillen: ring, haker, monogram, fokusring og primærknappen der, og tallet i flisen «Neste frist» under Tall.
 - **Do** si en frist med dato og tekst i tillegg til ild eller rav.
 - **Do** hold overganger på 0,12 s, og slå av bevegelse når brukeren ber om redusert bevegelse.
 - **Do** prøv nye tokens i alle fem temaer, og hold tekst på minst 4,5:1 mot flaten i hvert av dem, også på det mørke kortet.
@@ -525,11 +552,11 @@ Mens det søkes, pulserer kjernen i ikonet (1,2 s) og klokken teller; det er Rad
 - **Don't** legg kulør på det som har gått ut eller er trukket.
 - **Don't** sett ramme rundt en flate for å skille den fra en annen.
 - **Don't** sett mer enn én fylt primærknapp på samme flate.
-- **Don't** bruk det mørke kortet eller metallet utenfor Radar, og ikke mer enn ett mørkt kort i fokus per visning; nabokantene og det valgte minikortet peker bare på det.
+- **Don't** bruk det mørke kortet eller metallet utenfor Radar og flisen «Neste frist» under Tall, og ikke mer enn ett mørkt kort i fokus per visning; nabokantene og det valgte minikortet peker bare på det.
 - **Don't** gi arbeidsgiverbrikkenes toner en betydning; de skiller bare navn.
 - **Don't** stram sperringen mer enn -0,04em.
 - **Don't** legg en etikett i versaler over en overskrift som en kicker.
 - **Don't** bruk tegn som ikoner; ikoner er SVG-streker i `currentColor`.
 - **Don't** hent skrift, skript eller bilder fra nett.
 
-<!-- Kjente avvik i skallet, ikke regler: Lin viser valgt navigasjonspost som en indigo pille (hav-vask), og skallet har etiketter i sperret mono-versal («OVERSIKT», «NESTE FRIST»). Begge gjennomgangene av Radar pekte på dem; de står som de er bygd og skal ikke føres videre til nye flater før skallet er vurdert. -->
+<!-- Kjente avvik i skallet, ikke regler: Lin viser valgt navigasjonspost som en indigo pille (hav-vask), og skallet har etiketter i sperret mono-versal («OVERSIKT», «NESTE FRIST»). Begge gjennomgangene av Radar pekte på dem, og de står fortsatt etter at Tall fikk Radars farger; de står som de er bygd og skal ikke føres videre til nye flater før skallet er vurdert. -->

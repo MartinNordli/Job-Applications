@@ -61,7 +61,7 @@
          forpliktet: stein, salvie, skifer, og kortets mørke blekk (i de
          mørke temaene det lyseste blekket, så det synes mot kortet).
          Enkeltserier står i skifer. Stein er tatt et trinn ned på lyse
-         flater, så alle trinnene holder 3:1 mot kortflaten i alle fem
+         flater, så alle trinnene holder minst 3,8:1 mot kortflaten i alle fem
          temaene; Blush setter sitt eget. --- */
   --graf-1: light-dark(#8A8176, var(--stein));
   --graf-2: var(--salvie);
@@ -632,7 +632,10 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
 /* Neste frist er det mørke kortet fra Radar: tallet i metallet, og rødt
    på mørkt når det haster. De andre flisene står hvite. */
 .nokkel--neste{position:relative;overflow:hidden;background:var(--utvalg);color:var(--utvalg-blekk);
-               border-radius:28px;box-shadow:var(--sveip-loft)}
+               border-radius:28px;
+               /* En hårfin metallkant, så flisen skiller seg ut også der kortflaten
+                  og det mørke kortet er like (Midnatt, Sot). */
+               box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--metall) 45%, transparent),var(--sveip-loft)}
 .nokkel--neste::after{content:"";position:absolute;right:-90px;top:-130px;width:300px;height:300px;border-radius:50%;
                       box-shadow:inset 0 0 0 1px var(--metall-svak);opacity:.7;pointer-events:none}
 .nokkel--neste .nokkel__merke{color:var(--utvalg-blekk-3)}

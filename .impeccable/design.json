@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-18T12:00:00Z",
+  "generatedAt": "2026-10-18T16:30:00Z",
   "title": "Design System: Hired",
   "extensions": {
     "colorMeta": {
@@ -402,74 +402,78 @@
       },
       "graf-1": {
         "role": "tertiary",
-        "displayName": "Diagram 1",
-        "canonical": "light-dark(#A7B0EC, #49575F)",
-        "light": "#A7B0EC",
-        "dark": "#49575F",
-        "approxOklchLight": "oklch(77.2% 0.086 277.6)",
+        "displayName": "Diagram 1 (diagramstein)",
+        "canonical": "light-dark(#8A8176, #A39A8E)",
+        "purpose": "Første trinn, minst forpliktet («Sporet»), og det andre leddet i en todelt søyle: stein tatt et trinn ned på lyse flater så det holder 3,8:1 mot kortet; Blush setter #8B7C81, og de mørke temaene bruker selve steinen.",
+        "light": "#8A8176",
+        "dark": "#A39A8E",
+        "approxOklchLight": "oklch(60.8% 0.020 72.9)",
         "tonalRamp": [
-          "oklch(15% 0.049 277.6)",
-          "oklch(26% 0.065 277.6)",
-          "oklch(37% 0.080 277.6)",
-          "oklch(48% 0.086 277.6)",
-          "oklch(59% 0.086 277.6)",
-          "oklch(70% 0.085 277.6)",
-          "oklch(82% 0.068 277.6)",
-          "oklch(95% 0.049 277.6)"
+          "oklch(15% 0.020 72.9)",
+          "oklch(26% 0.020 72.9)",
+          "oklch(37% 0.020 72.9)",
+          "oklch(48% 0.020 72.9)",
+          "oklch(59% 0.020 72.9)",
+          "oklch(70% 0.020 72.9)",
+          "oklch(82% 0.020 72.9)",
+          "oklch(95% 0.020 72.9)"
         ]
       },
       "graf-2": {
         "role": "tertiary",
-        "displayName": "Diagram 2",
-        "canonical": "light-dark(#7A8AE2, #5F7583)",
-        "light": "#7A8AE2",
-        "dark": "#5F7583",
-        "approxOklchLight": "oklch(65.9% 0.132 274.4)",
+        "displayName": "Diagram 2 (salvie)",
+        "canonical": "light-dark(#5C7A68, #93AE9B)",
+        "purpose": "Andre trinn («Sendt»): var(--salvie).",
+        "light": "#5C7A68",
+        "dark": "#93AE9B",
+        "approxOklchLight": "oklch(55.1% 0.044 158.2)",
         "tonalRamp": [
-          "oklch(15% 0.064 274.4)",
-          "oklch(26% 0.088 274.4)",
-          "oklch(37% 0.112 274.4)",
-          "oklch(48% 0.132 274.4)",
-          "oklch(59% 0.132 274.4)",
-          "oklch(70% 0.119 274.4)",
-          "oklch(82% 0.093 274.4)",
-          "oklch(95% 0.064 274.4)"
+          "oklch(15% 0.044 158.2)",
+          "oklch(26% 0.044 158.2)",
+          "oklch(37% 0.044 158.2)",
+          "oklch(48% 0.044 158.2)",
+          "oklch(59% 0.044 158.2)",
+          "oklch(70% 0.044 158.2)",
+          "oklch(82% 0.044 158.2)",
+          "oklch(95% 0.044 158.2)"
         ]
       },
       "graf-3": {
         "role": "tertiary",
-        "displayName": "Diagram 3 (hav)",
-        "canonical": "light-dark(#3D52D5, #7391A8)",
-        "light": "#3D52D5",
-        "dark": "#7391A8",
-        "approxOklchLight": "oklch(50.5% 0.201 270.4)",
+        "displayName": "Diagram 3 (skifer)",
+        "canonical": "light-dark(#3F5C83, #8FA9CC)",
+        "purpose": "Tredje trinn og alle enkeltserier under Tall: var(--skifer); også forbruksstreken i Radars innstillinger.",
+        "light": "#3F5C83",
+        "dark": "#8FA9CC",
+        "approxOklchLight": "oklch(47.0% 0.073 256.1)",
         "tonalRamp": [
-          "oklch(15% 0.087 270.4)",
-          "oklch(26% 0.124 270.4)",
-          "oklch(37% 0.161 270.4)",
-          "oklch(48% 0.198 270.4)",
-          "oklch(59% 0.201 270.4)",
-          "oklch(70% 0.171 270.4)",
-          "oklch(82% 0.131 270.4)",
-          "oklch(95% 0.087 270.4)"
+          "oklch(15% 0.073 256.1)",
+          "oklch(26% 0.073 256.1)",
+          "oklch(37% 0.073 256.1)",
+          "oklch(48% 0.073 256.1)",
+          "oklch(59% 0.073 256.1)",
+          "oklch(70% 0.073 256.1)",
+          "oklch(82% 0.073 256.1)",
+          "oklch(95% 0.073 256.1)"
         ]
       },
       "graf-4": {
         "role": "tertiary",
-        "displayName": "Diagram 4",
-        "canonical": "light-dark(#2A3A97, #9DBAD1)",
-        "light": "#2A3A97",
-        "dark": "#9DBAD1",
-        "approxOklchLight": "oklch(39.6% 0.153 270.3)",
+        "displayName": "Diagram 4 (kortets blekk)",
+        "canonical": "light-dark(#1A1815, #F4EFE6)",
+        "purpose": "Øverste trinn, mest forpliktet («Fikk intervju»), og søylen når pekeren er på den: light-dark(var(--utvalg), var(--utvalg-blekk)), det mørke kortet i lyse temaer og det lyseste blekket på kortet i mørke.",
+        "light": "#1A1815",
+        "dark": "#F4EFE6",
+        "approxOklchLight": "oklch(21.0% 0.007 78.2)",
         "tonalRamp": [
-          "oklch(15% 0.071 270.3)",
-          "oklch(26% 0.099 270.3)",
-          "oklch(37% 0.127 270.3)",
-          "oklch(48% 0.153 270.3)",
-          "oklch(59% 0.153 270.3)",
-          "oklch(70% 0.134 270.3)",
-          "oklch(82% 0.104 270.3)",
-          "oklch(95% 0.071 270.3)"
+          "oklch(15% 0.007 78.2)",
+          "oklch(26% 0.007 78.2)",
+          "oklch(37% 0.007 78.2)",
+          "oklch(48% 0.007 78.2)",
+          "oklch(59% 0.007 78.2)",
+          "oklch(70% 0.007 78.2)",
+          "oklch(82% 0.007 78.2)",
+          "oklch(95% 0.007 78.2)"
         ]
       },
       "primar": {
@@ -566,7 +570,7 @@
         "role": "tertiary",
         "displayName": "Toppkortet",
         "canonical": "light-dark(#1A1815, #26211B)",
-        "purpose": "Radars mørke kort, kanten av nabokortene og det valgte minikortet: varmt blekk i Lin, løftet flate med ring i Sot.",
+        "purpose": "Radars mørke kort, kanten av nabokortene, det valgte minikortet og flisen «Neste frist» under Tall: varmt blekk i Lin, løftet flate med ring i Sot.",
         "light": "#1A1815",
         "dark": "#26211B"
       },
@@ -626,7 +630,7 @@
         "role": "tertiary",
         "displayName": "Metallet",
         "canonical": "#E7D2A6",
-        "purpose": "Kortets eneste aksent: ringbue, haker, monogram, fokusring og fyll i «Legg til i søknadene»; på det valgte minikortet prosenten, monogrammet, en innvendig hårstrek (55 %) og tungen i de mørke temaene.",
+        "purpose": "Kortets eneste aksent: ringbue, haker, monogram, fokusring og fyll i «Legg til i søknadene»; på det valgte minikortet prosenten, monogrammet, en innvendig hårstrek (55 %) og tungen i de mørke temaene. Under Tall tallet i flisen «Neste frist».",
         "light": "#E7D2A6",
         "dark": "#E7D2A6"
       },
@@ -881,9 +885,6 @@
           "hav": "#1A2232",
           "hav-t": "#1A2232",
           "hav-vask": "#E9E3D8",
-          "graf-1": "#A9B1C1",
-          "graf-2": "#7A869C",
-          "graf-3": "#4D5970",
           "graf-4": "#1A2232",
           "varsel-bunn": "#1A2232",
           "varsel-blekk": "#F7F5F0",
@@ -902,7 +903,7 @@
           "sok-ikon": "#E4D3AE",
           "blink": "#1A2232"
         },
-        "note": "Aksenten er blekket selv; det mørke kortet er marine med champagne; avdelingstonene bruker de lyse trinnene."
+        "note": "Aksenten er blekket selv; det mørke kortet er marine med champagne; avdelingstonene bruker de lyse trinnene. Diagramskalaen er ikke overstyrt; graf-4 blir det marine kortet."
       },
       "blush": {
         "scheme": "light",
@@ -929,10 +930,8 @@
           "hav": "#A84D62",
           "hav-t": "#913F54",
           "hav-vask": "#F4D6DC",
-          "graf-1": "#DDA9B5",
-          "graf-2": "#C27A8C",
-          "graf-3": "#A84D62",
-          "graf-4": "#6F2F40",
+          "graf-1": "#8B7C81",
+          "graf-4": "#3A1D28",
           "varsel-bunn": "#2B2226",
           "varsel-blekk": "#FBF5F6",
           "primar": "#A84D62",
@@ -955,7 +954,7 @@
           "stein-vask": "#F3ECEC",
           "stein-t": "#5E4E55"
         },
-        "note": "Rosebær er aksent og primærfyll; ild er dratt mot oransje; det mørke kortet er vin med rosegull."
+        "note": "Rosebær er aksent og primærfyll; ild er dratt mot oransje; det mørke kortet er vin med rosegull. Diagramskalaen setter bare graf-1 (#8B7C81); graf-4 blir vinkortet."
       },
       "midnatt": {
         "scheme": "dark",
@@ -982,10 +981,8 @@
           "hav": "#D8C3A1",
           "hav-t": "#E3D2B5",
           "hav-vask": "#2A3344",
-          "graf-1": "#5E5443",
-          "graf-2": "#8C7B60",
-          "graf-3": "#D8C3A1",
-          "graf-4": "#F0E2C8",
+          "graf-1": "#9C978F",
+          "graf-4": "#F5F2EC",
           "varsel-bunn": "#2A3344",
           "varsel-blekk": "#F5F2EC",
           "primar": "#D8C3A1",
@@ -1017,7 +1014,7 @@
           "arbeid-4-t": "#D8C28F",
           "arbeid-6-t": "#E3A9A0"
         },
-        "note": "Sand er aksent og primærfyll; ring i stedet for skygge; det mørke kortet er en løftet flate med sandring og sand som metall."
+        "note": "Sand er aksent og primærfyll; ring i stedet for skygge; det mørke kortet er en løftet flate med sandring og sand som metall. Diagramskalaen er ikke overstyrt; graf-1 blir Midnatts stein og graf-4 kortets lyseste blekk."
       }
     },
     "typographyMeta": {
@@ -1053,9 +1050,13 @@
         "displayName": "Data",
         "purpose": "Datoer, nedtelling, tellinger, kostnad og klokkeslett, også telleren «3 av 7» og prosent og frist i minikortene; en dato inni en brikke med tekst står i brikkens grotesk."
       },
+      "tile-label": {
+        "displayName": "Flisnavn under Tall",
+        "purpose": "Navnet på hver nøkkelflis under Tall som vanlig overskrift i setningsform, Familjen Grotesk 600 i 13,5 px; i utvalg-blekk-3 på det mørke kortet."
+      },
       "label": {
         "displayName": "Etikettstemmen",
-        "purpose": "Etikettstemmen i skallet (bånd, navigasjonsgruppe, «Neste frist»); ikke brukt i Radar, og ikke ført videre til nye flater."
+        "purpose": "Etikettstemmen i skallet (bånd, navigasjonsgruppe, «Neste frist» i sidepanelet); ikke brukt i Radar eller i flisene under Tall, og ikke ført videre til nye flater."
       },
       "ring-numeral": {
         "displayName": "Ringtallet",
@@ -1100,7 +1101,7 @@
           "blush": "0 2px 6px rgba(58,29,40,.14), 0 18px 36px -10px rgba(58,29,40,.34)",
           "midnatt": "0 0 0 1px rgba(216,195,161,.14), 0 16px 32px -10px rgba(0,0,0,.55)"
         },
-        "purpose": "Kortet i midten av utvalget og det valgte minikortet: samme dybde som utvalg-loft, men smalere, så skyggen får plass i kanten flaten går ut i. Nabokortene har bare utvalg-ring på 1 px."
+        "purpose": "Kortet i midten av utvalget, det valgte minikortet og flisen «Neste frist» under Tall: samme dybde som utvalg-loft, men smalere, så skyggen får plass i kanten flaten går ut i. Nabokortene har bare utvalg-ring på 1 px."
       },
       {
         "name": "sok-loft",
@@ -1179,14 +1180,16 @@
       }
     ],
     "provenance": {
-      "source": "Skrevet etter bygget, fra src/stiler.css, src/skrifter.css og src/radarflate.js på feat/radar-dagens-utvalg, og oppdatert fra koden som ble sendt på feat/radar-sveip, der «Dagens utvalg» ble et kort man sveiper i med en kortrekke under.",
+      "source": "Skrevet etter bygget, fra src/stiler.css, src/skrifter.css og src/radarflate.js på feat/radar-dagens-utvalg, og oppdatert fra koden som ble sendt på feat/radar-sveip, der «Dagens utvalg» ble et kort man sveiper i med en kortrekke under. Oppdatert igjen fra koden som ble sendt på feat/tall-radarfarger (commit a83a21f), der Tall fikk Radars farger.",
       "seed": "seed:3ab3da59f904a2e2, bekreftet på denne maskinen fra trekningsloggen i hovedrepoet. Hånden fra trekningen ble avvist av brukeren; retningen kom fra en idérunde på designflaten etterpå, og brukeren godkjente det finpussede forslaget «Dagens utvalg» og siden prototypen man sveiper i.",
       "rasters": "Ingen: bygget lagde ingen rasterbilder som sendes med appen. Skjermbildene i .impeccable/review/ er gjennomgangsbevis, ikke leveranse.",
       "review": "Sluttgjennomgang for «Dagens utvalg»: fix, med seed-linjen og ordlyden om første skjermbilde i kontrakten og grunnene fordelt over kolonner lagt inn. Sluttgjennomgang for sveipingen: fix, med nabokortene helt ut til kanten, det valgte minikortet merket med metall i de mørke temaene og datoene i brikkene på det store kortet i brikkens grotesk lagt inn.",
       "knownShellIssues": [
-        "Den valgte navigasjonsposten i Lin er en indigo pille (hav-vask); påpekt i gjennomgangen, utenfor Radar.",
-        "Skallet har etiketter i sperret mono-versal («OVERSIKT», «NESTE FRIST»); påpekt i gjennomgangen, utenfor Radar, og ikke en regel for nye flater."
-      ]
+        "Den valgte navigasjonsposten i Lin er en indigo pille (hav-vask); påpekt i gjennomgangen, utenfor Radar og Tall.",
+        "Skallet har etiketter i sperret mono-versal («OVERSIKT», «NESTE FRIST»); påpekt i gjennomgangen, utenfor Radar og Tall, og ikke en regel for nye flater.",
+        "I Midnatt er utvalg og kort samme farge (#1B2230), så flisen «Neste frist» skiller seg fra de andre flisene bare med hjørnene, sirkelen og metalltallet; ikke rettet her."
+      ],
+      "tallUpdate": "Tall fikk Radars fargetema etter ønske fra brukeren: avdelingstonene som diagramskala, «Neste frist» på det mørke kortet med metall og flisnavn som vanlige overskrifter. Ingen sluttgjennomgang ble kjørt for denne endringen, og ingen rasterbilder sendes med; skjermbildene tall-lys, tall-mork, tall-ink, tall-blush, tall-midnatt og tall-mobil i .impeccable/review/ er bare bevis."
     }
   },
   "components": [
@@ -1285,14 +1288,22 @@
       "description": "Segmentkontrollen i Radar: brett i innfelt-2, valgt fane på kort med loft.",
       "html": "<div class=\"ds-rfaner\" role=\"tablist\"><button class=\"ds-rfane\" aria-selected=\"true\">Nye <span>7</span></button><button class=\"ds-rfane\" aria-selected=\"false\">Under terskelen <span>3</span></button><button class=\"ds-rfane\" aria-selected=\"false\">Kjøringer</button></div>",
       "css": ".ds-rfaner{display:inline-flex;gap:2px;padding:4px;border-radius:12px;background:var(--innfelt-2,#E6E3DA)}.ds-rfane{display:flex;align-items:center;gap:6px;height:34px;padding:0 14px;border:0;border-radius:9px;background:none;font-family:var(--sans);font-size:14px;font-weight:500;color:var(--blekk-2,#4A4E54);cursor:pointer;transition:background .12s ease,color .12s ease}.ds-rfane:hover{color:var(--blekk,#17181A)}.ds-rfane[aria-selected=\"true\"]{background:var(--kort,#fff);color:var(--blekk,#17181A);font-weight:600;box-shadow:var(--loft,0 1px 2px rgba(24,26,30,.05),0 4px 14px rgba(24,26,30,.07))}.ds-rfane:focus-visible{outline:2px solid var(--hav,#3D52D5);outline-offset:-2px}.ds-rfane span{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--blekk-3,#5C6166)}"
+    },
+    {
+      "name": "Neste frist under Tall",
+      "kind": "card",
+      "refersTo": "tall-next-deadline",
+      "description": "Nøkkelflisen «Neste frist»: Radars mørke kort med flisnavnet som vanlig overskrift, tallet i metall (utvalg-ild innen en uke) og én tynn metallsirkel i hjørnet.",
+      "html": "<div class=\"ds-neste\"><h3 class=\"ds-neste__merke\">Neste frist</h3><p class=\"ds-neste__verdi\">2 dager</p><p class=\"ds-neste__under\"><b>Aker BP</b> · 20. oktober</p></div>",
+      "css": ".ds-neste{position:relative;overflow:hidden;max-width:420px;padding:17px 19px 19px;border-radius:28px;background:var(--utvalg,#1A1815);color:var(--utvalg-blekk,#F4EFE6);box-shadow:var(--sveip-loft,0 2px 6px rgba(26,24,21,.12),0 18px 36px -10px rgba(26,24,21,.32));font-family:var(--sans)}.ds-neste::after{content:\"\";position:absolute;right:-90px;top:-130px;width:300px;height:300px;border-radius:50%;box-shadow:inset 0 0 0 1px var(--metall-svak,rgba(231,210,166,.16));opacity:.7;pointer-events:none}.ds-neste__merke{margin:0 0 11px;font-size:13.5px;font-weight:600;line-height:1.3;color:var(--utvalg-blekk-3,#B9B1A4)}.ds-neste__verdi{margin:0;font-size:29px;font-weight:600;letter-spacing:-.035em;line-height:1;font-variant-numeric:tabular-nums;color:var(--metall,#E7D2A6)}.ds-neste__under{margin:9px 0 0;font-size:12.5px;line-height:1.45;color:var(--utvalg-blekk-2,#D6CFC3)}.ds-neste__under b{color:var(--utvalg-blekk,#F4EFE6)}"
     }
   ],
   "narrative": {
     "northStar": "Arbeidsbordet med frister",
-    "overview": "Hired er et rolig arbeidsverktøy på varmt papir, der det som haster eller passer best skal sees før det leses.\nFlatene er nøytrale og lagdelte, og nesten all tekst står i blekk; kulør er sjelden og betyr alltid noe bestemt.\nTettheten er høy uten å bli trang: en rad er rundt 56 px, ett kort holder et helt bånd, og hårstreker skiller radene inni det.\n\nSkriften bærer mye av karakteren.\nFamiljen Grotesk gir overskrifter og navn en litt kantete, menneskelig tyngde, og Geist Mono står for alle tall, datoer og tellinger, så de står i kolonner og kan skummes.\n\nRadar har sitt eget uttrykk inni den samme verdenen: «Dagens utvalg», ett funn om gangen.\nFunnet i fokus står på et mørkt, edelt kort med en metallaksent på ringen, hakene og primærknappen, og man sveiper sidelengs til neste med styreflaten, fingeren eller J og K.\nNabokortene vises bare som en mørk kant i sidemargen, og en rekke med små lyse kort under viser alle funnene og hvor man er.\nHvor godt noe passer, sies med tre dempede avdelingstoner (skifer, salvie, stein), og arbeidsgiverne får dempede bokstavbrikker.\nDet mørke kortet og metallet er forbeholdt Radar; resten av appen beholder papiret og blekket.\n\nSystemet har fem temaer (Lin, Sot, Ink og elfenben, Blush, Midnatt), og alle må virke.\nLin og Sot står én gang i `light-dark()`, og de tre navngitte temaene setter hvert token selv.",
+    "overview": "Hired er et rolig arbeidsverktøy på varmt papir, der det som haster eller passer best skal sees før det leses.\nFlatene er nøytrale og lagdelte, og nesten all tekst står i blekk; kulør er sjelden og betyr alltid noe bestemt.\nTettheten er høy uten å bli trang: en rad er rundt 56 px, ett kort holder et helt bånd, og hårstreker skiller radene inni det.\n\nSkriften bærer mye av karakteren.\nFamiljen Grotesk gir overskrifter og navn en litt kantete, menneskelig tyngde, og Geist Mono står for alle tall, datoer og tellinger, så de står i kolonner og kan skummes.\n\nRadar har sitt eget uttrykk inni den samme verdenen: «Dagens utvalg», ett funn om gangen.\nFunnet i fokus står på et mørkt, edelt kort med en metallaksent på ringen, hakene og primærknappen, og man sveiper sidelengs til neste med styreflaten, fingeren eller J og K.\nNabokortene vises bare som en mørk kant i sidemargen, og en rekke med små lyse kort under viser alle funnene og hvor man er.\nHvor godt noe passer, sies med tre dempede avdelingstoner (skifer, salvie, stein), og arbeidsgiverne får dempede bokstavbrikker.\nTall låner det samme uttrykket: avdelingstonene er diagramskalaen der, og flisen «Neste frist» står på det mørke kortet med metall.\nDet mørke kortet og metallet er forbeholdt Radar og Tall; resten av appen beholder papiret og blekket.\n\nSystemet har fem temaer (Lin, Sot, Ink og elfenben, Blush, Midnatt), og alle må virke.\nLin og Sot står én gang i `light-dark()`, og de tre navngitte temaene setter hvert token selv.",
     "keyCharacteristics": [
       "Tre flatenivåer (bunn, kort, innfelt) som skiller seg ved nivå, aldri ved ramme.",
-      "Kulør med faste betydninger: frist, sendt, interaksjon, og i Radar hvor godt noe passer.",
+      "Kulør med faste betydninger: frist, sendt, interaksjon, i Radar hvor godt noe passer, og under Tall hvor langt noe har kommet.",
       "Alle tall i Geist Mono med tabulære siffer.",
       "Ett kort per bånd, hårstreker mellom radene.",
       "I Radar ett mørkt kort i fokus som man sveiper i, og en rekke små lyse kort under der det valgte er mørkt med metall.",
@@ -1301,12 +1312,12 @@
     "rules": [
       {
         "name": "The Kulør Means One Thing Rule",
-        "body": "Ild og rav betyr bare frist, mose betyr bare Sendt eller Tilbud, hav betyr bare interaksjon, og avdelingstonene betyr bare hvor godt noe passer.",
+        "body": "Ild og rav betyr bare frist, mose betyr bare Sendt eller Tilbud, hav betyr bare interaksjon, og avdelingstonene betyr bare hvor godt noe passer i Radar og hvor langt noe har kommet i diagrammene under Tall.",
         "section": "colors"
       },
       {
         "name": "The Name Beside The Tone Rule",
-        "body": "En avdelingstone står aldri alene: navnet eller prosenten står alltid ved siden av, og en frist sies alltid også med dato eller tekst.",
+        "body": "En avdelingstone står aldri alene: navnet eller prosenten står alltid ved siden av, i diagrammene trinnets navn og tallet, og en frist sies alltid også med dato eller tekst.",
         "section": "colors"
       },
       {
@@ -1316,7 +1327,7 @@
       },
       {
         "name": "The Metal Stays On The Card Rule",
-        "body": "Metallet og det mørke kortet brukes bare i Radar, og metallet bare på det mørke kortet, det valgte minikortet og i søkepillen; det er aldri pynt på Hireds lyse flater.",
+        "body": "Metallet og det mørke kortet brukes bare i Radar og under Tall, og metallet bare på det mørke kortet, det valgte minikortet, i søkepillen og i flisen «Neste frist»; det er aldri pynt på Hireds lyse flater.",
         "section": "colors"
       },
       {
@@ -1336,7 +1347,7 @@
       },
       {
         "name": "The Sentence Case Heading Rule",
-        "body": "Nye flater navngir seksjoner med vanlige overskrifter i setningsform («Dagens utvalg», «Hvorfor den passer»), aldri med en etikett i versaler over en annen overskrift.",
+        "body": "Nye flater navngir seksjoner med vanlige overskrifter i setningsform («Dagens utvalg», «Hvorfor den passer», «Neste frist» i flisene under Tall), aldri med en etikett i versaler over en annen overskrift.",
         "section": "typography"
       },
       {
@@ -1351,15 +1362,15 @@
       },
       {
         "name": "The One Deep Card Rule",
-        "body": "Bare det mørke kortet i fokus og det valgte minikortet får den dype skyggen; nabokortene har ingen, og de andre minikortene og listene ligger på vanlig loft.",
+        "body": "Bare det mørke kortet i fokus, det valgte minikortet og flisen «Neste frist» får den dype skyggen; nabokortene har ingen, og de andre minikortene og listene ligger på vanlig loft.",
         "section": "elevation"
       }
     ],
     "dos": [
       "**Do** skill flater med nivå (bunn, kort, innfelt) og del rader inni ett kort med hårstrek i linje.",
       "**Do** sett alle tall, datoer og tellinger i Geist Mono med tabulære siffer.",
-      "**Do** bruk skifer, salvie og stein bare i Radar, og alltid med avdelingens navn eller prosenten ved siden av.",
-      "**Do** hold metallet på det mørke kortet, det valgte minikortet og i søkepillen: ring, haker, monogram, fokusring og primærknappen der.",
+      "**Do** bruk skifer, salvie og stein bare i Radar og som diagramskalaen under Tall, og alltid med avdelingens navn, prosenten eller trinnets navn og tallet ved siden av.",
+      "**Do** hold metallet på det mørke kortet, det valgte minikortet og i søkepillen: ring, haker, monogram, fokusring og primærknappen der, og tallet i flisen «Neste frist» under Tall.",
       "**Do** si en frist med dato og tekst i tillegg til ild eller rav.",
       "**Do** hold overganger på 0,12 s, og slå av bevegelse når brukeren ber om redusert bevegelse.",
       "**Do** prøv nye tokens i alle fem temaer, og hold tekst på minst 4,5:1 mot flaten i hvert av dem, også på det mørke kortet.",
@@ -1373,7 +1384,7 @@
       "**Don't** legg kulør på det som har gått ut eller er trukket.",
       "**Don't** sett ramme rundt en flate for å skille den fra en annen.",
       "**Don't** sett mer enn én fylt primærknapp på samme flate.",
-      "**Don't** bruk det mørke kortet eller metallet utenfor Radar, og ikke mer enn ett mørkt kort i fokus per visning; nabokantene og det valgte minikortet peker bare på det.",
+      "**Don't** bruk det mørke kortet eller metallet utenfor Radar og flisen «Neste frist» under Tall, og ikke mer enn ett mørkt kort i fokus per visning; nabokantene og det valgte minikortet peker bare på det.",
       "**Don't** gi arbeidsgiverbrikkenes toner en betydning; de skiller bare navn.",
       "**Don't** stram sperringen mer enn -0,04em.",
       "**Don't** legg en etikett i versaler over en overskrift som en kicker.",
