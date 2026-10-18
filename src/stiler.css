@@ -1483,7 +1483,8 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .utvalg__prikk{width:6px;height:6px;border-radius:50%;background:currentColor}
 .utvalg__grunner{display:flex;flex-direction:column;gap:11px;padding-top:4px}
 .utvalg__grunntittel{margin:0;font-size:13px;font-weight:600;color:var(--utvalg-blekk-3)}
-.utvalg__grunnliste{display:flex;flex-direction:column;gap:11px;max-width:64ch;margin:0;padding:0;list-style:none}
+/* Grunnene fordeles over kolonner, så kortet ikke får et tomt felt midt i. */
+.utvalg__grunnliste{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:11px 32px;margin:0;padding:0;list-style:none}
 .utvalg__grunnliste li{display:flex;gap:10px;font-size:15.5px;line-height:1.4}
 .utvalg__grunnliste .ikon{margin-top:2px;color:var(--metall)}
 .utvalg__knapper{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding-top:22px;box-shadow:inset 0 1px 0 var(--utvalg-strek)}
