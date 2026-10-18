@@ -727,6 +727,8 @@ function tegn(){
 
   /* Søket og filtrene gjelder søknadene, ikke Radar. */
   $(".sok").hidden = $(".filtre").hidden = visning === "radar";
+  /* Radar har sin egen, større tittel; stilen henger på visningen. */
+  $(".hoved").dataset.visning = visning;
   if(visning === "radar") radar.vis($("#innhold"));
   else{ radar.skjul(); $("#innhold").innerHTML =
       visning === "frister" ? visFrister()

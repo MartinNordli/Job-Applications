@@ -7,30 +7,30 @@
    leser modultilstanden der direkte. Radar selv nås bare gjennom
    src/radarklient.js.
 
-   Oppbyggingen, ovenfra:
-   - Toppen: når Radar sist søkte og søker igjen, forbruket i dag og
-     «Søk nå». Under det trakten fra siste kjøring: fire tall med en
-     stolpe hver, fra alt som ble hentet ned til det som nådde terskelen.
-     Setningen om kjøringen står bare for skjermlesere (#radarStatus);
-     den synlige linjen sier noe bare når det er noe å si (søker, feil,
-     kø).
+   Oppbyggingen, ovenfra («Dagens utvalg»):
+   - Toppen: tittelen og setningen om hvor mange som passer står i
+     app.js sin tittelrad (undertittel()). Her står fanene som en
+     segmentkontroll, og til høyre sist søkt, neste søk og «Søk etter
+     nye» som stor pille. Setningen om kjøringen står bare for
+     skjermlesere (#radarStatus); ved knappen sies det bare kort.
    - Merknadene: det som stopper Radar (CV, nøkkel), det som gjør den
      dyr (ingen søkeord) og kilder som feilet ved siste søk.
-   - Fanene: Innboks, Under terskelen, Lagt til, Kjøringer og
-     Innstillinger. Bare den valgte tegnes. Valget huskes mens appen er
-     åpen; første gang er det Innstillinger hvis Radar er på uten
-     søkeord, ellers Innboks.
-   - Innboksen er en rangering, ikke en logg: funnene står i bånd etter
-     skalaen, best først. Det som er midt i blinken, får hvert sitt
-     toppkort med grunnene synlige; resten er rader på to linjer der
-     «Hvorfor» folder ut grunnene. Innenfor et bånd står en frist som
-     haster først, så høyeste prosent, så det nyeste.
+   - Fanene: Nye, Under terskelen, Lagt til, Kjøringer og Innstillinger.
+     Bare den valgte tegnes. Valget huskes mens appen er åpen; første
+     gang er det Innstillinger hvis Radar er på uten søkeord.
+   - Nye: ett funn om gangen. Funnet i fokus står på et mørkt kort med
+     ringen, grunnene og handlingene; L, X, J og K virker uten mus. Under
+     står de tre neste i køen, og «Alt Radar fant» med fordelingen og
+     resten i en rolig liste. Rekkefølgen er avdelingen, så en frist som
+     haster, så høyeste prosent, så det nyeste.
    - Innstillingene er et utkast som lagres med én knapp; av og på og
      karrieresidene lagres med en gang, fordi de har egne veier inn.
 
-   Kulør: treff-skalaen (--treff-1 til 4) sier hvor godt noe passer, og
-   bare det, og alltid med tallet ved siden av. Ild og rav er fortsatt
-   bare frist. Det som har feilet, sies med ord.
+   Kulør: metallet (champagne, rosegull, sand) er det mørke kortets
+   aksent. Avdelingene har hver sin dempede tone (skifer, salvie, stein),
+   alltid med navnet eller prosenten ved siden av. Arbeidsgiverne får en
+   dempet brikke valgt fra navnet. Bare en frist som haster, er rød.
+   Det som har feilet, sies med ord.
    ============================================================ */
 import * as Radar from "./radarklient.js";
 import * as Brev from "./brev.js";
@@ -69,26 +69,48 @@ const SKALA = p => p >= 95 ? "midt i blinken, med fag, rolle og nivå som i CV-e
   : p >= 50 ? "verdt å lese, passer delvis"
   : "også stillinger som passer dårlig";
 
-/* Trinnene i innboksen, med samme grenser som SKALA. Trinn 0 er det
-   mellom terskelen og 49 %, og finnes bare når terskelen er under 50. */
-const TRINN = { 4: { navn: "Midt i blinken", fra: 95 }, 3: { navn: "Passer godt", fra: 80 },
-  2: { navn: "Passer på det meste", fra: 65 }, 1: { navn: "Verdt å lese", fra: 50 }, 0: { navn: "Passer dårlig", fra: 40 } };
+/* Avdelingene i skalaen, med samme grenser som SKALA. Trinn 0 er det
+   mellom terskelen og 49 %, og finnes bare når terskelen er under 50.
+   avd er tonen i stiler.css. */
+const TRINN = { 4: { navn: "Midt i blinken", fra: 95, avd: "blink" }, 3: { navn: "Passer godt", fra: 80, avd: "skifer" },
+  2: { navn: "Passer på det meste", fra: 65, avd: "salvie" }, 1: { navn: "Verdt å lese", fra: 50, avd: "stein" },
+  0: { navn: "Passer dårlig", fra: 40, avd: "svak" } };
 const trinn = p => p >= 95 ? 4 : p >= 80 ? 3 : p >= 65 ? 2 : p >= 50 ? 1 : 0;
+const avd = p => TRINN[trinn(p)].avd;
 
-const FANER = [["innboks", "Innboks"], ["under", "Under terskelen"], ["lagt", "Lagt til"], ["kjoringer", "Kjøringer"], ["innstillinger", "Innstillinger"]];
+const FANER = [["innboks", "Nye"], ["under", "Under terskelen"], ["lagt", "Lagt til"], ["kjoringer", "Kjøringer"], ["innstillinger", "Innstillinger"]];
+
+/* Arbeidsgiverbrikken: én av seks dempede toner, valgt fra navnet, så
+   samme arbeidsgiver alltid får samme farge. */
+const brikketone = navn => [...String(navn || "")].reduce((h, c) => (h * 31 + c.codePointAt(0)) >>> 0, 7) % 6 + 1;
+const brikke = (navn, klasse) => '<span class="' + klasse + '" data-tone="' + brikketone(navn) + '" aria-hidden="true">'
+  + esc(F.monogram(navn || "?")) + '</span>';
 
 const ANGRETID = 7000;
 const PIL = '<svg class="baand__pil" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="m3.5 2 3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const KRYSS = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
-/* Ikonene i radene: samme strek og samme 12-rute, så krysset og pila
-   står like store ved siden av hverandre. */
-const IKON_KRYSS = '<svg class="ikon" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
-const IKON_UT = '<svg class="ikon" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4.5 2.75h4.75v4.75M9 3 3 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const TRAKTPIL = '<svg class="radartrakt__pil" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="m4.5 2.5 3.5 3.5-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+/* Ikonene tegnes i én strek på 24-ruta, som i sidepanelet. */
+const ikon = (d, str = 16, strek = 2) => '<svg class="ikon" width="' + str + '" height="' + str + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="'
+  + strek + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+const IKON_KRYSS = ikon('<path d="M7 7l10 10M17 7 7 17"/>', 14);
+const IKON_UT = ikon('<path d="M7 17 17 7M9 7h8v8"/>', 15);
+const IKON_HAKE = ikon('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 18, 2.2);
+const IKON_FORRIGE = ikon('<path d="M15 6l-6 6 6 6"/>');
+const IKON_NESTE = ikon('<path d="M9 6l6 6-6 6"/>');
+const IKON_RADAR = '<svg class="radar__sokikon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">'
+  + '<circle cx="12" cy="12" r="8.5"/><circle class="radar__sokkjerne" cx="12" cy="12" r="4"/><path d="M12 12l6-6"/></svg>';
+const TRAKTPIL = ikon('<path d="M9 6l6 6-6 6"/>', 14);
 const HVORFORPIL = '<svg class="funn__hvorforpil" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="m2.5 3.75 2.5 2.5 2.5-2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-/* Blinken i introkortet: fire ringer i treff-trinnene rundt en prikk. */
-const MOTIV = '<svg class="radar__motiv" width="76" height="76" viewBox="0 0 76 76" aria-hidden="true">'
-  + [36, 27, 18, 9, 2.6].map((r, i) => '<circle class="radar__ring" data-ring="' + i + '" cx="38" cy="38" r="' + r + '"/>').join("") + '</svg>';
+
+/* Ringen: buen fylt til prosenten, rundt et spor. str er bredden i px,
+   tykk strekens tykkelse; tallet tegnes i HTML over ringen. */
+function ring(p, str, tykk){
+  const r = str / 2 - tykk / 2 - 1, o = 2 * Math.PI * r, fyll = Math.max(0, Math.min(100, Number(p) || 0)) / 100 * o;
+  return '<svg class="ring__svg" width="' + str + '" height="' + str + '" viewBox="0 0 ' + str + ' ' + str + '" aria-hidden="true">'
+    + '<circle class="ring__spor" cx="' + str / 2 + '" cy="' + str / 2 + '" r="' + r + '" fill="none" stroke-width="' + tykk + '"/>'
+    + '<circle class="ring__bue" cx="' + str / 2 + '" cy="' + str / 2 + '" r="' + r + '" fill="none" stroke-width="' + tykk + '" stroke-linecap="round"'
+    + ' stroke-dasharray="' + fyll.toFixed(1) + ' ' + o.toFixed(1) + '" transform="rotate(-90 ' + str / 2 + ' ' + str / 2 + ')"/></svg>';
+}
 
 const DØGN = 86_400_000;
 const tallTekst = n => Number(n).toLocaleString("nb-NO");
@@ -139,7 +161,7 @@ export function lagRadarflate(api){
   let foreslått = new Set();    /* ord forslaget la til, til de er lagret */
   let skriver = { sokeord: "", steder: "", ekskluder: "" };
   let fane = null;              /* den valgte fanen; null til visningen tegnes første gang */
-  let animert = null;           /* starten på kjøringen trakten sist viste */
+  let fokusId = null, fokusIndeks = 0; /* funnet i toppkortet, og plassen det sto på */
   const hvorforÅpen = new Set(); /* rader der «Hvorfor» er foldet ut */
   let lagrer = false, lagreFeil = "";
   let forslag = { går: false, tekst: "", feil: null };
@@ -324,9 +346,10 @@ export function lagRadarflate(api){
         return;
       }
       const på = innstillinger().pa;
-      rot.innerHTML = (på ? toppHtml() : introHtml())
+      rot.innerHTML = (på ? "" : introHtml())
+        + (på || visFaner() ? toppradHtml() : "")
         + '<div class="radar__merknader" id="radarMerknader">' + merknaderHtml() + '</div>'
-        + (visFaner() ? fanerHtml() + '<div class="radar__panel" id="radarPanel" role="tabpanel" tabindex="0" aria-labelledby="radarFane-' + aktivFane() + '">'
+        + (visFaner() ? '<div class="radar__panel" id="radarPanel" role="tabpanel" tabindex="0" aria-labelledby="radarFane-' + aktivFane() + '">'
           + panelHtml() + '</div>' : "");
     });
     oppdaterFlyt(rot);
@@ -351,8 +374,6 @@ export function lagRadarflate(api){
      det viser en av listene. Innstillingene tegnes ikke på nytt for det. */
   function tegnInnboks(){
     if(rot && t){
-      const skala = rot.querySelector("#radarSkala");
-      if(skala) skala.innerHTML = skalaHtml();
       const faner = rot.querySelector("#radarFaner");
       if(!faner){ if(visFaner()) tegn(); }
       else if(erListe(aktivFane())) tegnFaner();
@@ -365,15 +386,12 @@ export function lagRadarflate(api){
     const el = rot?.querySelector("#radarStatus");
     if(el) el.textContent = bind(statustekst());
     const k = rot?.querySelector("#radarSokNa");
-    if(k){ k.disabled = går; k.textContent = går ? "Søker…" : "Søk nå"; }
-    const topp = rot?.querySelector(".radar__topp");
-    if(topp){
-      topp.toggleAttribute("data-soker", går);
-      topp.toggleAttribute("data-feil", søk.feil && !går);
-      topp.querySelector("#radarMeta").innerHTML = metaHtml();
-      const n = topp.querySelector("#radarNotat"), tekst = notatHtml();
-      n.innerHTML = tekst;
-      n.hidden = !tekst;
+    if(k){ k.disabled = går || !innstillinger()?.pa; k.innerHTML = søkKnappHtml(); }
+    const sok = rot?.querySelector(".radar__sok");
+    if(sok){
+      sok.toggleAttribute("data-soker", går);
+      sok.toggleAttribute("data-feil", søk.feil && !går);
+      sok.querySelector("#radarMeta").innerHTML = metaHtml();
     }
     tegnKlokke();
   }
@@ -390,15 +408,15 @@ export function lagRadarflate(api){
     return (diff === 0 ? "i dag" : diff === 1 ? "i går" : d.getDate() + ". " + MND_K[d.getMonth()]) + " " + klokke(d);
   }
   const tidHtml = iso => '<time class="radar__tid" datetime="' + esc(iso) + '">' + esc(når(iso)) + '</time>';
-  /* Det samme som når(), men bare tallene i mono: «i dag» er ord. */
+  /* Klokkeslettet i mono, med «i går» eller datoen foran når det ikke
+     var i dag. */
   function nårHtml(iso){
     const d = new Date(iso);
     if(Number.isNaN(d.getTime())) return "";
     const diff = Math.round((api.iDag() - new Date(d.toDateString())) / 86400000);
-    return (diff === 0 ? "i dag " : diff === 1 ? "i går " : '<span class="radar__tid">' + d.getDate() + ". " + MND_K[d.getMonth()] + '</span> ')
+    return (diff === 0 ? "" : diff === 1 ? "i går " : '<span class="radar__tid">' + d.getDate() + ". " + MND_K[d.getMonth()] + '</span> ')
       + '<time class="radar__tid" datetime="' + esc(iso) + '">' + klokke(d) + '</time>';
   }
-  const tallHtml = n => '<span class="radar__tid">' + esc(tallTekst(n)) + '</span>';
   /* Kildene neste kjøring søker gjennom alle aktive stillinger hos, med
      samme regel som skalSøke i radarlogikk.mjs så langt tilstanden viser
      den: søket er aldri gjort, NAV-søket er ikke ferdig, Jobbnorge er
@@ -429,7 +447,7 @@ export function lagRadarflate(api){
     ? " Søket gjennom NAV fortsetter " + når + "." : "";
 
   /* Hele setningen om hva Radar gjør, til skjermlesere. Det synlige er
-     linjen over trakten og notatet under den. */
+     de korte linjene ved «Søk etter nye». */
   function statustekst(){
     if(søk.går){
       const alle = søk.alle ?? [];
@@ -447,83 +465,40 @@ export function lagRadarflate(api){
       + ventertekst(t.venter ?? 0, "");
   }
 
-  /* Linjen over trakten: hva Radar gjør, eller når den sist søkte og
-     søker igjen, og forbruket i dag. */
+  /* Linjene ved knappen: hva Radar gjør nå, en feil, eller når den sist
+     søkte og søker selv igjen, og det som venter. Høyst tre korte linjer. */
   function metaHtml(){
-    const ut = [];
+    const linje = (s, klasse = "") => '<span class="radar__metalinje' + klasse + '">' + s + '</span>';
     if(søk.går || t.kjorerNa){
       const alle = søk.går ? søk.alle ?? [] : [];
-      ut.push('<span class="radar__soker"><span class="radar__puls" aria-hidden="true"></span>'
-        + esc(!søk.går ? "Søker nå, startet et annet sted" : alle.length ? "Søker gjennom alle aktive hos " + og(alle) : "Ser etter nye stillinger")
-        + '<span class="radar__klokke radar__tid" id="radarKlokke" aria-hidden="true"></span></span>');
-    }else{
-      const s = sisteKjøring();
-      ut.push(s ? "Sist søkt " + nårHtml(s.start) + ", neste rundt "
-        + '<span class="radar__tid">' + klokke(new Date(Date.parse(s.start) + Radar.TIME)) + '</span>' : "Ikke søkt ennå");
+      return linje(!søk.går ? "Søker nå, startet et annet sted" : alle.length ? "Søker gjennom alle aktive" : "Ser etter nye stillinger")
+        + linje(!søk.går ? "Siden oppdateres når det er ferdig" : alle.length ? "hos " + og(alle) + ", gjerne et minutt" : "og vurderer dem mot CV-en");
     }
-    const f = t.forbruk;
-    if(f?.tak) ut.push(tallHtml(f.vurderinger) + " av " + tallHtml(f.tak) + " vurderinger i dag");
-    return ut.map(d => '<span class="radar__del">' + d + '</span>').join('<span class="radar__skille" aria-hidden="true">·</span>');
+    if(søk.kort) return linje(esc(bind(søk.kort)), søk.feil ? " radar__metalinje--feil" : "");
+    const s = sisteKjøring();
+    const ut = s
+      ? [linje("Sist søkt " + nårHtml(s.start)), linje("Søker selv igjen " + '<span class="radar__tid">' + klokke(new Date(Date.parse(s.start) + Radar.TIME)) + '</span>')]
+      : [linje("Ikke søkt ennå"), linje("Søker selv mens Hired er åpen")];
+    const notat = (fortsettertekst() + ventertekst(t.venter ?? 0)).trim();
+    if(notat) ut.push(linje(esc(bind(notat)), " radar__metalinje--notat"));
+    return ut.join("");
   }
-  /* Det under trakten: en feil, eller det som gjelder neste kjøring.
-     Tomt når trakten sier alt. */
-  function notatHtml(){
-    if(søk.går || t.kjorerNa) return "";
-    if(søk.kort) return esc(bind(søk.kort));
-    if(!sisteKjøring()) return "Første søk starter av seg selv mens Hired er åpen.";
-    return esc(bind((fortsettertekst() + ventertekst(t.venter ?? 0)).trim()));
+  function søkKnappHtml(){
+    const går = søk.går || !!t?.kjorerNa;
+    return IKON_RADAR + '<span>' + (går ? "Søker" : "Søk etter nye") + '</span>'
+      + '<span class="radar__klokke radar__tid" id="radarKlokke" aria-hidden="true"></span>';
   }
 
-  function toppHtml(){
-    const går = søk.går || !!t.kjorerNa;
-    const notat = notatHtml();
-    return '<div class="radar__topp"' + (går ? " data-soker" : "") + (søk.feil && !går ? " data-feil" : "") + '>'
-      + '<div class="radar__linje"><p class="radar__meta" id="radarMeta">' + metaHtml() + '</p>'
-      + '<button class="knapp knapp--liten radar__sok" type="button" id="radarSokNa" data-radar="sok" data-fokus="sok"'
-      + (går ? " disabled" : "") + '>' + (går ? "Søker…" : "Søk nå") + '</button></div>'
-      + traktHtml()
-      + '<div id="radarSkala">' + skalaHtml() + '</div>'
-      + '<p class="radar__notat" id="radarNotat" aria-hidden="true"' + (notat ? "" : " hidden") + '>' + notat + '</p>'
-      + '<p class="skjult" id="radarStatus" role="status" aria-live="polite">' + esc(bind(statustekst())) + '</p>'
+  /* Raden under tittelen: fanene til venstre, søket til høyre. */
+  function toppradHtml(){
+    const går = søk.går || !!t.kjorerNa, på = innstillinger().pa;
+    return '<div class="radar__topprad">' + (visFaner() ? fanerHtml() : '<span></span>')
+      + (på ? '<div class="radar__sok"' + (går ? " data-soker" : "") + (søk.feil && !går ? " data-feil" : "") + '>'
+        + '<p class="radar__meta" id="radarMeta">' + metaHtml() + '</p>'
+        + '<button class="radar__sokknapp" type="button" id="radarSokNa" data-radar="sok" data-fokus="sok"' + (går ? " disabled" : "") + '>'
+        + søkKnappHtml() + '</button>'
+        + '<p class="skjult" id="radarStatus" role="status" aria-live="polite">' + esc(bind(statustekst())) + '</p></div>' : "")
       + '</div>';
-  }
-
-  /* Trakten fra siste kjøring: fra alt som ble hentet, ned til det som
-     nådde terskelen. Stolpene er lineære, så de er ærlige om hvor lite
-     som blir igjen; et lite tall får likevel en tynn strek. Bare det
-     siste trinnet er i treff-farge, fordi bare det er treff. Når en ny
-     kjøring er kommet siden trakten sist ble tegnet, vokser de fram én
-     gang. */
-  function traktHtml(){
-    const k = sisteKjøring();
-    const alle = !!k?.kilder?.some(s => s.sok);
-    const trinnene = [
-      [k?.kandidater, !k ? "aktive stillinger" : alle ? "aktive gjennomsøkt" : k.kandidater === 1 ? "ny stilling" : "nye stillinger"],
-      [k?.passet, "passet søkeordene"],
-      [k?.vurdert, "vurdert mot CV-en"],
-      [k?.treff, "nådde terskelen"]
-    ];
-    const maks = Math.max(1, ...trinnene.map(([n]) => n ?? 0));
-    const ny = !!k && animert !== null && animert !== k.start;
-    animert = k?.start ?? "";
-    return '<ol class="radartrakt"' + (ny ? " data-ny" : "") + ' aria-label="Siste kjøring">' + trinnene.map(([n, navn], i) => {
-      const har = n != null;
-      const l = har && n > 0 ? n / maks : 0;
-      return '<li class="radartrakt__trinn">' + (i ? TRAKTPIL : "")
-        + '<span class="radartrakt__tall">' + (har ? esc(tallTekst(n)) : '<span aria-hidden="true">–</span><span class="skjult">ikke kjent</span>') + '</span>'
-        + '<span class="radartrakt__navn">' + navn + '</span>'
-        + '<span class="radartrakt__stolpe" aria-hidden="true"><i style="--l:' + l.toFixed(4) + '"' + (har && n > 0 ? " data-har" : "") + '></i></span></li>';
-    }).join("") + '</ol>';
-  }
-
-  /* Det som står i innboksen nå, per trinn i skalaen, og det under
-     terskelen. Prikken har trinnets farge; tallet står alltid ved den. */
-  function skalaHtml(){
-    const n = nye(), u = under();
-    const poster = [4, 3, 2, 1, 0].map(tr => [tr, n.filter(r => trinn(r.prosent) === tr).length]).filter(([, a]) => a)
-      .map(([tr, a]) => '<li data-trinn="' + tr + '"><span class="prikk" aria-hidden="true"></span>' + TRINN[tr].navn + ' <b>' + a + '</b></li>');
-    if(u.length) poster.push('<li><span class="prikk prikk--hul" aria-hidden="true"></span>Under terskelen <b>' + u.length + '</b></li>');
-    return poster.length ? '<ul class="radar__skala" aria-label="Innboksen etter hvor godt det passer">' + poster.join("") + '</ul>' : "";
   }
 
   function tegnKlokke(){
@@ -539,14 +514,16 @@ export function lagRadarflate(api){
     if(søk.går) klokketimer = setInterval(vis, 1000);
   }
 
+  /* Radar av: det mørke kortet, med to korte setninger og det om
+     kostnad og hva som sendes. */
   function introHtml(){
-    return '<section class="radar__intro" aria-labelledby="radarIntroTittel">' + MOTIV
-      + '<div class="radar__introkropp"><h3 class="radar__introtittel" id="radarIntroTittel">Radar er av</h3>'
-      + '<p class="radar__introtekst">Radar ser etter nye stillinger hos NAV, Jobbnorge og karrieresidene du legger inn, '
-      + 'og vurderer dem mot CV-en din. Det som passer, havner her, best først.</p>'
-      + '<p class="radar__introtekst radar__introtekst--liten">Den søker hver time mens Hired er åpen. '
+    return '<section class="utvalg utvalg--rolig" aria-labelledby="radarIntroTittel">'
+      + '<div class="utvalg__kropp"><h2 class="utvalg__rolig-tittel" id="radarIntroTittel">Radar er av</h2>'
+      + '<p class="utvalg__rolig-tekst">Radar ser etter nye stillinger hos NAV, Jobbnorge og karrieresidene du legger inn, '
+      + 'og vurderer dem mot CV-en din. Det beste står her, ett om gangen.</p>'
+      + '<p class="utvalg__rolig-tekst utvalg__rolig-tekst--liten">Den søker hver time mens Hired er åpen. '
       + 'CV-en og annonsene som passer søkeordene, sendes til modellleverandøren din, og en kjøring koster noen få øre.</p>'
-      + '<button class="knapp knapp--primar" type="button" data-radar="pa" data-fokus="pa">Slå på Radar</button></div></section>';
+      + '<div class="utvalg__knapper"><button class="utvalg__legg" type="button" data-radar="pa" data-fokus="pa">Slå på Radar</button></div></div></section>';
   }
 
   /* ---------- fanene ---------- */
@@ -566,7 +543,7 @@ export function lagRadarflate(api){
   function panelHtml(){
     const f = aktivFane();
     if(f === "innstillinger") return innstillingerHtml();
-    if(f === "kjoringer") return t.kjoringer?.length ? '<section class="kort radar__kjoringer" aria-label="Kjøringer">' + kjøringerHtml() + '</section>'
+    if(f === "kjoringer") return t.kjoringer?.length ? kjøringerPanelHtml()
       : tomHtml("Ingen kjøringer ennå", "Hver kjøring står her med hva den fant og hva den kostet.");
     if(f === "under") return underHtml();
     if(f === "lagt") return lagtHtml();
@@ -791,125 +768,199 @@ export function lagRadarflate(api){
     return ut.join("");
   }
 
-  /* ---------- innboksen ---------- */
+  /* ---------- Nye: dagens utvalg ---------- */
 
   const domId = id => "funn-" + String(id).replace(/[^A-Za-z0-9_-]/g, "_");
-  const hvem = r => [r.selskap || "Ukjent arbeidsgiver", r.sted].filter(Boolean).join(", ");
+  const hvem = r => [r.selskap || "Ukjent arbeidsgiver", r.sted].filter(Boolean).join(" · ");
   const tomHtml = (tittel, tekst, knapp = "") => '<div class="tomt tomt--lav radar__tomt"><p class="tomt__tittel">' + esc(tittel) + '</p>'
     + '<p class="tomt__tekst">' + esc(bind(tekst)) + '</p>' + knapp + '</div>';
+  const haster = r => { const h = r.frist ? F.hast(r.frist, api.iDag()) : ""; return h === "naa" || h === "snart"; };
+  /* Fristen kort, som i køen og listen: «om 6 dager», eller «løpende». */
+  const fristKort = r => r.frist ? F.omTekst(r.frist, api.iDag()) : "løpende";
+  const publisert = r => {
+    const publ = r.publisert || r.funnet, d = new Date(publ);
+    return publ && !Number.isNaN(d.getTime()) ? { ord: r.publisert ? "Publisert" : "Funnet", iso: publ, dato: d.getDate() + ". " + MND_K[d.getMonth()] } : null;
+  };
 
-  /* Innenfor et bånd: en frist som haster først, den tidligste øverst,
-     så høyeste prosent, så det som ble funnet sist. */
+  /* Rangeringen: avdelingen først, så en frist som haster (den tidligste
+     øverst), så høyeste prosent, så det som ble funnet sist. */
   function ordne(rader){
-    const iDag = api.iDag();
-    const haster = r => { const h = r.frist ? F.hast(r.frist, iDag) : ""; return h === "naa" || h === "snart"; };
-    return rader.map(r => [r, haster(r)]).sort(([a, ha], [b, hb]) =>
-      ha !== hb ? (ha ? -1 : 1)
-      : ha && a.frist !== b.frist ? (a.frist < b.frist ? -1 : 1)
-      : b.prosent - a.prosent || String(b.funnet ?? "").localeCompare(String(a.funnet ?? ""))).map(([r]) => r);
+    return rader.map(r => [r, trinn(r.prosent), haster(r)]).sort(([a, ta, ha], [b, tb, hb]) =>
+      tb - ta
+      || (ha !== hb ? (ha ? -1 : 1) : 0)
+      || (ha && a.frist !== b.frist ? (a.frist < b.frist ? -1 : 1) : 0)
+      || b.prosent - a.prosent
+      || String(b.funnet ?? "").localeCompare(String(a.funnet ?? ""))).map(([r]) => r);
   }
-  const bånd = rader => [4, 3, 2, 1, 0].map(n => ({ n, rader: ordne(rader.filter(r => trinn(r.prosent) === n)) })).filter(b => b.rader.length);
-  /* Radene i den rekkefølgen de står på skjermen, så fokus etter en
-     handling går til den som står under. */
-  const iInnboks = () => bånd(nye()).flatMap(b => b.rader);
+  const iInnboks = () => ordne(nye());
+
+  /* Funnet i fokus står i toppkortet. Forsvinner det (lagt til, avvist),
+     tar det som nå står på samme plass, over. */
+  function iFokus(liste = iInnboks()){
+    if(!liste.length) return -1;
+    let i = liste.findIndex(r => r.id === fokusId);
+    if(i < 0) i = Math.min(fokusIndeks, liste.length - 1);
+    fokusId = liste[i].id; fokusIndeks = i;
+    return i;
+  }
+  /* Bla i rangeringen. Fokus blir stående på knappen som ble brukt, og
+     skjermlesere får vite hva som står i kortet nå. */
+  function blaTil(i, kilde){
+    const liste = iInnboks();
+    if(i < 0 || i >= liste.length) return;
+    fokusId = liste[i].id; fokusIndeks = i;
+    if(aktivFane() !== "innboks"){ fane = "innboks"; }
+    tegnFaner();
+    const r = liste[i];
+    const s = rot?.querySelector("#radarFokusStatus");
+    if(s) s.textContent = r.stilling + " hos " + (r.selskap || "ukjent arbeidsgiver") + ", " + r.prosent + " prosent, " + (i + 1) + " av " + liste.length + ".";
+    if(kilde === "kort") rot?.querySelector(".utvalg")?.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion:reduce)").matches ? "auto" : "smooth" });
+  }
 
   function innboksHtml(){
-    const n = nye(), l = lagtTil(), u = under();
+    const liste = iInnboks(), u = under(), l = lagtTil();
     const på = innstillinger().pa, terskel = innstillinger().terskel;
-    if(!n.length){
-      if(!på) return tomHtml("Innboksen er tom", "Slå på Radar for å få nye stillinger hit.");
+    if(!liste.length){
+      const søkKnapp = på ? '<button class="utvalg__legg" type="button" data-radar="sok" data-fokus="sok-tom"' + (søk.går || t.kjorerNa ? " disabled" : "") + '>Søk etter nye</button>' : "";
       const s = sisteKjøring();
       /* Det som ble vurdert lavere, nevnes først: uten det ser en tom
          innboks ut som at Radar ikke virker. */
-      if(!s) return tomHtml("Ingen treff ennå", "Første søk starter av seg selv, eller trykk Søk nå.");
-      if(u.length) return tomHtml("Ingenting over terskelen", antall(u.length, "stilling", "stillinger") + " ble vurdert lavere enn " + terskel + " %.",
-        '<button class="knapp knapp--liten" type="button" data-radar="fane" data-fane="under" data-fokus="seUnder">Se under terskelen</button>');
-      return l.length ? tomHtml("Ingenting nytt", "Radar har ikke funnet noe nytt fra " + terskel + " % siden sist.")
-        : tomHtml("Ingen treff ennå", "Blir det stille lenge, kan du legge til søkeord eller senke terskelen.");
+      const [tittel, tekst, knapper] = !på ? ["Ingenting nytt", "Slå på Radar under Innstillinger for å få nye stillinger hit.", ""]
+        : !s ? ["Ingen treff ennå", "Første søk starter av seg selv mens Hired er åpen.", søkKnapp]
+        : u.length ? ["Ingenting over terskelen", antall(u.length, "stilling", "stillinger") + " ble vurdert lavere enn " + terskel + " %.",
+            '<button class="utvalg__avvis" type="button" data-radar="fane" data-fane="under" data-fokus="seUnder">Se under terskelen</button>' + søkKnapp]
+        : [l.length ? "Ingenting nytt" : "Ingen treff ennå", l.length ? "Radar har ikke funnet noe nytt fra " + terskel + " % siden sist."
+            : "Blir det stille lenge, kan du legge til søkeord eller senke terskelen.", søkKnapp];
+      return '<section class="utvalg utvalg--rolig radar__tomt" aria-label="Nye">'
+        + '<div class="utvalg__kropp"><h2 class="utvalg__rolig-tittel">' + tittel + '</h2><p class="utvalg__rolig-tekst">' + esc(bind(tekst)) + '</p>'
+        + (knapper ? '<div class="utvalg__knapper">' + knapper + '</div>' : "") + '</div></section>';
     }
-    /* Midt i blinken løftes ut som egne kort; finnes ingenting der,
-       begynner innboksen med det neste båndet. */
-    return bånd(n).map(b => b.n === 4 ? b.rader.map(toppkortHtml).join("") : båndHtml(b, terskel)).join("");
+    const i = iFokus(liste), r = liste[i];
+    const kø = liste.slice(i + 1, i + 4);
+    const vist = new Set([r.id, ...kø.map(x => x.id)]);
+    return toppkortHtml(r, i, liste.length)
+      + '<p class="skjult" id="radarFokusStatus" aria-live="polite"></p>'
+      + (kø.length ? køHtml(kø, liste.length) : "")
+      + altHtml(liste, liste.filter(x => !vist.has(x.id)));
   }
 
-  function båndHtml({ n, rader }, terskel){
-    return '<section class="baandblokk radarbaand" data-trinn="' + n + '" aria-labelledby="radarBaand-' + n + '">'
-      + '<div class="baand"><span class="prikk" aria-hidden="true"></span>'
-      + '<h3 class="radarbaand__navn" id="radarBaand-' + n + '">' + TRINN[n].navn + '</h3>'
-      + '<span class="radarbaand__fra">' + bind("fra " + (n ? TRINN[n].fra : terskel) + " %") + '</span>'
-      + '<span class="baand__strek" aria-hidden="true"></span>'
-      + '<span class="baand__tall" aria-label="' + antall(rader.length, "stilling", "stillinger") + '">' + rader.length + '</span></div>'
-      + '<div class="stabel">' + rader.map(r => radHtml(r, "innboks")).join("") + '</div></section>';
+  /* Toppkortet: det mørke kortet med funnet i fokus. */
+  function toppkortHtml(r, i, n){
+    const id = esc(r.id), tid = domId(r.id), tr = trinn(r.prosent), iDag = api.iDag();
+    const kilde = KILDENAVN[r.kilde] || r.kilde;
+    const brikker = [];
+    if(r.frist) brikker.push(haster(r)
+      ? '<span class="utvalg__brikke utvalg__brikke--haster"><span class="utvalg__prikk" aria-hidden="true"></span>Frist ' + esc(F.omTekst(r.frist, iDag)) + '</span>'
+      : '<span class="utvalg__brikke">Frist <time class="radar__tid" datetime="' + esc(r.frist) + '">' + F.kortDatoMnd(r.frist) + '</time></span>');
+    const p = publisert(r);
+    if(p) brikker.push('<span class="utvalg__brikke">' + p.ord + ' <time class="radar__tid" datetime="' + esc(p.iso) + '">' + p.dato + '</time></span>');
+    const grunner = r.grunner ?? [];
+    const o = 2 * Math.PI * 92, fyll = Math.max(0, Math.min(100, r.prosent)) / 100 * o;
+    return '<article class="utvalg" data-radar-id="' + id + '" data-avd="' + avd(r.prosent) + '" aria-labelledby="' + tid + ' ' + tid + '-hvem">'
+      + '<span class="utvalg__sirkel utvalg__sirkel--1" aria-hidden="true"></span><span class="utvalg__sirkel utvalg__sirkel--2" aria-hidden="true"></span>'
+      + '<div class="utvalg__kropp">'
+        + '<div class="utvalg__hvem">' + brikke(r.selskap, "utvalg__monogram")
+          + '<span class="utvalg__hvemtekst"><span class="utvalg__selskap" id="' + tid + '-hvem">' + esc(r.selskap || "Ukjent arbeidsgiver") + '</span>'
+          + '<span class="utvalg__sted">' + esc([r.sted, "via " + kilde].filter(Boolean).join(" · ")) + '</span></span></div>'
+        + '<div class="utvalg__hode"><h3 class="utvalg__stilling radar__stilling" id="' + tid + '">' + esc(r.stilling) + '</h3>'
+          + (brikker.length ? '<p class="utvalg__brikker">' + brikker.join("") + '</p>' : "") + '</div>'
+        + (grunner.length ? '<div class="utvalg__grunner"><h4 class="utvalg__grunntittel">Hvorfor den passer</h4><ul class="utvalg__grunnliste">'
+          + grunner.map(g => '<li>' + IKON_HAKE + '<span>' + esc(g) + '</span></li>').join("") + '</ul></div>' : "")
+        + '<div class="utvalg__knapper">'
+          + '<button class="utvalg__legg" type="button" data-radar="leggTil" data-id="' + id + '" data-fokus="legg-' + id + '" aria-keyshortcuts="L"'
+          + (legger.has(r.id) ? " disabled" : "") + '>' + (legger.has(r.id) ? "Legger til…" : jobbFor.has(r.id) ? "Prøv igjen" : "Legg til i søknadene") + '</button>'
+          + '<button class="utvalg__avvis" type="button" data-radar="ikke" data-id="' + id + '" data-fokus="ikke-' + id + '" aria-keyshortcuts="X">Ikke interessert</button>'
+          + '<a class="utvalg__apne" href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer" data-fokus="apne-' + id + '">Åpne annonsen'
+          + '<span class="skjult"> hos ' + esc(kilde) + ' i ny fane</span>' + IKON_UT + '</a></div>'
+      + '</div>'
+      + '<div class="utvalg__side">'
+        + '<div class="utvalg__blar"><span class="utvalg__plass radar__tid" aria-hidden="true">' + (i + 1) + ' / ' + n + '</span>'
+          + '<button class="utvalg__bla" type="button" data-radar="forrige" data-fokus="forrige" aria-label="Forrige funn" aria-keyshortcuts="K"' + (i ? "" : " disabled") + '>' + IKON_FORRIGE + '</button>'
+          + '<button class="utvalg__bla" type="button" data-radar="neste" data-fokus="neste" aria-label="Neste funn" aria-keyshortcuts="J"' + (i < n - 1 ? "" : " disabled") + '>' + IKON_NESTE + '</button></div>'
+        + '<div class="utvalg__maal" role="img" aria-label="' + r.prosent + ' prosent, ' + TRINN[tr].navn.toLocaleLowerCase("nb") + '">'
+          + '<svg class="utvalg__ring" viewBox="0 0 216 216" aria-hidden="true">'
+          + '<circle class="utvalg__ringspor" cx="108" cy="108" r="92" fill="none" stroke-width="14"/>'
+          + '<circle class="utvalg__ringbue" cx="108" cy="108" r="92" fill="none" stroke-width="14" stroke-linecap="round" stroke-dasharray="'
+          + fyll.toFixed(1) + ' ' + o.toFixed(1) + '" transform="rotate(-90 108 108)"/>'
+          + '<circle class="utvalg__ringinne" cx="108" cy="108" r="72" fill="none" stroke-width="1"/></svg>'
+          + '<span class="utvalg__maaltekst" aria-hidden="true"><span class="utvalg__tall">' + r.prosent + '<span class="utvalg__pst">%</span></span>'
+          + '<span class="utvalg__avd">' + TRINN[tr].navn + '</span></span></div>'
+        + '<p class="utvalg__tast" aria-hidden="true"><kbd>L</kbd>legg til <kbd>X</kbd>avvis <kbd>J</kbd>neste</p>'
+      + '</div></article>';
   }
 
-  const leggTilKnapp = (r, klasse) => '<button class="' + klasse + '" type="button" data-radar="leggTil" data-id="' + esc(r.id) + '" data-fokus="legg-' + esc(r.id) + '"'
-    + (legger.has(r.id) ? " disabled" : "") + '>' + (legger.has(r.id) ? "Legger til…" : jobbFor.has(r.id) ? "Prøv igjen" : "Legg til") + '</button>';
-  const grunnerHtml = (r, blokk = "funn") => (r.grunner ?? []).length
-    ? '<ul class="' + blokk + '__grunner" aria-label="Hvorfor den passer">' + r.grunner.map(g => '<li>' + esc(g) + '</li>').join("") + '</ul>' : "";
-  function kildeHtml(r, blokk = "funn"){
-    const deler = ["Fra " + esc(KILDENAVN[r.kilde] || r.kilde)];
-    const publ = r.publisert || r.funnet, d = new Date(publ);
-    if(publ && !Number.isNaN(d.getTime())) deler.push((r.publisert ? "publisert " : "funnet ")
-      + '<time class="funn__dato" datetime="' + esc(publ) + '">' + d.getDate() + ". " + MND_K[d.getMonth()] + '</time>');
-    return '<p class="' + blokk + '__kilde">' + deler.join(", ") + '</p>';
-  }
-  /* Fristen som dato og nedtelling. Hastefargen gjelder bare det som
-     ennå ikke er lagt til; etterpå står fristen i søknaden. */
-  function fristHtml(r, lagt){
-    if(!r.frist) return "";
-    const iDag = api.iDag(), h = lagt ? "" : F.hast(r.frist, iDag);
-    return '<span class="skjult">Frist </span><time class="funn__dato" datetime="' + esc(r.frist) + '">' + F.kortDatoMnd(r.frist) + '</time>'
-      + ' <span class="funn__om"' + (h === "naa" || h === "snart" ? ' data-hast="' + h + '"' : "") + '>' + esc(F.omTekst(r.frist, iDag)) + '</span>';
+  const avdBrikke = r => '<span class="avd-brikke" data-avd="' + avd(r.prosent) + '"><span class="radar__tid">' + r.prosent + '<span class="skjult"> %</span></span>'
+    + TRINN[trinn(r.prosent)].navn + '</span>';
+
+  /* Neste i køen: de tre som kommer etter funnet i fokus. */
+  function køHtml(kø, n){
+    return '<section class="utvalg-seksjon" aria-labelledby="radarKoTittel"><div class="utvalg-seksjon__topp">'
+      + '<h3 class="utvalg-seksjon__tittel" id="radarKoTittel">Neste i køen</h3>'
+      + '<button class="utvalg-seksjon__lenke" type="button" data-radar="seAlle" data-fokus="seAlle">Se alle ' + n + '</button></div>'
+      + '<div class="utvalg-ko">' + kø.map(r => {
+          const id = esc(r.id), a = avd(r.prosent);
+          return '<button class="kokort" type="button" data-radar="fokus" data-id="' + id + '" data-radar-id="' + id + '" data-avd="' + a + '" data-fokus="fokus-' + id + '">'
+            + '<span class="kokort__topp">' + brikke(r.selskap, "kokort__monogram")
+              + '<span class="kokort__hvem"><span class="kokort__selskap">' + esc(r.selskap || "Ukjent arbeidsgiver") + '</span>'
+              + (r.sted ? '<span class="kokort__sted">' + esc(r.sted) + '</span>' : "") + '</span>'
+              + '<span class="kokort__ring">' + ring(r.prosent, 48, 5) + '<span class="kokort__tall radar__tid">' + r.prosent + '<span class="skjult"> %</span></span></span></span>'
+            + '<span class="kokort__stilling radar__stilling">' + esc(r.stilling) + '</span>'
+            + '<span class="kokort__bunn"><span class="avd-brikke" data-avd="' + a + '"><span class="avd-brikke__prikk" aria-hidden="true"></span>' + TRINN[trinn(r.prosent)].navn + '</span>'
+              + '<span class="kokort__frist"' + (haster(r) ? " data-hast" : "") + '>' + esc(fristKort(r)) + '</span></span>'
+            + '</button>';
+        }).join("") + '</div></section>';
   }
 
-  /* Det som er midt i blinken: prosenten stor, alle grunnene synlige,
-     og «Legg til» som eneste primærknapp. */
-  function toppkortHtml(r){
-    const id = esc(r.id), tid = domId(r.id);
-    const frist = fristHtml(r, false);
-    return '<article class="toppfunn" data-trinn="4" data-radar-id="' + id + '" aria-labelledby="' + tid + ' ' + tid + '-hvem">'
-      + '<div class="toppfunn__maal"><p class="toppfunn__stor">' + r.prosent + '<span class="toppfunn__pst">%</span></p>'
-      + '<p class="toppfunn__trinn"><span class="prikk" aria-hidden="true"></span>' + TRINN[4].navn + '</p></div>'
-      + '<div class="toppfunn__kropp"><h3 class="toppfunn__stilling" id="' + tid + '">' + esc(r.stilling) + '</h3>'
-      + '<p class="toppfunn__hvem"><span id="' + tid + '-hvem">' + esc(hvem(r)) + '</span>'
-      + (frist ? '<span class="toppfunn__frist"><span aria-hidden="true">frist </span>' + frist + '</span>' : "") + '</p>'
-      + grunnerHtml(r, "toppfunn") + kildeHtml(r, "toppfunn") + '</div>'
-      + '<div class="toppfunn__handlinger">' + leggTilKnapp(r, "knapp knapp--primar")
-      + '<a class="knapp knapp--stille toppfunn__ut" href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer" data-fokus="apne-' + id + '">'
-      + 'Åpne annonsen<span class="skjult"> hos ' + esc(r.selskap || "arbeidsgiveren") + ' i ny fane</span>' + IKON_UT + '</a>'
-      + '<button class="knapp knapp--stille" type="button" data-radar="ikke" data-id="' + id + '" data-fokus="ikke-' + id + '">Ikke interessert</button></div>'
-      + '</article>';
+  /* Alt Radar fant: fordelingen per avdeling, og resten i en rolig liste. */
+  function altHtml(liste, resten){
+    const tall = [4, 3, 2, 1, 0].map(tr => [tr, liste.filter(r => trinn(r.prosent) === tr).length]).filter(([, a]) => a);
+    return '<section class="utvalg-seksjon" id="radarAlle" tabindex="-1" aria-labelledby="radarAlleTittel">'
+      + '<div class="utvalg-seksjon__topp utvalg-seksjon__topp--bryt"><h3 class="utvalg-seksjon__tittel" id="radarAlleTittel">Alt Radar fant</h3>'
+      + '<ul class="utvalg-fordeling" aria-label="Fordelingen etter hvor godt det passer">' + tall.map(([tr, a]) =>
+          '<li data-avd="' + TRINN[tr].avd + '"><span class="avd-prikk" aria-hidden="true"></span>' + TRINN[tr].navn + ' <b>' + a + '</b></li>').join("") + '</ul></div>'
+      + '<div class="utvalg-stripe" aria-hidden="true">' + tall.map(([tr, a]) => '<span data-avd="' + TRINN[tr].avd + '" style="flex-grow:' + a + '"></span>').join("") + '</div>'
+      + (resten.length ? '<div class="utvalg-liste">' + resten.map(r => listeRadHtml(r, "innboks")).join("") + '</div>' : "")
+      + '</section>';
   }
 
-  /* Raden i båndene, under terskelen og blant de lagt til: prosenten med
-     en måler i trinnets farge, stillingen og hvem, fristen, og
-     handlingene. «Hvorfor» folder ut grunnene og kilden under raden. */
-  function radHtml(r, del){
-    const lagt = del === "lagt", id = esc(r.id), tid = domId(r.id), merId = tid + "-mer";
-    const åpen = !lagt && hvorforÅpen.has(r.id);
+  /* Raden i «Alt Radar fant», under terskelen og blant de lagt til.
+     I Nye er hele raden en knapp som setter funnet i fokus; ellers står
+     handlingene til høyre, og «Hvorfor» folder ut grunnene under terskelen. */
+  function listeRadHtml(r, del){
+    const lagt = del === "lagt", erU = del === "under", id = esc(r.id), tid = domId(r.id), merId = tid + "-mer";
+    const åpen = erU && hvorforÅpen.has(r.id);
     const selskap = esc(r.selskap || "arbeidsgiveren");
+    const hode = brikke(r.selskap, "utvalg-rad__monogram")
+      + '<span class="utvalg-rad__tekst"><span class="utvalg-rad__stilling radar__stilling" id="' + tid + '">' + esc(r.stilling) + '</span>'
+      + '<span class="utvalg-rad__hvem" id="' + tid + '-hvem">' + esc(hvem(r)) + '</span></span>';
     const ut = '<a class="handling handling--stille handling--ikon" href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer"'
       + ' data-fokus="apne-' + id + '" aria-label="Åpne annonsen hos ' + selskap + ' i ny fane" title="Åpne annonsen">' + IKON_UT + '</a>';
-    let handlinger;
+    let handlinger = "";
     if(lagt){
       const jobbId = søknadFor(r);
       handlinger = (jobbId ? '<button class="handling handling--hoved" type="button" data-radar="apneSoknad" data-jobb="' + esc(jobbId) + '" data-fokus="soknad-' + id + '">Åpne søknaden</button>'
         : '<span class="funn__borte">Søknaden er slettet</span>') + ut;
-    }else handlinger = '<button class="handling handling--stille funn__hvorfor" type="button" data-radar="hvorfor" data-id="' + id + '" data-fokus="hvorfor-' + id + '"'
+    }else if(erU) handlinger = '<button class="handling handling--stille funn__hvorfor" type="button" data-radar="hvorfor" data-id="' + id + '" data-fokus="hvorfor-' + id + '"'
         + ' aria-expanded="' + åpen + '" aria-controls="' + merId + '">Hvorfor' + HVORFORPIL + '</button>'
-      + leggTilKnapp(r, "handling handling--hoved")
+      + '<button class="handling handling--hoved" type="button" data-radar="leggTil" data-id="' + id + '" data-fokus="legg-' + id + '"' + (legger.has(r.id) ? " disabled" : "") + '>'
+        + (legger.has(r.id) ? "Legger til…" : jobbFor.has(r.id) ? "Prøv igjen" : "Legg til") + '</button>'
       + '<button class="handling handling--stille handling--ikon" type="button" data-radar="ikke" data-id="' + id + '" data-fokus="ikke-' + id + '"'
-        + ' aria-label="Ikke interessert i ' + esc(r.stilling) + ' hos ' + selskap + '" title="Ikke interessert">' + IKON_KRYSS + '</button>'
-      + ut;
-    return '<article class="funn funn--' + del + '" data-trinn="' + trinn(r.prosent) + '" data-radar-id="' + id + '" aria-labelledby="' + tid + ' ' + tid + '-hvem">'
-      + '<div class="funn__maal"><span class="funn__tall">' + r.prosent + '<span class="skjult"> %</span></span>'
-      + '<span class="maaler" aria-hidden="true"><i style="width:' + Math.max(0, Math.min(100, Number(r.prosent) || 0)) + '%"></i></span></div>'
-      + '<div class="funn__kropp"><h4 class="funn__stilling" id="' + tid + '">' + esc(r.stilling) + '</h4>'
-      + '<p class="funn__hvem" id="' + tid + '-hvem">' + esc(hvem(r)) + '</p></div>'
-      + '<p class="funn__frist">' + fristHtml(r, lagt) + '</p>'
-      + '<div class="funn__handlinger">' + handlinger + '</div>'
-      + (lagt ? "" : '<div class="funn__mer" id="' + merId + '"' + (åpen ? "" : " hidden") + '>' + grunnerHtml(r) + kildeHtml(r) + '</div>')
+        + ' aria-label="Ikke interessert i ' + esc(r.stilling) + ' hos ' + selskap + '" title="Ikke interessert">' + IKON_KRYSS + '</button>' + ut;
+    return '<article class="utvalg-rad utvalg-rad--' + del + '" data-radar-id="' + id + '" aria-labelledby="' + tid + ' ' + tid + '-hvem">'
+      + (del === "innboks" ? '<button class="utvalg-rad__hoved" type="button" data-radar="fokus" data-id="' + id + '" data-fokus="fokus-' + id + '">' + hode + '</button>'
+        : '<div class="utvalg-rad__hoved">' + hode + '</div>')
+      + avdBrikke(r)
+      + '<span class="utvalg-rad__frist"' + (!lagt && haster(r) ? " data-hast" : "") + '>' + esc(fristKort(r)) + '</span>'
+      + (handlinger ? '<span class="utvalg-rad__handlinger">' + handlinger + '</span>' : "")
+      + (erU ? '<div class="utvalg-rad__mer" id="' + merId + '"' + (åpen ? "" : " hidden") + '>' + grunnerHtml(r) + kildeHtml(r) + '</div>' : "")
       + '</article>';
+  }
+  const grunnerHtml = r => (r.grunner ?? []).length
+    ? '<ul class="funn__grunner" aria-label="Vurderingen">' + r.grunner.map(g => '<li>' + esc(g) + '</li>').join("") + '</ul>' : "";
+  function kildeHtml(r){
+    const p = publisert(r);
+    return '<p class="funn__kilde">Fra ' + esc(KILDENAVN[r.kilde] || r.kilde)
+      + (p ? ", " + p.ord.toLocaleLowerCase("nb") + ' <time class="radar__tid" datetime="' + esc(p.iso) + '">' + p.dato + '</time>' : "") + '</p>';
   }
 
   /* Det Radar vurderte mellom 40 % og terskelen. Samme rader, ett trinn
@@ -917,16 +968,30 @@ export function lagRadarflate(api){
   function underHtml(){
     const u = under(), terskel = innstillinger().terskel;
     const hode = terskel > 40 ? '<div class="radar__underhode"><p class="radar__undertekst">'
-      + esc(bind("Vurdert lavere enn " + terskel + " %. De står her i 30 dager, og flytter til innboksen om du senker terskelen.")) + '</p>'
+      + esc(bind("Vurdert lavere enn " + terskel + " %. De står her i 30 dager, og flytter til Nye om du senker terskelen.")) + '</p>'
       + '<button class="knapp knapp--liten" type="button" data-radar="tilTerskel" data-fokus="tilTerskel">Endre terskelen</button></div>' : "";
-    return '<div id="radarUnder">' + hode + (u.length ? '<div class="stabel">' + u.map(r => radHtml(r, "under")).join("") + '</div>'
+    return '<div id="radarUnder">' + hode + (u.length ? '<div class="utvalg-liste utvalg-liste--under">' + u.map(r => listeRadHtml(r, "under")).join("") + '</div>'
       : tomHtml("Ingenting under terskelen", terskel > 40 ? "Radar har ikke vurdert noe til mellom 40 og " + (terskel - 1) + " % de siste 30 dagene."
-        : "Med terskelen på 40 % står alt Radar vurderer, i innboksen.")) + '</div>';
+        : "Med terskelen på 40 % står alt Radar vurderer, under Nye.")) + '</div>';
   }
   function lagtHtml(){
     const l = lagtTil();
-    return l.length ? '<div class="stabel">' + l.map(r => radHtml(r, "lagt")).join("") + '</div>'
-      : tomHtml("Ingenting lagt til ennå", "Det du legger til fra innboksen, blir en søknad under Frister og står her etterpå.");
+    return l.length ? '<div class="utvalg-liste">' + l.map(r => listeRadHtml(r, "lagt")).join("") + '</div>'
+      : tomHtml("Ingenting lagt til ennå", "Det du legger til fra Nye, blir en søknad under Frister og står her etterpå.");
+  }
+
+  /* Kjøringer: tallene fra siste kjøring som en trakt, og tabellen. */
+  function kjøringerPanelHtml(){
+    const k = sisteKjøring();
+    const alle = !!k?.kilder?.some(s => s.sok);
+    const trinnene = [[k.kandidater, alle ? "aktive gjennomsøkt" : k.kandidater === 1 ? "ny stilling" : "nye stillinger"],
+      [k.passet, "passet søkeordene"], [k.vurdert, "vurdert mot CV-en"], [k.treff, "nådde terskelen"]];
+    return '<section class="kort radar__kjoringer" aria-label="Kjøringer">'
+      + '<ol class="radartrakt" aria-label="Siste kjøring, ' + esc(når(k.start)) + '">' + trinnene.map(([n, navn], i) =>
+          '<li class="radartrakt__trinn">' + (i ? '<span class="radartrakt__pil">' + TRAKTPIL + '</span>' : "")
+          + '<span class="radartrakt__tall">' + (n != null ? esc(tallTekst(n)) : '<span aria-hidden="true">–</span><span class="skjult">ikke kjent</span>') + '</span>'
+          + '<span class="radartrakt__navn">' + navn + '</span></li>').join("") + '</ol>'
+      + kjøringerHtml() + '</section>';
   }
 
   function vekslHvorfor(id, knapp){
@@ -937,9 +1002,9 @@ export function lagRadarflate(api){
     if(mer) mer.hidden = !åpen;
   }
 
-  /* Etter at en rad har gått ut av innboksen eller «Under terskelen»,
-     går fokus til den som nå står på samme plass, så man kan gå gjennom
-     listen med tastaturet uten å miste plassen. */
+  /* Etter at et funn har gått ut av Nye eller «Under terskelen», går
+     fokus til det som nå står på samme plass: i Nye er det funnet som
+     rykker opp i toppkortet. */
   function fokuserEtter(id, liste, del = iInnboks){
     const i = liste.findIndex(r => r.id === id);
     const igjen = del();
@@ -999,6 +1064,7 @@ export function lagRadarflate(api){
       /* Raden kan ha flyttet under terskelen i mellomtiden, og brukeren
          kan ha byttet fane; den skal stå synlig når fokus settes tilbake. */
       if(rot) fane = erUnder(id) ? "under" : "innboks";
+      if(!erUnder(id)) fokusId = id;
       tegnInnboks();
       requestAnimationFrame(() => rot?.querySelector('[data-fokus="legg-' + CSS.escape(id) + '"]')?.focus());
     });
@@ -1011,6 +1077,23 @@ export function lagRadarflate(api){
       if(e?.code !== "finnes-ikke" && e?.code !== "utlogget") api.varsle(e?.message || "Fikk ikke fjernet stillingen");
     }finally{ utsatt.delete(id); tegnInnboks(); }
   }
+  /* Hurtigtastene i Nye: L legger til, X avviser, J og K blar. De
+     virker når Radar står og fokus ikke er i et felt, en dialog eller
+     panelet ved siden av. */
+  addEventListener("keydown", e => {
+    if(!rot?.isConnected || !t || e.defaultPrevented || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key.toLocaleLowerCase("nb");
+    if(!["l", "x", "j", "k"].includes(k) || aktivFane() !== "innboks") return;
+    if(e.target.closest?.("input, textarea, select, [contenteditable], .skuff, .detalj, .port, [role=dialog]")) return;
+    if(document.querySelector(".skuff.er-apen")) return;
+    const liste = iInnboks();
+    if(!liste.length) return;
+    const i = iFokus(liste), r = liste[i];
+    e.preventDefault();
+    if(k === "l") leggTil(r.id);
+    else if(k === "x") ikkeInteressert(r.id);
+    else blaTil(i + (k === "j" ? 1 : -1));
+  });
   addEventListener("visibilitychange", () => {
     if(document.visibilityState === "hidden") for(const id of [...utsatt.keys()]) fullførIkkeInteressert(id);
   });
@@ -1237,6 +1320,20 @@ export function lagRadarflate(api){
     else if(hva === "tilTerskel") tilTerskel();
     else if(hva === "fane") velgFane(b.dataset.fane, b.getAttribute("role") !== "tab");
     else if(hva === "hvorfor") vekslHvorfor(b.dataset.id, b);
+    else if(hva === "forrige" || hva === "neste"){
+      blaTil(iFokus() + (hva === "neste" ? 1 : -1));
+      /* Står knappen sperret ved enden, går fokus til den andre. */
+      if(!rot.contains(document.activeElement)) rot.querySelector('[data-fokus="' + (hva === "neste" ? "forrige" : "neste") + '"]:not(:disabled)')?.focus();
+    }
+    else if(hva === "fokus"){
+      blaTil(iInnboks().findIndex(r => r.id === b.dataset.id), "kort");
+      rot.querySelector('[data-fokus="legg-' + CSS.escape(b.dataset.id) + '"]')?.focus({ preventScroll: true });
+    }
+    else if(hva === "seAlle"){
+      const el = rot.querySelector("#radarAlle");
+      el?.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion:reduce)").matches ? "auto" : "smooth" });
+      el?.focus({ preventScroll: true });
+    }
     else if(hva === "tilCv") api.tilCv(b);
     else if(hva === "tilNokkel") api.tilNøkkel(b);
   }
@@ -1319,9 +1416,14 @@ export function lagRadarflate(api){
 
   function undertittel(){
     if(!t) return lastFeil ? "Kunne ikke leses" : "";
-    const n = nye().length, ord = n === 1 ? " ny" : " nye";
-    if(!innstillinger().pa) return "Av" + (lagtTil().length || n ? " · <b>" + n + "</b>" + ord + " i innboksen" : "");
-    return "<b>" + n + "</b>" + ord + " · <b>" + lagtTil().length + "</b> lagt til";
+    /* Én setning, regnet ut fra det som står i Nye: hvor mange, og hvor
+       mange av dem som passer godt (80 % og over). */
+    const n = nye().length, godt = nye().filter(r => r.prosent >= 80).length;
+    const hvor = n === 1 ? "<b>1</b> ny stilling." : "<b>" + n + "</b> nye stillinger.";
+    if(!innstillinger().pa) return "Radar er av." + (n ? " " + hvor : "");
+    if(!n) return "Ingen nye stillinger.";
+    if(n === 1) return hvor + (godt ? " Den passer godt." : "");
+    return hvor + (godt === n ? " Alle passer godt." : godt ? " <b>" + godt + "</b> av dem passer godt." : "");
   }
   /* Tallet i sidepanelet: bare når Radar er på, eller har noe å vise. */
   function tall(){

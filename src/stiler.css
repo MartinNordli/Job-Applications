@@ -5,9 +5,11 @@
    brukes bare til å dele rader *inni* én flate. Kulør betyr hastegrad,
    ingenting annet, med to unntak. --hav er appens interaksjonsfarge
    (valgt fane, fokusring, diagramfyll) og står aldri for et varsel.
-   Treff-skalaen (--treff-1 til 4) sier hvor godt en stilling passer,
-   og brukes bare i Radar. Der står fargen aldri alene: tallet står
-   alltid ved siden av.
+   Radar har sitt eget uttrykk: et mørkt kort med metall som aksent,
+   avdelingstoner (skifer, salvie, stein) som sier hvor godt noe passer,
+   alltid med navnet eller prosenten ved siden av, og dempede brikker
+   for arbeidsgiverne. I Radar er bare en frist som haster, rød; rav
+   brukes ikke der.
 
    Temaet: Lin og Sot står én gang, i light-dark(). Systemet velger
    mellom dem som standard, og color-scheme på :root lar det manuelle
@@ -62,16 +64,49 @@
   --graf-3: var(--hav);
   --graf-4: light-dark(#2A3A97, #9DBAD1);
 
-  /* --- treff: hvor godt en stilling passer, i fire trinn fra «verdt å
-         lese» (1) til «midt i blinken» (4), og vasken under toppfunnet.
-         Bare i Radar. Petrol ligger langt fra ild og rav, så et treff
-         aldri leses som en frist. Ink, Blush og Midnatt bruker de samme
-         verdiene gjennom color-scheme. --- */
-  --treff-1:  light-dark(#76BFCB, #2A616C);
-  --treff-2:  light-dark(#359BAE, #368794);
-  --treff-3:  light-dark(#00778C, #50AEBA);
-  --treff-4:  light-dark(#005266, #8EDADE);
-  --treff-vask:light-dark(#EAF8FB, #10272C);
+  /* --- Radar: det mørke kortet og metallet. Kortet er varmt blekk i Lin
+         og en løftet flate med ring i Sot; Ink, Blush og Midnatt setter
+         sine egne lenger nede. Metallet er kortets eneste aksent: ringen,
+         hakene og primærknappen. Teksttrinnene på kortet klarer 4.5:1. --- */
+  --utvalg:        light-dark(#1A1815, #26211B);
+  --utvalg-2:      light-dark(#2E2A23, #352E25);   /* brikke og knapp på kortet */
+  --utvalg-blekk:  light-dark(#F4EFE6, #F4EFE6);
+  --utvalg-blekk-2:light-dark(#D6CFC3, #D6CFC3);
+  --utvalg-blekk-3:light-dark(#B9B1A4, #B9B1A4);
+  --utvalg-flate:  rgba(244,239,230,.06);
+  --utvalg-kant:   rgba(244,239,230,.15);
+  --utvalg-strek:  rgba(244,239,230,.09);
+  --utvalg-spor:   rgba(244,239,230,.07);
+  --utvalg-ring:   light-dark(transparent, rgba(231,210,166,.14));
+  --utvalg-ild:    #FFA27E;                        /* en frist som haster, på kortet */
+  --utvalg-ild-vask:rgba(255,122,69,.14);
+  --metall:        #E7D2A6;
+  --metall-blekk:  #1A1815;
+  --metall-svak:   rgba(231,210,166,.16);
+  /* «Søk etter nye»: kortets blekk med metallikon på lyse flater,
+     metallfylt med mørk tekst på mørke. */
+  --sok:           light-dark(#1A1815, #E7D2A6);
+  --sok-blekk:     light-dark(#F4EFE6, #16130F);
+  --sok-ikon:      light-dark(#E7D2A6, #16130F);
+  /* Midt i blinken er selve kortet: mørk på lyse flater, metall på mørke. */
+  --blink:         light-dark(#1A1815, #E7D2A6);
+  /* Avdelingene: prikk og fyll, vask og tekst på vasken. */
+  --skifer:        light-dark(#3F5C83, #8FA9CC);
+  --skifer-vask:   light-dark(#E7EDF5, #232B36);
+  --skifer-t:      light-dark(#2F4A6E, #A9C0DE);
+  --salvie:        light-dark(#5C7A68, #93AE9B);
+  --salvie-vask:   light-dark(#E6EEE8, #222B25);
+  --salvie-t:      light-dark(#3E5A49, #AFC7B6);
+  --stein:         light-dark(#A39A8E, #A39A8E);
+  --stein-vask:    light-dark(#EFEBE5, #2A2620);
+  --stein-t:       light-dark(#5E574F, #C5BBAE);
+  /* Arbeidsgiverbrikkene: seks dempede par, valgt fra navnet. */
+  --arbeid-1: light-dark(#DFE6EE, #243042); --arbeid-1-t: light-dark(#2F4A6E, #A9C0DE);
+  --arbeid-2: light-dark(#EFE3D6, #392C21); --arbeid-2-t: light-dark(#7A4A26, #E2B98F);
+  --arbeid-3: light-dark(#DEE9E2, #24302A); --arbeid-3-t: light-dark(#3E5A49, #AFC7B6);
+  --arbeid-4: light-dark(#E9E3D8, #332D20); --arbeid-4-t: light-dark(#6B5520, #D8C28F);
+  --arbeid-5: light-dark(#DCE8E7, #1F3230); --arbeid-5-t: light-dark(#1E5E57, #97CEC6);
+  --arbeid-6: light-dark(#F1E1DE, #392624); --arbeid-6-t: light-dark(#7E3B33, #E3A9A0);
 
   /* --- varselet er sin egen flate i begge temaer: mørk mot lys bunn,
          hevet og ringet mot mørk. --- */
@@ -114,6 +149,8 @@
   --loft:0 1px 2px rgba(24,26,30,.05), 0 4px 14px rgba(24,26,30,.07);
   --loft-2:0 2px 4px rgba(24,26,30,.06), 0 10px 28px rgba(24,26,30,.10);
   --loft-3:0 8px 16px rgba(24,26,30,.08), 0 24px 60px rgba(24,26,30,.16);
+  --utvalg-loft:0 2px 6px rgba(26,24,21,.12), 0 24px 60px rgba(26,24,21,.22);
+  --sok-loft:0 1px 2px rgba(26,24,21,.2), 0 10px 24px rgba(26,24,21,.18);
 
   --pil:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%235C6166' stroke-width='1.5'/%3E%3C/svg%3E");
 }
@@ -127,6 +164,8 @@
     --loft:0 0 0 1px #262019, 0 1px 3px rgba(0,0,0,.34);
     --loft-2:0 0 0 1px #2F281F, 0 4px 12px rgba(0,0,0,.42);
     --loft-3:0 0 0 1px #362E24, 0 14px 44px rgba(0,0,0,.62);
+    --utvalg-loft:0 0 0 1px rgba(231,210,166,.14), 0 18px 40px rgba(0,0,0,.45);
+    --sok-loft:0 1px 2px rgba(0,0,0,.4), 0 10px 24px rgba(0,0,0,.3);
     --pil:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23968F84' stroke-width='1.5'/%3E%3C/svg%3E");
   }
 }
@@ -135,6 +174,8 @@
   --loft:0 0 0 1px #262019, 0 1px 3px rgba(0,0,0,.34);
   --loft-2:0 0 0 1px #2F281F, 0 4px 12px rgba(0,0,0,.42);
   --loft-3:0 0 0 1px #362E24, 0 14px 44px rgba(0,0,0,.62);
+  --utvalg-loft:0 0 0 1px rgba(231,210,166,.14), 0 18px 40px rgba(0,0,0,.45);
+  --sok-loft:0 1px 2px rgba(0,0,0,.4), 0 10px 24px rgba(0,0,0,.3);
   --pil:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23968F84' stroke-width='1.5'/%3E%3C/svg%3E");
 }
 :root[data-tema="lys"]{color-scheme:light}
@@ -160,6 +201,13 @@
   --hav:#1A2232; --hav-t:#1A2232; --hav-vask:#E9E3D8;
   /* Aksenten er det mørkeste blekket, så den kan ikke være midttrinnet. */
   --graf-1:#A9B1C1; --graf-2:#7A869C; --graf-3:#4D5970; --graf-4:#1A2232;
+  /* Radar: champagne på marine. */
+  --utvalg:#1A2232; --utvalg-2:#26304A; --utvalg-blekk:#F4F2EE; --utvalg-blekk-2:#D2D6DF; --utvalg-blekk-3:#A9B0BF;
+  --utvalg-flate:rgba(244,242,238,.06); --utvalg-kant:rgba(244,242,238,.15); --utvalg-strek:rgba(244,242,238,.09); --utvalg-spor:rgba(244,242,238,.09);
+  --utvalg-ring:transparent; --metall:#E4D3AE; --metall-blekk:#1A2232; --metall-svak:rgba(228,211,174,.18);
+  --sok:#1A2232; --sok-blekk:#F7F5F0; --sok-ikon:#E4D3AE; --blink:#1A2232;
+  --utvalg-loft:0 2px 6px rgba(26,34,50,.12), 0 24px 60px rgba(26,34,50,.22);
+  --sok-loft:0 1px 2px rgba(26,34,50,.2), 0 10px 24px rgba(26,34,50,.18);
   --varsel-bunn:#1A2232; --varsel-blekk:#F7F5F0; --varsel-lenke:#B9C4E0; --varsel-ring:transparent;
   --primar:#1A2232; --primar-blekk:#FFFFFF; --primar-hover:#2C3650;
   --slor:rgba(26,34,50,.28);
@@ -181,6 +229,14 @@
   --mose:#2E7A57; --mose-t:#2A7350; --mose-vask:#E2F0E8;
   --hav:#A84D62; --hav-t:#913F54; --hav-vask:#F4D6DC;
   --graf-1:#DDA9B5; --graf-2:#C27A8C; --graf-3:#A84D62; --graf-4:#6F2F40;
+  /* Radar: rosegull på vin. Avdelingsvaskene er dratt mot rosa flater. */
+  --utvalg:#3A1D28; --utvalg-2:#4C2836; --utvalg-blekk:#FBF1F2; --utvalg-blekk-2:#E8D5DA; --utvalg-blekk-3:#CBADB5;
+  --utvalg-flate:rgba(251,241,242,.06); --utvalg-kant:rgba(251,241,242,.16); --utvalg-strek:rgba(251,241,242,.10); --utvalg-spor:rgba(251,241,242,.10);
+  --utvalg-ring:transparent; --metall:#F2C4B6; --metall-blekk:#3A1D28; --metall-svak:rgba(242,196,182,.2);
+  --sok:#3A1D28; --sok-blekk:#FBF1F2; --sok-ikon:#F2C4B6; --blink:#3A1D28;
+  --skifer-vask:#E9EDF4; --salvie-vask:#E8EFEA; --stein:#A6979B; --stein-vask:#F3ECEC; --stein-t:#5E4E55;
+  --utvalg-loft:0 2px 6px rgba(58,29,40,.14), 0 24px 60px rgba(58,29,40,.24);
+  --sok-loft:0 1px 2px rgba(58,29,40,.2), 0 10px 24px rgba(58,29,40,.2);
   --varsel-bunn:#2B2226; --varsel-blekk:#FBF5F6; --varsel-lenke:#F2B8C6; --varsel-ring:transparent;
   --primar:#A84D62; --primar-blekk:#FFFFFF; --primar-hover:#934155;
   --slor:rgba(43,34,38,.28);
@@ -202,6 +258,16 @@
   --mose:#84AE8F; --mose-t:#94BE9F; --mose-vask:#1C2B25;
   --hav:#D8C3A1; --hav-t:#E3D2B5; --hav-vask:#2A3344;
   --graf-1:#5E5443; --graf-2:#8C7B60; --graf-3:#D8C3A1; --graf-4:#F0E2C8;
+  /* Radar: sand på et løftet kort med ring. */
+  --utvalg:#1B2230; --utvalg-2:#26304A; --utvalg-blekk:#F5F2EC; --utvalg-blekk-2:#D0D5DF; --utvalg-blekk-3:#A7AFBE;
+  --utvalg-flate:rgba(245,242,236,.06); --utvalg-kant:rgba(245,242,236,.15); --utvalg-strek:rgba(245,242,236,.09); --utvalg-spor:rgba(245,242,236,.08);
+  --utvalg-ring:rgba(216,195,161,.14); --metall:#D8C3A1; --metall-blekk:#1A2232; --metall-svak:rgba(216,195,161,.16);
+  --sok:#D8C3A1; --sok-blekk:#1A2232; --sok-ikon:#1A2232; --blink:#D8C3A1;
+  --skifer-vask:#1F2B3D; --salvie-vask:#1C2A26; --stein:#9C978F; --stein-vask:#232836; --stein-t:#BDB8B0;
+  --arbeid-1:#22304A; --arbeid-2:#33293A; --arbeid-3:#1F2E30; --arbeid-4:#2E2C30; --arbeid-5:#1C3036; --arbeid-6:#33263A;
+  --arbeid-2-t:#E2B98F; --arbeid-4-t:#D8C28F; --arbeid-6-t:#E3A9A0;
+  --utvalg-loft:0 0 0 1px rgba(216,195,161,.14), 0 18px 40px rgba(0,0,0,.45);
+  --sok-loft:0 1px 2px rgba(0,0,0,.4), 0 10px 24px rgba(0,0,0,.3);
   --varsel-bunn:#2A3344; --varsel-blekk:#F5F2EC; --varsel-lenke:#E3D2B5; --varsel-ring:#3A4558;
   --primar:#D8C3A1; --primar-blekk:#1A2232; --primar-hover:#E6D5B8;
   --slor:rgba(4,7,12,.6);
@@ -1314,117 +1380,269 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .knapp:disabled:hover{box-shadow:var(--loft)}
 .knapp--primar:disabled:hover{background:var(--primar)}
 
-/* ---------- Radar ----------
-   Innboksen er en rangering: bånd etter treffskalaen, best først, i
-   samme materiale som listen (ett kort per bånd, hårstreker mellom
-   radene). Treff-fargen sier hvor godt noe passer og står alltid ved
-   tallet; ild og rav er fortsatt bare frist. --hav er fokus, valgt
-   fane, pulsen mens Radar søker og forbruksstreken. */
+/* ---------- Radar: dagens utvalg ----------
+   Ett funn om gangen. Det i fokus står på et mørkt kort med metall på
+   ringen, hakene og primærknappen; resten venter i køen og i en rolig
+   liste på Hireds lyse flater. Avdelingene har hver sin dempede tone,
+   alltid med navnet eller prosenten ved siden av. Bare en frist som
+   haster, er rød; rav brukes ikke her. */
 .radar{container:radar / inline-size}
-.radar [data-trinn="4"]{--farge:var(--treff-4)}
-.radar [data-trinn="3"]{--farge:var(--treff-3)}
-.radar [data-trinn="2"]{--farge:var(--treff-2)}
-.radar [data-trinn="1"]{--farge:var(--treff-1)}
-.radar [data-trinn="0"]{--farge:var(--blekk-3)}
-.radar .prikk{flex:none;display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--farge)}
+.radar [data-avd="blink"]{--avd:var(--blink);--avd-vask:var(--utvalg);--avd-t:var(--metall)}
+.radar [data-avd="skifer"]{--avd:var(--skifer);--avd-vask:var(--skifer-vask);--avd-t:var(--skifer-t)}
+.radar [data-avd="salvie"]{--avd:var(--salvie);--avd-vask:var(--salvie-vask);--avd-t:var(--salvie-t)}
+.radar [data-avd="stein"]{--avd:var(--stein);--avd-vask:var(--stein-vask);--avd-t:var(--stein-t)}
+.radar [data-avd="svak"]{--avd:var(--blekk-3);--avd-vask:var(--innfelt-2);--avd-t:var(--blekk-2)}
+/* Arbeidsgiverbrikkene: seks dempede par, valgt fra navnet. */
+.radar [data-tone="1"]{background:var(--arbeid-1);color:var(--arbeid-1-t)}
+.radar [data-tone="2"]{background:var(--arbeid-2);color:var(--arbeid-2-t)}
+.radar [data-tone="3"]{background:var(--arbeid-3);color:var(--arbeid-3-t)}
+.radar [data-tone="4"]{background:var(--arbeid-4);color:var(--arbeid-4-t)}
+.radar [data-tone="5"]{background:var(--arbeid-5);color:var(--arbeid-5-t)}
+.radar [data-tone="6"]{background:var(--arbeid-6);color:var(--arbeid-6-t)}
 .radar__laster{margin:22px 0 0}
+.radar__tid{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ikon{display:block;flex:none}
 
-/* Toppen: linjen med siste og neste søk, og trakten under. */
-.radar__topp{margin:0 0 24px}
-.radar__linje{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;min-height:40px}
-.radar__meta{flex:1 1 0;min-width:0;margin:0;font-size:13px;line-height:1.5;color:var(--blekk-2)}
-.radar__skille{margin:0 9px;color:var(--blekk-3)}
-.radar__tid{font-family:var(--mono);font-size:.92em;font-variant-numeric:tabular-nums;white-space:nowrap}
-.radar__soker{display:inline-flex;align-items:center;gap:8px;color:var(--blekk)}
-.radar__puls{flex:none;width:7px;height:7px;border-radius:50%;background:var(--hav);animation:brevPuls 1.7s ease-in-out infinite}
-.radar__klokke{color:var(--blekk-2)}
+/* Tittelen er Radars egen: større, og setningen under sier hvor mange
+   som passer. Fanene og søket står i raden rett under. */
+.hoved[data-visning="radar"] .tittelrad{margin-bottom:14px}
+.hoved[data-visning="radar"] .tittel{font-size:40px;line-height:1.05;letter-spacing:-.03em}
+.hoved[data-visning="radar"] .tittel__und{margin-top:8px;font-size:15px}
+
+.radar__topprad{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px 24px;margin:0 0 30px}
+.radar__sok{display:flex;align-items:center;gap:16px;margin-left:auto;min-width:0}
+.radar__meta{display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin:0;max-width:280px;
+             font-size:13px;line-height:1.4;color:var(--blekk-2);text-align:right}
+.radar__meta .radar__tid{color:var(--blekk)}
+.radar__metalinje--feil{color:var(--ild-t)}
+.radar__metalinje--notat{color:var(--blekk-3)}
+/* «Søk etter nye»: den store pillen med radarikonet i metallet. Mens
+   det søkes, pulserer kjernen i ikonet og klokken går. */
+.radar__sokknapp{flex:none;display:inline-flex;align-items:center;gap:12px;height:52px;padding:0 26px 0 20px;border:0;border-radius:999px;
+                 background:var(--sok);color:var(--sok-blekk);font:600 16px/1 var(--sans);cursor:pointer;box-shadow:var(--sok-loft);
+                 transition:box-shadow .12s ease,transform .12s ease}
+.radar__sokknapp:hover:not(:disabled){box-shadow:var(--sok-loft),0 0 0 3px var(--metall-svak)}
+.radar__sokknapp:disabled{cursor:default}
+.radar__sokikon{flex:none;color:var(--sok-ikon)}
+.radar__sok[data-soker] .radar__sokkjerne{animation:brevPuls 1.2s ease-in-out infinite}
+.radar__klokke{font-size:14px;font-weight:500;opacity:.8}
 .radar__klokke:empty{display:none}
-.radar__sok{flex:none;margin-left:auto;min-width:92px}
 
-/* Trakten: fire like brede kolonner, pila i mellomrommet mellom dem. */
-.radartrakt{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0 40px;margin:16px 0 0;padding:0;list-style:none;
-            transition:opacity .16s ease}
-.radar__topp[data-soker] .radartrakt{opacity:.45}
-.radartrakt__trinn{position:relative;min-width:0}
-.radartrakt__pil{position:absolute;left:-26px;top:12px;color:var(--blekk-3)}
-.radartrakt__tall{display:block;font-family:var(--mono);font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1.1;
-                  font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--blekk)}
-.radartrakt__trinn:last-child .radartrakt__tall{color:var(--treff-4)}
-.radartrakt__navn{display:block;margin-top:3px;font-size:12.5px;line-height:1.35;color:var(--blekk-2)}
-/* Stolpene er nøytrale og lineære; bare det som nådde terskelen er treff. */
-.radartrakt__stolpe{display:block;height:6px;margin-top:11px;border-radius:3px;background:var(--linje)}
-.radartrakt__stolpe i{display:block;height:100%;width:calc(var(--l) * 100%);border-radius:3px;background:var(--blekk-3);transform-origin:left center}
-.radartrakt__stolpe i[data-har]{min-width:3px}
-.radartrakt__trinn:last-child .radartrakt__stolpe i{background:var(--treff-4)}
-/* Det ene bevegelsesmomentet: når en kjøring er ferdig, vokser
-   stolpene fram, den neste et lite øyeblikk etter den forrige. */
-.radartrakt[data-ny] .radartrakt__stolpe i{animation:stolpeFram .14s cubic-bezier(.2,.8,.2,1) both}
-.radartrakt[data-ny] .radartrakt__trinn:nth-child(2) i{animation-delay:.02s}
-.radartrakt[data-ny] .radartrakt__trinn:nth-child(3) i{animation-delay:.04s}
-.radartrakt[data-ny] .radartrakt__trinn:nth-child(4) i{animation-delay:.06s}
-@keyframes stolpeFram{from{transform:scaleX(0)}}
-/* Innboksen per trinn: prikken i trinnets farge, navnet og tallet. */
-.radar__skala{display:flex;flex-wrap:wrap;gap:8px 22px;margin:20px 0 0;padding:0;list-style:none;font-size:13px;color:var(--blekk-2)}
-.radar__skala li{display:flex;align-items:center;gap:8px;white-space:nowrap}
-.radar__skala b{font-family:var(--mono);font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--blekk)}
-.radar .prikk--hul{background:none;box-shadow:inset 0 0 0 1.5px var(--blekk-3)}
-.radar__notat{margin:14px 0 0;font-size:12.5px;line-height:1.5;color:var(--blekk-2)}
-.radar__topp[data-feil] .radar__notat{color:var(--ild-t)}
-@container radar (max-width:600px){
-  .radar__del{display:block}
-  .radar__skille{display:none}
-  .radartrakt{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 32px}
-  .radartrakt__pil{left:-22px}
-  .radartrakt__trinn:nth-child(3) .radartrakt__pil{display:none}
-  .radartrakt__tall{font-size:26px}
-  .radar__skala{gap:8px 16px}
-}
-
-/* Radar av: vasken og blinken sier hva siden er, før teksten gjør det. */
-.radar__intro{display:flex;gap:24px;align-items:flex-start;margin:4px 0 22px;padding:26px 28px 28px;
-              border-radius:var(--r);background:var(--treff-vask);box-shadow:var(--loft)}
-.radar__motiv{flex:none;display:block}
-.radar__ring[data-ring="0"]{fill:var(--treff-1);opacity:.3}
-.radar__ring[data-ring="1"]{fill:var(--treff-2);opacity:.45}
-.radar__ring[data-ring="2"]{fill:var(--treff-3);opacity:.75}
-.radar__ring[data-ring="3"]{fill:var(--treff-4)}
-.radar__ring[data-ring="4"]{fill:var(--treff-vask)}
-.radar__introkropp{min-width:0}
-.radar__introtittel{margin:2px 0 8px;font-size:18px;font-weight:600;letter-spacing:-.018em}
-.radar__introtekst{max-width:60ch;margin:0 0 10px;font-size:14px;line-height:1.55;color:var(--blekk-2)}
-.radar__introtekst--liten{margin-bottom:18px;font-size:12.5px}
-@container radar (max-width:520px){
-  .radar__intro{flex-direction:column;gap:16px;padding:22px 20px}
-  .radar__motiv{width:56px;height:56px}
-}
-
-/* Fanene: samme bryter som i skuffen, så bred som den trenger. På en
-   smal skjerm rulles de sidelengs inni seg selv, aldri hele siden. */
-.radar__faner{display:flex;gap:2px;width:fit-content;max-width:100%;margin:2px 0 18px;padding:3px;border-radius:var(--r-s);
+/* Fanene: en segmentkontroll. På en smal skjerm rulles de sidelengs inni
+   seg selv, med en fade på den siden det er mer (se flyt.js). */
+.radar__faner{display:flex;gap:2px;width:fit-content;max-width:100%;padding:4px;border-radius:12px;
               background:var(--innfelt-2);overflow-x:auto;scrollbar-width:none}
 .radar__faner::-webkit-scrollbar{display:none}
-/* Flyter fanene over, toner kanten ut på den siden det er mer (se flyt.js). */
-/* Den valgte fanen rulles fram med plass til fadene, så den aldri står under dem. */
 .flyt{scroll-padding-inline:44px}
 .flyt[data-flyt-slutt]{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 36px),transparent)}
 .flyt[data-flyt-start]{-webkit-mask-image:linear-gradient(to left,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(to left,#000 calc(100% - 36px),transparent)}
 .flyt[data-flyt-start][data-flyt-slutt]{-webkit-mask-image:linear-gradient(to right,transparent,#000 36px,#000 calc(100% - 36px),transparent);
                                         mask-image:linear-gradient(to right,transparent,#000 36px,#000 calc(100% - 36px),transparent)}
-.radar__fane{flex:none;display:flex;align-items:center;gap:7px;min-height:34px;padding:6px 13px;border:0;border-radius:var(--r-xs);
-             background:none;font-size:13.5px;font-weight:600;color:var(--blekk-2);cursor:pointer;white-space:nowrap;
+.radar__fane{flex:none;display:flex;align-items:center;gap:6px;height:34px;padding:0 14px;border:0;border-radius:9px;
+             background:none;font-size:14px;font-weight:500;color:var(--blekk-2);cursor:pointer;white-space:nowrap;
              transition:background .12s ease,color .12s ease}
 .radar__fane:hover{color:var(--blekk)}
-.radar__fane[aria-selected="true"]{background:var(--kort);color:var(--blekk);box-shadow:var(--loft)}
+.radar__fane[aria-selected="true"]{background:var(--kort);color:var(--blekk);font-weight:600;box-shadow:var(--loft)}
 .radar__fane:focus-visible{outline-offset:-2px}
-.radar__fanetall{font-family:var(--mono);font-size:11px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--blekk-3)}
+.radar__fanetall{font-family:var(--mono);font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--blekk-3)}
 /* Ulagrede innstillinger: en prikk i blekket, og ordene for skjermlesere. */
 .radar__fanemerke{flex:none;width:6px;height:6px;border-radius:50%;background:currentColor}
 .radar__panel{container:radarpanel / inline-size;border-radius:var(--r)}
 .radar__panel:focus-visible{outline-offset:4px}
 
+@container radar (max-width:640px){
+  .radar__topprad{flex-direction:column;align-items:stretch;gap:16px;margin-bottom:22px}
+  .radar__sok{justify-content:space-between;margin-left:0}
+  .radar__meta{align-items:flex-start;text-align:left}
+  .radar__sokknapp{padding:0 22px 0 18px}
+}
+
+/* ---------- toppkortet ---------- */
+.utvalg{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:28px 48px;
+        padding:34px 38px 30px;border-radius:28px;background:var(--utvalg);color:var(--utvalg-blekk);box-shadow:var(--utvalg-loft)}
+.utvalg :focus-visible{outline-color:var(--metall)}
+.utvalg__sirkel{position:absolute;border-radius:50%;box-shadow:inset 0 0 0 1px var(--metall-svak);pointer-events:none}
+.utvalg__sirkel--1{right:-120px;top:-160px;width:520px;height:520px;opacity:.7}
+.utvalg__sirkel--2{right:-40px;top:-80px;width:360px;height:360px;opacity:.55}
+.utvalg__kropp{position:relative;display:flex;flex-direction:column;gap:22px;min-width:0}
+.utvalg__hvem{display:flex;align-items:center;gap:14px}
+.utvalg__monogram{flex:none;display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:13px;
+                  font-size:16px;font-weight:700}
+/* På det mørke kortet er brikken kortets egen, med metallet i, uansett tone. */
+.radar .utvalg__monogram{background:var(--utvalg-2);color:var(--metall);box-shadow:inset 0 0 0 1px var(--metall-svak)}
+.utvalg__hvemtekst{display:flex;flex-direction:column;gap:2px;min-width:0}
+.utvalg__selskap{font-size:16px;font-weight:600;overflow-wrap:anywhere}
+.utvalg__sted{font-size:14px;color:var(--utvalg-blekk-3)}
+.utvalg__hode{display:flex;flex-direction:column;gap:14px}
+.utvalg__stilling{margin:0;font-size:46px;line-height:1.02;font-weight:700;letter-spacing:-.03em;overflow-wrap:anywhere;text-wrap:balance}
+.utvalg__brikker{display:flex;flex-wrap:wrap;gap:8px;margin:0}
+.utvalg__brikke{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;
+                box-shadow:inset 0 0 0 1px var(--utvalg-kant);font-size:13px;font-weight:500;color:var(--utvalg-blekk-2);white-space:nowrap}
+.utvalg__brikke .radar__tid{font-size:12.5px}
+.utvalg__brikke--haster{gap:7px;background:var(--utvalg-ild-vask);box-shadow:none;color:var(--utvalg-ild);font-weight:600}
+.utvalg__prikk{width:6px;height:6px;border-radius:50%;background:currentColor}
+.utvalg__grunner{display:flex;flex-direction:column;gap:11px;padding-top:4px}
+.utvalg__grunntittel{margin:0;font-size:13px;font-weight:600;color:var(--utvalg-blekk-3)}
+.utvalg__grunnliste{display:flex;flex-direction:column;gap:11px;max-width:64ch;margin:0;padding:0;list-style:none}
+.utvalg__grunnliste li{display:flex;gap:10px;font-size:15.5px;line-height:1.4}
+.utvalg__grunnliste .ikon{margin-top:2px;color:var(--metall)}
+.utvalg__knapper{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding-top:22px;box-shadow:inset 0 1px 0 var(--utvalg-strek)}
+.utvalg__legg,.utvalg__avvis{display:inline-flex;align-items:center;justify-content:center;height:52px;border:0;border-radius:14px;cursor:pointer;
+                            transition:box-shadow .12s ease,background .12s ease}
+.utvalg__legg{padding:0 28px;background:var(--metall);color:var(--metall-blekk);font:700 16px/1 var(--sans);
+              box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.utvalg__legg:hover:not(:disabled){box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 0 0 3px var(--metall-svak)}
+.utvalg__avvis{padding:0 22px;background:var(--utvalg-flate);color:var(--utvalg-blekk);font:600 15px/1 var(--sans);
+               box-shadow:inset 0 0 0 1px var(--utvalg-kant)}
+.utvalg__avvis:hover:not(:disabled){background:var(--utvalg-2)}
+.utvalg__legg:disabled,.utvalg__avvis:disabled{cursor:default;opacity:.6}
+.utvalg__apne{display:inline-flex;align-items:center;gap:6px;height:52px;padding:0 10px;color:var(--utvalg-blekk);
+              font-size:15px;font-weight:600;text-decoration:none;border-radius:10px}
+.utvalg__apne:hover{text-decoration:underline;text-underline-offset:4px;text-decoration-color:var(--utvalg-kant)}
+
+.utvalg__side{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:22px;min-width:0}
+.utvalg__blar{display:flex;align-items:center;gap:8px;align-self:flex-end}
+.utvalg__plass{margin-right:4px;font-size:13px;color:var(--utvalg-blekk-3)}
+.utvalg__bla{display:flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:0;border-radius:50%;
+             background:var(--utvalg-flate);color:var(--utvalg-blekk);box-shadow:inset 0 0 0 1px var(--utvalg-kant);cursor:pointer;
+             transition:background .12s ease}
+.utvalg__bla:hover:not(:disabled){background:var(--utvalg-2)}
+.utvalg__bla:disabled{cursor:default;color:var(--utvalg-blekk-3);opacity:.5}
+.utvalg__maal{position:relative;width:216px;height:216px}
+.utvalg__ring{display:block;width:100%;height:100%}
+.utvalg__ringspor{stroke:var(--utvalg-spor)}
+.utvalg__ringbue{stroke:var(--metall)}
+.utvalg__ringinne{stroke:var(--metall-svak)}
+.utvalg__maaltekst{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.utvalg__tall{font-family:var(--mono);font-size:60px;font-weight:500;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.utvalg__pst{margin-left:2px;font-size:22px;letter-spacing:0;color:var(--utvalg-blekk-3)}
+.utvalg__avd{font-size:13px;font-weight:600;color:var(--metall);text-align:center}
+.utvalg__tast{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px;margin:0;font-size:13px;color:var(--utvalg-blekk-3)}
+.utvalg__tast kbd{padding:3px 7px;border-radius:6px;background:var(--utvalg-flate);font-family:var(--mono);font-size:11.5px;color:var(--utvalg-blekk-2)}
+.utvalg__tast kbd + kbd,.utvalg__tast kbd:not(:first-child){margin-left:6px}
+
+/* Det rolige kortet: tom innboks, og Radar av. */
+.utvalg--rolig{display:block;padding:32px 38px 34px}
+.utvalg__rolig-tittel{margin:0;font-size:26px;font-weight:700;line-height:1.15;letter-spacing:-.02em}
+.utvalg__rolig-tekst{max-width:60ch;margin:0;font-size:15px;line-height:1.5;color:var(--utvalg-blekk-2)}
+.utvalg__rolig-tekst--liten{font-size:13.5px;color:var(--utvalg-blekk-3)}
+.utvalg--rolig .utvalg__kropp{gap:12px}
+.utvalg--rolig .utvalg__knapper{margin-top:10px;padding-top:0;box-shadow:none}
+.radar > .utvalg--rolig{margin-bottom:30px}
+
+@container radarpanel (max-width:760px){
+  .utvalg{grid-template-columns:minmax(0,1fr);gap:22px;padding:26px 22px 24px;border-radius:24px}
+  .utvalg__side{order:-1;flex-direction:row;align-items:center;justify-content:space-between}
+  .utvalg__blar{align-self:center}
+  .utvalg__maal{width:112px;height:112px}
+  .utvalg__tall{font-size:32px}
+  .utvalg__pst{font-size:15px}
+  .utvalg__avd,.utvalg__tast{display:none}
+  .utvalg__stilling{font-size:34px}
+  .utvalg__knapper{gap:10px}
+  .utvalg__legg{flex:1 1 100%}
+  .utvalg--rolig{padding:26px 22px 24px}
+}
+@container radar (max-width:640px){
+  .radar > .utvalg--rolig{padding:26px 22px 24px;border-radius:24px}
+}
+
+/* ---------- køen og listen ---------- */
+.utvalg-seksjon{display:flex;flex-direction:column;gap:14px;margin-top:34px}
+.utvalg-seksjon:focus-visible{outline-offset:6px}
+.utvalg-seksjon__topp{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.utvalg-seksjon__topp--bryt{flex-wrap:wrap;align-items:center;gap:10px 24px}
+.utvalg-seksjon__tittel{margin:0;font-size:20px;font-weight:700;letter-spacing:-.015em}
+.utvalg-seksjon__lenke{padding:4px 2px;border:0;background:none;font-size:14px;font-weight:600;color:var(--blekk-2);cursor:pointer;border-radius:6px}
+.utvalg-seksjon__lenke:hover{color:var(--blekk);text-decoration:underline;text-underline-offset:3px}
+
+.utvalg-ko{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.kokort{display:flex;flex-direction:column;gap:18px;min-width:0;padding:22px;border:0;border-radius:22px;background:var(--kort);
+        color:var(--blekk);font:inherit;text-align:left;cursor:pointer;box-shadow:var(--loft);transition:box-shadow .12s ease}
+.kokort:hover{box-shadow:var(--loft-2)}
+.kokort__topp{display:flex;align-items:center;gap:12px}
+.kokort__monogram{flex:none;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:11px;font-size:14px;font-weight:700}
+.kokort__hvem{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}
+.kokort__selskap{font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.kokort__sted{font-size:13px;color:var(--blekk-3)}
+.kokort__ring{position:relative;flex:none;width:48px;height:48px}
+.kokort__ring .ring__svg{display:block}
+.ring__spor{stroke:var(--avd-vask)}
+.ring__bue{stroke:var(--avd)}
+.kokort__tall{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600}
+.kokort__stilling{font-size:19px;font-weight:700;line-height:1.2;letter-spacing:-.015em;overflow-wrap:anywhere}
+.kokort__bunn{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:auto}
+.kokort__frist{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--blekk-2);white-space:nowrap}
+.kokort__frist[data-hast]{display:inline-flex;align-items:center;height:26px;padding:0 9px;border-radius:8px;
+                          background:var(--ild-vask);color:var(--ild-t);font-size:12px;font-weight:500}
+
+/* Avdelingsbrikken: prikken eller prosenten, og navnet, i avdelingens tone. */
+.avd-brikke{flex:none;display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 11px;border-radius:999px;
+            background:var(--avd-vask);color:var(--avd-t);font-size:12.5px;font-weight:600;white-space:nowrap}
+.avd-brikke .radar__tid{font-size:12.5px}
+.avd-brikke__prikk,.avd-prikk{flex:none;width:7px;height:7px;border-radius:50%;background:var(--avd)}
+.avd-prikk{width:9px;height:9px}
+/* Midt i blinken er selve det mørke kortet: mørk prikk med metallring. */
+[data-avd="blink"] > .avd-prikk,[data-avd="blink"] > .avd-brikke__prikk{background:var(--utvalg);box-shadow:inset 0 0 0 2px var(--metall)}
+.avd-brikke[data-avd="blink"]{box-shadow:inset 0 0 0 1px var(--utvalg-ring)}
+
+.utvalg-fordeling{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0;padding:0;list-style:none;font-size:13px;color:var(--blekk-2)}
+.utvalg-fordeling li{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.utvalg-fordeling b{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;color:var(--blekk)}
+.utvalg-stripe{display:flex;gap:4px;height:8px}
+.utvalg-stripe span{flex-basis:0;border-radius:4px;background:var(--avd)}
+
+.utvalg-liste{padding:6px 24px;border-radius:22px;background:var(--kort);box-shadow:var(--loft)}
+.utvalg-rad{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;min-height:44px;padding:12px 0}
+.utvalg-rad + .utvalg-rad{box-shadow:inset 0 1px 0 var(--linje)}
+.utvalg-rad__hoved{flex:1 1 260px;min-width:0;display:flex;align-items:center;gap:16px;margin:0;padding:0;border:0;background:none;
+                   color:inherit;font:inherit;text-align:left}
+button.utvalg-rad__hoved{cursor:pointer;border-radius:10px}
+button.utvalg-rad__hoved:hover .utvalg-rad__stilling{text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--linje-2)}
+.utvalg-rad__monogram{flex:none;display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;font-size:13px;font-weight:700}
+.utvalg-rad__tekst{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.utvalg-rad__stilling{font-size:15.5px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.utvalg-rad__hvem{font-size:13px;color:var(--blekk-3);overflow-wrap:anywhere}
+.utvalg-rad__frist{width:96px;font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--blekk-3);text-align:right;white-space:nowrap}
+.utvalg-rad__frist[data-hast]{color:var(--ild-t);font-weight:500}
+.utvalg-rad__handlinger{display:flex;align-items:center;gap:4px}
+.utvalg-rad__mer{flex-basis:100%;padding:0 0 4px 52px}
+/* Under terskelen: samme rad, ett trinn dempet. Lagt til trer tilbake. */
+.utvalg-rad--under .utvalg-rad__stilling,.utvalg-rad--lagt .utvalg-rad__stilling{font-weight:500}
+.utvalg-rad--lagt .utvalg-rad__stilling{color:var(--blekk-2)}
+.utvalg-rad .handling--hoved{background:var(--innfelt-2);color:var(--blekk)}
+.utvalg-rad .handling--hoved:hover{background:var(--linje-2)}
+.utvalg-rad--under:not(:hover):not(:focus-within) .handling--hoved:not(:disabled){background:none;box-shadow:inset 0 0 0 1px var(--innfelt-2)}
+.utvalg-rad--lagt .handling--hoved{background:var(--innfelt);color:var(--blekk-2)}
+.utvalg-rad .handling:disabled{cursor:default;opacity:.6}
+.utvalg-rad .handling--ikon{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0}
+@container radarpanel (max-width:600px){
+  .utvalg-liste{padding:4px 18px}
+  .utvalg-rad__hoved{flex-basis:100%}
+  .utvalg-rad__frist{width:auto;margin-left:auto}
+  .utvalg-rad__handlinger{flex-basis:100%;margin-left:43px}
+  .utvalg-rad__mer{padding-left:0}
+}
+
+/* Kjøringer: tallene fra siste kjøring som en trakt, og tabellen. */
+.radar__kjoringer{padding:22px 24px 12px;border-radius:22px}
+.radar__kjoringer .kjoringer{max-width:none}
+.radartrakt{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0 40px;margin:0 0 24px;padding:0;list-style:none}
+.radartrakt__trinn{position:relative;min-width:0}
+.radartrakt__pil{position:absolute;left:-27px;top:11px;color:var(--blekk-3)}
+.radartrakt__tall{display:block;font-family:var(--mono);font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1.1;
+                  font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--blekk)}
+.radartrakt__navn{display:block;margin-top:3px;font-size:12.5px;line-height:1.35;color:var(--blekk-2)}
+@container radarpanel (max-width:600px){
+  .radartrakt{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 32px}
+  .radartrakt__pil{left:-23px}
+  .radartrakt__trinn:nth-child(3) .radartrakt__pil{display:none}
+  .radartrakt__tall{font-size:26px}
+}
+
 /* Innstillingene i sin fane: ett kort, lagringen nederst. */
-.radarinnst{padding:0;margin-bottom:16px;container:radarinnst / inline-size}
-.radarinnst__kropp{padding:22px 20px 6px}
+.radarinnst{padding:0;margin-bottom:16px;border-radius:22px;container:radarinnst / inline-size}
+.radarinnst__kropp{padding:26px 24px 6px}
 .radarinnst__del{padding:0 0 26px}
 .radarinnst__deltittel{margin:0 0 12px;font-size:14px;font-weight:600;letter-spacing:-.01em;line-height:1.35;color:var(--blekk)}
 .radarinnst__innhold > :last-child{margin-bottom:0}
@@ -1434,14 +1652,14 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
   .radarinnst__lagret{flex-basis:100%}
 }
 @container radarinnst (min-width:620px){
-  .radarinnst__del{display:grid;grid-template-columns:150px minmax(0,1fr);gap:0 24px}
+  .radarinnst__del{display:grid;grid-template-columns:170px minmax(0,1fr);gap:0 24px}
   .radarinnst__deltittel{padding-top:3px}
 }
 /* Lagringen står nederst i kortet også når alt er lagret, så ingenting
    hopper. Er noe endret, fester den seg til bunnen av vinduet mens man
    ruller gjennom innstillingene. */
 .radarinnst__bunn{z-index:2;display:flex;align-items:center;flex-wrap:wrap;gap:8px;
-                  padding:11px 20px;background:var(--innfelt);border-radius:0 0 var(--r) var(--r)}
+                  padding:12px 24px;background:var(--innfelt);border-radius:0 0 22px 22px}
 .radarinnst__bunn[data-endret]{position:sticky;bottom:0}
 .radarinnst__lagret{flex:1 1 160px;margin:0;font-family:var(--mono);font-size:11px;color:var(--blekk-3)}
 .radarinnst__lagret[data-t="endret"]{color:var(--blekk)}
@@ -1545,122 +1763,40 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 
 /* Merknadene står på bunnen, ikke i et kort, så de får kortets flate
    selv: det innfelte sporet forsvinner mot bunnen i de mørke temaene. */
-.radar__merknad{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:0 0 10px;background:var(--kort)}
+.radar__merknad{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:0 0 10px;padding:14px 18px;border-radius:16px;
+                background:var(--kort);box-shadow:var(--loft)}
 .radar__merknad p{flex:1 1 280px;margin:0}
 .radar__merknad b{font-weight:600;color:var(--blekk)}
 .radar__merknad .knapp{flex:none}
 .radar__veier{display:flex;flex-wrap:wrap;gap:8px}
-.radar__merknader{margin-bottom:14px}
+.radar__merknader{margin-bottom:24px}
 .radar__merknader:empty{display:none}
 .radar__tomt .tomt__tekst:last-child{margin-bottom:0}
-.radar__kjoringer{padding:16px 20px 10px}
-.radar__kjoringer .kjoringer{max-width:none}
+.radar .tomt{border-radius:22px}
 
-/* Båndene: prikken i trinnets farge, navnet, hvor båndet begynner,
-   streken og antallet. */
-.radarbaand .baand{gap:10px;padding-top:20px}
-.radarbaand:first-child .baand{padding-top:4px}
-.radarbaand__navn{margin:0;font-size:14px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;color:var(--blekk)}
-.radarbaand__fra{font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--blekk-3)}
-
-/* Toppfunnet: det eneste som får en egen flate. Prosenten er det man
-   ser først, grunnene står synlige, og «Legg til» er eneste primærknapp. */
-.toppfunn{display:grid;grid-template-columns:minmax(132px,auto) minmax(0,1fr) auto;gap:18px 30px;align-items:start;
-          margin:0 0 12px;padding:26px 26px 24px 28px;border-radius:var(--r);background:var(--treff-vask);box-shadow:var(--loft)}
-.toppfunn + .radarbaand .baand{padding-top:18px}
-.toppfunn__stor{margin:0;font-family:var(--mono);font-size:80px;font-weight:600;letter-spacing:-.04em;line-height:.84;
-                font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--treff-4)}
-.toppfunn__pst{margin-left:4px;font-size:22px;font-weight:500;letter-spacing:0}
-.toppfunn__trinn{display:flex;align-items:center;gap:7px;margin:16px 0 0;font-size:13px;font-weight:600;color:var(--blekk);white-space:nowrap}
-.toppfunn__kropp{min-width:0}
-.toppfunn__stilling{margin:0;font-size:21px;font-weight:700;letter-spacing:-.024em;line-height:1.2;overflow-wrap:anywhere;text-wrap:balance}
-.toppfunn__hvem{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 16px;margin:6px 0 0;font-size:14px;line-height:1.45;color:var(--blekk-2)}
-.toppfunn__frist{white-space:nowrap}
-.toppfunn__grunner{display:grid;gap:5px;max-width:68ch;margin:16px 0 0;padding:0;list-style:none;font-size:14px;line-height:1.45;color:var(--blekk)}
-.toppfunn__grunner li{display:flex;gap:10px}
-.toppfunn__grunner li::before{content:"";flex:none;width:5px;height:5px;margin-top:8px;border-radius:50%;background:var(--treff-3)}
-.toppfunn__kilde{margin:14px 0 0;font-size:12px;color:var(--blekk-2)}
-.toppfunn__handlinger{display:flex;flex-direction:column;gap:4px;min-width:164px}
-.toppfunn .knapp{display:inline-flex;align-items:center;justify-content:center;gap:6px}
-.toppfunn .knapp--stille:hover{background:color-mix(in srgb, var(--kort) 65%, transparent)}
-.toppfunn .knapp:disabled:hover{box-shadow:none}
-@container radarpanel (max-width:620px){
-  .toppfunn{grid-template-columns:minmax(0,1fr);gap:14px;padding:20px 18px 18px}
-  .toppfunn__maal{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 16px}
-  .toppfunn__stor{font-size:56px}
-  .toppfunn__trinn{margin:0}
-  .toppfunn__stilling{font-size:19px}
-  .toppfunn__handlinger{flex-direction:row;flex-wrap:wrap;min-width:0}
-  .toppfunn__handlinger .knapp--primar{flex:1 1 100%}
-}
-
-/* Raden: prosenten og måleren, stillingen og hvem, fristen, og
-   handlingene. To linjer tekst; grunnene ligger bak «Hvorfor». */
-.funn{position:relative;display:grid;grid-template-columns:108px minmax(0,1fr) 96px auto;gap:0 16px;align-items:center;
-      padding:11px 12px 11px 18px;transition:background .12s ease}
-.funn + .funn{box-shadow:inset 0 1px 0 var(--linje)}
-.funn:hover,.funn:focus-within{background:var(--innfelt)}
-.funn__maal{display:flex;align-items:center;gap:10px}
-.funn__tall{min-width:2ch;font-family:var(--mono);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--blekk)}
-.maaler{position:relative;flex:none;display:block;width:72px;height:6px;border-radius:3px;background:var(--innfelt-2);overflow:hidden}
-.maaler i{position:absolute;inset:0 auto 0 0;border-radius:3px;background:var(--farge)}
-.funn:hover .maaler,.funn:focus-within .maaler{background:var(--linje-2)}
-.funn__kropp{min-width:0}
-.funn__stilling{margin:0;font-size:14.5px;font-weight:600;letter-spacing:-.01em;line-height:1.3;overflow-wrap:anywhere}
-.funn__hvem{margin:1px 0 0;font-size:13px;line-height:1.35;color:var(--blekk-2);overflow-wrap:anywhere}
-.funn__frist{display:flex;flex-direction:column;align-items:flex-end;gap:1px;margin:0;text-align:right;white-space:nowrap}
-.funn__dato{font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--blekk-2)}
-.funn__om{font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;color:var(--blekk-3)}
-.funn__om[data-hast="naa"]{color:var(--ild-t);font-weight:500}
-.funn__om[data-hast="snart"]{color:var(--rav-t)}
-.funn__handlinger{display:flex;align-items:center;gap:4px;justify-content:flex-end}
-.funn .handling--hoved{background:var(--innfelt-2);color:var(--blekk)}
-.funn .handling--hoved:hover{background:var(--linje-2)}
-.funn .handling:disabled{cursor:default;opacity:.6}
-.funn .handling--ikon{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0}
-.ikon{display:block}
-/* «Hvorfor» er en bryter, ikke en knapp ved siden av «Legg til»: åpen
-   sies med blekk og en pil som snur, aldri med fyll. */
-.funn .funn__hvorfor{display:inline-flex;align-items:center;gap:5px;margin-right:8px}
-.funn .funn__hvorfor:hover,.funn .funn__hvorfor[aria-expanded="true"]{background:none;color:var(--blekk)}
+/* «Hvorfor» under terskelen er en bryter: åpen sies med blekk og en pil
+   som snur, aldri med fyll. */
+.funn__hvorfor{display:inline-flex;align-items:center;gap:5px;margin-right:8px}
+.radar .funn__hvorfor:hover,.radar .funn__hvorfor[aria-expanded="true"]{background:none;color:var(--blekk)}
 .funn__hvorforpil{flex:none;transition:transform .12s ease-out}
 .funn__hvorfor[aria-expanded="true"] .funn__hvorforpil{transform:rotate(180deg)}
-.funn__mer{grid-column:2 / -1;padding:8px 0 3px}
 .funn__grunner{display:grid;gap:3px;max-width:68ch;margin:0;padding:0;list-style:none;font-size:13px;line-height:1.45;color:var(--blekk-2)}
 .funn__grunner li{display:flex;gap:9px}
-.funn__grunner li::before{content:"";flex:none;width:4px;height:4px;margin-top:8px;border-radius:50%;background:var(--farge)}
+.funn__grunner li::before{content:"";flex:none;width:4px;height:4px;margin-top:8px;border-radius:50%;background:var(--avd,var(--blekk-3))}
 .funn__kilde{margin:6px 0 0;font-size:12px;color:var(--blekk-3)}
 .funn__grunner + .funn__kilde{margin-top:8px}
 .funn__borte{padding:6px 9px;font-size:12.5px;color:var(--blekk-3);white-space:nowrap}
 a.handling{display:inline-flex;align-items:center;text-decoration:none}
-/* Under terskelen: samme rad, ett trinn dempet. «Legg til» står uten
-   fyll til raden får fokus eller musa. */
-.funn--under .funn__stilling{font-weight:500}
-.funn--under .funn__tall{color:var(--blekk-2)}
-.funn--under:not(:hover):not(:focus-within) .handling--hoved:not(:disabled){background:none;box-shadow:inset 0 0 0 1px var(--innfelt-2)}
-/* Lagt til: jobben er gjort, så raden trer tilbake. */
-.funn--lagt .funn__stilling{font-weight:500;color:var(--blekk-2)}
-.funn--lagt .funn__tall{color:var(--blekk-3)}
-.funn--lagt .maaler i{opacity:.55}
-.funn--lagt .handling--hoved{background:var(--innfelt);color:var(--blekk-2)}
 
 .radar__underhode{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 18px;margin:0 0 14px}
-.radar__undertekst{flex:1 1 260px;margin:0;font-size:13px;line-height:1.45;color:var(--blekk-2)}
+.radar__undertekst{flex:1 1 260px;margin:0;font-size:13.5px;line-height:1.45;color:var(--blekk-2)}
 
-/* Smal liste: handlingene får egen linje, fristen står under hvem. */
-@container liste (max-width:640px){
-  .funn{grid-template-columns:48px minmax(0,1fr);align-items:start;padding:13px 12px 8px 14px}
-  .funn__maal{flex-direction:column;align-items:flex-start;gap:7px;padding-top:1px}
-  .funn .maaler{width:44px}
-  .funn__frist{grid-column:2;flex-direction:row;align-items:baseline;gap:8px;margin-top:4px}
-  .funn__frist:empty{display:none}
-  .funn__handlinger{grid-column:2;justify-content:flex-start;flex-wrap:wrap;margin:6px 0 0 -9px}
-  .funn__mer{grid-column:2;padding-bottom:6px}
-}
 @media (pointer:coarse), (max-width:640px){
-  .radar__linje .knapp,.radarinnst__bunn .knapp,.radar__underhode .knapp,.radar__tomt .knapp,.toppfunn .knapp,
+  .radarinnst__bunn .knapp,.radar__underhode .knapp,.radar__tomt .knapp,
   .radar__merknad .knapp,.radar__forslag .knapp,.ksider__ny .knapp{min-height:44px}
-  .radar__fane{min-height:44px}
+  .radar__fane{height:44px}
+  .utvalg__bla{width:44px;height:44px}
+  .utvalg-seksjon__lenke{min-height:44px}
   .ksider__ny .felt__inn{min-height:44px}
   .ord{min-height:36px}
   .ord__fjern{width:32px;height:32px}
@@ -1668,19 +1804,16 @@ a.handling{display:inline-flex;align-items:center;text-decoration:none}
   .ordliste__inn{min-height:44px}
   .kside__url{display:flex;align-items:center;min-height:44px;margin:-8px 0}
   .radarinnst .avkrys,.fylker__topp,.radarinnst .fylker__post{min-height:44px}
-  .funn .handling,.kside__fjern,.kside__pa{min-height:44px}
-  .funn .handling--ikon{width:44px;height:44px}
+  .utvalg-rad .handling,.kside__fjern,.kside__pa{min-height:44px}
+  .utvalg-rad .handling--ikon{width:44px;height:44px}
   /* Den fylte knappen holder samme synlige høyde som på skrivebordet;
      treffflaten når 44 px med en usynlig kant over og under. */
-  .funn .handling--hoved{position:relative;min-width:0;min-height:34px;padding:7px 16px}
-  .funn .handling--hoved::after{content:"";position:absolute;inset:-5px 0}
+  .utvalg-rad .handling--hoved{position:relative;min-width:0;min-height:34px;padding:7px 16px}
+  .utvalg-rad .handling--hoved::after{content:"";position:absolute;inset:-5px 0}
   .terskel__glider{height:44px}
 }
 @media (pointer:coarse){
   .ordliste__inn,.radarinnst .felt__inn{font-size:16px}
-}
-@media (prefers-reduced-motion:reduce){
-  .radartrakt[data-ny] .radartrakt__stolpe i{animation:none}
 }
 
 /* ---------- varsel ---------- */
