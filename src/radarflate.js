@@ -95,22 +95,10 @@ const ikon = (d, str = 16, strek = 2) => '<svg class="ikon" width="' + str + '" 
 const IKON_KRYSS = ikon('<path d="M7 7l10 10M17 7 7 17"/>', 14);
 const IKON_UT = ikon('<path d="M7 17 17 7M9 7h8v8"/>', 15);
 const IKON_HAKE = ikon('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 18, 2.2);
-const IKON_FORRIGE = ikon('<path d="M15 6l-6 6 6 6"/>');
-const IKON_NESTE = ikon('<path d="M9 6l6 6-6 6"/>');
 const IKON_RADAR = '<svg class="radar__sokikon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">'
   + '<circle cx="12" cy="12" r="8.5"/><circle class="radar__sokkjerne" cx="12" cy="12" r="4"/><path d="M12 12l6-6"/></svg>';
 const TRAKTPIL = ikon('<path d="M9 6l6 6-6 6"/>', 14);
 const HVORFORPIL = '<svg class="funn__hvorforpil" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="m2.5 3.75 2.5 2.5 2.5-2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-
-/* Ringen: buen fylt til prosenten, rundt et spor. str er bredden i px,
-   tykk strekens tykkelse; tallet tegnes i HTML over ringen. */
-function ring(p, str, tykk){
-  const r = str / 2 - tykk / 2 - 1, o = 2 * Math.PI * r, fyll = Math.max(0, Math.min(100, Number(p) || 0)) / 100 * o;
-  return '<svg class="ring__svg" width="' + str + '" height="' + str + '" viewBox="0 0 ' + str + ' ' + str + '" aria-hidden="true">'
-    + '<circle class="ring__spor" cx="' + str / 2 + '" cy="' + str / 2 + '" r="' + r + '" fill="none" stroke-width="' + tykk + '"/>'
-    + '<circle class="ring__bue" cx="' + str / 2 + '" cy="' + str / 2 + '" r="' + r + '" fill="none" stroke-width="' + tykk + '" stroke-linecap="round"'
-    + ' stroke-dasharray="' + fyll.toFixed(1) + ' ' + o.toFixed(1) + '" transform="rotate(-90 ' + str / 2 + ' ' + str / 2 + ')"/></svg>';
-}
 
 const DØGN = 86_400_000;
 const tallTekst = n => Number(n).toLocaleString("nb-NO");
@@ -163,6 +151,7 @@ export function lagRadarflate(api){
   let fane = null;              /* den valgte fanen; null til visningen tegnes første gang */
   let fokusId = null, fokusIndeks = 0; /* funnet i toppkortet, og plassen det sto på */
   let bladdSelv = false;                /* brukeren har valgt funnet selv; nye funn flytter det ikke */
+  let visIndeks = 0, stoppTimer = null; /* kortet som står i midten nå, og ventingen på at rullingen stopper */
   const hvorforÅpen = new Set(); /* rader der «Hvorfor» er foldet ut */
   let lagrer = false, lagreFeil = "";
   let forslag = { går: false, tekst: "", feil: null };
@@ -311,6 +300,19 @@ export function lagRadarflate(api){
       rot.addEventListener("change", endring);
       rot.addEventListener("keydown", tast);
       rot.addEventListener("paste", lim);
+      /* Et klikk i rekken eller på et nabokort skal rulle utvalget, ikke
+         flytte fokus: fokus på et halvt synlig kort ville rullet siden. */
+      rot.addEventListener("mousedown", e => { if(e.target.closest('[data-radar="velg"]') && !e.target.closest(".er-valgt .sveip__innhold")) e.preventDefault(); });
+      /* Rullingen i utvalget: scroll bobler ikke, så den fanges på vei ned. */
+      rot.addEventListener("scroll", e => { if(e.target.id === "radarScene") vedRulling(); }, { capture: true, passive: true });
+      rot.addEventListener("scrollend", e => { if(e.target.id === "radarScene") vedStopp(); }, true);
+      /* Endres bredden (vinduet, panelet ved siden av), står kortet i
+         fokus fortsatt i midten. */
+      let bredde = 0;
+      new ResizeObserver(([m]) => {
+        const b = Math.round(m.contentRect.width);
+        if(b !== bredde){ bredde = b; if(scene()) plasserUtvalg(rekke()?.scrollLeft ?? null); }
+      }).observe(rot);
       if(t) lastGrunnlag();
       if(t) Radar.hentTilstand().then(settTilstand, () => {});
       tegn();
@@ -320,11 +322,20 @@ export function lagRadarflate(api){
 
   /* Alt tegnes på nytt, og fokus settes tilbake på det elementet som
      hadde det, gjenkjent på data-fokus. */
+  /* Omtegningen flytter heller ikke siden: rulleposisjonen i vinduet og i
+     rekken settes tilbake, og kortet i fokus står i midten av utvalget med
+     en gang. Det gjelder også polling, «Legg til», «Ikke interessert» og
+     angre, som alle tegner på nytt. */
   function medFokus(fn){
     const a = document.activeElement;
     const nøkkel = rot?.contains(a) ? a.dataset.fokus : null;
     const valg = nøkkel && "selectionStart" in a && a.type !== "range" && a.type !== "number" ? [a.selectionStart, a.selectionEnd] : null;
+    const y = window.scrollY, x = window.scrollX, førScene = scene(), rekkeVenstre = rekke()?.scrollLeft ?? null;
     fn();
+    /* Bare en flate som er tegnet på nytt, plasseres; en som står, kan
+       brukeren være midt i å rulle. */
+    if(scene() && scene() !== førScene) plasserUtvalg(rekkeVenstre);
+    if(window.scrollY !== y || window.scrollX !== x) window.scrollTo(x, y);
     if(!nøkkel) return;
     const b = rot.querySelector('[data-fokus="' + CSS.escape(nøkkel) + '"]');
     if(b && !b.disabled){ b.focus({ preventScroll: true }); if(valg) try{ b.setSelectionRange(...valg); }catch{} }
@@ -355,7 +366,7 @@ export function lagRadarflate(api){
       rot.innerHTML = (på ? "" : introHtml())
         + (på || visFaner() ? toppradHtml() : "")
         + '<div class="radar__merknader" id="radarMerknader">' + merknaderHtml() + '</div>'
-        + (visFaner() ? '<div class="radar__panel" id="radarPanel" role="tabpanel" tabindex="0" aria-labelledby="radarFane-' + aktivFane() + '">'
+        + (visFaner() ? '<div class="radar__panel" id="radarPanel" role="tabpanel" aria-labelledby="radarFane-' + aktivFane() + '">'
           + panelHtml() + '</div>' : "");
     });
     oppdaterFlyt(rot);
@@ -803,8 +814,8 @@ export function lagRadarflate(api){
   }
   const iInnboks = () => ordne(nye());
 
-  /* Funnet i fokus står i toppkortet. Forsvinner det (lagt til, avvist),
-     tar det som nå står på samme plass, over. */
+  /* Funnet i fokus står i midten av utvalget. Forsvinner det (lagt til,
+     avvist), tar det som nå står på samme plass, over. */
   function iFokus(liste = iInnboks()){
     if(!liste.length) return -1;
     let i = liste.findIndex(r => r.id === fokusId);
@@ -812,19 +823,125 @@ export function lagRadarflate(api){
     fokusId = liste[i].id; fokusIndeks = i;
     return i;
   }
-  /* Bla i rangeringen. Fokus blir stående på knappen som ble brukt, og
-     skjermlesere får vite hva som står i kortet nå. */
-  function blaTil(i, kilde){
-    const liste = iInnboks();
-    if(i < 0 || i >= liste.length) return;
-    fokusId = liste[i].id; fokusIndeks = i;
-    bladdSelv = true;
-    if(aktivFane() !== "innboks"){ fane = "innboks"; }
-    tegnFaner();
-    const r = liste[i];
-    const s = rot?.querySelector("#radarFokusStatus");
-    if(s) s.textContent = r.stilling + " hos " + (r.selskap || "ukjent arbeidsgiver") + ", " + r.prosent + " prosent, " + (i + 1) + " av " + liste.length + ".";
-    if(kilde === "kort") rot?.querySelector(".utvalg")?.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion:reduce)").matches ? "auto" : "smooth" });
+
+  /* ---------- sveipingen ----------
+     Hovedkortet er en vanlig sidelengs rulleflate med snapping, så
+     styreflaten, fingeren og shift+hjul virker som overalt ellers. Kortet
+     som står i midten, er det valgte. Å bla endrer bare klasser og
+     attributter; ingenting tegnes på nytt, så siden står stille. */
+  const jevnt = () => matchMedia("(prefers-reduced-motion:reduce)").matches ? "auto" : "smooth";
+  const scene = () => rot?.querySelector("#radarScene");
+  const rekke = () => rot?.querySelector("#radarRekke");
+  /* Rulleposisjonen som setter el midt i flaten s. */
+  const midtFor = (s, el) => Math.max(0, el.offsetLeft - (s.clientWidth - el.offsetWidth) / 2);
+
+  function rullTil(i, glidende = true){
+    const s = scene(), el = s?.children[i];
+    if(el) s.scrollTo({ left: midtFor(s, el), behavior: glidende ? jevnt() : "auto" });
+  }
+  /* Kortet nærmest midten av flaten akkurat nå. */
+  function iMidten(s){
+    const midt = s.scrollLeft + s.clientWidth / 2;
+    let best = 0, avstand = Infinity;
+    [...s.children].forEach((el, i) => {
+      const d = Math.abs(el.offsetLeft + el.offsetWidth / 2 - midt);
+      if(d < avstand){ avstand = d; best = i; }
+    });
+    return best;
+  }
+  /* Det valgte i rekken skal stå synlig. Rekken rulles for seg selv, med
+     scrollTo, så siden ikke flytter seg. */
+  function visIRekken(i, glidende){
+    const r = rekke(), m = r?.children[i];
+    if(!m) return;
+    const venstre = r.scrollLeft, høyre = venstre + r.clientWidth;
+    if(m.offsetLeft - 24 < venstre || m.offsetLeft + m.offsetWidth + 24 > høyre)
+      r.scrollTo({ left: midtFor(r, m), behavior: glidende ? jevnt() : "auto" });
+  }
+  /* Merk kort i som valgt i flaten, rekken og telleren. */
+  function merkValgt(i, glidende = true){
+    const s = scene();
+    if(!s) return;
+    visIndeks = i;
+    [...s.children].forEach((el, j) => {
+      const v = j === i;
+      el.classList.toggle("er-valgt", v);
+      el.dataset.side = j < i ? "venstre" : j > i ? "hoyre" : "midt";
+      el.setAttribute("aria-hidden", String(!v));
+      el.querySelector(".sveip__innhold")?.toggleAttribute("inert", !v);
+    });
+    const r = rekke();
+    if(r) [...r.children].forEach((el, j) => {
+      const v = j === i;
+      el.classList.toggle("er-valgt", v);
+      el.setAttribute("aria-selected", String(v));
+      el.tabIndex = v ? 0 : -1;
+    });
+    const teller = rot.querySelector("#radarTeller");
+    if(teller) teller.textContent = i + 1;
+    visIRekken(i, glidende);
+  }
+  /* Under rullingen følger utseendet med; når flaten stopper, blir
+     kortet i midten fokus, og skjermlesere får vite hva som står der. */
+  function vedRulling(){
+    const s = scene();
+    if(!s) return;
+    const i = iMidten(s);
+    if(i !== visIndeks) merkValgt(i);
+    clearTimeout(stoppTimer);
+    stoppTimer = setTimeout(vedStopp, 160);
+  }
+  function vedStopp(){
+    clearTimeout(stoppTimer);
+    const s = scene();
+    if(!s) return;
+    const i = iMidten(s), liste = iInnboks();
+    if(!liste[i]) return;
+    if(i !== visIndeks) merkValgt(i);
+    if(liste[i].id === fokusId && i === fokusIndeks) return;
+    fokusId = liste[i].id; fokusIndeks = i; bladdSelv = true;
+    const r = liste[i], st = rot.querySelector("#radarFokusStatus");
+    if(st) st.textContent = (i + 1) + " av " + liste.length + ": " + r.stilling + " hos " + (r.selskap || "ukjent arbeidsgiver") + ", " + r.prosent + " prosent.";
+  }
+  /* Funnet i midten nå, også midt i en rulling: det er det L og X gjelder. */
+  function iMidtenNå(){
+    const s = scene();
+    if(s){ vedStopp(); return iFokus(); }
+    return iFokus();
+  }
+  /* Kanten flaten går ut i: hovedpaddingen og det som er ledig utenfor,
+     høyst 56 px, så naboene viser en mørk kant på rundt 40 px. */
+  function settKant(){
+    const h = rot?.closest(".hoved");
+    if(!h) return;
+    /* Plassen er hovedpaddingen pluss det som er ledig mellom hovedflaten og
+       naboene i rutenettet (sidepanelet, detaljpanelet). Auto-margen i
+       rutenettet rapporteres ikke, så den måles. */
+    const cs = getComputedStyle(h), hr = h.getBoundingClientRect(), pr = h.parentElement.getBoundingClientRect();
+    let venstre = pr.left, høyre = pr.right;
+    for(const n of h.parentElement.children){
+      if(n === h) continue;
+      const r = n.getBoundingClientRect();
+      if(!r.width || r.top >= hr.bottom || r.bottom <= hr.top) continue;
+      if(r.right <= hr.left + 1) venstre = Math.max(venstre, r.right);
+      else if(r.left >= hr.right - 1) høyre = Math.min(høyre, r.left);
+    }
+    const v = hr.left - venstre + parseFloat(cs.paddingLeft), hø = høyre - hr.right + parseFloat(cs.paddingRight);
+    rot.style.setProperty("--kant", Math.round(Math.max(0, Math.min(56, v, hø))) + "px");
+  }
+  /* Etter en omtegning: fokuskortet står i midten med en gang, uten at
+     flaten glir, og rekken står der den sto. */
+  function plasserUtvalg(rekkeVenstre){
+    const s = scene();
+    if(!s) return;
+    settKant();
+    const i = Math.max(0, Math.min(fokusIndeks, s.children.length - 1));
+    visIndeks = i;
+    s.scrollLeft = midtFor(s, s.children[i]);
+    const r = rekke();
+    if(r && rekkeVenstre != null) r.scrollLeft = rekkeVenstre;
+    visIRekken(i, false);
+    oppdaterFlyt(r ?? rot);
   }
 
   function innboksHtml(){
@@ -845,18 +962,27 @@ export function lagRadarflate(api){
         + '<div class="utvalg__kropp"><h2 class="utvalg__rolig-tittel">' + tittel + '</h2><p class="utvalg__rolig-tekst">' + esc(bind(tekst)) + '</p>'
         + (knapper ? '<div class="utvalg__knapper">' + knapper + '</div>' : "") + '</div></section>';
     }
-    const i = iFokus(liste), r = liste[i];
-    const kø = liste.slice(i + 1, i + 4);
-    const vist = new Set([r.id, ...kø.map(x => x.id)]);
-    return toppkortHtml(r, i, liste.length)
+    const i = iFokus(liste), n = liste.length;
+    const avdelinger = [4, 3, 2, 1].concat(liste.some(r => trinn(r.prosent) === 0) ? [0] : []);
+    return '<section class="sveip" aria-labelledby="radarUtvalgTittel">'
+      + '<div class="sveip__hode"><h2 class="sveip__tittel" id="radarUtvalgTittel">Dagens utvalg</h2>'
+        + '<p class="sveip__info"><span class="sveip__hint">Sveip sidelengs, eller bruk J og K</span>'
+        + '<span class="sveip__teller"><b class="radar__tid" id="radarTeller">' + (i + 1) + '</b> av <span class="radar__tid">' + n + '</span></span></p></div>'
+      + '<div class="sveip__scene" id="radarScene" aria-roledescription="karusell" aria-label="Dagens utvalg, ett funn om gangen">'
+        + liste.map((r, j) => kortHtml(r, j, n, i)).join("") + '</div>'
       + '<p class="skjult" id="radarFokusStatus" aria-live="polite"></p>'
-      + (kø.length ? køHtml(kø, liste.length) : "")
-      + altHtml(liste, liste.filter(x => !vist.has(x.id)));
+      + '<div class="sveip__rekke flyt" id="radarRekke" role="listbox" aria-label="Alle i dagens utvalg" aria-orientation="horizontal">'
+        + liste.map((r, j) => miniHtml(r, j, j === i)).join("") + '</div>'
+      + '<div class="sveip__fot"><ul class="sveip__forklaring" aria-label="Avdelingene">' + avdelinger.map(tr =>
+          '<li data-avd="' + TRINN[tr].avd + '"><span class="avd-prikk" aria-hidden="true"></span>' + TRINN[tr].navn + '</li>').join("") + '</ul>'
+        + (u.length ? '<button class="sveip__lenke" type="button" data-radar="fane" data-fane="under" data-fokus="tilUnder">' + u.length + ' under terskelen</button>' : "")
+      + '</div></section>';
   }
 
-  /* Toppkortet: det mørke kortet med funnet i fokus. */
-  function toppkortHtml(r, i, n){
-    const id = esc(r.id), tid = domId(r.id), tr = trinn(r.prosent), iDag = api.iDag();
+  /* Ett kort i flaten. Bare det i midten viser innholdet; naboene er en
+     mørk kant som ruller dit når man trykker på den. */
+  function kortHtml(r, i, n, midt){
+    const valgt = i === midt, id = esc(r.id), tid = domId(r.id), tr = trinn(r.prosent), iDag = api.iDag();
     const kilde = KILDENAVN[r.kilde] || r.kilde;
     const brikker = [];
     if(r.frist) brikker.push(rød(r)
@@ -865,9 +991,12 @@ export function lagRadarflate(api){
     const p = publisert(r);
     if(p) brikker.push('<span class="utvalg__brikke">' + p.ord + ' <time class="radar__tid" datetime="' + esc(p.iso) + '">' + p.dato + '</time></span>');
     const grunner = r.grunner ?? [];
-    const o = 2 * Math.PI * 92, fyll = Math.max(0, Math.min(100, r.prosent)) / 100 * o;
-    return '<article class="utvalg" data-radar-id="' + id + '" data-avd="' + avd(r.prosent) + '" aria-labelledby="' + tid + ' ' + tid + '-hvem">'
+    const o = 2 * Math.PI * 89, fyll = Math.max(0, Math.min(100, r.prosent)) / 100 * o;
+    return '<article class="sveip__kort' + (valgt ? " er-valgt" : "") + '" data-radar="velg" data-indeks="' + i + '" data-radar-id="' + id + '" data-avd="' + avd(r.prosent) + '"'
+      + ' data-side="' + (i < midt ? "venstre" : i > midt ? "hoyre" : "midt") + '" aria-roledescription="lysbilde" aria-label="' + (i + 1) + ' av ' + n + ': ' + esc(r.stilling) + ', ' + esc(r.selskap || "ukjent arbeidsgiver") + '"'
+      + (valgt ? "" : ' aria-hidden="true"') + '><div class="utvalg sveip__flate">'
       + '<span class="utvalg__sirkel utvalg__sirkel--1" aria-hidden="true"></span><span class="utvalg__sirkel utvalg__sirkel--2" aria-hidden="true"></span>'
+      + '<div class="sveip__innhold"' + (valgt ? "" : " inert") + '>'
       + '<div class="utvalg__kropp">'
         + '<div class="utvalg__hvem">' + brikke(r.selskap, "utvalg__monogram")
           + '<span class="utvalg__hvemtekst"><span class="utvalg__selskap" id="' + tid + '-hvem">' + esc(r.selskap || "Ukjent arbeidsgiver") + '</span>'
@@ -884,54 +1013,33 @@ export function lagRadarflate(api){
           + '<span class="skjult"> hos ' + esc(kilde) + ' i ny fane</span>' + IKON_UT + '</a></div>'
       + '</div>'
       + '<div class="utvalg__side">'
-        + '<div class="utvalg__blar"><span class="utvalg__plass radar__tid" aria-hidden="true">' + (i + 1) + ' / ' + n + '</span>'
-          + '<button class="utvalg__bla" type="button" data-radar="forrige" data-fokus="forrige" aria-label="Forrige funn" aria-keyshortcuts="K"' + (i ? "" : " disabled") + '>' + IKON_FORRIGE + '</button>'
-          + '<button class="utvalg__bla" type="button" data-radar="neste" data-fokus="neste" aria-label="Neste funn" aria-keyshortcuts="J"' + (i < n - 1 ? "" : " disabled") + '>' + IKON_NESTE + '</button></div>'
         + '<div class="utvalg__maal" role="img" aria-label="' + r.prosent + ' prosent, ' + TRINN[tr].navn.toLocaleLowerCase("nb") + '">'
-          + '<svg class="utvalg__ring" viewBox="0 0 216 216" aria-hidden="true">'
-          + '<circle class="utvalg__ringspor" cx="108" cy="108" r="92" fill="none" stroke-width="14"/>'
-          + '<circle class="utvalg__ringbue" cx="108" cy="108" r="92" fill="none" stroke-width="14" stroke-linecap="round" stroke-dasharray="'
-          + fyll.toFixed(1) + ' ' + o.toFixed(1) + '" transform="rotate(-90 108 108)"/>'
-          + '<circle class="utvalg__ringinne" cx="108" cy="108" r="72" fill="none" stroke-width="1"/></svg>'
+          + '<svg class="utvalg__ring" viewBox="0 0 208 208" aria-hidden="true">'
+          + '<circle class="utvalg__ringspor" cx="104" cy="104" r="89" fill="none" stroke-width="13"/>'
+          + '<circle class="utvalg__ringbue" cx="104" cy="104" r="89" fill="none" stroke-width="13" stroke-linecap="round" stroke-dasharray="'
+          + fyll.toFixed(1) + ' ' + o.toFixed(1) + '" transform="rotate(-90 104 104)"/>'
+          + '<circle class="utvalg__ringinne" cx="104" cy="104" r="70" fill="none" stroke-width="1"/></svg>'
           + '<span class="utvalg__maaltekst" aria-hidden="true"><span class="utvalg__tall">' + r.prosent + '<span class="utvalg__pst">%</span></span>'
           + '<span class="utvalg__avd">' + TRINN[tr].navn + '</span></span></div>'
-        + '<p class="utvalg__tast" aria-hidden="true"><kbd>L</kbd>legg til <kbd>X</kbd>avvis <kbd>J</kbd>neste</p>'
-      + '</div></article>';
+      + '</div></div></div></article>';
+  }
+
+  /* Ett lite kort i rekken: hvem, stillingen, avdelingens prikk med
+     prosenten, og fristen. Det valgte er mørkt med en tunge opp. */
+  function miniHtml(r, i, valgt){
+    const a = avd(r.prosent);
+    return '<button class="mini' + (valgt ? " er-valgt" : "") + '" type="button" role="option" aria-selected="' + valgt + '" tabindex="' + (valgt ? 0 : -1) + '"'
+      + ' data-radar="velg" data-indeks="' + i + '" data-avd="' + a + '" data-fokus="mini-' + esc(r.id) + '">'
+      + '<span class="mini__topp">' + brikke(r.selskap, "mini__monogram") + '<span class="mini__selskap">' + esc(r.selskap || "Ukjent arbeidsgiver") + '</span></span>'
+      + '<span class="mini__stilling">' + esc(r.stilling) + '</span>'
+      + '<span class="mini__bunn"><span class="mini__treff"><span class="avd-prikk" aria-hidden="true"></span>'
+        + '<span class="mini__pst radar__tid">' + r.prosent + ' %</span><span class="skjult">, ' + TRINN[trinn(r.prosent)].navn.toLocaleLowerCase("nb") + '</span></span>'
+        + '<span class="mini__frist radar__tid"' + (rød(r) ? " data-hast" : "") + '>' + esc(fristKort(r)) + '</span></span>'
+      + '</button>';
   }
 
   const avdBrikke = r => '<span class="avd-brikke" data-avd="' + avd(r.prosent) + '"><span class="radar__tid">' + r.prosent + '<span class="skjult"> %</span></span>'
     + TRINN[trinn(r.prosent)].navn + '</span>';
-
-  /* Neste i køen: de tre som kommer etter funnet i fokus. */
-  function køHtml(kø, n){
-    return '<section class="utvalg-seksjon" aria-labelledby="radarKoTittel"><div class="utvalg-seksjon__topp">'
-      + '<h3 class="utvalg-seksjon__tittel" id="radarKoTittel">Neste i køen</h3>'
-      + '<button class="utvalg-seksjon__lenke" type="button" data-radar="seAlle" data-fokus="seAlle">Se alle ' + n + '</button></div>'
-      + '<div class="utvalg-ko">' + kø.map(r => {
-          const id = esc(r.id), a = avd(r.prosent);
-          return '<button class="kokort" type="button" data-radar="fokus" data-id="' + id + '" data-radar-id="' + id + '" data-avd="' + a + '" data-fokus="fokus-' + id + '">'
-            + '<span class="kokort__topp">' + brikke(r.selskap, "kokort__monogram")
-              + '<span class="kokort__hvem"><span class="kokort__selskap">' + esc(r.selskap || "Ukjent arbeidsgiver") + '</span>'
-              + (r.sted ? '<span class="kokort__sted">' + esc(r.sted) + '</span>' : "") + '</span>'
-              + '<span class="kokort__ring">' + ring(r.prosent, 48, 5) + '<span class="kokort__tall radar__tid">' + r.prosent + '<span class="skjult"> %</span></span></span></span>'
-            + '<span class="kokort__stilling radar__stilling">' + esc(r.stilling) + '</span>'
-            + '<span class="kokort__bunn"><span class="avd-brikke" data-avd="' + a + '"><span class="avd-brikke__prikk" aria-hidden="true"></span>' + TRINN[trinn(r.prosent)].navn + '</span>'
-              + '<span class="kokort__frist"' + (rød(r) ? " data-hast" : "") + '>' + esc(fristKort(r)) + '</span></span>'
-            + '</button>';
-        }).join("") + '</div></section>';
-  }
-
-  /* Alt Radar fant: fordelingen per avdeling, og resten i en rolig liste. */
-  function altHtml(liste, resten){
-    const tall = [4, 3, 2, 1, 0].map(tr => [tr, liste.filter(r => trinn(r.prosent) === tr).length]).filter(([, a]) => a);
-    return '<section class="utvalg-seksjon" id="radarAlle" tabindex="-1" data-fokus="alle" aria-labelledby="radarAlleTittel">'
-      + '<div class="utvalg-seksjon__topp utvalg-seksjon__topp--bryt"><h3 class="utvalg-seksjon__tittel" id="radarAlleTittel">Alt Radar fant</h3>'
-      + '<ul class="utvalg-fordeling" aria-label="Fordelingen etter hvor godt det passer">' + tall.map(([tr, a]) =>
-          '<li data-avd="' + TRINN[tr].avd + '"><span class="avd-prikk" aria-hidden="true"></span>' + TRINN[tr].navn + ' <b>' + a + '</b></li>').join("") + '</ul></div>'
-      + '<div class="utvalg-stripe" aria-hidden="true">' + tall.map(([tr, a]) => '<span data-avd="' + TRINN[tr].avd + '" style="flex-grow:' + a + '"></span>').join("") + '</div>'
-      + (resten.length ? '<div class="utvalg-liste">' + resten.map(r => listeRadHtml(r, "innboks")).join("") + '</div>' : "")
-      + '</section>';
-  }
 
   /* Raden i «Alt Radar fant», under terskelen og blant de lagt til.
      I Nye er hele raden en knapp som setter funnet i fokus; ellers står
@@ -957,8 +1065,7 @@ export function lagRadarflate(api){
       + '<button class="handling handling--stille handling--ikon" type="button" data-radar="ikke" data-id="' + id + '" data-fokus="ikke-' + id + '"'
         + ' aria-label="Ikke interessert i ' + esc(r.stilling) + ' hos ' + selskap + '" title="Ikke interessert">' + IKON_KRYSS + '</button>' + ut;
     return '<article class="utvalg-rad utvalg-rad--' + del + '" data-radar-id="' + id + '" aria-labelledby="' + tid + ' ' + tid + '-hvem">'
-      + (del === "innboks" ? '<button class="utvalg-rad__hoved" type="button" data-radar="fokus" data-id="' + id + '" data-fokus="fokus-' + id + '">' + hode + '</button>'
-        : '<div class="utvalg-rad__hoved">' + hode + '</div>')
+      + '<div class="utvalg-rad__hoved">' + hode + '</div>'
       + avdBrikke(r)
       + '<span class="utvalg-rad__frist"' + (!lagt && rød(r) ? " data-hast" : "") + '>' + esc(fristKort(r)) + '</span>'
       + (handlinger ? '<span class="utvalg-rad__handlinger">' + handlinger + '</span>' : "")
@@ -1021,7 +1128,7 @@ export function lagRadarflate(api){
     const neste = igjen[i] || igjen[i - 1];
     requestAnimationFrame(() => {
       const el = neste ? rot?.querySelector('[data-fokus="legg-' + CSS.escape(neste.id) + '"]') : null;
-      if(el) el.focus(); else api.fokuserTittel();
+      if(el) el.focus({ preventScroll: true }); else api.fokuserTittel();
     });
   }
 
@@ -1076,7 +1183,7 @@ export function lagRadarflate(api){
       if(rot) fane = erUnder(id) ? "under" : "innboks";
       if(!erUnder(id)) fokusId = id;
       tegnInnboks();
-      requestAnimationFrame(() => rot?.querySelector('[data-fokus="legg-' + CSS.escape(id) + '"]')?.focus());
+      requestAnimationFrame(() => rot?.querySelector('[data-fokus="legg-' + CSS.escape(id) + '"]')?.focus({ preventScroll: true }));
     });
   }
   async function fullførIkkeInteressert(id){
@@ -1097,12 +1204,13 @@ export function lagRadarflate(api){
     if(e.target.closest?.("input, textarea, select, [contenteditable], .skuff, .detalj, .port, [role=dialog]")) return;
     if(document.querySelector(".skuff.er-apen")) return;
     const liste = iInnboks();
-    if(!liste.length) return;
-    const i = iFokus(liste), r = liste[i];
+    if(!liste.length || !scene()) return;
     e.preventDefault();
-    if(k === "l") leggTil(r.id);
-    else if(k === "x") ikkeInteressert(r.id);
-    else blaTil(i + (k === "j" ? 1 : -1));
+    if(k === "j" || k === "k") rullTil(Math.max(0, Math.min(liste.length - 1, visIndeks + (k === "j" ? 1 : -1))));
+    else{
+      const r = liste[iMidtenNå()];
+      if(k === "l") leggTil(r.id); else ikkeInteressert(r.id);
+    }
   });
   addEventListener("visibilitychange", () => {
     if(document.visibilityState === "hidden") for(const id of [...utsatt.keys()]) fullførIkkeInteressert(id);
@@ -1331,19 +1439,10 @@ export function lagRadarflate(api){
     else if(hva === "tilTerskel") tilTerskel();
     else if(hva === "fane") velgFane(b.dataset.fane, b.getAttribute("role") !== "tab");
     else if(hva === "hvorfor") vekslHvorfor(b.dataset.id, b);
-    else if(hva === "forrige" || hva === "neste"){
-      blaTil(iFokus() + (hva === "neste" ? 1 : -1));
-      /* Står knappen sperret ved enden, går fokus til den andre. */
-      if(!rot.contains(document.activeElement)) rot.querySelector('[data-fokus="' + (hva === "neste" ? "forrige" : "neste") + '"]:not(:disabled)')?.focus();
-    }
-    else if(hva === "fokus"){
-      blaTil(iInnboks().findIndex(r => r.id === b.dataset.id), "kort");
-      rot.querySelector('[data-fokus="legg-' + CSS.escape(b.dataset.id) + '"]')?.focus({ preventScroll: true });
-    }
-    else if(hva === "seAlle"){
-      const el = rot.querySelector("#radarAlle");
-      el?.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion:reduce)").matches ? "auto" : "smooth" });
-      el?.focus({ preventScroll: true });
+    else if(hva === "velg"){
+      /* Et lite kort i rekken, eller kanten av et nabokort: rull dit. */
+      const i = Number(b.dataset.indeks);
+      if(i !== visIndeks) rullTil(i);
     }
     else if(hva === "tilCv") api.tilCv(b);
     else if(hva === "tilNokkel") api.tilNøkkel(b);
@@ -1394,6 +1493,17 @@ export function lagRadarflate(api){
 
   function tast(e){
     const el = e.target;
+    /* Rekken er en listeboks: piltastene ruller utvalget til neste eller
+       forrige, Home og End til ytterpunktene, og fokus følger med. */
+    if(el.getAttribute?.("role") === "option" && el.dataset.radar === "velg" && ["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)){
+      e.preventDefault();
+      const n = rekke().children.length, i = Number(el.dataset.indeks);
+      const j = e.key === "Home" ? 0 : e.key === "End" ? n - 1 : Math.max(0, Math.min(n - 1, i + (e.key === "ArrowRight" ? 1 : -1)));
+      rullTil(j);
+      merkValgt(j);
+      rekke().children[j]?.focus({ preventScroll: true });
+      return;
+    }
     /* Fanene: piltastene flytter valget, Home og End til ytterpunktene. */
     if(el.dataset.radar === "fane" && el.getAttribute("role") === "tab" && ["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)){
       e.preventDefault();

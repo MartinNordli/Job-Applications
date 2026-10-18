@@ -150,6 +150,9 @@
   --loft-2:0 2px 4px rgba(24,26,30,.06), 0 10px 28px rgba(24,26,30,.10);
   --loft-3:0 8px 16px rgba(24,26,30,.08), 0 24px 60px rgba(24,26,30,.16);
   --utvalg-loft:0 2px 6px rgba(26,24,21,.12), 0 24px 60px rgba(26,24,21,.22);
+  /* Kortet man sveiper i: samme dybde, men smalere, så skyggen får plass
+     i kanten flaten går ut i. */
+  --sveip-loft:0 2px 6px rgba(26,24,21,.12), 0 18px 36px -10px rgba(26,24,21,.32);
   --sok-loft:0 1px 2px rgba(26,24,21,.2), 0 10px 24px rgba(26,24,21,.18);
 
   --pil:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%235C6166' stroke-width='1.5'/%3E%3C/svg%3E");
@@ -165,6 +168,7 @@
     --loft-2:0 0 0 1px #2F281F, 0 4px 12px rgba(0,0,0,.42);
     --loft-3:0 0 0 1px #362E24, 0 14px 44px rgba(0,0,0,.62);
     --utvalg-loft:0 0 0 1px rgba(231,210,166,.14), 0 18px 40px rgba(0,0,0,.45);
+    --sveip-loft:0 0 0 1px rgba(231,210,166,.14), 0 16px 32px -10px rgba(0,0,0,.55);
     --sok-loft:0 1px 2px rgba(0,0,0,.4), 0 10px 24px rgba(0,0,0,.3);
     --pil:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23968F84' stroke-width='1.5'/%3E%3C/svg%3E");
   }
@@ -175,6 +179,7 @@
   --loft-2:0 0 0 1px #2F281F, 0 4px 12px rgba(0,0,0,.42);
   --loft-3:0 0 0 1px #362E24, 0 14px 44px rgba(0,0,0,.62);
   --utvalg-loft:0 0 0 1px rgba(231,210,166,.14), 0 18px 40px rgba(0,0,0,.45);
+  --sveip-loft:0 0 0 1px rgba(231,210,166,.14), 0 16px 32px -10px rgba(0,0,0,.55);
   --sok-loft:0 1px 2px rgba(0,0,0,.4), 0 10px 24px rgba(0,0,0,.3);
   --pil:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23968F84' stroke-width='1.5'/%3E%3C/svg%3E");
 }
@@ -207,6 +212,7 @@
   --utvalg-ring:transparent; --metall:#E4D3AE; --metall-blekk:#1A2232; --metall-svak:rgba(228,211,174,.18);
   --sok:#1A2232; --sok-blekk:#F7F5F0; --sok-ikon:#E4D3AE; --blink:#1A2232;
   --utvalg-loft:0 2px 6px rgba(26,34,50,.12), 0 24px 60px rgba(26,34,50,.22);
+  --sveip-loft:0 2px 6px rgba(26,34,50,.12), 0 18px 36px -10px rgba(26,34,50,.32);
   --sok-loft:0 1px 2px rgba(26,34,50,.2), 0 10px 24px rgba(26,34,50,.18);
   --varsel-bunn:#1A2232; --varsel-blekk:#F7F5F0; --varsel-lenke:#B9C4E0; --varsel-ring:transparent;
   --primar:#1A2232; --primar-blekk:#FFFFFF; --primar-hover:#2C3650;
@@ -236,6 +242,7 @@
   --sok:#3A1D28; --sok-blekk:#FBF1F2; --sok-ikon:#F2C4B6; --blink:#3A1D28;
   --skifer-vask:#E9EDF4; --salvie-vask:#E8EFEA; --stein:#A6979B; --stein-vask:#F3ECEC; --stein-t:#5E4E55;
   --utvalg-loft:0 2px 6px rgba(58,29,40,.14), 0 24px 60px rgba(58,29,40,.24);
+  --sveip-loft:0 2px 6px rgba(58,29,40,.14), 0 18px 36px -10px rgba(58,29,40,.34);
   --sok-loft:0 1px 2px rgba(58,29,40,.2), 0 10px 24px rgba(58,29,40,.2);
   --varsel-bunn:#2B2226; --varsel-blekk:#FBF5F6; --varsel-lenke:#F2B8C6; --varsel-ring:transparent;
   --primar:#A84D62; --primar-blekk:#FFFFFF; --primar-hover:#934155;
@@ -267,6 +274,7 @@
   --arbeid-1:#22304A; --arbeid-2:#33293A; --arbeid-3:#1F2E30; --arbeid-4:#2E2C30; --arbeid-5:#1C3036; --arbeid-6:#33263A;
   --arbeid-2-t:#E2B98F; --arbeid-4-t:#D8C28F; --arbeid-6-t:#E3A9A0;
   --utvalg-loft:0 0 0 1px rgba(216,195,161,.14), 0 18px 40px rgba(0,0,0,.45);
+  --sveip-loft:0 0 0 1px rgba(216,195,161,.14), 0 16px 32px -10px rgba(0,0,0,.55);
   --sok-loft:0 1px 2px rgba(0,0,0,.4), 0 10px 24px rgba(0,0,0,.3);
   --varsel-bunn:#2A3344; --varsel-blekk:#F5F2EC; --varsel-lenke:#E3D2B5; --varsel-ring:#3A4558;
   --primar:#D8C3A1; --primar-blekk:#1A2232; --primar-hover:#E6D5B8;
@@ -1386,7 +1394,7 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
    liste på Hireds lyse flater. Avdelingene har hver sin dempede tone,
    alltid med navnet eller prosenten ved siden av. Bare en frist som
    haster, er rød; rav brukes ikke her. */
-.radar{container:radar / inline-size}
+.radar{--kant:30px;container:radar / inline-size}
 .radar [data-avd="blink"]{--avd:var(--blink);--avd-vask:var(--utvalg);--avd-t:var(--metall)}
 .radar [data-avd="skifer"]{--avd:var(--skifer);--avd-vask:var(--skifer-vask);--avd-t:var(--skifer-t)}
 .radar [data-avd="salvie"]{--avd:var(--salvie);--avd-vask:var(--salvie-vask);--avd-t:var(--salvie-t)}
@@ -1457,13 +1465,14 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
   .radar__sokknapp{padding:0 22px 0 18px}
 }
 
-/* ---------- toppkortet ---------- */
-.utvalg{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:28px 48px;
-        padding:34px 38px 30px;border-radius:28px;background:var(--utvalg);color:var(--utvalg-blekk);box-shadow:var(--utvalg-loft)}
+/* ---------- det mørke kortet ----------
+   Kortet i utvalget, og det rolige kortet for tom innboks og Radar av. */
+.utvalg{position:relative;overflow:hidden;padding:34px 38px 30px;border-radius:28px;background:var(--utvalg);color:var(--utvalg-blekk);
+        box-shadow:var(--utvalg-loft)}
 .utvalg :focus-visible{outline-color:var(--metall)}
 .utvalg__sirkel{position:absolute;border-radius:50%;box-shadow:inset 0 0 0 1px var(--metall-svak);pointer-events:none}
 .utvalg__sirkel--1{right:-120px;top:-160px;width:520px;height:520px;opacity:.7}
-.utvalg__sirkel--2{right:-40px;top:-80px;width:360px;height:360px;opacity:.55}
+.utvalg__sirkel--2{right:-40px;top:-80px;width:360px;height:360px;opacity:.5}
 .utvalg__kropp{position:relative;display:flex;flex-direction:column;gap:22px;min-width:0}
 .utvalg__hvem{display:flex;align-items:center;gap:14px}
 .utvalg__monogram{flex:none;display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:13px;
@@ -1474,7 +1483,7 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .utvalg__selskap{font-size:16px;font-weight:600;overflow-wrap:anywhere}
 .utvalg__sted{font-size:14px;color:var(--utvalg-blekk-3)}
 .utvalg__hode{display:flex;flex-direction:column;gap:14px}
-.utvalg__stilling{margin:0;font-size:46px;line-height:1.02;font-weight:700;letter-spacing:-.03em;overflow-wrap:anywhere;text-wrap:balance}
+.utvalg__stilling{margin:0;font-size:44px;line-height:1.03;font-weight:700;letter-spacing:-.03em;overflow-wrap:anywhere;text-wrap:balance}
 .utvalg__brikker{display:flex;flex-wrap:wrap;gap:8px;margin:0}
 .utvalg__brikke{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;
                 box-shadow:inset 0 0 0 1px var(--utvalg-kant);font-size:13px;font-weight:500;color:var(--utvalg-blekk-2);white-space:nowrap}
@@ -1484,10 +1493,12 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .utvalg__grunner{display:flex;flex-direction:column;gap:11px;padding-top:4px}
 .utvalg__grunntittel{margin:0;font-size:13px;font-weight:600;color:var(--utvalg-blekk-3)}
 /* Grunnene fordeles over kolonner, så kortet ikke får et tomt felt midt i. */
-.utvalg__grunnliste{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:11px 32px;margin:0;padding:0;list-style:none}
+.utvalg__grunnliste{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:11px 32px;margin:0;padding:0;list-style:none}
 .utvalg__grunnliste li{display:flex;gap:10px;font-size:15.5px;line-height:1.4}
 .utvalg__grunnliste .ikon{margin-top:2px;color:var(--metall)}
-.utvalg__knapper{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding-top:22px;box-shadow:inset 0 1px 0 var(--utvalg-strek)}
+/* Knappene står nederst, så kortene i utvalget får samme form uansett
+   hvor mange grunner de har. */
+.utvalg__knapper{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:auto;padding-top:22px;box-shadow:inset 0 1px 0 var(--utvalg-strek)}
 .utvalg__legg,.utvalg__avvis{display:inline-flex;align-items:center;justify-content:center;height:52px;border:0;border-radius:14px;cursor:pointer;
                             transition:box-shadow .12s ease,background .12s ease}
 .utvalg__legg{padding:0 28px;background:var(--metall);color:var(--metall-blekk);font:700 16px/1 var(--sans);
@@ -1501,26 +1512,16 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
               font-size:15px;font-weight:600;text-decoration:none;border-radius:10px}
 .utvalg__apne:hover{text-decoration:underline;text-underline-offset:4px;text-decoration-color:var(--utvalg-kant)}
 
-.utvalg__side{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:22px;min-width:0}
-.utvalg__blar{display:flex;align-items:center;gap:8px;align-self:flex-end}
-.utvalg__plass{margin-right:4px;font-size:13px;color:var(--utvalg-blekk-3)}
-.utvalg__bla{display:flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:0;border-radius:50%;
-             background:var(--utvalg-flate);color:var(--utvalg-blekk);box-shadow:inset 0 0 0 1px var(--utvalg-kant);cursor:pointer;
-             transition:background .12s ease}
-.utvalg__bla:hover:not(:disabled){background:var(--utvalg-2)}
-.utvalg__bla:disabled{cursor:default;color:var(--utvalg-blekk-3);opacity:.5}
-.utvalg__maal{position:relative;width:216px;height:216px}
+.utvalg__side{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0}
+.utvalg__maal{position:relative;width:208px;height:208px}
 .utvalg__ring{display:block;width:100%;height:100%}
 .utvalg__ringspor{stroke:var(--utvalg-spor)}
 .utvalg__ringbue{stroke:var(--metall)}
 .utvalg__ringinne{stroke:var(--metall-svak)}
 .utvalg__maaltekst{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
-.utvalg__tall{font-family:var(--mono);font-size:60px;font-weight:500;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
-.utvalg__pst{margin-left:2px;font-size:22px;letter-spacing:0;color:var(--utvalg-blekk-3)}
+.utvalg__tall{font-family:var(--mono);font-size:58px;font-weight:500;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.utvalg__pst{margin-left:2px;font-size:21px;letter-spacing:0;color:var(--utvalg-blekk-3)}
 .utvalg__avd{font-size:13px;font-weight:600;color:var(--metall);text-align:center}
-.utvalg__tast{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px;margin:0;font-size:13px;color:var(--utvalg-blekk-3)}
-.utvalg__tast kbd{padding:3px 7px;border-radius:6px;background:var(--utvalg-flate);font-family:var(--mono);font-size:11.5px;color:var(--utvalg-blekk-2)}
-.utvalg__tast kbd + kbd,.utvalg__tast kbd:not(:first-child){margin-left:6px}
 
 /* Det rolige kortet: tom innboks, og Radar av. */
 .utvalg--rolig{display:block;padding:32px 38px 34px}
@@ -1530,52 +1531,97 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .utvalg--rolig .utvalg__kropp{gap:12px}
 .utvalg--rolig .utvalg__knapper{margin-top:10px;padding-top:0;box-shadow:none}
 .radar > .utvalg--rolig{margin-bottom:30px}
+@container radar (max-width:640px){
+  .radar > .utvalg--rolig,.utvalg--rolig{padding:26px 22px 24px;border-radius:24px}
+}
+
+/* ---------- dagens utvalg: kortet man sveiper i ----------
+   Flaten er en vanlig sidelengs rulleflate med snapping. Den går ut i
+   sidemargen (--kant settes fra radarflate.js), så naboene bare viser en
+   mørk kant der. Naboene er skalert ned fra kanten nærmest kortet i
+   midten, og innholdet deres er skjult til de blir valgt. */
+.sveip{display:flex;flex-direction:column;gap:6px}
+.sveip__hode{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:4px}
+.sveip__tittel{margin:0;font-size:22px;font-weight:700;letter-spacing:-.015em}
+.sveip__info{display:flex;align-items:baseline;gap:14px;margin:0;font-size:13px;color:var(--blekk-3)}
+.sveip__teller{font-size:14px;color:var(--blekk-2);white-space:nowrap}
+.sveip__teller b{font-weight:600;color:var(--blekk)}
+.sveip__scene{position:relative;display:flex;gap:14px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
+              scroll-snap-type:x mandatory;scrollbar-width:none;
+              margin:-16px calc(-1 * var(--kant)) -60px;padding:16px var(--kant) 76px;scroll-padding-inline:var(--kant)}
+.sveip__scene::-webkit-scrollbar{display:none}
+/* Kortet er snappunktet og står urørt; flaten inni skaleres. Et skalert
+   snappunkt ville flyttet midten, og kortet stoppet skjevt. */
+.sveip__kort{flex:0 0 100%;min-width:0;display:flex;scroll-snap-align:center;scroll-snap-stop:always;cursor:pointer}
+.sveip__flate{flex:1;min-width:0;display:flex;transform:scale(.955);box-shadow:0 0 0 1px var(--utvalg-ring);
+              transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s ease}
+.sveip__kort[data-side="venstre"] .sveip__flate{transform-origin:right center}
+.sveip__kort[data-side="hoyre"] .sveip__flate{transform-origin:left center}
+.sveip__kort.er-valgt{cursor:default}
+.sveip__kort.er-valgt .sveip__flate{transform:none;box-shadow:var(--sveip-loft)}
+.sveip__innhold{position:relative;flex:1;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:28px 48px;
+                opacity:0;transition:opacity .18s ease}
+.sveip__kort.er-valgt .sveip__innhold{opacity:1}
+
+/* Rekken: ett lite kort per funn, en egen sidelengs rulleflate. */
+.sveip__rekke{position:relative;display:flex;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;
+              scrollbar-width:none;margin:-14px -28px -34px;padding:14px 28px 48px;scroll-padding-inline:28px}
+.sveip__rekke::-webkit-scrollbar{display:none}
+.mini{position:relative;flex:0 0 236px;scroll-snap-align:start;display:flex;flex-direction:column;gap:12px;padding:16px 16px 15px;
+      border:0;border-radius:18px;background:var(--kort);color:var(--blekk);font:inherit;text-align:left;cursor:pointer;
+      box-shadow:var(--loft);transition:background-color .18s ease,color .18s ease,box-shadow .18s ease}
+.mini:hover:not(.er-valgt){box-shadow:var(--loft-2)}
+.mini__topp{display:flex;align-items:center;gap:10px;min-width:0}
+.mini__monogram{flex:none;display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;font-size:11.5px;font-weight:700}
+.mini__selskap{min-width:0;font-size:13px;font-weight:600;color:var(--blekk-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini__stilling{display:-webkit-box;min-height:2.5em;font-size:15.5px;font-weight:700;line-height:1.25;letter-spacing:-.01em;
+                -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mini__bunn{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto}
+.mini__treff{display:inline-flex;align-items:center;gap:7px}
+.mini .avd-prikk{width:8px;height:8px}
+.mini__pst{font-size:13px;font-weight:600}
+.mini__frist{font-size:12px;color:var(--blekk-3)}
+.mini__frist[data-hast]{color:var(--ild-t)}
+/* Det valgte: kortets mørke flate, metallet, og en tunge opp mot kortet. */
+.mini.er-valgt{background:var(--utvalg);color:var(--utvalg-blekk);box-shadow:var(--sveip-loft)}
+.mini.er-valgt::before{content:"";position:absolute;left:50%;top:-6px;width:12px;height:12px;margin-left:-6px;border-radius:2px;
+                       background:var(--utvalg);transform:rotate(45deg)}
+.radar .mini.er-valgt .mini__monogram{background:var(--utvalg-2);color:var(--metall);box-shadow:inset 0 0 0 1px var(--metall-svak)}
+.mini.er-valgt .mini__selskap{color:var(--utvalg-blekk-2)}
+.mini.er-valgt .mini__pst{color:var(--metall)}
+.mini.er-valgt .mini__frist{color:var(--utvalg-blekk-3)}
+.mini.er-valgt .mini__frist[data-hast]{color:var(--utvalg-ild)}
+.mini.er-valgt[data-avd="blink"] .avd-prikk{background:var(--metall);box-shadow:none}
+.mini.er-valgt:focus-visible{outline-color:var(--metall);outline-offset:3px}
+
+.sveip__fot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 22px;margin-top:8px}
+.sveip__forklaring{display:flex;flex-wrap:wrap;gap:8px 22px;margin:0;padding:0;list-style:none;font-size:13px;color:var(--blekk-2)}
+.sveip__forklaring li{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.sveip__lenke{padding:4px 2px;border:0;border-radius:6px;background:none;font:600 13.5px/1.3 var(--sans);color:var(--blekk);cursor:pointer}
+.sveip__lenke:hover{text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--linje-2)}
 
 @container radarpanel (max-width:760px){
-  .utvalg{grid-template-columns:minmax(0,1fr);gap:22px;padding:26px 22px 24px;border-radius:24px}
-  .utvalg__side{order:-1;flex-direction:row;align-items:center;justify-content:space-between}
-  .utvalg__blar{align-self:center}
-  .utvalg__maal{width:112px;height:112px}
-  .utvalg__tall{font-size:32px}
-  .utvalg__pst{font-size:15px}
-  .utvalg__avd,.utvalg__tast{display:none}
-  .utvalg__stilling{font-size:34px}
+  .utvalg{padding:24px 22px 22px;border-radius:24px}
+  .sveip__innhold{grid-template-columns:minmax(0,1fr);gap:22px}
+  .utvalg__side{order:-1;flex-direction:row;justify-content:flex-start}
+  .utvalg__maal{width:104px;height:104px}
+  .utvalg__tall{font-size:28px}
+  .utvalg__pst{font-size:14px}
+  .utvalg__avd{display:none}
+  .utvalg__stilling{font-size:30px}
   .utvalg__knapper{gap:10px}
   .utvalg__legg{flex:1 1 100%}
-  .utvalg--rolig{padding:26px 22px 24px}
+  .sveip__hint{display:none}
+  .sveip__hode{align-items:center}
+  /* Kortet står midt i flaten med en smal kant av naboene på begge sider. */
+  .sveip__kort{flex-basis:calc(100% - 28px)}
+  .sveip__kort:first-child{margin-left:14px}
+  .sveip__kort:last-child{margin-right:14px}
+  .mini{flex-basis:224px}
 }
-@container radar (max-width:640px){
-  .radar > .utvalg--rolig{padding:26px 22px 24px;border-radius:24px}
+@media (prefers-reduced-motion:reduce){
+  .sveip__flate,.sveip__innhold,.mini{transition:none}
 }
-
-/* ---------- køen og listen ---------- */
-.utvalg-seksjon{display:flex;flex-direction:column;gap:14px;margin-top:34px}
-.utvalg-seksjon:focus-visible{outline-offset:6px}
-.utvalg-seksjon__topp{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-.utvalg-seksjon__topp--bryt{flex-wrap:wrap;align-items:center;gap:10px 24px}
-.utvalg-seksjon__tittel{margin:0;font-size:20px;font-weight:700;letter-spacing:-.015em}
-.utvalg-seksjon__lenke{padding:4px 2px;border:0;background:none;font-size:14px;font-weight:600;color:var(--blekk-2);cursor:pointer;border-radius:6px}
-.utvalg-seksjon__lenke:hover{color:var(--blekk);text-decoration:underline;text-underline-offset:3px}
-
-.utvalg-ko{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
-.kokort{display:flex;flex-direction:column;gap:18px;min-width:0;padding:22px;border:0;border-radius:22px;background:var(--kort);
-        color:var(--blekk);font:inherit;text-align:left;cursor:pointer;box-shadow:var(--loft);transition:box-shadow .12s ease}
-.kokort:hover{box-shadow:var(--loft-2)}
-.kokort__topp{display:flex;align-items:center;gap:12px}
-.kokort__monogram{flex:none;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:11px;font-size:14px;font-weight:700}
-.kokort__hvem{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}
-.kokort__selskap{font-size:14px;font-weight:600;overflow-wrap:anywhere}
-.kokort__sted{font-size:13px;color:var(--blekk-3)}
-.kokort__ring{position:relative;flex:none;width:48px;height:48px}
-.kokort__ring .ring__svg{display:block}
-.ring__spor{stroke:var(--avd-vask)}
-.ring__bue{stroke:var(--avd)}
-.kokort__tall{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600}
-.kokort__stilling{font-size:19px;font-weight:700;line-height:1.2;letter-spacing:-.015em;overflow-wrap:anywhere}
-.kokort__bunn{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:auto}
-.kokort__frist{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--blekk-2);white-space:nowrap}
-.kokort__frist[data-hast]{display:inline-flex;align-items:center;height:26px;padding:0 9px;border-radius:8px;
-                          background:var(--ild-vask);color:var(--ild-t);font-size:12px;font-weight:500}
 
 /* Avdelingsbrikken: prikken eller prosenten, og navnet, i avdelingens tone. */
 .avd-brikke{flex:none;display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 11px;border-radius:999px;
@@ -1586,12 +1632,6 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 /* Midt i blinken er selve det mørke kortet: mørk prikk med metallring. */
 [data-avd="blink"] > .avd-prikk,[data-avd="blink"] > .avd-brikke__prikk{background:var(--utvalg);box-shadow:inset 0 0 0 2px var(--metall)}
 .avd-brikke[data-avd="blink"]{box-shadow:inset 0 0 0 1px var(--utvalg-ring)}
-
-.utvalg-fordeling{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0;padding:0;list-style:none;font-size:13px;color:var(--blekk-2)}
-.utvalg-fordeling li{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
-.utvalg-fordeling b{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;color:var(--blekk)}
-.utvalg-stripe{display:flex;gap:4px;height:8px}
-.utvalg-stripe span{flex-basis:0;border-radius:4px;background:var(--avd)}
 
 .utvalg-liste{padding:6px 24px;border-radius:22px;background:var(--kort);box-shadow:var(--loft)}
 .utvalg-rad{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;min-height:44px;padding:12px 0}
@@ -1796,8 +1836,7 @@ a.handling{display:inline-flex;align-items:center;text-decoration:none}
   .radarinnst__bunn .knapp,.radar__underhode .knapp,.radar__tomt .knapp,
   .radar__merknad .knapp,.radar__forslag .knapp,.ksider__ny .knapp{min-height:44px}
   .radar__fane{height:44px}
-  .utvalg__bla{width:44px;height:44px}
-  .utvalg-seksjon__lenke{min-height:44px}
+  .sveip__lenke{min-height:44px}
   .ksider__ny .felt__inn{min-height:44px}
   .ord{min-height:36px}
   .ord__fjern{width:32px;height:32px}
@@ -1938,7 +1977,7 @@ a.handling{display:inline-flex;align-items:center;text-decoration:none}
   /* Toppstripa får fast høyde med vilje: --klebe må stemme med den, ellers
      legger den seg oppå båndoverskriftene i stedet for over dem. */
   :root{--side:0px;--klebe:68px}
-  .skall{grid-template-columns:1fr}
+  .skall{grid-template-columns:1fr;align-content:start}
   .side{position:sticky;top:0;height:68px;flex-direction:row;align-items:center;gap:12px;
         padding:9px 16px;box-shadow:0 1px 0 var(--linje);z-index:30;overflow-x:auto}
   .nav{flex-direction:row;gap:4px;flex:1}
