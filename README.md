@@ -490,33 +490,31 @@ Du bestemmer selv om en stilling blir en søknad: **Legg til** lager søknaden, 
 ### Visningen
 
 **Radar** står i sidepanelet under Oversikt, med antallet nye stillinger ved siden av navnet.
-Er Radar av, sier et kort hva den gjør, hva som sendes og hva det koster, og **Slå på Radar** setter den i gang.
-Øverst står når Radar sist søkte og søker igjen, hvor mange vurderinger som er brukt i dag, og **Søk nå**.
-Under det står trakten fra siste kjøring: fire tall med en stolpe hver, fra alle aktive stillinger Radar søkte gjennom (eller de nye siden sist) via dem som passet søkeordene og dem som ble vurdert mot CV-en, ned til dem som nådde terskelen.
-Stolpene er lineære og grå, så de viser ærlig hvor lite som blir igjen, og bare det som nådde terskelen står i petrol; når en kjøring er ferdig, vokser de fram.
-Under trakten står hvor mange som ligger i innboksen på hvert trinn av skalaen, med en prikk i trinnets farge, og hvor mange som står under terskelen.
-Mens Radar søker, pulserer et punkt med en klokke ved siden av; en feil, en kø som venter eller et NAV-søk som fortsetter, står med ord under trakten.
-Under trakten står merknadene: CV-en eller API-nøkkelen som mangler, med vei dit de legges inn, søkeord som mangler, og kilder som feilet ved siste søk.
+Under tittelen sier én setning hvor mange nye stillinger som venter, og hvor mange av dem som passer godt (fra 80 %).
+Er Radar av, sier et mørkt kort hva den gjør, hva som sendes og hva det koster, og **Slå på Radar** setter den i gang.
+Til høyre står når Radar sist søkte og når den søker selv igjen, og **Søk etter nye**.
+Mens Radar søker, pulserer ikonet i knappen og en klokke går; en feil, en kø som venter eller et NAV-søk som fortsetter, sies kort ved knappen, og en skjermleser får hele setningen.
+Under står merknadene: CV-en eller API-nøkkelen som mangler, med vei dit de legges inn, søkeord som mangler, og kilder som feilet ved siste søk.
 **Legg inn CV** åpner [CV-en under Innstillinger](#cv-en-under-innstillinger), så Radar kan tas i bruk før du har en eneste søknad, og merknaden går bort så snart CV-en er lagret.
 
-Resten står i fem faner: **Innboks**, **Under terskelen**, **Lagt til**, **Kjøringer** og **Innstillinger**.
+Resten står i fem faner: **Nye**, **Under terskelen**, **Lagt til**, **Kjøringer** og **Innstillinger**.
 Piltastene flytter mellom fanene, og valget huskes mens Hired er åpen.
-Første gang er Innstillinger valgt hvis Radar er på uten søkeord, ellers Innboks.
+Første gang er Innstillinger valgt hvis Radar er på uten søkeord, ellers Nye.
 Har innstillingene endringer som ikke er lagret, står en prikk ved fanen.
 
-Innboksen er en rangering, ikke en logg.
-Det som er midt i blinken (fra 95 %), får hvert sitt kort i petrol med prosenten stor, alle grunnene og **Legg til**, **Åpne annonsen** og **Ikke interessert**.
-Resten står i bånd etter samme skala som [vurderingen i panelet](#hvor-godt-passer-stillingen): «Passer godt» fra 80 %, «Passer på det meste» fra 65 % og «Verdt å lese» fra 50 %.
-Er terskelen lavere enn 50 %, kommer «Passer dårlig» nederst.
-Innenfor et bånd står en frist som haster først, så den høyeste prosenten, så det som ble funnet sist.
-Hver rad har prosenten med en liten måler i båndets farge, stillingen, selskapet og stedet, fristen med nedtelling, og handlingene.
-**Hvorfor** folder ut grunnene, kilden og når annonsen ble publisert.
-Fargen sier bare hvor godt stillingen passer, og prosenten står alltid ved siden av; rødt og gult er fortsatt bare frist.
-**Legg til** lager søknaden under Frister og lagrer annonsen på den, og stillingen flytter til **Lagt til**, der **Åpne søknaden** åpner den.
-**Ikke interessert** kan angres i sju sekunder før Radar husker valget, og fokus går til raden under.
-Pila åpner annonsen hos kilden.
+**Nye** viser ett funn om gangen.
+Funnene er rangert etter avdelingen på samme skala som [vurderingen i panelet](#hvor-godt-passer-stillingen) («Midt i blinken» fra 95 %, «Passer godt» fra 80 %, «Passer på det meste» fra 65 %, «Verdt å lese» fra 50 % og «Passer dårlig» under det når terskelen er lavere), så en frist som haster, så den høyeste prosenten, så det som ble funnet sist.
+Det første står på et mørkt kort med arbeidsgiveren, stillingen, fristen og når annonsen ble publisert, grunnene under «Hvorfor den passer», og en ring med prosenten og avdelingen.
+**Legg til i søknadene** lager søknaden under Frister og lagrer annonsen på den, og stillingen flytter til **Lagt til**, der **Åpne søknaden** åpner den.
+**Ikke interessert** kan angres i sju sekunder før Radar husker valget, og **Åpne annonsen** viser den hos kilden.
+Pilene ved ringen blar til forrige og neste.
+Uten mus virker **L** (legg til), **X** (ikke interessert), **J** (neste) og **K** (forrige), så lenge fokus ikke står i et felt.
+Etter en handling rykker det neste opp i kortet, og fokus står på knappen der.
+Under kortet står de tre neste i køen, og under dem **Alt Radar fant**: hvor mange som står i hver avdeling, som tall og som en stripe, og resten i en rolig liste.
+Et klikk på et kort i køen eller en rad i listen setter det funnet i det mørke kortet.
+Hver avdeling har sin dempede farge, alltid med navnet eller prosenten ved siden av, og bare en frist som haster, er rød.
 
-**Kjøringer** viser de fem siste kjøringene med hva de fant og hva de kostet i kroner.
+**Kjøringer** viser tallene fra siste kjøring som en trakt (hentet, passet søkeordene, vurdert mot CV-en, nådde terskelen) og de fem siste kjøringene med hva de fant og hva de kostet i kroner.
 **Innstillinger** har søkeord, steder og ekskluderte ord som lister du kan redigere, terskelen, NAV og Jobbnorge (med fylker), karrieresidene og forbruket i dag mot døgntaket.
 **Foreslå fra CV** fyller listene med stiplede forslag, og ingenting lagres før du trykker **Lagre innstillingene**.
 Av og på og karrieresidene lagres med en gang, og en karriereside du fjerner, kan legges inn igjen med **Angre**.
@@ -553,7 +551,7 @@ Det som passer, men ikke rekker å bli vurdert i én kjøring, venter i en kø o
 Det gjelder det som er over takene for detaljer og vurderinger, og alt når modellen ikke svarer.
 Køen rommer 300 stillinger, og en stilling venter høyst 30 dager.
 Kjøringsloggen viser hvor mange aktive stillinger som ble hentet, hvor mange som passet forfilteret, hvor mange som ble vurdert og hvor mange som venter.
-Etter **Søk nå** viser trakten hva som skjedde, og en skjermleser får det samme som én setning: hvor mange aktive stillinger Radar søkte gjennom, eller hvor mange som var nye siden sist, hvor mange som passet søkeordene, hvor mange som ble vurdert og hvor mange som nådde terskelen.
+Etter **Søk etter nye** viser trakten under **Kjøringer** hva som skjedde, og en skjermleser får det samme som én setning: hvor mange aktive stillinger Radar søkte gjennom, eller hvor mange som var nye siden sist, hvor mange som passet søkeordene, hvor mange som ble vurdert og hvor mange som nådde terskelen.
 Mens søket gjennom alle aktive pågår, står det der, siden det gjerne tar et minutt.
 De fem siste kjøringene under **Kjøringer** beskrives med de samme ordene.
 
@@ -563,13 +561,13 @@ Radar sorterer først uten modell: stillingen må være aktiv, fristen ikke pass
 Så fjernes duplikater mot søknadslisten, innboksen, det du har avvist og mellom kildene, også en Jobbnorge-annonse som ligger i NAV.
 Bare det som er igjen, vurderes av modellen mot CV-en din, åtte om gangen, med Haiku hos Anthropic.
 Prosenten følger samme skala som [vurderingen i panelet](#hvor-godt-passer-stillingen), så 75 % betyr det samme begge steder, og hver stilling får høyst tre korte grunner på CV-ens språk.
-Stillinger over terskelen (50 % som standard, der stillingen er verdt å lese) havner i innboksen.
+Stillinger over terskelen (50 % som standard, der stillingen er verdt å lese) havner under **Nye**.
 Det som ble vurdert til 40 % eller mer, men havnet under terskelen, gjemmes i stedet for å forsvinne, og kommer fram igjen når du senker terskelen.
-Det gjemte står i fanen **Under terskelen**, med den høyeste prosenten først, og **Endre terskelen** der går rett til glideren.
-Er innboksen tom, sier den hvor mange som står under terskelen.
+Det gjemte står i fanen **Under terskelen**, med den høyeste prosenten først, ett trinn dempet og med **Hvorfor** for grunnene, og **Endre terskelen** der går rett til glideren.
+Er **Nye** tom, sier den hvor mange som står under terskelen.
 Radar vurderer det ikke på nytt, så flyttingen koster ingenting, og du får ikke varsel om det.
 Hever du terskelen, går nye stillinger som nå er under den, tilbake til det gjemte.
-Det gjemte kan du legge til eller si nei til på samme måte som i innboksen.
+Det gjemte kan du legge til eller si nei til på samme måte som under **Nye**.
 Det gjemte rommer 150 stillinger og huskes i 30 dager.
 Endres prompten som vurderer stillingene, vurderes de på nytt ved neste kjøring, som søker gjennom alle aktive stillinger igjen.
 En kjøring som gir treff, gir ett varsel med de beste først.
@@ -604,11 +602,11 @@ Det er ett kall til Haiku, høyst ti i timen.
   Appen legger jobben inn igjen neste gang den startes, så fjern også appen fra `/Applications` hvis du ikke vil ha den tilbake.
   Å slå av Radar i Radar-visningen er nok for å stoppe kjøringene, jobben avslutter da straks.
 - Bare én kjøring om gangen får kjøre for en profil. Radar-dokumentet har en leie på 15 minutter, så appen og serveren aldri kjører samtidig.
-- **Søk nå** starter en kjøring med en gang.
+- **Søk etter nye** starter en kjøring med en gang.
 
 ### Tak
 
-- Høyst én **Søk nå** i minuttet.
+- Høyst én **Søk etter nye** i minuttet.
 - Høyst 40 vurderinger per kjøring, og et døgntak du setter selv (150 som standard, aldri over 1000). Når taket er nådd, vurderes ikke flere før neste døgn.
 - NAV: høyst 60 detaljoppslag per kjøring. Jobbnorge: 20. Karrieresider: 10 hver.
 - NAV-søket: høyst 60 sider på 4000 linjer per kjøring. Jobbnorge-søket: høyst 5 sider på 1000.

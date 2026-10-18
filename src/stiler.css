@@ -1405,9 +1405,9 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 
 /* Tittelen er Radars egen: større, og setningen under sier hvor mange
    som passer. Fanene og søket står i raden rett under. */
-.hoved[data-visning="radar"] .tittelrad{margin-bottom:14px}
-.hoved[data-visning="radar"] .tittel{font-size:40px;line-height:1.05;letter-spacing:-.03em}
-.hoved[data-visning="radar"] .tittel__und{margin-top:8px;font-size:15px}
+.hoved[data-side="radar"] .tittelrad{margin-bottom:14px}
+.hoved[data-side="radar"] .tittel{font-size:40px;line-height:1.05;letter-spacing:-.03em}
+.hoved[data-side="radar"] .tittel__und{margin-top:8px;font-size:15px}
 
 .radar__topprad{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px 24px;margin:0 0 30px}
 .radar__sok{display:flex;align-items:center;gap:16px;margin-left:auto;min-width:0}
@@ -1620,7 +1620,7 @@ button.utvalg-rad__hoved:hover .utvalg-rad__stilling{text-decoration:underline;t
   .utvalg-liste{padding:4px 18px}
   .utvalg-rad__hoved{flex-basis:100%}
   .utvalg-rad__frist{width:auto;margin-left:auto}
-  .utvalg-rad__handlinger{flex-basis:100%;margin-left:43px}
+  .utvalg-rad__handlinger{flex-basis:100%;margin-left:-9px}
   .utvalg-rad__mer{padding-left:0}
 }
 

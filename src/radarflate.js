@@ -914,7 +914,7 @@ export function lagRadarflate(api){
   /* Alt Radar fant: fordelingen per avdeling, og resten i en rolig liste. */
   function altHtml(liste, resten){
     const tall = [4, 3, 2, 1, 0].map(tr => [tr, liste.filter(r => trinn(r.prosent) === tr).length]).filter(([, a]) => a);
-    return '<section class="utvalg-seksjon" id="radarAlle" tabindex="-1" aria-labelledby="radarAlleTittel">'
+    return '<section class="utvalg-seksjon" id="radarAlle" tabindex="-1" data-fokus="alle" aria-labelledby="radarAlleTittel">'
       + '<div class="utvalg-seksjon__topp utvalg-seksjon__topp--bryt"><h3 class="utvalg-seksjon__tittel" id="radarAlleTittel">Alt Radar fant</h3>'
       + '<ul class="utvalg-fordeling" aria-label="Fordelingen etter hvor godt det passer">' + tall.map(([tr, a]) =>
           '<li data-avd="' + TRINN[tr].avd + '"><span class="avd-prikk" aria-hidden="true"></span>' + TRINN[tr].navn + ' <b>' + a + '</b></li>').join("") + '</ul></div>'
