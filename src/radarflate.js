@@ -910,7 +910,9 @@ export function lagRadarflate(api){
     return iFokus();
   }
   /* Kanten flaten går ut i: hovedpaddingen og det som er ledig utenfor,
-     høyst 56 px, så naboene viser en mørk kant på rundt 40 px. */
+     helt ut til vinduet eller panelet ved siden av, så naboene aldri kuttes
+     midt i luften. Mellomrommet vokser med kanten, så naboene likevel bare
+     viser rundt 40 px. */
   function settKant(){
     const h = rot?.closest(".hoved");
     if(!h) return;
@@ -927,7 +929,9 @@ export function lagRadarflate(api){
       else if(r.left >= hr.right - 1) høyre = Math.min(høyre, r.left);
     }
     const v = hr.left - venstre + parseFloat(cs.paddingLeft), hø = høyre - hr.right + parseFloat(cs.paddingRight);
-    rot.style.setProperty("--kant", Math.round(Math.max(0, Math.min(56, v, hø))) + "px");
+    const kant = Math.round(Math.max(0, Math.min(v, hø)));
+    rot.style.setProperty("--kant", kant + "px");
+    rot.style.setProperty("--mellom", Math.max(14, kant - 40) + "px");
   }
   /* Etter en omtegning: fokuskortet står i midten med en gang, uten at
      flaten glir, og rekken står der den sto. */
@@ -987,9 +991,9 @@ export function lagRadarflate(api){
     const brikker = [];
     if(r.frist) brikker.push(rød(r)
       ? '<span class="utvalg__brikke utvalg__brikke--haster"><span class="utvalg__prikk" aria-hidden="true"></span>Frist ' + esc(F.omTekst(r.frist, iDag)) + '</span>'
-      : '<span class="utvalg__brikke">Frist <time class="radar__tid" datetime="' + esc(r.frist) + '">' + F.kortDatoMnd(r.frist) + '</time></span>');
+      : '<span class="utvalg__brikke">Frist <time datetime="' + esc(r.frist) + '">' + F.kortDatoMnd(r.frist) + '</time></span>');
     const p = publisert(r);
-    if(p) brikker.push('<span class="utvalg__brikke">' + p.ord + ' <time class="radar__tid" datetime="' + esc(p.iso) + '">' + p.dato + '</time></span>');
+    if(p) brikker.push('<span class="utvalg__brikke">' + p.ord + ' <time datetime="' + esc(p.iso) + '">' + p.dato + '</time></span>');
     const grunner = r.grunner ?? [];
     const o = 2 * Math.PI * 89, fyll = Math.max(0, Math.min(100, r.prosent)) / 100 * o;
     return '<article class="sveip__kort' + (valgt ? " er-valgt" : "") + '" data-radar="velg" data-indeks="' + i + '" data-radar-id="' + id + '" data-avd="' + avd(r.prosent) + '"'
