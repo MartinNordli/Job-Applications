@@ -1,10 +1,16 @@
 # Hired
 
 Personlig oversikt over jobbsøknader: frister som nærmer seg, søknader som er sendt, og hvor de står.
-Appen skriver også søknadsbrev med utgangspunkt i CV-en din og stillingsannonsen.
+Appen skriver søknadsbrev med utgangspunkt i CV-en din og stillingsannonsen, vurderer hvor godt en stilling passer, og forbereder deg til intervjuer.
+**Radar** leter etter nye ledige stillinger, vurderer dem mot CV-en og viser de beste som et utvalg du blar gjennom.
+
+![Radar med dagens utvalg: et mørkt kort for stillingen som passer best, og en rekke med de andre funnene under](docs/skjermbilder/radar-lys.webp)
 
 Alt lagres som lesbar JSON på din egen maskin.
-Bare to ting går ut på nett: søknadsbrev skrives av leverandøren du velger (Claude eller OpenAI), og import fra lenke henter annonsen og kan be Claude om felt den ikke fant selv.
+Bare det du ber om, går ut på nett.
+Brev, vurderinger og intervjuforberedelser skrives av leverandøren du velger (Claude eller OpenAI).
+Import fra lenke henter annonsen og kan be Claude om felt den ikke fant selv.
+Radar henter ledige stillinger fra NAV, Jobbnorge og karrieresidene du legger inn, og sender CV-en og annonsene som passer søkeordene dine, til leverandøren for vurdering.
 
 Appen finnes i to utgaver med samme kode og samme data:
 
@@ -13,6 +19,7 @@ Appen finnes i to utgaver med samme kode og samme data:
 
 ## Innhold
 
+- [Skjermbilder](#skjermbilder)
 - [Kom i gang](#kom-i-gang)
 - [Oversikten](#oversikten)
 - [Fristvarsel](#fristvarsel)
@@ -25,6 +32,30 @@ Appen finnes i to utgaver med samme kode og samme data:
 - [Dataene dine](#dataene-dine)
 - [Hvor dataene ligger](#hvor-dataene-ligger)
 - [Utvikling](#utvikling)
+
+## Skjermbilder
+
+Bildene er tatt med syntetiske data og fiktive arbeidsgivere.
+
+**Frister.** Søknadene du ikke har sendt, gruppert etter når fristen går ut, med hastegraden i farge.
+
+![Frister-visningen med søknadene gruppert i denne uka, løpende opptak og per måned](docs/skjermbilder/oversikt.webp)
+
+**Detaljpanelet.** Klikk på en søknad, så åpnes den ved siden av listen med status, tidslinje, annonse, intervjuer og brev.
+
+![Detaljpanelet åpent ved siden av listen, med statuslinje, tidslinje og notat](docs/skjermbilder/detaljpanel.webp)
+
+**Radar i Midnatt.** Appen har fem fargetemaer, og Radar følger hvert av dem.
+
+![Radar i det mørke temaet Midnatt, med sandfarget ring og knapper](docs/skjermbilder/radar-midnatt.webp)
+
+**Tall.** Nøkkeltall og diagrammer over hvordan søkingen går, i samme farger som Radar.
+
+![Tall-visningen med neste frist på et mørkt kort og en trakt fra liste til intervju](docs/skjermbilder/tall.webp)
+
+**På mobil.** Hele appen virker ned til 390 piksler, og i Radar sveiper du mellom stillingene.
+
+![Frister og Radar på en smal mobilskjerm, side om side](docs/skjermbilder/mobil.webp)
 
 ## Kom i gang
 
