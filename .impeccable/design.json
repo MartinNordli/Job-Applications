@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-18T00:00:00Z",
+  "generatedAt": "2026-10-18T12:00:00Z",
   "title": "Design System: Hired",
   "extensions": {
     "colorMeta": {
@@ -566,7 +566,7 @@
         "role": "tertiary",
         "displayName": "Toppkortet",
         "canonical": "light-dark(#1A1815, #26211B)",
-        "purpose": "Radars mørke kort: varmt blekk i Lin, løftet flate med ring i Sot.",
+        "purpose": "Radars mørke kort, kanten av nabokortene og det valgte minikortet: varmt blekk i Lin, løftet flate med ring i Sot.",
         "light": "#1A1815",
         "dark": "#26211B"
       },
@@ -574,7 +574,7 @@
         "role": "tertiary",
         "displayName": "Toppkortet 2",
         "canonical": "light-dark(#2E2A23, #352E25)",
-        "purpose": "Brikker og knapper på toppkortet.",
+        "purpose": "Brikker, monogram og knapper på det mørke kortet og det valgte minikortet.",
         "light": "#2E2A23",
         "dark": "#352E25"
       },
@@ -582,7 +582,7 @@
         "role": "tertiary",
         "displayName": "Blekk på kortet",
         "canonical": "#F4EFE6",
-        "purpose": "Hovedtekst på toppkortet.",
+        "purpose": "Hovedtekst på det mørke kortet.",
         "light": "#F4EFE6",
         "dark": "#F4EFE6"
       },
@@ -590,7 +590,7 @@
         "role": "tertiary",
         "displayName": "Blekk på kortet 2",
         "canonical": "#D6CFC3",
-        "purpose": "Dempet tekst på toppkortet.",
+        "purpose": "Dempet tekst på det mørke kortet.",
         "light": "#D6CFC3",
         "dark": "#D6CFC3"
       },
@@ -598,7 +598,7 @@
         "role": "tertiary",
         "displayName": "Blekk på kortet 3",
         "canonical": "#B9B1A4",
-        "purpose": "Sted, plass i køen og prosenttegnet; holder 4,5:1 på kortet.",
+        "purpose": "Sted, overskriften over grunnene, prosenttegnet og fristen på det valgte minikortet; holder 4,5:1 på kortet.",
         "light": "#B9B1A4",
         "dark": "#B9B1A4"
       },
@@ -606,13 +606,13 @@
         "role": "tertiary",
         "displayName": "Kant på kortet",
         "canonical": "rgba(244,239,230,.15)",
-        "purpose": "Ring rundt brikker og avvisknappen på toppkortet."
+        "purpose": "Ring rundt brikker og avvisknappen på det mørke kortet."
       },
       "utvalg-ild": {
         "role": "secondary",
         "displayName": "Frist på kortet",
         "canonical": "#FFA27E",
-        "purpose": "En frist innen en uke, som tekst på toppkortet.",
+        "purpose": "En frist innen en uke, som tekst på det mørke kortet og det valgte minikortet.",
         "light": "#FFA27E",
         "dark": "#FFA27E"
       },
@@ -620,13 +620,13 @@
         "role": "secondary",
         "displayName": "Fristvask på kortet",
         "canonical": "rgba(255,122,69,.14)",
-        "purpose": "Fyllet i fristbrikken innen en uke på toppkortet."
+        "purpose": "Fyllet i fristbrikken innen en uke på det mørke kortet."
       },
       "metall": {
         "role": "tertiary",
         "displayName": "Metallet",
         "canonical": "#E7D2A6",
-        "purpose": "Kortets eneste aksent: ringbue, haker, monogram, fokusring og fyll i «Legg til i søknadene».",
+        "purpose": "Kortets eneste aksent: ringbue, haker, monogram, fokusring og fyll i «Legg til i søknadene»; på det valgte minikortet prosenten, monogrammet, en innvendig hårstrek (55 %) og tungen i de mørke temaene.",
         "light": "#E7D2A6",
         "dark": "#E7D2A6"
       },
@@ -642,7 +642,7 @@
         "role": "tertiary",
         "displayName": "Svakt metall",
         "canonical": "rgba(231,210,166,.16)",
-        "purpose": "Sirklene bak ringen, ringens innerstrek og glorien når pekeren er på en metallknapp."
+        "purpose": "Sirklene bak ringen, ringens innerstrek, kanten rundt monogrammet og glorien når pekeren er på en metallknapp."
       },
       "sok": {
         "role": "tertiary",
@@ -672,7 +672,7 @@
         "role": "tertiary",
         "displayName": "Midt i blinken",
         "canonical": "light-dark(#1A1815, #E7D2A6)",
-        "purpose": "Det øverste trinnet: selve det mørke kortet, som prikk og stripesegment.",
+        "purpose": "Det øverste trinnet: selve det mørke kortet, som prikk i forklaringen, rekken og avdelingsbrikken.",
         "light": "#1A1815",
         "dark": "#E7D2A6"
       },
@@ -680,7 +680,7 @@
         "role": "tertiary",
         "displayName": "Skifer",
         "canonical": "light-dark(#3F5C83, #8FA9CC)",
-        "purpose": "Passer godt (fra 80 %): prikk, ringbue og stripe.",
+        "purpose": "Passer godt (fra 80 %): prikk og brikke.",
         "light": "#3F5C83",
         "dark": "#8FA9CC"
       },
@@ -688,7 +688,7 @@
         "role": "tertiary",
         "displayName": "Skifervask",
         "canonical": "light-dark(#E7EDF5, #232B36)",
-        "purpose": "Flaten under skiferbrikken og ringsporet.",
+        "purpose": "Flaten under skiferbrikken.",
         "light": "#E7EDF5",
         "dark": "#232B36"
       },
@@ -704,7 +704,7 @@
         "role": "tertiary",
         "displayName": "Salvie",
         "canonical": "light-dark(#5C7A68, #93AE9B)",
-        "purpose": "Passer på det meste (fra 65 %): prikk, ringbue og stripe.",
+        "purpose": "Passer på det meste (fra 65 %): prikk og brikke.",
         "light": "#5C7A68",
         "dark": "#93AE9B"
       },
@@ -712,7 +712,7 @@
         "role": "tertiary",
         "displayName": "Salvievask",
         "canonical": "light-dark(#E6EEE8, #222B25)",
-        "purpose": "Flaten under salviebrikken og ringsporet.",
+        "purpose": "Flaten under salviebrikken.",
         "light": "#E6EEE8",
         "dark": "#222B25"
       },
@@ -728,7 +728,7 @@
         "role": "tertiary",
         "displayName": "Stein",
         "canonical": "#A39A8E",
-        "purpose": "Verdt å lese (fra 50 %): prikk, ringbue og stripe.",
+        "purpose": "Verdt å lese (fra 50 %): prikk og brikke.",
         "light": "#A39A8E",
         "dark": "#A39A8E"
       },
@@ -736,7 +736,7 @@
         "role": "tertiary",
         "displayName": "Steinvask",
         "canonical": "light-dark(#EFEBE5, #2A2620)",
-        "purpose": "Flaten under steinbrikken og ringsporet.",
+        "purpose": "Flaten under steinbrikken.",
         "light": "#EFEBE5",
         "dark": "#2A2620"
       },
@@ -902,7 +902,7 @@
           "sok-ikon": "#E4D3AE",
           "blink": "#1A2232"
         },
-        "note": "Aksenten er blekket selv; toppkortet er marine med champagne; avdelingstonene bruker de lyse trinnene."
+        "note": "Aksenten er blekket selv; det mørke kortet er marine med champagne; avdelingstonene bruker de lyse trinnene."
       },
       "blush": {
         "scheme": "light",
@@ -955,7 +955,7 @@
           "stein-vask": "#F3ECEC",
           "stein-t": "#5E4E55"
         },
-        "note": "Rosebær er aksent og primærfyll; ild er dratt mot oransje; toppkortet er vin med rosegull."
+        "note": "Rosebær er aksent og primærfyll; ild er dratt mot oransje; det mørke kortet er vin med rosegull."
       },
       "midnatt": {
         "scheme": "dark",
@@ -1017,13 +1017,13 @@
           "arbeid-4-t": "#D8C28F",
           "arbeid-6-t": "#E3A9A0"
         },
-        "note": "Sand er aksent og primærfyll; ring i stedet for skygge; toppkortet er en løftet flate med sandring og sand som metall."
+        "note": "Sand er aksent og primærfyll; ring i stedet for skygge; det mørke kortet er en løftet flate med sandring og sand som metall."
       }
     },
     "typographyMeta": {
       "display": {
-        "displayName": "Stillingen i toppkortet",
-        "purpose": "Bare stillingen på Radars mørke kort; 34 px under 760 px panelbredde."
+        "displayName": "Stillingen på det mørke kortet",
+        "purpose": "Bare stillingen på Radars mørke kort; 30 px under 760 px panelbredde."
       },
       "numeral": {
         "displayName": "Trakttall",
@@ -1035,11 +1035,11 @@
       },
       "title": {
         "displayName": "Tittel",
-        "purpose": "Seksjonstitler i Radar (20 px), stillingen i køkortet (19 px), skuff- og tomtilstandstitler."
+        "purpose": "«Dagens utvalg» i Radar (22 px), skuff- og tomtilstandstitler."
       },
       "row-title": {
         "displayName": "Radtittel",
-        "purpose": "Selskap eller stilling i en rad, 14,5 til 15,5 px."
+        "purpose": "Selskap eller stilling i en rad, 14,5 til 15,5 px, og stillingen i minikortet (700, 15,5 px, høyst to linjer)."
       },
       "body": {
         "displayName": "Brødtekst",
@@ -1051,7 +1051,7 @@
       },
       "data": {
         "displayName": "Data",
-        "purpose": "Datoer, nedtelling, tellinger, kostnad."
+        "purpose": "Datoer, nedtelling, tellinger, kostnad og klokkeslett, også telleren «3 av 7» og prosent og frist i minikortene; en dato inni en brikke med tekst står i brikkens grotesk."
       },
       "label": {
         "displayName": "Etikettstemmen",
@@ -1059,7 +1059,7 @@
       },
       "ring-numeral": {
         "displayName": "Ringtallet",
-        "purpose": "Prosenten i toppkortets ring; 32 px på smalt."
+        "purpose": "Prosenten i ringen på det mørke kortet; 28 px på smalt."
       },
       "headline-radar": {
         "displayName": "Radars tittel",
@@ -1071,7 +1071,7 @@
         "name": "loft",
         "value": "0 1px 2px rgba(24,26,30,.05), 0 4px 14px rgba(24,26,30,.07)",
         "dark": "0 0 0 1px #262019, 0 1px 3px rgba(0,0,0,.34)",
-        "purpose": "Kort, bånd, felt, knapper i ro, valgt fane."
+        "purpose": "Kort, bånd, minikort, felt, knapper i ro, valgt fane."
       },
       {
         "name": "loft-2",
@@ -1089,7 +1089,18 @@
         "name": "utvalg-loft",
         "value": "0 2px 6px rgba(26,24,21,.12), 0 24px 60px rgba(26,24,21,.22)",
         "dark": "0 0 0 1px rgba(231,210,166,.14), 0 18px 40px rgba(0,0,0,.45)",
-        "purpose": "Bare toppkortet i Radar; i Sot og Midnatt en metallring med dybde bak."
+        "purpose": "Det rolige mørke kortet (tom innboks, Radar av); i Sot og Midnatt en metallring med dybde bak."
+      },
+      {
+        "name": "sveip-loft",
+        "value": "0 2px 6px rgba(26,24,21,.12), 0 18px 36px -10px rgba(26,24,21,.32)",
+        "dark": "0 0 0 1px rgba(231,210,166,.14), 0 16px 32px -10px rgba(0,0,0,.55)",
+        "themes": {
+          "ink": "0 2px 6px rgba(26,34,50,.12), 0 18px 36px -10px rgba(26,34,50,.32)",
+          "blush": "0 2px 6px rgba(58,29,40,.14), 0 18px 36px -10px rgba(58,29,40,.34)",
+          "midnatt": "0 0 0 1px rgba(216,195,161,.14), 0 16px 32px -10px rgba(0,0,0,.55)"
+        },
+        "purpose": "Kortet i midten av utvalget og det valgte minikortet: samme dybde som utvalg-loft, men smalere, så skyggen får plass i kanten flaten går ut i. Nabokortene har bare utvalg-ring på 1 px."
       },
       {
         "name": "sok-loft",
@@ -1108,6 +1119,11 @@
         "name": "skuff",
         "value": ".26s cubic-bezier(.4,0,.2,1)",
         "purpose": "Skuffen glir inn og ut."
+      },
+      {
+        "name": "sveip",
+        "value": "transform .18s cubic-bezier(.2,.8,.2,1), opasitet og skygge .18s ease",
+        "purpose": "Når et kort blir valgt i utvalget, skalerer flaten fra 0,955 og innholdet tones inn; minikortet bytter flate på samme tid. Slås av ved redusert bevegelse."
       },
       {
         "name": "sok-puls",
@@ -1150,7 +1166,7 @@
         "value": "640px"
       },
       {
-        "name": "radarpanel toppkort (container)",
+        "name": "radarpanel det mørke kortet (container)",
         "value": "760px"
       },
       {
@@ -1163,10 +1179,10 @@
       }
     ],
     "provenance": {
-      "source": "Skrevet etter bygget, fra src/stiler.css, src/skrifter.css og src/radarflate.js på feat/radar-dagens-utvalg.",
-      "seed": "seed:3ab3da59f904a2e2. Hånden fra trekningen ble avvist av brukeren; retningen kom fra en idérunde på designflaten etterpå, og brukeren godkjente det finpussede forslaget «Dagens utvalg».",
+      "source": "Skrevet etter bygget, fra src/stiler.css, src/skrifter.css og src/radarflate.js på feat/radar-dagens-utvalg, og oppdatert fra koden som ble sendt på feat/radar-sveip, der «Dagens utvalg» ble et kort man sveiper i med en kortrekke under.",
+      "seed": "seed:3ab3da59f904a2e2, bekreftet på denne maskinen fra trekningsloggen i hovedrepoet. Hånden fra trekningen ble avvist av brukeren; retningen kom fra en idérunde på designflaten etterpå, og brukeren godkjente det finpussede forslaget «Dagens utvalg» og siden prototypen man sveiper i.",
       "rasters": "Ingen: bygget lagde ingen rasterbilder som sendes med appen. Skjermbildene i .impeccable/review/ er gjennomgangsbevis, ikke leveranse.",
-      "review": "Sluttgjennomgang: fix. De tre materielle rettelsene er lagt inn: seed-linjen i kontrakten, ordlyden om første skjermbilde i kontrakten, og grunnene i toppkortet fordelt over kolonner.",
+      "review": "Sluttgjennomgang for «Dagens utvalg»: fix, med seed-linjen og ordlyden om første skjermbilde i kontrakten og grunnene fordelt over kolonner lagt inn. Sluttgjennomgang for sveipingen: fix, med nabokortene helt ut til kanten, det valgte minikortet merket med metall i de mørke temaene og datoene i brikkene på det store kortet i brikkens grotesk lagt inn.",
       "knownShellIssues": [
         "Den valgte navigasjonsposten i Lin er en indigo pille (hav-vask); påpekt i gjennomgangen, utenfor Radar.",
         "Skallet har etiketter i sperret mono-versal («OVERSIKT», «NESTE FRIST»); påpekt i gjennomgangen, utenfor Radar, og ikke en regel for nye flater."
@@ -1239,20 +1255,20 @@
       "css": ".ds-sok{display:inline-flex;align-items:center;gap:12px;height:52px;padding:0 26px 0 20px;border:0;border-radius:999px;background:var(--sok,#1A1815);color:var(--sok-blekk,#F4EFE6);font:600 16px/1 var(--sans);cursor:pointer;box-shadow:var(--sok-loft,0 1px 2px rgba(26,24,21,.2),0 10px 24px rgba(26,24,21,.18));transition:box-shadow .12s ease}.ds-sok:hover{box-shadow:var(--sok-loft,0 1px 2px rgba(26,24,21,.2),0 10px 24px rgba(26,24,21,.18)),0 0 0 3px var(--metall-svak,rgba(231,210,166,.16))}.ds-sok:focus-visible{outline:2px solid var(--hav,#3D52D5);outline-offset:2px}.ds-sok__ikon{color:var(--sok-ikon,#E7D2A6)}"
     },
     {
-      "name": "Toppkortet",
+      "name": "Det mørke kortet",
       "kind": "card",
       "refersTo": "utvalg-card",
-      "description": "Dagens utvalg: det beste funnet på et mørkt kort med metallring, grunner og knapper.",
-      "html": "<article class=\"ds-utvalg\"><div><p class=\"ds-utvalg__hvem\">Havbris Energi · Oslo</p><h3 class=\"ds-utvalg__stilling\">Senior dataingeniør</h3><p class=\"ds-utvalg__brikke\">Frist i morgen</p><ul class=\"ds-utvalg__grunner\"><li>Samme fag, rolle og nivå som i CV-en</li><li>Python, SQL og dbt</li></ul><div class=\"ds-utvalg__knapper\"><button class=\"ds-utvalg__legg\">Legg til i søknadene</button><button class=\"ds-utvalg__avvis\">Ikke interessert</button></div></div><div class=\"ds-utvalg__ring\"><svg viewBox=\"0 0 216 216\" width=\"160\" height=\"160\"><circle cx=\"108\" cy=\"108\" r=\"92\" fill=\"none\" stroke-width=\"14\" stroke=\"rgba(244,239,230,.07)\"/><circle cx=\"108\" cy=\"108\" r=\"92\" fill=\"none\" stroke-width=\"14\" stroke-linecap=\"round\" stroke=\"var(--metall,#E7D2A6)\" stroke-dasharray=\"555 578\" transform=\"rotate(-90 108 108)\"/></svg><span class=\"ds-utvalg__tall\">96<small>%</small></span></div></article>",
-      "css": ".ds-utvalg{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:28px 40px;padding:34px 38px 30px;border-radius:28px;background:var(--utvalg,#1A1815);color:var(--utvalg-blekk,#F4EFE6);box-shadow:var(--utvalg-loft,0 2px 6px rgba(26,24,21,.12),0 24px 60px rgba(26,24,21,.22));font-family:var(--sans)}.ds-utvalg__hvem{margin:0;font-size:14px;color:var(--utvalg-blekk-3,#B9B1A4)}.ds-utvalg__stilling{margin:10px 0 12px;font-size:46px;line-height:1.02;font-weight:700;letter-spacing:-.03em}.ds-utvalg__brikke{display:inline-flex;align-items:center;height:30px;margin:0;padding:0 12px;border-radius:999px;background:var(--utvalg-ild-vask,rgba(255,122,69,.14));color:var(--utvalg-ild,#FFA27E);font-size:13px;font-weight:600}.ds-utvalg__grunner{margin:18px 0;padding-left:18px;font-size:15.5px;line-height:1.4}.ds-utvalg__grunner li::marker{color:var(--metall,#E7D2A6)}.ds-utvalg__knapper{display:flex;gap:12px;padding-top:22px;box-shadow:inset 0 1px 0 rgba(244,239,230,.09)}.ds-utvalg__legg,.ds-utvalg__avvis{height:52px;border:0;border-radius:14px;cursor:pointer;transition:box-shadow .12s ease,background .12s ease}.ds-utvalg__legg{padding:0 28px;background:var(--metall,#E7D2A6);color:var(--metall-blekk,#1A1815);font:700 16px/1 var(--sans);box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}.ds-utvalg__legg:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 0 0 3px var(--metall-svak,rgba(231,210,166,.16))}.ds-utvalg__avvis{padding:0 22px;background:rgba(244,239,230,.06);color:var(--utvalg-blekk,#F4EFE6);font:600 15px/1 var(--sans);box-shadow:inset 0 0 0 1px var(--utvalg-kant,rgba(244,239,230,.15))}.ds-utvalg__avvis:hover{background:var(--utvalg-2,#2E2A23)}.ds-utvalg :focus-visible{outline:2px solid var(--metall,#E7D2A6);outline-offset:2px}.ds-utvalg__ring{position:relative;align-self:center}.ds-utvalg__tall{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:44px;font-weight:500;letter-spacing:-.04em;font-variant-numeric:tabular-nums}.ds-utvalg__tall small{font-size:16px;color:var(--utvalg-blekk-3,#B9B1A4)}"
+      "description": "Kortet i midten av Dagens utvalg: arbeidsgiver, stilling, brikker, grunnene med metallhaker, knappene nederst og ringen i metall. Nabokortene er bare en mørk kant.",
+      "html": "<article class=\"ds-utvalg\"><div class=\"ds-utvalg__kropp\"><p class=\"ds-utvalg__hvem\">Bølge AS · Oslo / hybrid</p><h3 class=\"ds-utvalg__stilling\">Analytics Engineer</h3><p class=\"ds-utvalg__brikker\"><span class=\"ds-utvalg__brikke\">Frist 5. nov</span><span class=\"ds-utvalg__brikke ds-utvalg__brikke--haster\">Frist i morgen</span></p><ul class=\"ds-utvalg__grunner\"><li>dbt og SQL er kjernen</li><li>Mindre Python enn du er vant til</li></ul><div class=\"ds-utvalg__knapper\"><button class=\"ds-utvalg__legg\">Legg til i søknadene</button><button class=\"ds-utvalg__avvis\">Ikke interessert</button></div></div><div class=\"ds-utvalg__ring\"><svg viewBox=\"0 0 208 208\" width=\"160\" height=\"160\"><circle cx=\"104\" cy=\"104\" r=\"89\" fill=\"none\" stroke-width=\"13\" stroke=\"rgba(244,239,230,.07)\"/><circle cx=\"104\" cy=\"104\" r=\"89\" fill=\"none\" stroke-width=\"13\" stroke-linecap=\"round\" stroke=\"var(--metall,#E7D2A6)\" stroke-dasharray=\"470 559\" transform=\"rotate(-90 104 104)\"/><circle cx=\"104\" cy=\"104\" r=\"70\" fill=\"none\" stroke-width=\"1\" stroke=\"var(--metall-svak,rgba(231,210,166,.16))\"/></svg><span class=\"ds-utvalg__tall\">84<small>%</small></span></div></article>",
+      "css": ".ds-utvalg{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:28px 40px;padding:34px 38px 30px;border-radius:28px;background:var(--utvalg,#1A1815);color:var(--utvalg-blekk,#F4EFE6);box-shadow:var(--sveip-loft,0 2px 6px rgba(26,24,21,.12),0 18px 36px -10px rgba(26,24,21,.32));font-family:var(--sans)}.ds-utvalg__kropp{display:flex;flex-direction:column}.ds-utvalg__hvem{margin:0;font-size:14px;color:var(--utvalg-blekk-3,#B9B1A4)}.ds-utvalg__stilling{margin:10px 0 14px;font-size:44px;line-height:1.03;font-weight:700;letter-spacing:-.03em;text-wrap:balance}.ds-utvalg__brikker{display:flex;flex-wrap:wrap;gap:8px;margin:0}.ds-utvalg__brikke{display:inline-flex;align-items:center;height:30px;padding:0 12px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--utvalg-kant,rgba(244,239,230,.15));color:var(--utvalg-blekk-2,#D6CFC3);font-size:13px;font-weight:500}.ds-utvalg__brikke--haster{background:var(--utvalg-ild-vask,rgba(255,122,69,.14));box-shadow:none;color:var(--utvalg-ild,#FFA27E);font-weight:600}.ds-utvalg__grunner{margin:22px 0;padding-left:18px;font-size:15.5px;line-height:1.4}.ds-utvalg__grunner li::marker{color:var(--metall,#E7D2A6)}.ds-utvalg__knapper{display:flex;flex-wrap:wrap;gap:12px;margin-top:auto;padding-top:22px;box-shadow:inset 0 1px 0 rgba(244,239,230,.09)}.ds-utvalg__legg,.ds-utvalg__avvis{height:52px;border:0;border-radius:14px;cursor:pointer;transition:box-shadow .12s ease,background .12s ease}.ds-utvalg__legg{padding:0 28px;background:var(--metall,#E7D2A6);color:var(--metall-blekk,#1A1815);font:700 16px/1 var(--sans);box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}.ds-utvalg__legg:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 0 0 3px var(--metall-svak,rgba(231,210,166,.16))}.ds-utvalg__avvis{padding:0 22px;background:rgba(244,239,230,.06);color:var(--utvalg-blekk,#F4EFE6);font:600 15px/1 var(--sans);box-shadow:inset 0 0 0 1px var(--utvalg-kant,rgba(244,239,230,.15))}.ds-utvalg__avvis:hover{background:var(--utvalg-2,#2E2A23)}.ds-utvalg :focus-visible{outline:2px solid var(--metall,#E7D2A6);outline-offset:2px}.ds-utvalg__ring{position:relative;align-self:center}.ds-utvalg__tall{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:44px;font-weight:500;letter-spacing:-.04em;font-variant-numeric:tabular-nums}.ds-utvalg__tall small{font-size:16px;letter-spacing:0;color:var(--utvalg-blekk-3,#B9B1A4)}"
     },
     {
-      "name": "Køkortet",
+      "name": "Minikortet",
       "kind": "card",
-      "refersTo": "queue-card",
-      "description": "Neste i køen: lyst kort med bokstavbrikke, ring i avdelingens tone, stilling og frist.",
-      "html": "<button class=\"ds-ko\"><span class=\"ds-ko__topp\"><span class=\"ds-ko__mono\">LN</span><span class=\"ds-ko__hvem\">Lysne Nett<br><small>Drammen</small></span><span class=\"ds-ko__tall\">89</span></span><span class=\"ds-ko__stilling\">Dataingeniør</span><span class=\"ds-ko__bunn\"><span class=\"ds-avd\">Passer godt</span><span class=\"ds-ko__frist\">om 6 dager</span></span></button>",
-      "css": ".ds-ko{display:flex;flex-direction:column;gap:18px;width:300px;padding:22px;border:0;border-radius:22px;background:var(--kort,#fff);color:var(--blekk,#17181A);font:inherit;font-family:var(--sans);text-align:left;cursor:pointer;box-shadow:var(--loft,0 1px 2px rgba(24,26,30,.05),0 4px 14px rgba(24,26,30,.07));transition:box-shadow .12s ease}.ds-ko:hover{box-shadow:var(--loft-2,0 2px 4px rgba(24,26,30,.06),0 10px 28px rgba(24,26,30,.10))}.ds-ko:focus-visible{outline:2px solid var(--hav,#3D52D5);outline-offset:2px}.ds-ko__topp{display:flex;align-items:center;gap:12px}.ds-ko__mono{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:11px;background:var(--arbeid-2,#EFE3D6);color:var(--arbeid-2-t,#7A4A26);font-size:14px;font-weight:700}.ds-ko__hvem{flex:1;font-size:14px;font-weight:600}.ds-ko__hvem small{font-size:13px;font-weight:400;color:var(--blekk-3,#5C6166)}.ds-ko__tall{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;box-shadow:inset 0 0 0 4px var(--skifer,#3F5C83);font-size:14px;font-weight:600}.ds-ko__stilling{font-size:19px;font-weight:700;letter-spacing:-.015em}.ds-ko__bunn{display:flex;justify-content:space-between;align-items:center}.ds-avd{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 11px;border-radius:999px;background:var(--skifer-vask,#E7EDF5);color:var(--skifer-t,#2F4A6E);font-size:12.5px;font-weight:600}.ds-avd::before{content:\"\";width:7px;height:7px;border-radius:50%;background:var(--skifer,#3F5C83)}.ds-ko__frist{display:inline-flex;align-items:center;height:26px;padding:0 9px;border-radius:8px;background:var(--ild-vask,#FAE7E4);color:var(--ild-t,#B8342A);font-family:var(--mono);font-size:12px}"
+      "refersTo": "mini-card",
+      "description": "Ett lite kort per funn i rekken under Dagens utvalg: monogram og arbeidsgiver, stillingen, avdelingens prikk med prosenten, og fristen. Det valgte er mørkt med metall og en tunge opp mot kortet.",
+      "html": "<div class=\"ds-rekke\"><button class=\"ds-mini\"><span class=\"ds-mini__topp\"><span class=\"ds-mini__mono\">LN</span><span class=\"ds-mini__hvem\">Lysne Nett</span></span><span class=\"ds-mini__stilling\">Dataingeniør</span><span class=\"ds-mini__bunn\"><span class=\"ds-mini__treff\"><span class=\"ds-mini__prikk\"></span>89 %</span><span class=\"ds-mini__frist ds-mini__frist--hast\">om 6 dager</span></span></button><button class=\"ds-mini ds-mini--valgt\"><span class=\"ds-mini__topp\"><span class=\"ds-mini__mono\">BA</span><span class=\"ds-mini__hvem\">Bølge AS</span></span><span class=\"ds-mini__stilling\">Analytics Engineer</span><span class=\"ds-mini__bunn\"><span class=\"ds-mini__treff\"><span class=\"ds-mini__prikk\"></span>84 %</span><span class=\"ds-mini__frist\">om 18 dager</span></span></button></div>",
+      "css": ".ds-rekke{display:flex;gap:12px;padding-top:10px;font-family:var(--sans)}.ds-mini{position:relative;flex:0 0 236px;display:flex;flex-direction:column;gap:12px;padding:16px 16px 15px;border:0;border-radius:18px;background:var(--kort,#fff);color:var(--blekk,#17181A);font:inherit;text-align:left;cursor:pointer;box-shadow:var(--loft,0 1px 2px rgba(24,26,30,.05),0 4px 14px rgba(24,26,30,.07));transition:background-color .18s ease,color .18s ease,box-shadow .18s ease}.ds-mini:hover:not(.ds-mini--valgt){box-shadow:var(--loft-2,0 2px 4px rgba(24,26,30,.06),0 10px 28px rgba(24,26,30,.10))}.ds-mini:focus-visible{outline:2px solid var(--hav,#3D52D5);outline-offset:2px}.ds-mini__topp{display:flex;align-items:center;gap:10px}.ds-mini__mono{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;background:var(--arbeid-2,#EFE3D6);color:var(--arbeid-2-t,#7A4A26);font-size:11.5px;font-weight:700}.ds-mini__hvem{font-size:13px;font-weight:600;color:var(--blekk-2,#4A4E54)}.ds-mini__stilling{min-height:2.5em;font-size:15.5px;font-weight:700;line-height:1.25;letter-spacing:-.01em}.ds-mini__bunn{display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:var(--mono);font-variant-numeric:tabular-nums}.ds-mini__treff{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600}.ds-mini__prikk{width:8px;height:8px;border-radius:50%;background:var(--skifer,#3F5C83)}.ds-mini__frist{font-size:12px;color:var(--blekk-3,#5C6166)}.ds-mini__frist--hast{color:var(--ild-t,#B8342A)}.ds-mini--valgt{background:var(--utvalg,#1A1815);color:var(--utvalg-blekk,#F4EFE6);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--metall,#E7D2A6) 55%,transparent),var(--sveip-loft,0 2px 6px rgba(26,24,21,.12),0 18px 36px -10px rgba(26,24,21,.32))}.ds-mini--valgt::before{content:\"\";position:absolute;left:50%;top:-6px;width:12px;height:12px;margin-left:-6px;border-radius:2px;background:light-dark(var(--utvalg,#1A1815),var(--metall,#E7D2A6));transform:rotate(45deg)}.ds-mini--valgt .ds-mini__mono{background:var(--utvalg-2,#2E2A23);color:var(--metall,#E7D2A6);box-shadow:inset 0 0 0 1px var(--metall-svak,rgba(231,210,166,.16))}.ds-mini--valgt .ds-mini__hvem{color:var(--utvalg-blekk-2,#D6CFC3)}.ds-mini--valgt .ds-mini__treff{color:var(--metall,#E7D2A6)}.ds-mini--valgt .ds-mini__frist{color:var(--utvalg-blekk-3,#B9B1A4)}.ds-mini--valgt:focus-visible{outline-color:var(--metall,#E7D2A6);outline-offset:3px}"
     },
     {
       "name": "Avdelingsbrikker",
@@ -1273,14 +1289,14 @@
   ],
   "narrative": {
     "northStar": "Arbeidsbordet med frister",
-    "overview": "Hired er et rolig arbeidsverktøy på varmt papir, der det som haster eller passer best skal sees før det leses.\nFlatene er nøytrale og lagdelte, og nesten all tekst står i blekk; kulør er sjelden og betyr alltid noe bestemt.\nTettheten er høy uten å bli trang: en rad er rundt 56 px, ett kort holder et helt bånd, og hårstreker skiller radene inni det.\n\nSkriften bærer mye av karakteren.\nFamiljen Grotesk gir overskrifter og navn en litt kantete, menneskelig tyngde, og Geist Mono står for alle tall, datoer og tellinger, så de står i kolonner og kan skummes.\n\nRadar har sitt eget uttrykk inni den samme verdenen: «Dagens utvalg», ett funn om gangen.\nDet beste funnet står på et mørkt, edelt kort med en metallaksent på ringen, hakene og primærknappen, og resten venter i en kø og en rolig liste på Hireds lyse flater.\nHvor godt noe passer, sies med tre dempede avdelingstoner (skifer, salvie, stein), og arbeidsgiverne får dempede bokstavbrikker.\nDet mørke kortet og metallet er forbeholdt Radar; resten av appen beholder papiret og blekket.\n\nSystemet har fem temaer (Lin, Sot, Ink og elfenben, Blush, Midnatt), og alle må virke.\nLin og Sot står én gang i `light-dark()`, og de tre navngitte temaene setter hvert token selv.",
+    "overview": "Hired er et rolig arbeidsverktøy på varmt papir, der det som haster eller passer best skal sees før det leses.\nFlatene er nøytrale og lagdelte, og nesten all tekst står i blekk; kulør er sjelden og betyr alltid noe bestemt.\nTettheten er høy uten å bli trang: en rad er rundt 56 px, ett kort holder et helt bånd, og hårstreker skiller radene inni det.\n\nSkriften bærer mye av karakteren.\nFamiljen Grotesk gir overskrifter og navn en litt kantete, menneskelig tyngde, og Geist Mono står for alle tall, datoer og tellinger, så de står i kolonner og kan skummes.\n\nRadar har sitt eget uttrykk inni den samme verdenen: «Dagens utvalg», ett funn om gangen.\nFunnet i fokus står på et mørkt, edelt kort med en metallaksent på ringen, hakene og primærknappen, og man sveiper sidelengs til neste med styreflaten, fingeren eller J og K.\nNabokortene vises bare som en mørk kant i sidemargen, og en rekke med små lyse kort under viser alle funnene og hvor man er.\nHvor godt noe passer, sies med tre dempede avdelingstoner (skifer, salvie, stein), og arbeidsgiverne får dempede bokstavbrikker.\nDet mørke kortet og metallet er forbeholdt Radar; resten av appen beholder papiret og blekket.\n\nSystemet har fem temaer (Lin, Sot, Ink og elfenben, Blush, Midnatt), og alle må virke.\nLin og Sot står én gang i `light-dark()`, og de tre navngitte temaene setter hvert token selv.",
     "keyCharacteristics": [
       "Tre flatenivåer (bunn, kort, innfelt) som skiller seg ved nivå, aldri ved ramme.",
       "Kulør med faste betydninger: frist, sendt, interaksjon, og i Radar hvor godt noe passer.",
       "Alle tall i Geist Mono med tabulære siffer.",
       "Ett kort per bånd, hårstreker mellom radene.",
-      "I Radar ett mørkt toppkort med metall, en kø av lyse kort og en rolig liste under.",
-      "Korte, stille overganger (0,12 s) og høyst ett bevegelsesmoment per flate."
+      "I Radar ett mørkt kort i fokus som man sveiper i, og en rekke små lyse kort under der det valgte er mørkt med metall.",
+      "Korte, stille overganger (0,12 s for tilstand, 0,18 s når kortene skifter) og høyst ett bevegelsesmoment per flate."
     ],
     "rules": [
       {
@@ -1300,7 +1316,7 @@
       },
       {
         "name": "The Metal Stays On The Card Rule",
-        "body": "Metallet og det mørke kortet brukes bare i Radar, og metallet bare på kortet og i søkepillen; det er aldri pynt på Hireds lyse flater.",
+        "body": "Metallet og det mørke kortet brukes bare i Radar, og metallet bare på det mørke kortet, det valgte minikortet og i søkepillen; det er aldri pynt på Hireds lyse flater.",
         "section": "colors"
       },
       {
@@ -1310,7 +1326,7 @@
       },
       {
         "name": "The Mono Counts Rule",
-        "body": "Alt som er et tall, en dato eller en telling står i Geist Mono med `tabular-nums`, så tallene står i kolonne.",
+        "body": "Alt som er et tall, en dato eller en telling står i Geist Mono med `tabular-nums`, så tallene står i kolonne.\nUnntaket er en dato inni en brikke der den står i en kort frase («Frist 5. nov», «Publisert 14. okt» på det mørke kortet): der står datoen i brikkens grotesk, så brikken leses som én frase.",
         "section": "typography"
       },
       {
@@ -1320,7 +1336,7 @@
       },
       {
         "name": "The Sentence Case Heading Rule",
-        "body": "Nye flater navngir seksjoner med vanlige overskrifter i setningsform («Hvorfor den passer», «Neste i køen», «Alt Radar fant»), aldri med en etikett i versaler over en annen overskrift.",
+        "body": "Nye flater navngir seksjoner med vanlige overskrifter i setningsform («Dagens utvalg», «Hvorfor den passer»), aldri med en etikett i versaler over en annen overskrift.",
         "section": "typography"
       },
       {
@@ -1330,12 +1346,12 @@
       },
       {
         "name": "The Ring In The Dark Rule",
-        "body": "I Sot og Midnatt bærer en ring på 1 px avgrensningen, og skyggen er bare dybde bak den; toppkortets ring er i metallet.",
+        "body": "I Sot og Midnatt bærer en ring på 1 px avgrensningen, og skyggen er bare dybde bak den; ringen rundt det mørke kortet og det valgte minikortet er i metallet.",
         "section": "elevation"
       },
       {
         "name": "The One Deep Card Rule",
-        "body": "Bare toppkortet får den dype skyggen; køen og listen ligger på vanlig loft.",
+        "body": "Bare det mørke kortet i fokus og det valgte minikortet får den dype skyggen; nabokortene har ingen, og de andre minikortene og listene ligger på vanlig loft.",
         "section": "elevation"
       }
     ],
@@ -1343,10 +1359,11 @@
       "**Do** skill flater med nivå (bunn, kort, innfelt) og del rader inni ett kort med hårstrek i linje.",
       "**Do** sett alle tall, datoer og tellinger i Geist Mono med tabulære siffer.",
       "**Do** bruk skifer, salvie og stein bare i Radar, og alltid med avdelingens navn eller prosenten ved siden av.",
-      "**Do** hold metallet på toppkortet og i søkepillen: ring, haker, monogram, fokusring og primærknappen der.",
+      "**Do** hold metallet på det mørke kortet, det valgte minikortet og i søkepillen: ring, haker, monogram, fokusring og primærknappen der.",
       "**Do** si en frist med dato og tekst i tillegg til ild eller rav.",
       "**Do** hold overganger på 0,12 s, og slå av bevegelse når brukeren ber om redusert bevegelse.",
-      "**Do** prøv nye tokens i alle fem temaer, og hold tekst på minst 4,5:1 mot flaten i hvert av dem, også på toppkortet.",
+      "**Do** prøv nye tokens i alle fem temaer, og hold tekst på minst 4,5:1 mot flaten i hvert av dem, også på det mørke kortet.",
+      "**Do** la en sidelengs rulleflate rulle bare seg selv, med `scrollTo` og `overscroll-behavior` begrenset, så det å bla aldri flytter siden.",
       "**Do** gi berøringsmål 44 px når pekeren er grov."
     ],
     "donts": [
@@ -1356,7 +1373,7 @@
       "**Don't** legg kulør på det som har gått ut eller er trukket.",
       "**Don't** sett ramme rundt en flate for å skille den fra en annen.",
       "**Don't** sett mer enn én fylt primærknapp på samme flate.",
-      "**Don't** bruk det mørke kortet eller metallet utenfor Radar, og ikke mer enn ett mørkt kort per visning.",
+      "**Don't** bruk det mørke kortet eller metallet utenfor Radar, og ikke mer enn ett mørkt kort i fokus per visning; nabokantene og det valgte minikortet peker bare på det.",
       "**Don't** gi arbeidsgiverbrikkenes toner en betydning; de skiller bare navn.",
       "**Don't** stram sperringen mer enn -0,04em.",
       "**Don't** legg en etikett i versaler over en overskrift som en kicker.",

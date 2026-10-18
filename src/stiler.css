@@ -1390,8 +1390,8 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 
 /* ---------- Radar: dagens utvalg ----------
    Ett funn om gangen. Det i fokus står på et mørkt kort med metall på
-   ringen, hakene og primærknappen; resten venter i køen og i en rolig
-   liste på Hireds lyse flater. Avdelingene har hver sin dempede tone,
+   ringen, hakene og primærknappen; naboene viser bare kanten, og
+   kortrekken under på Hireds lyse flater viser alle funnene. Avdelingene har hver sin dempede tone,
    alltid med navnet eller prosenten ved siden av. Bare en frist som
    haster, er rød; rav brukes ikke her. */
 .radar{--kant:30px;container:radar / inline-size}
@@ -1583,8 +1583,9 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .mini__frist{font-size:12px;color:var(--blekk-3)}
 .mini__frist[data-hast]{color:var(--ild-t)}
 /* Det valgte: kortets mørke flate, metallet, og en tunge opp mot kortet. */
-/* I de mørke temaene ligger kortflaten nær de andre kortene, så metallet
-   tegner kanten og tungen der; i de lyse er flaten selv nok. */
+/* En hårfin metallkant i alle temaer. I de mørke ligger kortflaten nær de
+   andre kortene, så der er tungen også i metall; i de lyse er den kortets
+   egen flate. */
 .mini.er-valgt{background:var(--utvalg);color:var(--utvalg-blekk);
                box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--metall) 55%, transparent),var(--sveip-loft)}
 .mini.er-valgt::before{content:"";position:absolute;left:50%;top:-6px;width:12px;height:12px;margin-left:-6px;border-radius:2px;

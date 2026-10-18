@@ -18,11 +18,11 @@
    - Fanene: Nye, Under terskelen, Lagt til, Kjøringer og Innstillinger.
      Bare den valgte tegnes. Valget huskes mens appen er åpen; første
      gang er det Innstillinger hvis Radar er på uten søkeord.
-   - Nye: ett funn om gangen. Funnet i fokus står på et mørkt kort med
-     ringen, grunnene og handlingene; L, X, J og K virker uten mus. Under
-     står de tre neste i køen, og «Alt Radar fant» med fordelingen og
-     resten i en rolig liste. Rekkefølgen er avdelingen, så en frist som
-     haster, så høyeste prosent, så det nyeste.
+   - Nye: ett funn om gangen. Hvert funn er et mørkt kort med ringen,
+     grunnene og handlingene, på en flate man sveiper sidelengs i; under
+     står en kortrekke med alle funnene, som ruller for seg. L, X, J og K
+     virker uten mus, og å bla flytter aldri siden. Rekkefølgen er
+     avdelingen, så en frist som haster, så høyeste prosent, så det nyeste.
    - Innstillingene er et utkast som lagres med én knapp; av og på og
      karrieresidene lagres med en gang, fordi de har egne veier inn.
 
@@ -795,7 +795,7 @@ export function lagRadarflate(api){
   /* Rød er bare fristen innen en uke. Det som haster innen tre uker, løftes
      i rangeringen, men står nøytralt, så fargen ikke mister betydning. */
   const rød = r => !!r.frist && F.hast(r.frist, api.iDag()) === "naa";
-  /* Fristen kort, som i køen og listen: «om 6 dager», eller «løpende». */
+  /* Fristen kort, som i kortrekken og listene: «om 6 dager», eller «løpende». */
   const fristKort = r => r.frist ? F.omTekst(r.frist, api.iDag()) : "løpende";
   const publisert = r => {
     const publ = r.publisert || r.funnet, d = new Date(publ);
@@ -1045,9 +1045,8 @@ export function lagRadarflate(api){
   const avdBrikke = r => '<span class="avd-brikke" data-avd="' + avd(r.prosent) + '"><span class="radar__tid">' + r.prosent + '<span class="skjult"> %</span></span>'
     + TRINN[trinn(r.prosent)].navn + '</span>';
 
-  /* Raden i «Alt Radar fant», under terskelen og blant de lagt til.
-     I Nye er hele raden en knapp som setter funnet i fokus; ellers står
-     handlingene til høyre, og «Hvorfor» folder ut grunnene under terskelen. */
+  /* Raden under terskelen og blant de lagt til. Handlingene står til
+     høyre, og «Hvorfor» folder ut grunnene under terskelen. */
   function listeRadHtml(r, del){
     const lagt = del === "lagt", erU = del === "under", id = esc(r.id), tid = domId(r.id), merId = tid + "-mer";
     const åpen = erU && hvorforÅpen.has(r.id);
