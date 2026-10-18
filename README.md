@@ -502,17 +502,20 @@ Piltastene flytter mellom fanene, og valget huskes mens Hired er åpen.
 Første gang er Innstillinger valgt hvis Radar er på uten søkeord, ellers Nye.
 Har innstillingene endringer som ikke er lagret, står en prikk ved fanen.
 
-**Nye** viser ett funn om gangen.
+**Nye** viser ett funn om gangen, under **Dagens utvalg** med telleren «3 av 7».
 Funnene er rangert etter avdelingen på samme skala som [vurderingen i panelet](#hvor-godt-passer-stillingen) («Midt i blinken» fra 95 %, «Passer godt» fra 80 %, «Passer på det meste» fra 65 %, «Verdt å lese» fra 50 % og «Passer dårlig» under det når terskelen er lavere), så en frist som haster, så den høyeste prosenten, så det som ble funnet sist.
-Det første står på et mørkt kort med arbeidsgiveren, stillingen, fristen og når annonsen ble publisert, grunnene under «Hvorfor den passer», og en ring med prosenten og avdelingen.
+Funnet i midten står på et mørkt kort med arbeidsgiveren, stillingen, fristen og når annonsen ble publisert, grunnene under «Hvorfor den passer», og en ring med prosenten og avdelingen.
 **Legg til i søknadene** lager søknaden under Frister og lagrer annonsen på den, og stillingen flytter til **Lagt til**, der **Åpne søknaden** åpner den.
 **Ikke interessert** kan angres i sju sekunder før Radar husker valget, og **Åpne annonsen** viser den hos kilden.
-Pilene ved ringen blar til forrige og neste.
-Uten mus virker **L** (legg til), **X** (ikke interessert), **J** (neste) og **K** (forrige), så lenge fokus ikke står i et felt.
-Etter en handling rykker det neste opp i kortet, og fokus står på knappen der.
-Under kortet står de tre neste i køen, og under dem **Alt Radar fant**: hvor mange som står i hver avdeling, som tall og som en stripe, og resten i en rolig liste.
-Et klikk på et kort i køen eller en rad i listen setter det funnet i det mørke kortet.
-Hver avdeling har sin dempede farge, alltid med navnet eller prosenten ved siden av, og bare en frist som haster, er rød.
+Kortet er en sidelengs rulleflate: sveip med to fingre på styreflaten, med fingeren på en berøringsskjerm, eller bruk shift og rullehjulet, så stopper neste funn i midten.
+Av naboene vises bare en mørk kant, og et klikk på kanten ruller dit.
+Uten mus virker **J** (neste), **K** (forrige), **L** (legg til) og **X** (ikke interessert), så lenge fokus ikke står i et felt.
+Etter en handling rykker det neste inn i midten, og fokus står på knappen der.
+Å bla flytter aldri siden opp eller ned, og det gjør heller ikke en omtegning når Radar har søkt, når noe legges til, avvises eller angres.
+Under kortet står en rekke med ett lite kort per funn: arbeidsgiveren, stillingen, prosenten med avdelingens prikk, og fristen.
+Det valgte er mørkt, rekken ruller sidelengs for seg selv, og et klikk ruller det store kortet dit; med tastaturet flytter piltastene i rekken.
+Nederst står hva prikkene betyr, og en lenke til det som står under terskelen.
+Hver avdeling har sin dempede farge, alltid med navnet eller prosenten ved siden av, og bare en frist innen en uke er rød.
 
 **Kjøringer** viser tallene fra siste kjøring som en trakt (hentet, passet søkeordene, vurdert mot CV-en, nådde terskelen) og de fem siste kjøringene med hva de fant og hva de kostet i kroner.
 **Innstillinger** har søkeord, steder og ekskluderte ord som lister du kan redigere, terskelen, NAV og Jobbnorge (med fylker), karrieresidene og forbruket i dag mot døgntaket.
