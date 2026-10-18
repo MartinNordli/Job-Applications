@@ -24,9 +24,9 @@ OWN-WORLD: Hireds lyse flater og Familjen Grotesk og Geist Mono, pluss et mørkt
 
 STORY: Brukeren ser tittelen og hvor mange som passer, trykker «Søk etter nye» om det trengs, tar stilling til toppkortet (legg til, avvis, neste, også med L, X og J), og ser i køen og listen hva som kommer etterpå.
 
-FIRST VIEWPORT: Tittel 40 px med en setning om hvor mange som passer, fanene som segmentkontroll under, og til høyre sist søkt, neste søk og «Søk etter nye» som stor pille. Under fyller toppkortet bredden: arbeidsgiver, stillingen i 46 px, frist- og faktabrikker, «Treffer CV-en» og «Mangler» i to kolonner, knappene nederst, og ringen med prosenten og blading til høyre. Neste i køen begynner rett under.
+FIRST VIEWPORT: Tittel 40 px med en setning om hvor mange som passer, fanene som segmentkontroll under, og til høyre sist søkt, neste søk og «Søk etter nye» som stor pille. Under fyller toppkortet bredden: arbeidsgiver, stillingen i 46 px, frist- og «Publisert»-brikker, grunnene som én liste «Hvorfor den passer» med haker fordelt over to kolonner (modellen skiller ikke treff fra mangler, så ingen egen «Mangler»-kolonne), knappene nederst, og ringen med prosenten og blading til høyre. Neste i køen begynner rett under.
 
-FORM: A «Dagens utvalg» fra idérunden, finpusset og godkjent av brukeren. seed: none (skipped: en trekning ble gjort i denne økten, men brukeren avviste hele hånden og ba om å starte på nytt; retningen kom fra idérunden etterpå)
+FORM: A «Dagens utvalg» fra idérunden, finpusset og godkjent av brukeren. seed:3ab3da59f904a2e2 (hånden fra trekningen ble avvist av brukeren; retningen kom fra idérunden etterpå)
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
