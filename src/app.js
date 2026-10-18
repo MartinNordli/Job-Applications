@@ -535,9 +535,9 @@ function navneliste(navn){
 
 /* `tom` er en flis uten tall ennå: streken står dempet, så den ikke
    leses som en verdi. */
-function nokkel(merke, verdi, under, varsel, tom){
-  return '<div class="nokkel' + (varsel ? " nokkel--varsel" : "") + (tom ? " nokkel--tom" : "") + '">'
-    + '<p class="merkelinje nokkel__merke">' + merke + '</p>'
+function nokkel(merke, verdi, under, varsel, tom, klasse = ""){
+  return '<div class="nokkel' + (klasse ? " " + klasse : "") + (varsel ? " nokkel--varsel" : "") + (tom ? " nokkel--tom" : "") + '">'
+    + '<h3 class="nokkel__merke">' + merke + '</h3>'
     + '<p class="nokkel__verdi">' + verdi + '</p>'
     + '<p class="nokkel__under">' + under + '</p></div>';
 }
@@ -574,7 +574,7 @@ function visTall(){
   let h = '<div class="fliser">'
     + nokkel("Neste frist", neste ? omTekst(neste.frist).replace("om ", "") : "–",
         neste ? del('<b>' + esc(neste.selskap) + '</b>') + ' · ' + del(esc(langDato(neste.frist))) : "Ingen frister framover",
-        neste && dagerTil(neste.frist) <= 7, !neste)
+        neste && dagerTil(neste.frist) <= 7, !neste, "nokkel--neste")
     + nokkel("Frister denne uka", denneUka.length,
         denneUka.length ? navneliste(unike(denneUka)) : "Pusterom",
         denneUka.length > 0)

@@ -4,12 +4,14 @@
    spor inni kortene. Flater skilles av nivå, aldri av ramme; hårstreker
    brukes bare til å dele rader *inni* én flate. Kulør betyr hastegrad,
    ingenting annet, med to unntak. --hav er appens interaksjonsfarge
-   (valgt fane, fokusring, diagramfyll) og står aldri for et varsel.
+   (valgt fane, fokusring) og står aldri for et varsel.
    Radar har sitt eget uttrykk: et mørkt kort med metall som aksent,
    avdelingstoner (skifer, salvie, stein) som sier hvor godt noe passer,
    alltid med navnet eller prosenten ved siden av, og dempede brikker
    for arbeidsgiverne. I Radar er bare en frist som haster, rød; rav
-   brukes ikke der.
+   brukes ikke der. Tall låner det samme: avdelingstonene er
+   diagramskalaen der (--graf-1 til 4), og «Neste frist» er det mørke
+   kortet med metallet.
 
    Temaet: Lin og Sot står én gang, i light-dark(). Systemet velger
    mellom dem som standard, og color-scheme på :root lar det manuelle
@@ -55,14 +57,16 @@
   --hav-t:    light-dark(#3949C0, #8CAAC1);
   --hav-vask: light-dark(#E6E9FB, #1E2830);
 
-  /* --- diagram: én kulør i fire trinn, minst → mest forpliktet.
-         Midttrinnet er --hav, så trakten og enkeltserie-søylene deler
-         farge med resten av appen i stedet for å innføre en ny.
-         Trinnene er kjørt gjennom dataviz-validatoren i begge temaer. --- */
-  --graf-1: light-dark(#A7B0EC, #49575F);
-  --graf-2: light-dark(#7A8AE2, #5F7583);
-  --graf-3: var(--hav);
-  --graf-4: light-dark(#2A3A97, #9DBAD1);
+  /* --- diagram: Radars avdelingstoner i fire trinn, minst → mest
+         forpliktet: stein, salvie, skifer, og kortets mørke blekk (i de
+         mørke temaene det lyseste blekket, så det synes mot kortet).
+         Enkeltserier står i skifer. Stein er tatt et trinn ned på lyse
+         flater, så alle trinnene holder 3:1 mot kortflaten i alle fem
+         temaene; Blush setter sitt eget. --- */
+  --graf-1: light-dark(#8A8176, var(--stein));
+  --graf-2: var(--salvie);
+  --graf-3: var(--skifer);
+  --graf-4: light-dark(var(--utvalg), var(--utvalg-blekk));
 
   /* --- Radar: det mørke kortet og metallet. Kortet er varmt blekk i Lin
          og en løftet flate med ring i Sot; Ink, Blush og Midnatt setter
@@ -205,7 +209,6 @@
   --mose:#2D7A55; --mose-t:#2A7350; --mose-vask:#E0EFE7;
   --hav:#1A2232; --hav-t:#1A2232; --hav-vask:#E9E3D8;
   /* Aksenten er det mørkeste blekket, så den kan ikke være midttrinnet. */
-  --graf-1:#A9B1C1; --graf-2:#7A869C; --graf-3:#4D5970; --graf-4:#1A2232;
   /* Radar: champagne på marine. */
   --utvalg:#1A2232; --utvalg-2:#26304A; --utvalg-blekk:#F4F2EE; --utvalg-blekk-2:#D2D6DF; --utvalg-blekk-3:#A9B0BF;
   --utvalg-flate:rgba(244,242,238,.06); --utvalg-kant:rgba(244,242,238,.15); --utvalg-strek:rgba(244,242,238,.09); --utvalg-spor:rgba(244,242,238,.09);
@@ -234,7 +237,7 @@
   --rav:#A8740E; --rav-t:#85600C; --rav-vask:#F7EDDA;
   --mose:#2E7A57; --mose-t:#2A7350; --mose-vask:#E2F0E8;
   --hav:#A84D62; --hav-t:#913F54; --hav-vask:#F4D6DC;
-  --graf-1:#DDA9B5; --graf-2:#C27A8C; --graf-3:#A84D62; --graf-4:#6F2F40;
+  --graf-1:#8B7C81;
   /* Radar: rosegull på vin. Avdelingsvaskene er dratt mot rosa flater. */
   --utvalg:#3A1D28; --utvalg-2:#4C2836; --utvalg-blekk:#FBF1F2; --utvalg-blekk-2:#E8D5DA; --utvalg-blekk-3:#CBADB5;
   --utvalg-flate:rgba(251,241,242,.06); --utvalg-kant:rgba(251,241,242,.16); --utvalg-strek:rgba(251,241,242,.10); --utvalg-spor:rgba(251,241,242,.10);
@@ -264,7 +267,6 @@
   --rav:#D9A350; --rav-t:#E2B266; --rav-vask:#33291A;
   --mose:#84AE8F; --mose-t:#94BE9F; --mose-vask:#1C2B25;
   --hav:#D8C3A1; --hav-t:#E3D2B5; --hav-vask:#2A3344;
-  --graf-1:#5E5443; --graf-2:#8C7B60; --graf-3:#D8C3A1; --graf-4:#F0E2C8;
   /* Radar: sand på et løftet kort med ring. */
   --utvalg:#1B2230; --utvalg-2:#26304A; --utvalg-blekk:#F5F2EC; --utvalg-blekk-2:#D0D5DF; --utvalg-blekk-3:#A7AFBE;
   --utvalg-flate:rgba(245,242,236,.06); --utvalg-kant:rgba(245,242,236,.15); --utvalg-strek:rgba(245,242,236,.09); --utvalg-spor:rgba(245,242,236,.08);
@@ -604,9 +606,9 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
 .tomt--lav{margin-top:16px;padding:34px 28px}
 
 /* ---------- TALL ----------
-   Diagrammene deler én kulørskala (--graf-1…4) og lar tallene stå i
-   tekstfargene. En strek som bærer verdi er tynn; akser og hjelpelinjer
-   trekker seg tilbake. */
+   Diagrammene deler én kulørskala (--graf-1…4, Radars avdelingstoner)
+   og lar tallene stå i tekstfargene. En strek som bærer verdi er tynn;
+   akser og hjelpelinjer trekker seg tilbake. */
 /* Sju fliser i fire kolonner: neste frist tar to, så første rad er det
    som ligger foran deg og andre rad det du har sendt. */
 /* Toppmargen gir samme luft under filtrene som båndoverskriftene gir i
@@ -618,7 +620,8 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
    underlinje brytes i nabofliken. */
 .nokkel{background:var(--kort);border-radius:var(--r);box-shadow:var(--loft);padding:17px 19px 19px;
         display:grid;grid-row:span 3;grid-template-rows:subgrid;row-gap:0;align-content:start}
-.nokkel__merke{margin-bottom:11px}
+/* Etiketten er en vanlig overskrift i grotesken, som i Radar. */
+.nokkel__merke{margin:0 0 11px;font-size:13.5px;font-weight:600;line-height:1.3;color:var(--blekk-2)}
 .nokkel__verdi{margin:0;font-size:29px;font-weight:600;letter-spacing:-.035em;line-height:1;
                font-variant-numeric:tabular-nums}
 .nokkel__under{margin:9px 0 0;font-size:12.5px;color:var(--blekk-2);line-height:1.45}
@@ -626,6 +629,18 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
 .nokkel--varsel .nokkel__verdi{color:var(--ild-t)}
 .nokkel--tom .nokkel__verdi{color:var(--blekk-3);font-weight:400}
 .nokkel__del{white-space:nowrap}
+/* Neste frist er det mørke kortet fra Radar: tallet i metallet, og rødt
+   på mørkt når det haster. De andre flisene står hvite. */
+.nokkel--neste{position:relative;overflow:hidden;background:var(--utvalg);color:var(--utvalg-blekk);
+               border-radius:28px;box-shadow:var(--sveip-loft)}
+.nokkel--neste::after{content:"";position:absolute;right:-90px;top:-130px;width:300px;height:300px;border-radius:50%;
+                      box-shadow:inset 0 0 0 1px var(--metall-svak);opacity:.7;pointer-events:none}
+.nokkel--neste .nokkel__merke{color:var(--utvalg-blekk-3)}
+.nokkel--neste .nokkel__verdi{color:var(--metall)}
+.nokkel--neste.nokkel--varsel .nokkel__verdi{color:var(--utvalg-ild)}
+.nokkel--neste.nokkel--tom .nokkel__verdi{color:var(--utvalg-blekk-3)}
+.nokkel--neste .nokkel__under{color:var(--utvalg-blekk-2)}
+.nokkel--neste .nokkel__under b{color:var(--utvalg-blekk)}
 
 .kort{background:var(--kort);border-radius:var(--r);box-shadow:var(--loft);padding:20px 22px 22px;margin-bottom:16px}
 .kort__tittel{margin:0;font-size:15.5px;font-weight:600;letter-spacing:-.014em}

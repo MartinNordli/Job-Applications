@@ -190,6 +190,8 @@ Filtrene gjelder også i **Tall**.
 ### Tall
 
 - Nøkkeltall: neste frist, frister denne uka, antall å søke på, antall sendt med andelen som har fått svar, og antall intervjuer med andelen av det du har sendt.
+- **Neste frist** står på det mørke kortet fra Radar, med tallet i metallet, og i rødt når fristen er innen en uke.
+- Diagrammene bruker Radars avdelingstoner: stein, salvie, skifer og det mørke blekket, fra minst til mest forpliktet.
 - **Svartid**: median antall dager fra en søknad ble sendt til første svar (intervju, avslag eller tilbud).
   Bare ekte hendelser teller, så eldre søknader uten hendelseslogg er ikke med.
   Til den første søknaden du har merket som sendt får svar, står flisen tom.
