@@ -55,7 +55,7 @@ try{
   browser = await chromium.launch({ headless: true, ...(process.env.BROWSER_EXECUTABLE
     ? { executablePath: process.env.BROWSER_EXECUTABLE }
     : process.platform === "darwin" ? { executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" } : {}) });
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "light" });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "light", reducedMotion: "reduce" });
   await context.clock.setFixedTime(NÅ);
   const api = context.request;
   assert.ok((await api.post(url + "/api/registrer", { data: { epost: "test@eksempel.no", navn: "Astrid Eksempel", passord: "syntetisk-passord-123" } })).ok());
@@ -94,15 +94,15 @@ try{
   assert.equal(avd.length, 5);
   assert.equal(avd[3], avd[2], "80 % og 84 % står i samme avdeling");
   assert.notEqual(avd[4], avd[3], "70 % står i en lavere avdeling");
-  assert.equal(await page.locator("#radarInnboks .utvalg[data-avd]").count(), 1, "ett funn i toppkortet");
+  assert.equal(await page.locator("#radarInnboks .sveip__kort.er-valgt[data-avd]").count(), 1, "ett valgt kort");
 
   /* ---------- 96 % funnet sist står øverst, som toppkort ---------- */
   medE = true;
   await søkNå();
   /* Nye funn starter utvalget øverst, så 96 % står i toppkortet uten at man blar. */
   assert.deepEqual(await rekkefølge(), ["Engineer E", "Engineer D", "Engineer C", "Engineer B", "Engineer A", "Engineer F"]);
-  assert.equal(await page.locator(".utvalg").count(), 1);
-  assert.match(await page.locator(".utvalg").textContent(), /Engineer E/);
+  assert.equal(await page.locator(".sveip__kort.er-valgt").count(), 1);
+  assert.match(await page.locator(".sveip__kort.er-valgt").textContent(), /Engineer E/);
 
   /* ---------- fanene med piltastene ---------- */
   const faner = ["innboks", "under", "lagt", "kjoringer", "innstillinger"];
@@ -125,17 +125,25 @@ try{
 
 
   /* ---------- tastene og køen i Dagens utvalg ---------- */
-  const topp = () => page.locator(".utvalg .radar__stilling").textContent();
-  const plass = () => page.locator(".utvalg__plass").textContent();
+  const topp = () => page.locator(".sveip__kort.er-valgt .radar__stilling").textContent();
+  const plass = async () => {
+    const t = (await page.locator("#radarTeller").textContent()).trim();
+    const n = await page.locator("#radarRekke [role=option]").count();
+    return t + " / " + n;
+  };
+  /* Rullingen stopper først etter en liten stund; vent på telleren, ikke på klokka. */
+  const ventTeller = n => page.waitForFunction(v => document.querySelector("#radarTeller")?.textContent.trim() === v, String(n));
   const tilstand = async () => (await (await api.get(url + "/api/radar")).json()).tilstand;
   const statusFor = async tittel => (await tilstand()).innboks.find(r => r.stilling === tittel)?.status;
   assert.equal(await topp(), "Engineer E");
   assert.equal(await plass(), "1 / 6");
 
   await page.keyboard.press("j");
+  await ventTeller(2);
   assert.equal(await topp(), "Engineer D");
   assert.equal(await plass(), "2 / 6");
   await page.keyboard.press("k");
+  await ventTeller(1);
   assert.equal(await topp(), "Engineer E");
   await page.keyboard.press("k");
   assert.equal(await plass(), "1 / 6", "K på første plass gjør ingenting");
@@ -152,15 +160,17 @@ try{
   await page.evaluate(() => document.querySelector("#testfelt").remove());
 
   /* Klikk på et kort i køen gjør det til fokus. */
-  await page.locator(".kokort", { hasText: "Engineer C" }).click();
+  await page.locator("#radarRekke [role=option]", { hasText: "Engineer C" }).click();
+  await ventTeller(3);
   assert.equal(await topp(), "Engineer C");
   assert.equal(await plass(), "3 / 6");
-  await page.keyboard.press("k"); await page.keyboard.press("k");
+  await page.keyboard.press("k"); await ventTeller(2);
+  await page.keyboard.press("k"); await ventTeller(1);
   assert.equal(await topp(), "Engineer E");
 
   /* L legger toppfunnet til, og neste rykker opp. */
   await page.keyboard.press("l");
-  await page.locator(".utvalg .radar__stilling", { hasText: "Engineer D" }).waitFor();
+  await page.locator(".sveip__kort.er-valgt .radar__stilling", { hasText: "Engineer D" }).waitFor();
   assert.equal(await plass(), "1 / 5");
   assert.equal(await statusFor("Engineer E"), "lagtTil", "Engineer E er lagt til på serveren");
   assert.ok((await tilstand()).innboks.every(r => r.stilling !== "Engineer E" || r.status !== "ny"));
@@ -171,7 +181,7 @@ try{
   assert.equal(await topp(), "Engineer C", "neste har rykket opp");
   assert.equal(await plass(), "1 / 4");
   await page.locator("#angreKnapp").click();
-  await page.locator(".utvalg .radar__stilling", { hasText: "Engineer D" }).waitFor();
+  await page.locator(".sveip__kort.er-valgt .radar__stilling", { hasText: "Engineer D" }).waitFor();
   assert.equal(await plass(), "1 / 5");
   assert.equal(await statusFor("Engineer D"), "ny", "angret avvisning rører ikke serveren");
 
