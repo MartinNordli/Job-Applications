@@ -99,8 +99,7 @@ try{
   /* ---------- 96 % funnet sist står øverst, som toppkort ---------- */
   medE = true;
   await søkNå();
-  /* Funnet i fokus blir stående ; K blar til første plass. */
-  await page.keyboard.press("k");
+  /* Nye funn starter utvalget øverst, så 96 % står i toppkortet uten at man blar. */
   assert.deepEqual(await rekkefølge(), ["Engineer E", "Engineer D", "Engineer C", "Engineer B", "Engineer A", "Engineer F"]);
   assert.equal(await page.locator(".utvalg").count(), 1);
   assert.match(await page.locator(".utvalg").textContent(), /Engineer E/);

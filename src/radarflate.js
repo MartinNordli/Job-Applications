@@ -162,6 +162,7 @@ export function lagRadarflate(api){
   let skriver = { sokeord: "", steder: "", ekskluder: "" };
   let fane = null;              /* den valgte fanen; null til visningen tegnes første gang */
   let fokusId = null, fokusIndeks = 0; /* funnet i toppkortet, og plassen det sto på */
+  let bladdSelv = false;                /* brukeren har valgt funnet selv; nye funn flytter det ikke */
   const hvorforÅpen = new Set(); /* rader der «Hvorfor» er foldet ut */
   let lagrer = false, lagreFeil = "";
   let forslag = { går: false, tekst: "", feil: null };
@@ -217,7 +218,12 @@ export function lagRadarflate(api){
     const signatur = JSON.stringify(ny);
     if(signatur === tSignatur && !lastFeil) return;
     tSignatur = signatur;
+    /* Kommer det nye funn, begynner utvalget på nytt øverst, så det beste
+       alltid står i toppkortet. Har brukeren bladd eller valgt selv, blir
+       funnet stående. */
+    const kjente = new Set(nye().map(r => r.id));
     t = ny;
+    if(!bladdSelv && nye().some(r => !kjente.has(r.id))){ fokusId = null; fokusIndeks = 0; }
     lastFeil = null;
     if(utkast && !endret()){ utkast = null; foreslått = new Set(); }
     api.etterEndring();
@@ -812,6 +818,7 @@ export function lagRadarflate(api){
     const liste = iInnboks();
     if(i < 0 || i >= liste.length) return;
     fokusId = liste[i].id; fokusIndeks = i;
+    bladdSelv = true;
     if(aktivFane() !== "innboks"){ fane = "innboks"; }
     tegnFaner();
     const r = liste[i];
@@ -1193,6 +1200,7 @@ export function lagRadarflate(api){
   }
 
   async function søkNå(){
+    bladdSelv = false;
     if(søk.går || t?.kjorerNa) return;
     søk = { går: true, start: Date.now(), tekst: "", kort: "", feil: false, alle: søkerAlle() };
     tegnStatus();
