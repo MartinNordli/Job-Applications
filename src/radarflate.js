@@ -775,6 +775,9 @@ export function lagRadarflate(api){
   const tomHtml = (tittel, tekst, knapp = "") => '<div class="tomt tomt--lav radar__tomt"><p class="tomt__tittel">' + esc(tittel) + '</p>'
     + '<p class="tomt__tekst">' + esc(bind(tekst)) + '</p>' + knapp + '</div>';
   const haster = r => { const h = r.frist ? F.hast(r.frist, api.iDag()) : ""; return h === "naa" || h === "snart"; };
+  /* Rød er bare fristen innen en uke. Det som haster innen tre uker, løftes
+     i rangeringen, men står nøytralt, så fargen ikke mister betydning. */
+  const rød = r => !!r.frist && F.hast(r.frist, api.iDag()) === "naa";
   /* Fristen kort, som i køen og listen: «om 6 dager», eller «løpende». */
   const fristKort = r => r.frist ? F.omTekst(r.frist, api.iDag()) : "løpende";
   const publisert = r => {
@@ -849,7 +852,7 @@ export function lagRadarflate(api){
     const id = esc(r.id), tid = domId(r.id), tr = trinn(r.prosent), iDag = api.iDag();
     const kilde = KILDENAVN[r.kilde] || r.kilde;
     const brikker = [];
-    if(r.frist) brikker.push(haster(r)
+    if(r.frist) brikker.push(rød(r)
       ? '<span class="utvalg__brikke utvalg__brikke--haster"><span class="utvalg__prikk" aria-hidden="true"></span>Frist ' + esc(F.omTekst(r.frist, iDag)) + '</span>'
       : '<span class="utvalg__brikke">Frist <time class="radar__tid" datetime="' + esc(r.frist) + '">' + F.kortDatoMnd(r.frist) + '</time></span>');
     const p = publisert(r);
@@ -906,7 +909,7 @@ export function lagRadarflate(api){
               + '<span class="kokort__ring">' + ring(r.prosent, 48, 5) + '<span class="kokort__tall radar__tid">' + r.prosent + '<span class="skjult"> %</span></span></span></span>'
             + '<span class="kokort__stilling radar__stilling">' + esc(r.stilling) + '</span>'
             + '<span class="kokort__bunn"><span class="avd-brikke" data-avd="' + a + '"><span class="avd-brikke__prikk" aria-hidden="true"></span>' + TRINN[trinn(r.prosent)].navn + '</span>'
-              + '<span class="kokort__frist"' + (haster(r) ? " data-hast" : "") + '>' + esc(fristKort(r)) + '</span></span>'
+              + '<span class="kokort__frist"' + (rød(r) ? " data-hast" : "") + '>' + esc(fristKort(r)) + '</span></span>'
             + '</button>';
         }).join("") + '</div></section>';
   }
@@ -950,7 +953,7 @@ export function lagRadarflate(api){
       + (del === "innboks" ? '<button class="utvalg-rad__hoved" type="button" data-radar="fokus" data-id="' + id + '" data-fokus="fokus-' + id + '">' + hode + '</button>'
         : '<div class="utvalg-rad__hoved">' + hode + '</div>')
       + avdBrikke(r)
-      + '<span class="utvalg-rad__frist"' + (!lagt && haster(r) ? " data-hast" : "") + '>' + esc(fristKort(r)) + '</span>'
+      + '<span class="utvalg-rad__frist"' + (!lagt && rød(r) ? " data-hast" : "") + '>' + esc(fristKort(r)) + '</span>'
       + (handlinger ? '<span class="utvalg-rad__handlinger">' + handlinger + '</span>' : "")
       + (erU ? '<div class="utvalg-rad__mer" id="' + merId + '"' + (åpen ? "" : " hidden") + '>' + grunnerHtml(r) + kildeHtml(r) + '</div>' : "")
       + '</article>';
