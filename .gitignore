@@ -34,3 +34,5 @@ examples/
 
 # Skjermbilder fra designgjennomgangen, tatt lokalt.
 .impeccable/review/
+# Skisser fra beslutningsrundene, tatt lokalt.
+.impeccable/mocks/

@@ -9,24 +9,24 @@ related_targets: ["src/stiler.css"]
 
 Modus: Operate.
 Omfang: Radar-visningen i `src/radarflate.js` og reglene for den i `src/stiler.css`.
-Resten av Hired beholder sitt uttrykk; bare Radar får treff-fargen.
+Resten av Hired beholder sitt uttrykk; bare Radar får metallaksenten og avdelingstonene.
 
 Jobben: se på sekunder om noe nytt er verdt å søke på, legge det til, og avvise resten.
-Klagen på dagens side: for lite farge, for mye tekst, tilfeldig rekkefølge, for lite å se på.
-Brukeren valgte retning B fra `specs/radar/designforslag.html` (branch docs/radar-designforslag), med trakten fra C og fanene fra D, i petrol.
-Det som skal sees uten å leses: hvor godt en stilling passer, og fristen.
+Klagen på forrige versjon: kjedelig, for ensfarget, avdelingene for like, petrol passer dårlig (særlig i Blush), og «Søk nå» er lett å overse.
+Brukeren avviste lilla, petrol, lime, pistasj, mynte og radarskjermen, og valgte retning A «Dagens utvalg» i den finpussede versjonen på designflaten https://claude.ai/artifact/DZtGvJcuZftGbG14V6ZkNF (tavlene «Dagens utvalg, finpusset» og «Toppkortet i de fem temaene»).
+Ønsket: moderne, men classy og profesjonelt.
 
 ## Direction contract
 
-THESIS: Innboksen er en rangering, ikke en logg. Funnene står i bånd etter treffskalaen, best først, og fargen betyr bare hvor godt noe passer. Siden nekter den kronologiske tekststabelen der 96 % og 53 % ser like ut.
+THESIS: Ett funn om gangen. Det beste funnet står som et mørkt, edelt kort med stor ring og grunnene i klartekst, og resten venter i en kø under. Siden nekter listen der alt veier like mye.
 
-OWN-WORLD: Hireds flater, Familjen Grotesk og Geist Mono, pluss en petrol-skala i fire trinn (--treff-1 til 4, --treff-vask). Treff er en fylt måler og en farget prikk ved båndnavnet; toppfunnet ligger på petrol-vask med prosenten i display-størrelse. Ild og rav er fortsatt bare frist.
+OWN-WORLD: Hireds lyse flater og Familjen Grotesk og Geist Mono, pluss et mørkt toppkort (varmt blekk, marine i Ink, vin i Blush, løftet kort i Sot og Midnatt) med en metallaksent (champagne, rosegull i Blush, sand i Midnatt) på ring, haker og primærknapp. Avdelingene har hver sin dempede tone: skifer for passer godt, salvie for passer på det meste, stein for verdt å lese; midt i blinken er selve det mørke kortet. Arbeidsgiverne får dempede bokstavbrikker. Bare en frist som haster, er rød.
 
-STORY: Brukeren ser trakten (alle aktive, passet søkeordene, vurdert, nådde terskelen) og forstår at Radar har gjort jobben. Så ser brukeren det som er midt i blinken, leser grunnene og legger det til. Resten skummes på prosent og frist, og «Hvorfor» åpnes bare ved behov.
+STORY: Brukeren ser tittelen og hvor mange som passer, trykker «Søk etter nye» om det trengs, tar stilling til toppkortet (legg til, avvis, neste, også med L, X og J), og ser i køen og listen hva som kommer etterpå.
 
-FIRST VIEWPORT: Tittel, tellingen og «Søk nå» øverst. Trakten som én rad med fire store tall i mono og pil mellom, med siste og neste søk over. Fanene Innboks, Under terskelen, Lagt til, Kjøringer, Innstillinger. Så toppkortet i full bredde: prosent på rundt 80 px til venstre, stilling og selskap, alle grunnene, og «Legg til» som eneste primærknapp til høyre. Første bånd begynner under.
+FIRST VIEWPORT: Tittel 40 px med en setning om hvor mange som passer, fanene som segmentkontroll under, og til høyre sist søkt, neste søk og «Søk etter nye» som stor pille. Under fyller toppkortet bredden: arbeidsgiver, stillingen i 46 px, frist- og faktabrikker, «Treffer CV-en» og «Mangler» i to kolonner, knappene nederst, og ringen med prosenten og blading til høyre. Neste i køen begynner rett under.
 
-FORM: B med trakt og faner, valgt av brukeren blant fire retninger i designforslaget (B var anbefalingen, nummer én). seed: none (skipped: retningen ble valgt av brukeren i designforslaget før denne økten, så ingen trekning ble gjort)
+FORM: A «Dagens utvalg» fra idérunden, finpusset og godkjent av brukeren. seed: none (skipped: en trekning ble gjort i denne økten, men brukeren avviste hele hånden og ba om å starte på nytt; retningen kom fra idérunden etterpå)
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
