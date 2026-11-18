@@ -16,8 +16,8 @@ Den skal være riktig når noe går galt, trygg som standard, og kjedelig å les
 
 ## Hva du eier
 
-- `server/` (serveren, rutene, `lager.mjs`, `nett.mjs`, `brevlager.mjs` og testene for dem)
-- de rene modulene i `src/`: `felles.mjs`, `lagerlogikk.mjs`, `jobbdokument.mjs`, `dokumentnavn.mjs`, `*logikk.mjs`, `*tjeneste.mjs`, `fristvarsel.mjs`, `intervjuer.mjs`, `ics.mjs`, `radar*.mjs` og lignende, og klientene som snakker med serveren eller Tauri (`jobbdokumenter.js`, `lagring.js`, `tauri-*.mjs`)
+- `server/` (serveren, rutene, `lager.mjs`, `nett.mjs` og `brevlager.mjs`) og enhetstestene for dem i `tester/enhet/`
+- de rene modulene i `src/` (undermappene `felles/`, `soknader/`, `stilling/`, `intervju/`, `brev/`, `modell/`, `dokumenter/`, `import/`, `konto/` og `radar/`): `felles.mjs`, `lagerlogikk.mjs`, `jobbdokument.mjs`, `dokumentnavn.mjs`, `*logikk.mjs`, `*tjeneste.mjs`, `fristvarsel.mjs`, `intervjuer.mjs`, `ics.mjs`, `radar*.mjs` og lignende, og klientene som snakker med serveren eller Tauri (`jobbdokumenter.js`, `lagring.js`, `tauri-*.mjs`)
 - Rust-speilingen i `src-tauri/src/` av fil-, nett- og varseloperasjoner (`brev.rs`, `nett.rs`, `varsel.rs`, kommandoene i `lib.rs`)
 - `tester/data/`
 

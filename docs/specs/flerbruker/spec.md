@@ -2,7 +2,7 @@
 
 ## Problem
 
-`specs/job-tracker/spec.md` holdt «brukere og innlogging» utenfor omfang, og det
+`docs/specs/job-tracker/spec.md` holdt «brukere og innlogging» utenfor omfang, og det
 var riktig da: én person, én maskin, én fil. Prisen var at alt som kjørte på
 maskinen kunne lese og skrive hele `/api/jobber` uten legitimasjon, og at to
 personer på samme maskin måtte dele én liste eller bytte på datakatalogen for

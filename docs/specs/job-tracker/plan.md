@@ -25,7 +25,7 @@ gir 409 med gjeldende dokument, og klienten laster om og sier fra.
 
 ## Delt validering
 
-`src/felles.mjs` importeres av både nettleseren og serveren. Klienten validerer for
+`src/felles/felles.mjs` importeres av både nettleseren og serveren. Klienten validerer for
 rask tilbakemelding, serveren fordi den ikke kan stole på klienten. Én definisjon,
 ingen glidning.
 

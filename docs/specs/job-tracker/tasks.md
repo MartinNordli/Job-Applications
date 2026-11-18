@@ -1,14 +1,14 @@
 # Oppgaver
 
 - [x] Git-baseline før noe røres
-- [x] Del `index.html` i `index.html` + `src/stiler.css` + `src/app.js` (verifisert byte-likt)
-- [x] `src/felles.mjs` — statuser, sektorer, validering
+- [x] Del `index.html` i `index.html` + `src/felles/stiler.css` + `src/soknader/app.js` (verifisert byte-likt)
+- [x] `src/felles/felles.mjs` — statuser, sektorer, validering
 - [x] `server/lager.mjs` — atomisk lesing/skriving, karantene, sikkerhetskopi
 - [x] `server/server.mjs` — statiske filer + `/api/jobber`
 - [x] `server/*.test.mjs` — 32 tester
 - [x] `package.json`
-- [x] `src/startliste.js` — startlisten ut av app.js
-- [x] `src/lagring.js` — hent, lagre med debounce, versjonssporing, tilstandsvarsler
+- [x] `src/soknader/startliste.js` — startlisten ut av app.js
+- [x] `src/soknader/lagring.js` — hent, lagre med debounce, versjonssporing, tilstandsvarsler
 - [x] Koble `lagre()` og oppstart til serveren
 - [x] Migrering fra `localStorage` med bekreftelse
 - [x] Gjenoppretting fra `jobber.forrige.json` når datafilen mangler

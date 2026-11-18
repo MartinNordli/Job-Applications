@@ -18,8 +18,8 @@ Den skal føles rolig, rask, lettlest og tydelig gjort med omhu.
 
 ## Hva du eier
 
-- `index.html`, `src/felles/stiler.css`, `temaer/`
-- visningsfilene i `src/`: `app.js`, `detaljpanel.js`, `brevflate.js`, `annonseflate.js`, `tidslinje.js`, `radmeny.js`, `formater.js` og nye filer av samme slag
+- `index.html`, `src/felles/stiler.css`
+- visningsfilene i `src/<område>/` (`felles/formater.js`, `soknader/app.js`, `soknader/detaljpanel.js`, `brev/brevflate.js`, `stilling/annonseflate.js`, `soknader/tidslinje.js`, `soknader/radmeny.js` og nye filer av samme slag):
 
 Du endrer ikke `server/`, de rene `.mjs`-modulene (regler, tjenester, validering) eller `src-tauri/`.
 Mangler et felt eller en rute, bygger du alt som ikke avhenger av det, og skriver nøyaktig hva som mangler i rapporten.

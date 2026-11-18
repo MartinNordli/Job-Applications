@@ -888,7 +888,7 @@ npm run test:ui   # nettlesertester av brevflyten, innstillingene, skuffen, hend
 npm run test:rust # fil-, nett-, brev- og varseloperasjonene i Mac-appen
 ```
 
-`npm test` kjører alle `server/*.test.mjs` med `node:test`.
+`npm test` kjører alle `tester/enhet/*.test.mjs` med `node:test`.
 `tester/data/dokumenter.json` leses av både Node- og Rust-testene, så navnene på profildokumentene og utdraget for listen ikke glir fra hverandre.
 Testene bruker simulerte modellsvar og krever ingen API-nøkkel.
 
@@ -916,71 +916,94 @@ Kjøring mot betalte modeller og vurdering av skrivekvalitet er beskrevet i [`ev
 
 ### Oppbygging
 
+Frontenden ligger i `src/`, delt etter område.
+Filer som slutter på `.mjs` er regler eller tjenester uten I/O, delt med serveren og testene.
+Filer som slutter på `.js` er visninger og klienter som bare kjører i nettleseren eller webviewet.
+
 ```
-index.html               markup
-src/felles/stiler.css           designsystemet og fargetemaene
-src/felles/skrifter.css         Familjen Grotesk og Geist Mono, lagt inn lokalt
-src/felles/tema-tidlig.js       temaene, og det valgte satt før første maling
-src/soknader/app.js               appen: visninger, skjema, eksport og hendelser
-src/felles/felles.mjs           statuser, sektorer og validering, delt av alle lag
-src/soknader/startliste.js        søknadene appen starter med
+index.html                  markup
 
-src/soknader/lagerlogikk.mjs      reglene for datafilen, uten filsystem
-src/soknader/lagring.js           henting og lagring, velger transport etter modus
-src/felles/tauri-filer.mjs      filsystemet i appmodus, over Rust
+src/felles/                 det alle områdene deler
+  felles.mjs                statuser, sektorer og validering
+  stiler.css                designsystemet og fargetemaene
+  skrifter.css, skrifter/   Familjen Grotesk og Geist Mono, lagt inn lokalt
+  tema-tidlig.js            det valgte temaet, satt før første maling
+  formater.js, flyt.js      escaping, datoer og monogram; fade på stripene som ruller sidelengs
+  uten-server.js            sier hvorfor siden er tom når index.html åpnes rett fra disk
+  tauri-filer.mjs           filsystemet i appmodus, over Rust
+  tauri-nett.mjs            henting og modellkall i appmodus, over Rust
+src/soknader/               søknadslisten
+  app.js                    appen: visninger, skjema, eksport og hendelser
+  startliste.js, radmeny.js, detaljpanel.js, tidslinje.js
+  lagerlogikk.mjs           reglene for datafilen, uten filsystem
+  lagring.js                henting og lagring, velger transport etter modus
+  hendelser.mjs             hendelsene på en søknad
+  fristvarsel.mjs           når en frist varsles, og med hvilke ord
+  varsling.js               fristvarselet i flaten, velger modus
+src/stilling/               stillingen bak en søknad
+  jobbdokument.mjs          jobb-<id>.json: annonse, vurdering og forberedelser per søknad
+  jobbdokumenter.js         klienten mot jobbdokumentene
+  jobbdokumenttjeneste.mjs  tjenesten som lager og holder dem
+  annonsetekst.mjs          annonseteksten ut av en hentet side
+  annonseuttrekk.mjs        annonsens linjer, valgt av Haiku
+  annonseflate.js           Annonse-fanen i detaljpanelet
+  matchlogikk.mjs, matchtjeneste.mjs   hvor godt stillingen passer
+src/intervju/               intervjuer og forberedelse
+  intervjuer.mjs, intervjuflate.js, ics.mjs
+  forberedelse.mjs, forberedelsetjeneste.mjs
+src/brev/                   søknadsbrev og CV
+  brevlogikk.mjs            prompt, stileksempler, skjemaer og kontrollene
+  brevtjeneste.mjs          kjøringen som skriver brevet i ett kall
+  brev.js                   transporten, velger modus
+  brevflate.js, cvflate.js  brevskriveren og CV-en (felles for profilen)
+  brev-dokumenter.mjs       lesing av CV og eksport av brev
+  brev-dokumentmotor.mjs    PDF og Word, pakkes til src/vendor/
+src/modell/                 modellkallene alle formål deler
+  brev-provider.mjs         meldingsformatet for Anthropic og OpenAI
+  brev-strom.mjs            strømmende modellsvar
+src/dokumenter/             profildokumentene i lageret
+  brevdata.mjs, dokumentnavn.mjs, dokumentfeil.mjs, dokumentutdrag.mjs
+  dokumentklient.js         klienten mot dokumentene
+src/import/                 import av en utlysning
+  importlogikk.mjs          reglene for å lese en utlysning, uten I/O
+  importlogg.mjs            kostnadsloggen
+  import.js                 importflyten, velger transport
+src/konto/                  kontoer og innlogging
+  brukerlogikk.mjs          reglene for kontoer og økter, uten I/O
+  okt.js                    hvem som er logget inn, i begge modi
+  okt-app.mjs               kontoene i appmodus, over Rust og crypto.subtle
+  innlogging.js             innloggingen
+src/radar/                  Radar
+  radarlogikk.mjs, radarkilder.mjs, radarnett.mjs, radarprompt.mjs   kjernen
+  radarflate.js, radarklient.js                                       visningen og klienten
+  radar-bakgrunn.html, radar-bakgrunn.js   den skjulte siden Radar kjører i når appen er lukket
+src/vendor/                 bygget av scripts/bygg-dokumenter.mjs, ikke sjekket inn
 
-src/import/importlogikk.mjs     reglene for å lese en utlysning, uten I/O
-src/import/importlogg.mjs       kostnadsloggen for importen
-src/import/import.js            importflyten, velger transport
-src/felles/tauri-nett.mjs       henting og modellkall i appmodus, over Rust
+server/                     serveren
+  server.mjs                statiske filer og API-et
+  brukere.mjs               registeret, PBKDF2, cookier og ett lager per konto
+  katalog.mjs               hvor datakatalogen ligger
+  lager.mjs                 søknadslisten i nettlesermodus
+  nett.mjs                  henting og modellkall for importen
+  nokkel.mjs                API-nøkkelen, inn og aldri ut
+  brev-api.mjs              endepunktene for CV, brev, nøkler og kjøringer
+  brev-modell.mjs           modellkall og profilnøkler for brevet
+  brevlager.mjs             CV- og brevfilene, med lås
+  radar-api.mjs, varsel-api.mjs   Radar og varselinnstillingen
 
-src/konto/brukerlogikk.mjs     reglene for kontoer og økter, uten I/O
-src/konto/okt.js               hvem som er logget inn, i begge modi
-src/konto/okt-app.mjs          kontoene i appmodus, over Rust og crypto.subtle
-src/konto/innlogging.js        innloggingen
+src-tauri/src/lib.rs        filoperasjonene appen bruker
+src-tauri/src/nett.rs       henting og modellkall for importen i appen
+src-tauri/src/brev.rs       brevfiler, nøkler, modellkall og nedlasting i appen
+src-tauri/src/varsel.rs     fristvarselet i macOS og bakgrunnsjobben
+src-tauri/src/radar_bakgrunn.rs   Radar i bakgrunnen: agent, valg av modus, skjult vindu, vakthund
 
-src/brev/brevlogikk.mjs       prompt, stileksempler, skjemaer og kontrollene for brevet
-src/brev/brevtjeneste.mjs     kjøringen som skriver brevet i ett kall, og stilreferansen
-src/stilling/annonseuttrekk.mjs   annonsens linjer ut av en hentet side, valgt av Haiku
-src/modell/brev-provider.mjs    meldingsformatet for Anthropic og OpenAI
-src/modell/brev-strom.mjs       strømmende modellsvar
-src/dokumenter/brevdata.mjs         formatet for CV-, stil- og brevdokumentene
-src/brev/brev.js              brevets transport, velger modus
-src/brev/brevflate.js         brevskriveren
-src/stilling/annonsetekst.mjs     annonseteksten ut av en hentet side
-src/brev/brev-dokumenter.mjs  lesing av CV og eksport av brev
-src/brev/brev-dokumentmotor.mjs  PDF og Word, pakkes til src/vendor/
-
-src/soknader/fristvarsel.mjs      når en frist varsles, og med hvilke ord
-src/soknader/varsling.js          fristvarselet i flaten, velger modus
-
-server/server.mjs        statiske filer og API-et
-server/brukere.mjs       registeret, PBKDF2, cookier og ett lager per konto
-server/katalog.mjs       hvor datakatalogen ligger
-server/lager.mjs         søknadslisten i nettlesermodus
-server/nett.mjs          henting og modellkall for importen
-server/nokkel.mjs        API-nøkkelen, inn og aldri ut
-server/brev-api.mjs      endepunktene for CV, brev, nøkler og kjøringer
-server/brev-modell.mjs   modellkall og profilnøkler for brevet
-server/brevlager.mjs     CV- og brevfilene, med lås
-server/varsel-api.mjs    varselinnstillingen og sjekken for nettleseren
-
-src-tauri/src/lib.rs     filoperasjonene appen bruker
-src-tauri/src/nett.rs    henting og modellkall for importen i appen
-src-tauri/src/brev.rs    brevfiler, nøkler, modellkall og nedlasting i appen
-src-tauri/src/varsel.rs  fristvarselet i macOS og bakgrunnsjobben
-src-tauri/src/radar_bakgrunn.rs  Radar i bakgrunnen: agent, valg av modus, skjult vindu, vakthund
-src/radar/radar-bakgrunn.html  den skjulte siden Radar kjører i når appen er lukket
-
-scripts/bygg-front.mjs       samler frontenden i dist/ for Tauri
-scripts/bygg-dokumenter.mjs  pakker dokumentmotoren med esbuild
-tester/nettleser/test-brev-browser.mjs  nettlesertesten av brevflyten
-tester/nettleser/test-innstillinger-browser.mjs  nettlesertesten av temaene og fristvarselet
-scripts/lag-ikon.py      lager appikonet fra src-tauri/icons/kilde.png
-evals/                   evaluering av søknadsbrev
-temaer/                  fargestudier, ikke i bruk av appen
-docs/specs/job-tracker/       filbasert lagring: hva som ble bygget og hvorfor
-docs/specs/flerbruker/        kontoene, og hva innloggingen ikke er
+tester/enhet/               enhetstestene (node:test), én fil per område
+tester/nettleser/           Playwright-flyter mot en ekte server
+tester/data/                felles testdata, lest av både Node- og Rust-testene
+scripts/                    bygg-front.mjs, bygg-dokumenter.mjs, installer-app.mjs, lag-ikon.py
+evals/                      evaluering av søknadsbrev og Radar
+docs/specs/                 job-tracker (filbasert lagring) og flerbruker (kontoene)
+docs/skjermbilder/          bildene i denne README-en
 ```
 
 Reglene for datafilen står ett sted, i `src/soknader/lagerlogikk.mjs`.

@@ -1,5 +1,5 @@
 {
-  "om": "Reglene for hentJson. Leses av server/hentjson.test.mjs og av testene i src-tauri/src/nett.rs, så Node og Rust ikke glir fra hverandre.",
+  "om": "Reglene for hentJson. Leses av tester/enhet/hentjson.test.mjs og av testene i src-tauri/src/nett.rs, så Node og Rust ikke glir fra hverandre.",
   "adresser": [
     { "url": "https://pam-stilling-feed.nav.no/api/v1/feed?last", "kilde": "nav", "ok": true },
     { "url": "https://pam-stilling-feed.nav.no/api/v1/feedentry/017e7926-8903-4902-8b27-f774a6ee05e6", "kilde": "nav", "ok": true },

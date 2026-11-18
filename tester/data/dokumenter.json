@@ -1,5 +1,5 @@
 {
- "_om": "Leses av både server/jobbdokument.test.mjs og testene i src-tauri/src/brev.rs. Endres regelen på den ene siden, feiler testen på den andre til de er like igjen.",
+ "_om": "Leses av både tester/enhet/jobbdokument.test.mjs og testene i src-tauri/src/brev.rs. Endres regelen på den ene siden, feiler testen på den andre til de er like igjen.",
  "navn": {
   "gyldige": {
    "cv.json": "cv",

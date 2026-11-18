@@ -137,7 +137,7 @@ async function docxBytes(m, fonter){
 async function standardfonter(){
   const navn = ["noto-sans-regular.ttf"];
   return Promise.all(navn.map(async n => {
-    const r = await fetch(new URL(`../skrifter/${n}`, import.meta.url));
+    const r = await fetch(new URL(`../felles/skrifter/${n}`, import.meta.url));
     if(!r.ok) throw new Error("Fikk ikke lastet skrifttypen til PDF-en.");
     return new Uint8Array(await r.arrayBuffer());
   }));
