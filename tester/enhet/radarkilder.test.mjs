@@ -5,12 +5,6 @@ import fs from "node:fs/promises";
 import { nav, jobbnorge, greenhouse, lever, teamtailor, jsonld, oppdagType, oppdagTypeFraSide,
          navLinjer, GRENSER, NAV_BASE } from "../../src/radar/radarkilder.mjs";
 
-/* ============================================================
-   Radarkildene mot de lagrede svarene i tester/data/radar/. Nettet er
-   falskt: hentJson og hentSide svarer fra filene og husker hva de ble
-   spurt om. Ingen test går ut på nettet.
-   ============================================================ */
-
 const les = async navn => fs.readFile(new URL(`../data/radar/${navn}`, import.meta.url), "utf8");
 const json = async navn => JSON.parse(await les(navn));
 const ingenPause = async () => {};
@@ -35,7 +29,6 @@ test("NAV: første gang ?last, så videre fra next_url med én linje per annonse
   assert.equal(nett.kall.length, 3);
   assert.ok(nett.kall.every(k => k.kilde === "nav"));
   assert.match(nett.kall[1].url, new RegExp(`^${NAV_BASE}/api/v1/feed/${sider.forste.next_id}\\?pageSize=200$`));
-  /* 5 + 5 + 1 linjer, men overlappen og gjentakelsene gir 8 annonser. */
   const ider = r.kandidater.map(k => k.kildeId);
   assert.equal(new Set(ider).size, ider.length);
   assert.equal(ider.length, 8);
@@ -44,7 +37,6 @@ test("NAV: første gang ?last, så videre fra next_url med én linje per annonse
   assert.equal(ss.url, `https://arbeidsplassen.nav.no/stillinger/stilling/${ss.kildeId}`);
   assert.equal(ss.detaljert, false);
 
-  /* Neste kjøring spør etter samme side med ETag og ett sekund ekstra, og 304 er «ingenting nytt». */
   const igjen = falskNett({ json: () => ({ status: 304, json: null }) });
   const r2 = await nav.hent({ nett: igjen, tilstand: r.tilstand, vent: ingenPause });
   assert.equal(igjen.kall[0].url, `${NAV_BASE}/api/v1/feed/${sider.siste.id}?pageSize=200`);
@@ -147,7 +139,6 @@ test("NAV-søket: startpunktet 90 dager tilbake med en liten side, så store sid
   assert.deepEqual(r.tilstand, { sokAvtrykk: "nav-1", sokSide: `side${GRENSER.navSokSider + 1}`, sokFerdig: null });
   assert.equal(r.kandidater.length, GRENSER.navSokSider);
 
-  /* Neste kjøring fortsetter, men nye innstillinger begynner på nytt. */
   const videre = falskNett({ json: () => ({ status: 200, json: { id: "slutt", next_id: null, items: [] }, etag: '"e"' }) });
   const r2 = await nav.søk({ nett: videre, tilstand: r.tilstand, avtrykk: "nav-1", nå, vent: ingenPause });
   assert.equal(videre.kall[0].url, `${NAV_BASE}/api/v1/feed/side${GRENSER.navSokSider + 1}?pageSize=${GRENSER.navSokSidestorrelse}`);
@@ -156,7 +147,6 @@ test("NAV-søket: startpunktet 90 dager tilbake med en liten side, så store sid
   await nav.søk({ nett: nytt, tilstand: r.tilstand, avtrykk: "nav-2", nå, vent: ingenPause });
   assert.equal(nytt.kall[0].url, `${NAV_BASE}/api/v1/feed?pageSize=2`);
 
-  /* next_url til en annen vert stopper også søket. */
   const ond = falskNett({ json: () => ({ status: 200, json: { id: "a", next_id: "b", next_url: "https://evil.example/api/v1/feed/b", items: [] } }) });
   await assert.rejects(nav.søk({ nett: ond, tilstand: {}, avtrykk: "nav-1", nå, vent: ingenPause }), /ukjent adresse/);
 });

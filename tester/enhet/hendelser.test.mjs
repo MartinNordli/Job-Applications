@@ -5,7 +5,6 @@ import { validerSoknad } from "../../src/felles/felles.mjs";
 import { medStatus, synkSendt, tidslinje, lagHendelse, lokalDato, dagerMellom,
          dagerSidenSendt, svartidDager, medianSvartid, utenSvarOver } from "../../src/soknader/hendelser.mjs";
 
-/* En fast klokke: 9. oktober 2026, kvart over midnatt lokal tid. */
 const NÅ = new Date(2026, 9, 9, 0, 15);
 const K = { iDag: "2026-10-09", nå: NÅ };
 
@@ -16,8 +15,6 @@ const jobb = (o = {}) => ({
   opprettet: null, oppdatert: null, ...o
 });
 const h = (til, dato, o = {}) => ({ til, dato, ...o });
-
-/* ---------- datoer ---------- */
 
 test("lokalDato bruker lokal kalenderdag, ikke UTC", () => {
   assert.equal(lokalDato(NÅ), "2026-10-09");
@@ -36,15 +33,12 @@ test("lagHendelse daterer med iDag og tidsstempler med nå", () => {
   assert.equal(lagHendelse("sent", { iDag: new Date(2026, 0, 2), nå: NÅ }).dato, "2026-01-02");
 });
 
-/* ---------- medStatus ---------- */
-
 test("medStatus: sendt setter sendtDato i dag og logger hendelsen", () => {
   const før = jobb();
   const r = medStatus(før, "sent", K);
   assert.equal(r.status, "sent");
   assert.equal(r.sendtDato, "2026-10-09");
   assert.deepEqual(r.hendelser, [{ til: "sent", dato: "2026-10-09", tid: NÅ.toISOString(), kilde: "bruker" }]);
-  /* Originalen røres ikke: den er angre-øyeblikksbildet. */
   assert.equal(før.status, "todo");
   assert.deepEqual(før.hendelser, []);
 });
@@ -101,8 +95,6 @@ test("medStatus: resultatet består validatoren uendret", () => {
   assert.deepEqual(v.verdi.hendelser, r.hendelser);
 });
 
-/* ---------- synkSendt ---------- */
-
 test("synkSendt: rettet sendtDato flytter den siste sendt-hendelsen og fjerner tiden", () => {
   const sendt = medStatus(jobb(), "sent", K);
   const r = synkSendt({ ...sendt, sendtDato: "2026-10-01" }, K);
@@ -123,8 +115,6 @@ test("synkSendt: mangler sendtDato, hentes den fra sendt-hendelsen i stedet for 
   assert.equal(synkSendt(jobb({ status: "todo", sendtDato: "2026-09-20" }), K).sendtDato, null);
   assert.equal(synkSendt(jobb({ status: "rejected", sendtDato: null }), K).sendtDato, null);
 });
-
-/* ---------- tidslinje ---------- */
 
 test("tidslinje: gamle data uten hendelser anslås fra opprettet og sendtDato", () => {
   const t = tidslinje(jobb({ status: "rejected", sendtDato: "2026-09-10",
@@ -148,7 +138,6 @@ test("tidslinje: sendt uten sendtDato og uten opprettet viser statusen med ukjen
 });
 
 test("tidslinje: «lagt til» etter sendtdatoen er umulig og tas ikke med", () => {
-  /* Eldre rader fikk opprettet ved første lagring i filen, ofte senere enn de ble sendt. */
   const t = tidslinje(jobb({ status: "sent", sendtDato: "2026-08-01",
                              opprettet: "2026-09-01T08:00:00.000Z" }), "2026-10-09");
   assert.deepEqual(t.map(x => x.til), ["sent"]);
@@ -186,8 +175,6 @@ test("tidslinje: tåler rusk i hendelsene og godtar iDag som Date", () => {
   assert.deepEqual(t, [{ til: "todo", dato: "2026-10-01", dagerSiden: 8 }]);
 });
 
-/* ---------- tall ---------- */
-
 test("dagerSidenSendt: fra sendtDato til i dag, null uten", () => {
   assert.equal(dagerSidenSendt(jobb({ status: "sent", sendtDato: "2026-09-09" }), "2026-10-09"), 30);
   assert.equal(dagerSidenSendt(jobb({ status: "sent", sendtDato: "2026-09-09" }), new Date(2026, 9, 9)), 30);
@@ -199,9 +186,7 @@ test("svartidDager: fra sendt til første svar, bare ekte hendelser", () => {
     h("todo", "2026-09-01"), h("sent", "2026-09-05"), h("interview", "2026-09-19"), h("rejected", "2026-10-01")
   ] })), 14);
   assert.equal(svartidDager(jobb({ hendelser: [h("sent", "2026-09-05"), h("rejected", "2026-09-06")] })), 1);
-  /* Trukket og utløpt er ikke svar. */
   assert.equal(svartidDager(jobb({ hendelser: [h("sent", "2026-09-05"), h("trukket", "2026-09-06")] })), null);
-  /* Gamle data har bare sendtDato: ikke noe tall, ikke et anslag. */
   assert.equal(svartidDager(jobb({ status: "rejected", sendtDato: "2026-09-01" })), null);
   assert.equal(svartidDager(jobb({ hendelser: [h("interview", "2026-09-19")] })), null);
 });
@@ -225,8 +210,8 @@ test("medianSvartid: midterste verdi, snitt av de to midterste ved partall, null
 
 test("utenSvarOver: bare «Sendt», og strengt over grensen", () => {
   const liste = [
-    jobb({ id: "a", status: "sent", sendtDato: "2026-09-09" }),      /* 30 dager */
-    jobb({ id: "b", status: "sent", sendtDato: "2026-09-08" }),      /* 31 dager */
+    jobb({ id: "a", status: "sent", sendtDato: "2026-09-09" }),
+    jobb({ id: "b", status: "sent", sendtDato: "2026-09-08" }),
     jobb({ id: "c", status: "interview", sendtDato: "2026-08-01" }),
     jobb({ id: "d", status: "sent", sendtDato: null })
   ];

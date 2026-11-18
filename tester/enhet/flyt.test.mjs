@@ -9,23 +9,6 @@ import { lagBrukere, BRUKERKATALOG } from "../../server/brukere.mjs";
 import { ER_SENDT, ER_ARKIV } from "../../src/felles/felles.mjs";
 import * as Økt from "../../src/konto/okt.js";
 
-/* ============================================================
-   De vanlige flytene — det en person faktisk gjør, hele veien
-   fra src/soknader/lagring.js til brukerens egen jobber.json på disk.
-
-   Alt dette virket før flerbruker. Spørsmålet testene her stiller
-   er om det virker nå, når hver bruker har sin egen katalog og
-   hvert kall går gjennom en økt.
-
-   Klientlaget er skrevet for en nettleser, så det får en: én
-   informasjonskapsel, relative stier og de to sidehendelsene
-   lagring.js henger seg på. Alt annet er ekte — ekte server,
-   ekte lager, ekte fil.
-   ============================================================ */
-
-/* Nettleseren i miniatyr. `addEventListener` finnes ikke i Node, og
-   lagring.js kaller den ved innlasting; hendelsene tas vare på så en
-   test kan utløse dem selv. */
 const sidehendelser = new Map();
 globalThis.addEventListener = (navn, fn) => {
   if(!sidehendelser.has(navn)) sidehendelser.set(navn, []);
@@ -33,9 +16,6 @@ globalThis.addEventListener = (navn, fn) => {
 };
 globalThis.document = { visibilityState: "visible" };
 
-/* Én informasjonskapsel og relative stier, som i en fane. Uten
-   kapselen ville hvert kall fra lagring.js møtt 401, og uten
-   basen ville en relativ sti ikke vært en adresse i det hele tatt. */
 const ekteFetch = globalThis.fetch;
 let base = null, kake = null;
 globalThis.fetch = async (sti, valg = {}) => {
@@ -45,16 +25,13 @@ globalThis.fetch = async (sti, valg = {}) => {
   const svar = await ekteFetch(adresse, { ...valg, headers: hoder });
   for(const s of svar.headers.getSetCookie()){
     const par = s.split(";")[0];
-    kake = par.endsWith("=") ? null : par;      /* Max-Age=0 tømmer den */
+    kake = par.endsWith("=") ? null : par;
   }
   return svar;
 };
 
 const PASSORD = "et-godt-nok-passord";
 
-/* lagring.js har tilstand i closuren — versjon, sperre, det som venter.
-   Derfor lastes den på nytt per test med en spørrestreng; uten det
-   ville forrige tests versjon lekket inn i neste. */
 let nr = 0;
 
 async function start(){
@@ -94,8 +71,6 @@ const rad = (o = {}) => ({
 const påDisk = async k => JSON.parse(await fs.readFile(path.join(k, "jobber.json"), "utf8"));
 const finnes = async p => !!(await fs.stat(p).catch(() => null));
 
-/* Venter på at stripa faktisk sier det den skal, i stedet for å sove.
-   Lagringen melder fra ved hver overgang, så det er den vi lytter på. */
 function vent(Lagring, navn){
   return new Promise(ok => {
     let av = null, ferdig = false;
@@ -104,8 +79,6 @@ function vent(Lagring, navn){
     if(ferdig) av();
   });
 }
-
-/* ---------- legge til, endre, bytte status ---------- */
 
 test("en ny søknad havner i brukerens egen fil, og rotkatalogen røres ikke", async t => {
   const { Lagring, minKatalog, katalog, stopp } = await start();
@@ -121,7 +94,6 @@ test("en ny søknad havner i brukerens egen fil, og rotkatalogen røres ikke", a
   const dok = await påDisk(minKatalog);
   assert.equal(dok.jobber.length, 1);
   assert.equal(dok.jobber[0].selskap, "Equinor");
-  /* Rota er migreringskilden. Den skal ikke få nye rader stille lagt i seg. */
   assert.equal(await finnes(path.join(katalog, "jobber.json")), false);
 });
 
@@ -206,8 +178,6 @@ test("å slette og angre gir raden tilbake på sin plass", async t => {
   assert.deepEqual((await påDisk(minKatalog)).jobber.map(r => r.id), ["a1", "a2", "a3"]);
 });
 
-/* ---------- listens ytterkanter ---------- */
-
 test("hundre søknader lagres i én skriving og kommer hele tilbake", async t => {
   const { Lagring, minKatalog, stopp } = await start();
   t.after(stopp);
@@ -260,8 +230,6 @@ test("en søknad uten frist lagres som null, både fra tomt felt og fra avkrysni
   assert.deepEqual(igjen.jobber.map(r => r.frist), [null, null]);
 });
 
-/* ---------- når det går galt ---------- */
-
 test("serveren er nede: endringen blir liggende, og «prøv igjen» får den fram", async t => {
   const { Lagring, minKatalog, katalog, brukere, tjener, port, tilstand, stopp } = await start();
   t.after(stopp);
@@ -296,7 +264,6 @@ test("en annen fane har skrevet: sperren står, og ingenting overskrives", async
   Lagring.lagre([rad()]);
   await Lagring.nåMedEnGang();
 
-  /* Den andre fanen er samme bruker, samme kapsel, eget PUT. */
   await fetch("/api/jobber", {
     method: "PUT", headers: { "content-type": "application/json" },
     body: JSON.stringify({ versjon: 1, jobber: [rad({ selskap: "Annen fane" })] })
@@ -308,12 +275,10 @@ test("en annen fane har skrevet: sperren står, og ingenting overskrives", async
   assert.equal(Lagring.erBlokkert(), true);
   assert.equal((await påDisk(minKatalog)).jobber[0].selskap, "Annen fane");
 
-  /* Neste tastetrykk skal ikke slippe forbi sperren. */
   Lagring.lagre([rad({ selskap: "Min fane igjen" })]);
   await Lagring.nåMedEnGang();
   assert.equal((await påDisk(minKatalog)).jobber[0].selskap, "Annen fane");
 
-  /* Å hente på nytt er veien videre — og bare den. */
   const friskt = await Lagring.hent();
   assert.equal(friskt.jobber[0].selskap, "Annen fane");
   assert.equal(Lagring.erBlokkert(), false);
@@ -351,7 +316,6 @@ test("sikkerhetskopien hentes inn, og den ødelagte filen settes i karantene", a
   assert.ok(feil && feil.ødelagt);
   assert.equal(feil.sikkerhetskopi.jobber.length, 1, "kopien er dokumentet før siste skriving");
 
-  /* Samme tre stegene som «Hent inn sikkerhetskopien» i skuffen gjør. */
   Lagring.settVersjon(0);
   Lagring.frigi(true);
   Lagring.lagre(feil.sikkerhetskopi.jobber);

@@ -1,15 +1,4 @@
 #!/usr/bin/env node
-/* Uten --live: kun oversikt, ingen nettverk eller nøkler leses.
-   Med --live skrives ett brev per tilfelle og repetisjon mot valgt
-   leverandør, med det ene modellkallet appen gjør (skrivBrev) og den
-   samme kodekontrollen. Det koster penger og gjøres bare når brukeren
-   har godkjent kostnaden.
-
-   --sammenlign <modell> skriver brevet også med en annen modell, for
-   eksempel den appen brukte før et modellbytte, og skriver en blind
-   vurderingsfil ved siden av rapporten. --baseline er noe annet: ett
-   enkelt kall med en naiv prompt på samme modell, som viser hva
-   prompten og kontrollen tilfører. */
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -24,12 +13,8 @@ const verdi = flagg => { const i = args.indexOf(flagg); return i === -1 ? null :
 const sum = (bruk, felt) => bruk.filter(Boolean).reduce((s, b) => s + (Number(b[felt]) || 0), 0);
 const feilAv = e => ({ code: e.code || e.navn || "feil", melding: e.message });
 
-/* Ett brev for ett tilfelle med én modell. Kaster aldri: en feil blir
-   en rad som må undersøkes. En kodekontroll som avviser brevet, er også
-   en feil her, slik den er det i appen. */
 async function kjede(t, g, kallModell){
   const rad = {}, start = Date.now();
-  // Bruken fanges også når kontrollen avviser brevet, så kostnaden blir riktig.
   const bruk = [];
   const målt = async p => { const r = await kallModell(p); bruk.push(r?.bruk ?? null); rad.modell ??= r?.modell; return r; };
   try{
@@ -39,9 +24,6 @@ async function kjede(t, g, kallModell){
     rad.automatiskGodkjent = !rad.sjekker.length;
   }catch(e){ rad.automatiskGodkjent = false; rad.feil = feilAv(e); }
   rad.bruk = bruk;
-  /* Hvor mye av systemet, profilen og søknaden som ble lest fra bufferen.
-     Systemet er likt for alle tilfellene, så fra det andre tilfellet
-     innen fem minutter skal lest være større enn null. */
   rad.hurtigbuffer = { lest: sum(bruk, "cache_read_input_tokens"), skrevet: sum(bruk, "cache_creation_input_tokens"), ubufret: sum(bruk, "input_tokens") };
   rad.dollar = bruk.some(Boolean) ? dollar(bruk, rad.modell) : 0;
   rad.millisekunder = Date.now()-start;
@@ -49,7 +31,6 @@ async function kjede(t, g, kallModell){
 }
 
 if(!args.includes("--live")){
-  // Grunnlagene valideres også her, så et ødelagt tilfelle oppdages uten å betale for det.
   for(const t of tilfeller) validerGrunnlag(t.grunnlag);
   console.log(`${tilfeller.length} syntetiske tilfeller (promptversjon ${PROMPTVERSJON}). Ingen API-kall.\n${tilfeller.map(t => `${t.id} [${t.forventetSprak}] ${t.tema}`).join("\n")}\n\nKjør betalt evaluering eksplisitt:\nnode evals/kjor.mjs --live --leverandor anthropic --repetisjoner 3 --rapport /tmp/breveval.json\nLegg til --sammenlign claude-opus-5 for å skrive brevene også med en annen modell, med blind vurderingsfil.\nLegg til --baseline for ett ekstra kall per tilfelle med en naiv prompt på samme modell.`);
 }else{
@@ -68,18 +49,13 @@ if(!args.includes("--live")){
     if(leverandor !== "anthropic") throw new Error("--sammenlign gjelder bare Anthropic.");
     if(sammenlign === LEVERANDORER.anthropic.modell) throw new Error("Sammenlign med en annen modell enn den appen bruker.");
     if(!INNSATSER.includes(sammenlignInnsats)) throw new Error(`--sammenlign-innsats må være ${INNSATSER.join(", ")}.`);
-    // Vurderingsfilen skrives ved siden av rapporten.
     if(!rapportfil) throw new Error("--sammenlign krever --rapport.");
   }
-  /* Taket regnes av de faktiske tokentallene etter hvert tilfelle. Kjøringen
-     stopper før neste tilfelle når det er nådd, så det overskrides med
-     høyst ett tilfelle. */
   const tak = Number(verdi("--tak-dollar") ?? 20);
   if(!Number.isFinite(tak) || tak <= 0) throw new Error("--tak-dollar må være et positivt tall.");
   const kjeder = sammenlign ? 2 : 1;
   console.error(`Betalt evaluering: ${leverandor}, ${valgte.length} tilfeller × ${repetisjoner}${sammenlign ? `, sammenlignet med ${sammenlign} (${sammenlignInnsats})` : ""}. Maks ${valgte.length*repetisjoner*(kjeder+(medBaseline?1:0))} modellkall, tak ${tak} dollar. Ingen automatiske forsøk eller leverandørbytte.`);
   const { lagBrevModell } = await import("../server/brev-modell.mjs");
-  // Ingen profildata. Kun eksplisitt valgt leverandørs miljønøkkel er tilgjengelig.
   const katalog = path.join(tmpdir(), `breveval-ingen-profildata-${process.pid}`);
   const kall = { ny: lagBrevModell({ katalog, tillatMiljø: true }) };
   if(sammenlign) kall.forrige = lagBrevModell({ katalog, tillatMiljø: true, fetch: medModell(sammenlign, sammenlignInnsats) });
@@ -97,8 +73,6 @@ if(!args.includes("--live")){
       const g = { ...t.grunnlag, leverandor };
       let rad = { id: t.id, tema: t.tema, repetisjon: rep, forventetSprak: t.forventetSprak, grunnlag: g };
       if(sammenlign){
-        /* Hvilken side som er den nye, trekkes per rad. variant står i
-           rapporten, men aldri i vurderingsfilen. */
         rad.varianter = {};
         const [A, B] = fordel();
         for(const [side, variant] of [["A", A], ["B", B]]){
@@ -121,7 +95,6 @@ if(!args.includes("--live")){
       console.error(`${t.id}/${rep}: ${sammenlign ? `A ${status(rad.varianter.A)} | B ${status(rad.varianter.B)}` : status(rad)}`);
     }
   }
-  // Kostnad og utfall per variant, regnet av de faktiske tokentallene.
   const per = variant => {
     const rader = sammenlign ? rapport.resultater.flatMap(r => Object.values(r.varianter).filter(v => v.variant === variant)) : rapport.resultater;
     const bruk = rader.flatMap(r => r.bruk ?? []);

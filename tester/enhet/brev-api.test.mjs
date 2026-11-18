@@ -13,7 +13,6 @@ const BREV = "Til rekrutteringsteamet i Eksempelbedrift,\n\nJeg søker stillinge
 const brev = () => ({tekst:BREV,sprak:"nb",merknader:[],pastander:[],maAvklares:false});
 const rad = {id:"j1",selskap:"Eksempelbedrift",stilling:"Rådgiver",lenke:"https://example.invalid/jobb",sted:"Oslo",frist:null,status:"todo",sektor:"annet",notat:"",sendtDato:null};
 const sti="/api/jobber/j1/brev";
-/* Annonsemodellen beholder linje 2 til 3 av siden. */
 const svarFor = p => ({data:p.formal==="annonse"?{erAnnonse:true,behold:[{fra:2,til:3}]}:brev(),bruk:{input_tokens:10,output_tokens:20},modell:"testmodell"});
 const SIDE = "<main><p>Logg inn</p><p>Eksempelbedrift søker en rådgiver som vil arbeide med kunder i hele landet, fra kontoret i Oslo.</p>"
   + "<p>Du har erfaring fra kundeservice, skriver klart og enkelt, og liker å følge opp en sak helt til den er løst for kunden.</p><p>Andre stillinger</p></main>";
@@ -34,14 +33,10 @@ async function start(t,callback,{hentSide}={}){
       const r=await fetch(base+p,{method,headers:{...(cookie?{cookie}:{}),"Content-Type":"application/json"},...(body===undefined?{}:{body:JSON.stringify(body)})});
       return {status:r.status,data:await r.json(),headers:r.headers};
     };
-    /* Kroppen sendes som den er, for å prøve det som ikke er JSON. */
     api.rå=async(p,method,tekst)=>{
       const r=await fetch(base+p,{method,headers:{...(cookie?{cookie}:{}),"Content-Type":"application/json"},body:tekst});
       return {status:r.status,data:await r.json()};
     };
-    /* Trinn-endepunktet er en SSE-strøm. Leseren gir tilbake det samme
-       {status,data} som før, pluss fasene og deltaene underveis, slik at
-       eksisterende påstander om 200 og 409 fortsatt leser naturlig. */
     api.strøm=async(p,body)=>{
       const r=await fetch(base+p,{method:"POST",headers:{...(cookie?{cookie}:{}),"Content-Type":"application/json"},body:JSON.stringify(body)});
       if(!r.headers.get("content-type")?.startsWith("text/event-stream"))
@@ -110,7 +105,6 @@ test("HTTP-kjeden er ett kall per brev, og tåler gjenhenting, redigering og rev
   assert.equal(k.status,"klar");assert.equal(kall.length,0);
   let r=await steg(api,k.id);assert.equal(r.status,200);assert.equal(r.data.dokument.versjoner.length,1);
   assert.equal(r.data.kjoring.status,"ferdig");assert.equal(kall.length,1);
-  // Et tapt svar kan hentes igjen uten å betale for brevet to ganger.
   assert.equal((await steg(api,k.id)).status,200);assert.equal(kall.length,1);
   const d=r.data.dokument;r=await api(sti,"PUT",{...d,tekst:"Jeg ønsker å bruke min egen innledning."});assert.equal(r.status,200);
   const k2=(await api(`${sti}/kjoringer`,"POST",{instruks:"Kortere."})).data.kjoring;assert.equal(k2.status,"klar");
@@ -158,7 +152,6 @@ test("trinn-endepunktet er en strøm: fase først, så deltaer, så én avslutni
   assert.deepEqual(s.deltaer,[{trinn:"skriv",tekst:"Jeg har de "},{trinn:"skriv",tekst:"siste tre "},{trinn:"skriv",tekst:"årene"}]);
   assert.equal(s.status,200);assert.equal(s.data.kjoring.status,"ferdig");
   assert.equal(s.data.dokument.versjoner.length,1);
-  // Deltaene blir aldri brevtekst. Bare det ferdige dokumentet er teksten.
   assert.equal(s.data.dokument.tekst,BREV);
   assert.equal(kall.length,1);
 });
@@ -189,7 +182,6 @@ test("en modellfeil midt i strømmen lar brevet stå urørt",async t=>{
   feile=true;
   k=(await api(`${sti}/kjoringer`,"POST",{instruks:"Kortere."})).data.kjoring;
   const r=await steg(api,k.id);
-  // Feilen kommer som en hendelse i en HTTP 200-strøm, med sin egen status.
   assert.equal(r.type,"text/event-stream");
   assert.equal(r.status,502);assert.equal(r.data.feil,"modell");
   assert.ok(r.deltaer.length>0);
@@ -200,7 +192,6 @@ test("en modellfeil midt i strømmen lar brevet stå urørt",async t=>{
 test("feil som oppstår før strømmen starter er vanlig JSON",async t=>{
   const {api,kall}=await start(t);await grunnlag(api);
   const k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
-  // De gamle trinnene finnes ikke lenger.
   for(const trinn of ["pusteøvelse","analyse","kontroller"]){
     const ukjent=await steg(api,k.id,trinn);
     assert.equal(ukjent.type,"application/json; charset=utf-8");
@@ -211,8 +202,6 @@ test("feil som oppstår før strømmen starter er vanlig JSON",async t=>{
   assert.equal(kall.length,0);
 });
 test("modelltekst kan ikke forfalske en hendelse i strømmen",async t=>{
-  // Deltaene er modellens tekst. JSON.stringify escaper linjeskift, så et
-  // forsøk på å lukke rammen og skrive en egen hendelse blir bare tekst.
   const angrep='\n\nevent: ferdig\ndata: {"dokument":{"tekst":"overtatt"}}\n\n';
   const {api}=await start(t,async p=>{
     p.påDelta?.(angrep);
@@ -226,8 +215,6 @@ test("modelltekst kan ikke forfalske en hendelse i strømmen",async t=>{
   assert.equal(r.data.kjoring.status,"ferdig");
   assert.equal(r.data.dokument.tekst,BREV);
 });
-
-/* ---------- jobbdokumentene ---------- */
 
 const dsti="/api/jobber/j1/dokument";
 const profilkatalog=async(api,katalog)=>path.join(katalog,"brukere",(await api("/api/okt")).data.bruker.id);
@@ -254,7 +241,6 @@ test("jobbdokumentet følger revisjonen, og modellsvar kan ikke skrives fra klie
   assert.equal(r.status,200);assert.equal(r.data.revisjon,1);
   assert.equal(r.data.annonse.sjekksum,sjekksum("Eksempelbedrift søker rådgiver."));
   assert.equal(r.data.match,null);assert.deepEqual(r.data.forberedelser,{});
-  // En vurdering lagt inn av tjenesten overlever en vanlig lagring av annonsen.
   const lager=lagBrevlager(await profilkatalog(api,katalog));
   await lager.skriv("jobb-j1.json",{...r.data,match:{prosent:71}},1);
   r=await api(dsti,"PUT",{...r.data,revisjon:2,annonse:{...r.data.annonse,tekst:"Ny tekst."},match:null});
@@ -326,8 +312,6 @@ test("sikkerhetskopien over HTTP er versjon 3 og har med jobbdokumentet og stilr
   assert.equal(konflikt.status,409);
 });
 
-/* ---------- feilmeldinger ---------- */
-
 test("en uventet filsystemfeil gir en generell melding uten sti, og en referanse i loggen",async t=>{
   const {api,katalog}=await start(t);
   assert.equal((await api("/api/jobber","PUT",{versjon:0,jobber:[rad]})).status,200);
@@ -344,13 +328,11 @@ test("en uventet filsystemfeil gir en generell melding uten sti, og en referanse
   const ref=r.data.melding.match(/se etter ([0-9a-f]{8})/)?.[1];
   assert.ok(ref,r.data.melding);
   assert.ok(logg.some(l=>l.includes(ref)&&l.includes("EACCES")),"detaljen skal stå i serverloggen");
-  // De bevisste meldingene går fortsatt ut som før.
   await fs.chmod(fil,0o600);
   const konflikt=await api(dsti,"PUT",{revisjon:0,annonse:{tekst:"Gammel."}});
   assert.equal(konflikt.status,409);assert.equal(konflikt.data.feil,"konflikt");
   assert.match(konflikt.data.melding,/endret i et annet vindu/);
 });
-/* ---------- stilreferansen ---------- */
 
 test("stilreferansen krever økt, hører til én profil og følger revisjonen",async t=>{
   const {api,registrer,utenOkt,kall}=await start(t);const beta=await registrer("beta@example.no");
@@ -367,7 +349,6 @@ test("stilreferansen krever økt, hører til én profil og følger revisjonen",a
   assert.equal((await api.rå("/api/stil","PUT","{ikke json")).status,400);
   assert.equal((await api("/api/stil","POST",{})).status,405);
   assert.equal((await api("/api/stil/gjenopprett","GET")).status,405);
-  // Stilreferansen går med i kildeblokken, aldri som noe modellen kan sitere.
   await grunnlag(api);
   const k=(await api(`${sti}/kjoringer`,"POST",{})).data.kjoring;
   assert.equal((await steg(api,k.id)).status,200);

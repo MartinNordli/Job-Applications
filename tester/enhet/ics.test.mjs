@@ -7,9 +7,8 @@ const NÅ = new Date(Date.UTC(2026, 9, 4, 10, 30, 15));
 const jobb = (o = {}) => ({ id: "a1", selskap: "Aker BP", stilling: "ML Engineer", ...o });
 const iv = (o = {}) => ({ id: "iv1", dato: "2026-10-08", tid: "10:00", varighet: 45, sted: "Teams", type: "video",
                           lenke: "", runde: "1. runde", notat: "", ...o });
-const linjer = ics => ics.replace(/\r\n /g, "").split("\r\n");   /* brettet ut igjen */
+const linjer = ics => ics.replace(/\r\n /g, "").split("\r\n");
 
-/* Tidssonen styres her, så testene gir det samme på alle maskiner. */
 function iSone(sone, fn){
   const før = process.env.TZ;
   process.env.TZ = sone;
@@ -72,7 +71,6 @@ test("komma, semikolon, bakslash og linjeskift escapes, og styretegn fjernes", (
   const l = linjer(lagIcs([{ jobb: jobb({ selskap: "A; B, C" }), intervju: iv({ notat: "Ta med CV\nog; kopi" }) }], { nå: NÅ }));
   assert.ok(l.includes("SUMMARY:Intervju: A\; B\\, C"));
   assert.ok(l.some(x => x.includes("Notat: Ta med CV\\nog\; kopi")));
-  /* Et notat kan ikke åpne en ny egenskap med et linjeskift. */
   const ond = lagIcs([{ jobb: jobb(), intervju: iv({ notat: "x\r\nATTENDEE:mailto:a@b.no" }) }], { nå: NÅ });
   assert.equal(linjer(ond).some(x => x.startsWith("ATTENDEE")), false);
 });

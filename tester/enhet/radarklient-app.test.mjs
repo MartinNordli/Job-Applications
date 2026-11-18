@@ -7,13 +7,6 @@ import path from "node:path";
 import { lagBrevlager } from "../../server/brevlager.mjs";
 import { tomCv } from "../../src/dokumenter/brevdata.mjs";
 
-/* ============================================================
-   src/radar/radarklient.js i appmodus, uten appen: kjernen kjører i
-   webviewet over falske Tauri-kommandoer (som i
-   tester/enhet/jobbdokumenter-app.test.mjs), med falskt nett og falsk
-   modell. Egen fil fordi I_APP avgjøres når modulene lastes.
-   ============================================================ */
-
 const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "radar-app-"));
 const profil = bruker => bruker ? path.join(katalog, "brukere", bruker) : katalog;
 const lesRå = async fil => { try{ return await fs.readFile(fil, "utf8"); }catch(e){ if(e.code === "ENOENT") return null; throw e; } };
@@ -124,7 +117,6 @@ test("Radar i appen: innstillinger, karriereside, «Søk nå» med varsel og tak
   await assert.rejects(Radar.sokNa(), e => e.code === "for-mange");
   assert.equal(modellkropper.length, 1);
 
-  /* «Foreslå fra CV» går samme vei til modellen og lagrer ingenting. */
   const urørt = await Radar.hentTilstand();
   assert.deepEqual(await Radar.foreslaFraCv(), { sokeord: ["Dataingeniør"], steder: [], ekskluder: ["lærling"] });
   assert.equal(modellkropper.at(-1).model, "claude-haiku-5-5");
@@ -147,7 +139,6 @@ test("Radar i appen: innstillinger, karriereside, «Søk nå» med varsel og tak
   const ikke = await Radar.ikkeInteressert(etter.innboks.find(r => r.status === "ny").id);
   assert.equal(ikke.antallNye, full.jobs.length - 2);
 
-  /* Timeplanen: en fersk kjøring gir ingen ny ved start, og stopp stopper. */
   const resultater = [];
   const stopp = Radar.startTimeplan({ påResultat: r => resultater.push(r) });
   await new Promise(r => setTimeout(r, 100));

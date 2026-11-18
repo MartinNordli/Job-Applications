@@ -7,10 +7,8 @@ import { lagBrevlager } from "../../server/brevlager.mjs";
 import { lagBrevtjeneste } from "../../src/brev/brevtjeneste.mjs";
 import { lagJobbdokumenter } from "../../src/stilling/jobbdokumenttjeneste.mjs";
 
-/* Syntetiske personer, selskaper og sider. */
 const BREV = "Til rekrutteringsteamet i Eksempel AS,\n\nJeg søker stillingen som kunderådgiver.\n\nMed vennlig hilsen\nKari Eksempel";
 const b = (tekst=BREV) => ({sprak:"nb",tekst,pastander:[],merknader:[],maAvklares:false});
-/* Siden annonsen hentes fra: meny og bunntekst rundt selve annonsen. */
 const ANNONSELINJER = ["Eksempel AS søker en kunderådgiver til kontoret i Oslo.","Du vil svare kunder på telefon og chat, og følge opp saker til de er løst.",
   "Vi ser etter deg som har erfaring fra kundeservice og liker å forklare ting enkelt.","Søknadsfrist er 1. desember. Kontaktperson er Per Eksempel."];
 const SIDE = `<html><body><nav>Meny</nav><main><p>Logg inn</p><p>Godta informasjonskapsler</p>${ANNONSELINJER.map(l=>`<p>${l}</p>`).join("")}<p>Andre stillinger: Lagermedarbeider</p></main></body></html>`;
@@ -141,7 +139,6 @@ test("eksport og import inkluderer egne kilder og versjoner, men ingen aktiv kj�
   const annen=await oppsett(t);
   await annen.tjeneste.slettBrev("j1",(await annen.tjeneste.hentBrev("j1")).revisjon);
   await annen.tjeneste.slettCv((await annen.tjeneste.hentCv()).revisjon);
-  // CV, brev og jobbdokumentet annonsen ble flyttet til da brevet ble skrevet.
   assert.equal((await annen.tjeneste.importer(eksport)).antall,3);
   assert.equal((await annen.tjeneste.hentBrev("j1")).versjoner.length,1);
   await assert.rejects(annen.tjeneste.importer(eksport),{code:"konflikt"});
@@ -163,12 +160,10 @@ test("sikkerhetskopien er versjon 3 og har med stilreferansen, jobbdokumentene o
   const jobb=await annen.lager.les("jobb-j1.json");
   assert.equal(jobb.match.prosent,77);assert.equal(jobb.annonse.kilde,"limt");
   assert.equal((await annen.lager.les("radar.json")).innstillinger.pa,true);
-  // Ingenting som allerede finnes erstattes, heller ikke et jobbdokument alene.
   const tredje=await oppsett(t);
   await tredje.lager.skriv("jobb-j1.json",{revisjon:0,annonse:{tekst:"Min egen annonse."}},0);
   await assert.rejects(tredje.tjeneste.importer({...eksport,dokumenter:{"jobb-j1.json":eksport.dokumenter["jobb-j1.json"]}}),{code:"konflikt"});
   assert.equal((await tredje.lager.les("jobb-j1.json")).annonse.tekst,"Min egen annonse.");
-  // radar.json finnes ikke der ennå og legges inn. Andre gang finnes den.
   const bareRadar={...eksport,dokumenter:{"radar.json":eksport.dokumenter["radar.json"]}};
   assert.equal((await tredje.tjeneste.importer(bareRadar)).antall,1);
   await assert.rejects(tredje.tjeneste.importer(bareRadar),{code:"konflikt"});
@@ -182,11 +177,9 @@ test("versjon 1 og 2 kan fortsatt gjenopprettes, men bare med dokumentene de kje
   await annen.tjeneste.slettCv((await annen.tjeneste.hentCv()).revisjon);
   for(const [navn,d] of [["jobb-j1.json",{skjemaVersjon:1,revisjon:1}],["radar.json",{skjemaVersjon:1,revisjon:1}],["stil.json",{skjemaVersjon:1,revisjon:1,tekst:"x"}]])
     await assert.rejects(annen.tjeneste.importer({...v1,dokumenter:{...v1.dokumenter,[navn]:d}}),{code:"ugyldig"});
-  // Avvist før første skriving: ingenting er lagt inn.
   assert.equal((await annen.tjeneste.hentCv()).tekst,"");
   assert.equal((await annen.tjeneste.importer(v1)).antall,2);
   assert.match((await annen.tjeneste.hentCv()).tekst,/Kari/);
-  // Versjon 2 kjente ikke stilreferansen.
   const v2={format:"jobbsoknader-brev",skjemaVersjon:2,eksportert:v3.eksportert,dokumenter:{"stil.json":{skjemaVersjon:1,revisjon:1,tekst:"x"}}};
   await assert.rejects(annen.tjeneste.importer(v2),{code:"ugyldig"});
 });
@@ -218,8 +211,6 @@ test("faktakorrigeringer følger valgt versjon til neste versjon uten å bli dag
   assert.equal(gren.grunnlag.historikk.some(h=>h.includes("servicepris")),false);
 });
 
-/* ---------- grunnlaget og annonsen ---------- */
-
 test("grunnlaget har søknadsfeltene og stilreferansen, men ikke notat, kontekst eller svar",async t=>{
   const {tjeneste,kall}=await oppsett(t);
   const d=await tjeneste.hentBrev("j1");
@@ -241,7 +232,6 @@ test("annonsen kommer fra jobbdokumentet, og flyttes dit fra brevet én gang",as
   const flyttet=await lager.les("jobb-j1.json");
   assert.equal(flyttet.annonse.kilde,"brev");assert.equal(flyttet.annonse.tekst,"Eksempel AS søker kunderådgiver.");
   await lager.skriv("jobb-j1.json",{...flyttet,annonse:{tekst:"Eksempel AS søker kunderådgiver med erfaring fra bank.",kilde:"import"}},flyttet.revisjon);
-  // Brevets eget annonsefelt er ikke lenger kilden.
   await tjeneste.lagreBrev("j1",{...await tjeneste.hentBrev("j1"),annonse:{tekst:"Utdatert annonse i brevet.",url:"",hentet:null}});
   k=await tjeneste.opprett("j1");
   assert.equal(k.grunnlag.annonse,"Eksempel AS søker kunderådgiver med erfaring fra bank.");
@@ -253,7 +243,6 @@ test("mangler annonsen, hentes den fra lenken, renses av annonsemodellen og lagr
   const k=await tjeneste.opprett("j1");
   assert.deepEqual(hentet,["https://jobb.example/kunderadgiver"]);
   assert.deepEqual(kall.map(p=>p.formal),["annonse"]);
-  // Modellen får sidens linjer nummerert og søknadsfeltene, og svarer bare med linjenumre.
   const inn=JSON.parse(kall[0].innhold);
   assert.equal(inn.stilling,"Kunderådgiver");assert.match(inn.side,/^\[1\] Logg inn$/m);
   assert.equal(k.grunnlag.annonse,ANNONSELINJER.join("\n"));
@@ -265,7 +254,6 @@ test("mangler annonsen, hentes den fra lenken, renses av annonsemodellen og lagr
   assert.deepEqual(kall.map(p=>p.formal),["annonse","brev"]);
   assert.equal(soknad(kall[1]).annonse,ANNONSELINJER.join("\n"));
   assert.deepEqual(r.dokument.versjoner[0].annonseuttrekk,k.annonseuttrekk);
-  // Neste brev bruker den lagrede annonsen uten å hente igjen.
   await generer(tjeneste);
   assert.equal(hentet.length,1);assert.deepEqual(kall.map(p=>p.formal),["annonse","brev","brev"]);
 });
@@ -309,10 +297,6 @@ test("en annonse som endres mens modellen skriver, gir et nytt forslag i stedet 
   assert.equal(r.kjoring.nyttForslag,true);assert.equal(r.dokument.tekst,"");assert.equal(r.dokument.versjoner.length,1);
 });
 
-/* ---------- gammel form ---------- */
-
-/* En kjøring fra brev-4 som sto i et av de gamle trinnene, og en versjon
-   med analysen og tre bruksoppføringer. */
 const gammelAnalyse={sprak:"nb",begrunnelse:"Bokmål.",kontaktperson:"",krav:[],bevis:[],virksomhet:[],uklarheter:[],merknader:[],maAvklares:false,bruk:{input_tokens:5,output_tokens:5},modell:"claude-opus-5"};
 const gammelKjoring=(status,id="gammel")=>({id,status,opprettet:"2026-10-01T10:00:00.000Z",
   grunnlag:{cv:"Kari Eksempel. Erfaring fra kundeservice.",annonse:"Eksempel AS søker kunderådgiver.",jobb:{selskap:"Eksempel AS",stilling:"Kunderådgiver",sted:"Oslo",jobbtype:"Fast stilling",sektor:"Finans"},
@@ -333,7 +317,6 @@ test("gamle versjoner med analyse og tre trinn leses, og en ny versjon kan bygge
   assert.equal(r.kjoring.status,"ferdig");assert.equal(r.dokument.versjoner.length,2);
   assert.equal(r.dokument.versjoner[1].promptversjon,"brev-5");
   assert.equal(JSON.parse(kall[0].innhold).tidligereBrev,BREV);
-  // Eksporten tar med den gamle versjonen som den er.
   assert.deepEqual((await tjeneste.eksporter()).dokumenter["brev-j1.json"].versjoner[0].analyse,gammelAnalyse);
 });
 for(const status of ["klar","analyserer","venter","skriver","skrevet","kontrollerer","feilet","avbrutt"]){
@@ -342,9 +325,7 @@ for(const status of ["klar","analyserer","venter","skriver","skrevet","kontrolle
     const d=await tjeneste.hentBrev("j1");
     await lager.skriv("brev-j1.json",{...d,kjoring:gammelKjoring(status)},d.revisjon);
     assert.equal((await tjeneste.hentBrev("j1")).kjoring.status,status);
-    // De gamle trinnene finnes ikke lenger, og «skriv» krever en ny kjøring.
     if(status!=="klar") await assert.rejects(tjeneste.trinn("j1","gammel","skriv"),{code:"opptatt"});
-    // «skriver» kan stå igjen fra en avbrutt app, og avbrytes som før.
     if(status==="skriver"){
       await assert.rejects(tjeneste.opprett("j1"),{code:"opptatt"});
       await tjeneste.avbryt("j1","gammel");
@@ -368,7 +349,6 @@ for(const type of ["cv","stil","brev"]){
     hent:()=>tjeneste.hentBrev("j1"),lagre:d=>tjeneste.lagreBrev("j1",d),slett:r=>tjeneste.slettBrev("j1",r),
     gjenopprett:()=>tjeneste.gjenopprettBrev("j1"),fil:"brev-j1.json"
   };
-  /* CV og brev finnes etter oppsettet. Stilreferansen må legges inn. */
   const klar = async t => {
     const o=await oppsett(t);
     if(type==="stil") await o.tjeneste.lagreStil({revisjon:0,tekst:"Et eget brev som stilreferanse."});

@@ -8,7 +8,6 @@ import { validerSoknad, validerSamling, validerIntervju,
          MAKS_HENDELSER, MAKS_INTERVJU } from "../../src/felles/felles.mjs";
 import { lagLager } from "../../server/lager.mjs";
 
-/* Hver test får sin egen katalog, så den ekte data/ aldri røres. */
 async function nyttLager(valg = {}){
   const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "jobber-test-"));
   return { katalog, lager: lagLager({ katalog, ...valg }) };
@@ -23,8 +22,6 @@ const rad = (o = {}) => ({
 
 const finnes = async p => !!(await fs.stat(p).catch(() => null));
 const sov = ms => new Promise(r => setTimeout(r, ms));
-
-/* ---------- validatoren ---------- */
 
 test("frist: 2026-02-31 avvises, 2026-09-13 godtas", () => {
   assert.equal(validerSoknad(rad({ frist: "2026-02-31" })).ok, false);
@@ -53,8 +50,6 @@ test("ukjente felt faller bort", () => {
     "hendelser","intervjuer"
   ].sort());
 });
-
-/* ---------- hendelser og intervjuer på raden ---------- */
 
 const hendelse = (o = {}) => ({ til: "sent", dato: "2026-10-01", ...o });
 const intervjuet = (o = {}) => ({
@@ -100,7 +95,6 @@ test("hendelser: sorteres på dato og så tid, stabilt, og tid sammenlignes som 
     hendelse({ til: "todo", dato: "2026-10-02" }),
     hendelse({ til: "trukket", dato: "2026-10-03" })
   ] })).verdi.hendelser;
-  /* 12:00+02:00 er 10:00Z, altså etter 09:00Z. Uten tid står først den dagen. */
   assert.deepEqual(r.map(h => h.til), ["todo", "sent", "interview", "rejected", "trukket"]);
 });
 
@@ -191,8 +185,6 @@ test("duplikat id forkastes, første vinner", () => {
   assert.equal(forkastet[0].indeks, 1);
 });
 
-/* ---------- lesing ---------- */
-
 test("manglende fil gir tom, og ingen fil opprettes", async () => {
   const { katalog, lager } = await nyttLager();
   const r = await lager.les();
@@ -220,8 +212,6 @@ test("ødelagt fil blir liggende urørt ved lesing", async () => {
 
   const r = await lager.les();
   assert.equal(r.ødelagt, true);
-  /* Filen skal ikke flyttes under lesing: gjorde den det, ville
-     katalogen stått tom og neste skriving blitt godtatt. */
   assert.equal(await fs.readFile(sti, "utf8"), rå);
   assert.equal(r.sti, sti);
 });
@@ -230,17 +220,15 @@ test("ødelagt fil sperrer alle senere skrivinger, ikke bare den første", async
   const { katalog, lager } = await nyttLager();
   const sti = path.join(katalog, "jobber.json");
   await lager.skriv([rad({ id: "e1", selskap: "EKTE1" })], undefined);
-  /* Andre skriving, så jobber.forrige.json faktisk finnes. */
   await lager.skriv([rad({ id: "e1", selskap: "EKTE1" }), rad({ id: "e2", selskap: "EKTE2" })], 1);
   await fs.writeFile(sti, '{ ødelagt');
 
-  await lager.les();                                    /* som ved sidelasting */
+  await lager.les();
   const a = await lager.skriv([rad({ id: "n1", selskap: "NY" })], 0);
   const b = await lager.skriv([rad({ id: "n2", selskap: "NY2" })], 0);
   assert.equal(a.ok, false); assert.equal(a.feil, "ødelagt");
   assert.equal(b.ok, false); assert.equal(b.feil, "ødelagt");
 
-  /* Sikkerhetskopien må fortsatt holde de ekte radene. */
   const kopi = JSON.parse(await fs.readFile(path.join(katalog, "jobber.forrige.json"), "utf8"));
   assert.deepEqual(kopi.jobber.map(r => r.selskap), ["EKTE1"]);
 });
@@ -256,7 +244,7 @@ test("bevisst gjenoppretting setter den ødelagte filen i karantene og skriver",
   assert.equal(r.ok, true);
   assert.match(path.basename(r.karantene), /^jobber\.ødelagt-.*\.json$/);
   assert.equal(path.basename(r.karantene).includes(":"), false);
-  assert.equal(await fs.readFile(r.karantene, "utf8"), rå);   /* bytene overlevde */
+  assert.equal(await fs.readFile(r.karantene, "utf8"), rå);
 
   const dok = JSON.parse(await fs.readFile(sti, "utf8"));
   assert.deepEqual(dok.jobber.map(x => x.selskap), ["GJENOPPRETTET"]);
@@ -265,7 +253,6 @@ test("bevisst gjenoppretting setter den ødelagte filen i karantene og skriver",
 test("en rad validatoren ikke forstår overlever senere skrivinger", async () => {
   const { katalog, lager } = await nyttLager();
   const sti = path.join(katalog, "jobber.json");
-  /* Håndredigert fil: én rad med umulig dato. */
   await fs.writeFile(sti, JSON.stringify({ versjon: 1, jobber: [
     rad({ id: "a1", selskap: "Equinor" }),
     rad({ id: "a2", selskap: "Håndredigert", frist: "2026-02-31" })
@@ -278,7 +265,6 @@ test("en rad validatoren ikke forstår overlever senere skrivinger", async () =>
   await lager.skriv(lest.jobber, lest.versjon);
   const dok = JSON.parse(await fs.readFile(sti, "utf8"));
   assert.equal(dok.jobber.length, 1);
-  /* Raden er ikke slettet — den er tatt vare på ved siden av. */
   assert.equal(dok.ugyldige.length, 1);
   assert.equal(dok.ugyldige[0].selskap, "Håndredigert");
 });
@@ -312,8 +298,6 @@ test("ugyldige rader hoppes over med advarsel", async () => {
   assert.equal(r.forkastet.length, 1);
   assert.match(r.advarsel, /rad/i);
 });
-
-/* ---------- skriving ---------- */
 
 test("ugyldige rader skrives ikke", async () => {
   const { katalog, lager } = await nyttLager();
@@ -411,11 +395,6 @@ test("skriving mot ødelagt fil nekter i stedet for å overskrive", async () => 
   assert.equal(r.feil, "ødelagt");
 });
 
-/* ---------- sikkerhetsnettet for hendelsesloggen ---------- */
-
-/* Kvart over midnatt lokal tid. I enhver sone øst for UTC er det
-   fortsatt i går i UTC, så en dato hentet fra toISOString ville
-   bommet. Lageret skal datere med kalenderdagen brukeren ser. */
 const KLOKKE = new Date(2026, 9, 9, 0, 15);
 const lagerMedKlokke = () => nyttLager({ nå: () => KLOKKE });
 const LAGERHENDELSE = { dato: "2026-10-09", tid: KLOKKE.toISOString(), kilde: "lager" };
@@ -464,7 +443,6 @@ test("lageret: angre med klientens forrige hendelser etterlater ingen ny hendels
   const etter = [...før, { til: "sent", dato: "2026-10-09", kilde: "bruker" }];
   await lager.skriv([rad({ hendelser: før })], 0);
   await lager.skriv([rad({ status: "sent", hendelser: etter })], 1);
-  /* Angre: statusen og listen settes tilbake til øyeblikksbildet. */
   const r = await lager.skriv([rad({ status: "todo", hendelser: før })], 2);
   assert.deepEqual(r.jobber[0].hendelser, før);
 });
@@ -473,7 +451,6 @@ test("lageret: en klient som ikke har sett lagerets hendelse visker den ikke ut"
   const { lager } = await lagerMedKlokke();
   await lager.skriv([rad()], 0);
   await lager.skriv([rad({ status: "sent" })], 1);
-  /* Klienten får ikke radene tilbake, og lagrer et notat med listen den kjenner. */
   const r = await lager.skriv([rad({ status: "sent", notat: "Ring fredag", hendelser: [] })], 2);
   assert.deepEqual(r.jobber[0].hendelser, [{ til: "sent", ...LAGERHENDELSE }]);
 });
@@ -489,7 +466,6 @@ test("lageret: en eldre klient uten feltene beholder det som står i filen", asy
   assert.deepEqual(r.jobber[0].hendelser, hendelser);
   assert.deepEqual(r.jobber[0].intervjuer, intervjuer);
 
-  /* Og et statusskift fra den samme klienten logges oppå det som var. */
   const s = await lager.skriv([rad({ status: "sent" })], 2);
   assert.deepEqual(s.jobber[0].hendelser, [...hendelser, { til: "sent", ...LAGERHENDELSE }]);
   assert.deepEqual(s.jobber[0].intervjuer, intervjuer);

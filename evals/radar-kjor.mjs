@@ -1,13 +1,4 @@
 #!/usr/bin/env node
-/* Radar-evalen. Uten --live: tilfellene valideres, forespørslene bygges
-   slik appen bygger dem, og et kostnadsanslag skrives ut. Ingen
-   nettverk, ingen nøkler leses.
-
-   Med --live kjøres én vurdering (én bolk) og ett forslag per tilfelle
-   og repetisjon mot valgt leverandør. Det koster penger og gjøres bare
-   når brukeren har godkjent kostnaden. Repetisjon to og tre kommer rett
-   etter den første med samme CV, så de viser om hurtigbufferen treffer
-   (cache_read_input_tokens i rapporten). */
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -20,9 +11,6 @@ import { byggModellkropp, LEVERANDORER, modellFor } from "../src/modell/brev-pro
 const args = process.argv.slice(2);
 const verdi = flagg => { const i = args.indexOf(flagg); return i === -1 ? null : args[i + 1]; };
 
-/* Grovt: Haiku 5.5 gir om lag ett token per tre tegn norsk tekst. For
-   et presist tall: messages.count_tokens, som er gratis, men går ut på
-   nettet med nøkkelen. */
 const tokens = tekst => Math.ceil(tekst.length / 3);
 const dollar = b => ((b.input_tokens ?? 0) * RADARPRIS.inn + (b.cache_creation_input_tokens ?? 0) * RADARPRIS.skriv
   + (b.cache_read_input_tokens ?? 0) * RADARPRIS.les + (b.output_tokens ?? 0) * RADARPRIS.ut) / 1e6;

@@ -10,8 +10,6 @@ import { lagBrevlager } from "../../server/brevlager.mjs";
 import * as Økt from "../../src/konto/okt.js";
 import * as Radar from "../../src/radar/radarklient.js";
 
-/* src/radar/radarklient.js i nettlesermodus mot en ekte server, med falskt nett
-   og falsk modell. Appmodusen har sin egen fil. */
 const full = JSON.parse(await fs.readFile(new URL("../data/radar/greenhouse/cognite-jobs-content.json", import.meta.url), "utf8"));
 
 const ekteFetch = globalThis.fetch;

@@ -1,4 +1,3 @@
-/* Bare dokumentmotoren trenger bundling. Resten av appen er vanlige ES-moduler. */
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

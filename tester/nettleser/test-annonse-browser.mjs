@@ -1,7 +1,3 @@
-/* Annonsen følger importen inn i jobbdokumentet, i en ekte nettleser.
-   Isolert datakatalog, syntetisk konto og falskt nett: ingen side og
-   ingen modell utenfor maskinen blir spurt. Skjermbildene blir
-   liggende i arbeidskatalogen. */
 import { chromium } from "playwright";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -69,11 +65,10 @@ try{
     await page.waitForFunction(() => document.querySelector("#fstilling")?.value);
     await page.locator("#lagreSkjema").click();
     await page.locator("#skuff:not(.er-apen)").waitFor();
-    await page.waitForTimeout(350);   /* skuffen glir ut på 0,26 s */
+    await page.waitForTimeout(350);
     return vent(() => jobbFor(lenke), "søknaden på disk");
   }
 
-  /* ---------- importen tar annonsen med seg ---------- */
   const a = await importer("https://jobb.example.invalid/analytiker");
   assert.equal(a.stilling, "Analytiker");
   const d = await vent(async () => { const x = await dokument(a.id); return x.annonse?.kilde ? x : null; }, "annonsen i jobb-<id>.json");
@@ -86,13 +81,11 @@ try{
   assert.equal(d.revisjon, 1);
   await page.screenshot({ path: path.join(dir, "importert.png") });
 
-  /* ---------- for lite annonsetekst: søknaden lagres, uten annonse ---------- */
   const k = await importer("https://jobb.example.invalid/kort");
   await page.waitForTimeout(500);
   const dk = await dokument(k.id);
   assert.equal(dk.revisjon, 0);assert.equal(dk.annonse.tekst, "");
 
-  /* ---------- skrivingen feiler: et varsel, og søknaden står ---------- */
   await page.route("**/api/jobber/*/annonse", r => r.fulfill({ status: 500, contentType: "application/json",
     body: JSON.stringify({ feil: "intern", melding: "Noe gikk galt på serveren." }) }));
   const f = await importer("https://jobb.example.invalid/feiler");

@@ -12,13 +12,6 @@ import {
   NOKKELFIL, MIN_NOKKEL, MAKS_NOKKEL, MIN_FOR_HALE
 } from "../../server/nokkel.mjs";
 
-/* ============================================================
-   Ett krav, én test. Listen står øverst i server/nokkel.mjs.
-
-   Nøkkelen i testene er en løgn med riktig form — den skal aldri
-   ut noe sted, og det er nettopp det som testes.
-   ============================================================ */
-
 const NOKKEL = "sk-ant-api03-en-nokkel-med-hale-XYZW";
 const tomKatalog = () => fs.mkdtemp(path.join(os.tmpdir(), "jobber-nokkel-"));
 
@@ -38,15 +31,11 @@ async function medMiljø(verdier, fn){
 
 const modus = async p => ((await fs.stat(p)).mode & 0o777).toString(8);
 
-/* ---------- krav 1: validerNokkel er en sikkerhetsregel ---------- */
-
 test("krav 1: bare synlig ASCII slipper gjennom", () => {
   for(const kode of [0x00, 0x09, 0x0a, 0x0d, 0x1b, 0x20, 0x7f]){
     const med = "sk-ant-" + String.fromCharCode(kode) + "x".repeat(20);
     assert.equal(validerNokkel(med).ok, false, "tegnkode 0x" + kode.toString(16));
   }
-  /* Et linjeskift her ville blitt et ekstra HTTP-hode i kallet til
-     modellen. Det er hodeinjeksjon, og den lukkes her. */
   assert.equal(validerNokkel("gyldig-nokkel-nummer-en\r\nX-Ond: 1").ok, false);
   assert.equal(validerNokkel("ugyldig nokkel med mellomrom her").ok, false);
 });
@@ -63,13 +52,9 @@ test("krav 1: lengden er bundet i begge ender, etter trimming", () => {
 });
 
 test("krav 1: formatet forøvrig valideres ikke", () => {
-  /* «sk-ant-»-prefikset kan endre seg. Vi skal ikke være grunnen til
-     at en gyldig nøkkel avvises. */
   assert.equal(validerNokkel("et-helt-annet-prefiks-som-er-langt-nok").ok, true);
   assert.equal(validerNokkel("0123456789012345678901234567890123").ok, true);
 });
-
-/* ---------- krav 2: 0600 fra første byte ---------- */
 
 test("krav 2: nøkkelfilen er 0600, og tempfilen var det også", async () => {
   const katalog = await tomKatalog();
@@ -77,19 +62,15 @@ test("krav 2: nøkkelfilen er 0600, og tempfilen var det også", async () => {
   assert.equal((await settNokkel(filer, NOKKEL)).ok, true);
   assert.equal(await modus(path.join(katalog, NOKKELFIL)), "600");
 
-  /* Skriv én gang til: modusen settes på tempfilen ved åpning, så
-     også en overskriving går aldri innom 0644. */
   await settNokkel(filer, NOKKEL + "2");
   assert.equal(await modus(path.join(katalog, NOKKELFIL)), "600");
   assert.deepEqual(await fs.readdir(katalog), [NOKKELFIL], "ingen tempfil ligger igjen");
 });
 
-/* ---------- krav 3: sletting gjennom filer-sømmen ---------- */
-
 test("krav 3: sletting er idempotent og går gjennom filer.slett", async () => {
   const katalog = await tomKatalog();
   const filer = lagFiler(katalog);
-  await fjernNokkel(filer);                 /* fantes aldri — ikke en feil */
+  await fjernNokkel(filer);
   await settNokkel(filer, NOKKEL);
   await fjernNokkel(filer);
   await fjernNokkel(filer);
@@ -97,14 +78,9 @@ test("krav 3: sletting er idempotent og går gjennom filer.slett", async () => {
   assert.equal(typeof filer.slett, "function");
 });
 
-/* ---------- krav 4: presedensen ---------- */
-
 test("krav 4: brukerens egen nøkkel vinner over miljøvariabelen", async () => {
   const katalog = await tomKatalog();
   await settNokkel(lagFiler(katalog), NOKKEL);
-  /* Snudd siden enbrukertiden, der miljøvariabelen gikk foran. Med
-     nøkkel per bruker ville en delt miljøvariabel overstyrt hver
-     enkelt brukers egen — og det er brukerens egen kreditt. */
   assert.equal(await medMiljø({ ANTHROPIC_API_KEY: "sk-ant-fra-miljoet-som-er-langt" },
                               () => lesNokkel({ katalog, tillatMiljø: true })), NOKKEL);
 });
@@ -134,8 +110,6 @@ test("krav 4: tomme verdier teller som ingen nøkkel", async () => {
     () => lesNokkel({ katalog, tillatMiljø: true })), ManglerNokkel);
 });
 
-/* ---------- krav 5: halen, og bare halen ---------- */
-
 test("krav 5: hale er fire tegn, og bare fra tolv tegn og opp", () => {
   assert.equal(hale(NOKKEL), "XYZW");
   assert.equal(hale("x".repeat(MIN_FOR_HALE)), "xxxx");
@@ -164,8 +138,6 @@ test("krav 5: kilde «miljø» får aldri hale", async () => {
   const katalog = await tomKatalog();
   const st = await medMiljø({ ANTHROPIC_API_KEY: NOKKEL },
     () => nokkelStatus(lagFiler(katalog), { tillatMiljø: true }));
-  /* Under DELT_NOKKEL=1 ville samme svar gått til alle. Det er
-     operatørens nøkkel, ikke brukerens. */
   assert.deepEqual(st, { finnes: true, kilde: "miljø" });
 });
 
@@ -180,8 +152,6 @@ test("krav 5: kilden kan falle tilbake til miljø etter sletting", async () => {
     assert.equal((await nokkelStatus(filer, { tillatMiljø: false })).kilde, "ingen");
   });
 });
-
-/* ---------- krav 6: over HTTP, hele veien ---------- */
 
 async function start(nett){
   const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "jobber-nokkelapi-"));
@@ -265,14 +235,10 @@ test("krav 6: nøkkelen krever økt", async t => {
   }
 });
 
-/* ---------- krav 6: heller ikke i importloggen ---------- */
-
 test("krav 6: importlogg.jsonl inneholder ikke nøkkelen etter en import", async t => {
   const nett = {
     hentSide: async url => ({ status: 200, sluttUrl: url,
       html: "<h1>Utvikler</h1><p>Vi soker en utvikler til teamet vart i Oslo, med lang beskrivelse.</p>" }),
-    /* Den ekte spørModell ville lest nøkkelen; her sjekker vi at det
-       som skrives til loggen ikke bærer den uansett. */
     spørModell: async () => ({ usage: { input_tokens: 100, output_tokens: 20 },
       content: [{ type: "text", text: JSON.stringify({ selskap: "Equinor", stilling: "Utvikler" }) }] })
   };
@@ -286,8 +252,6 @@ test("krav 6: importlogg.jsonl inneholder ikke nøkkelen etter en import", async
   });
   assert.equal(r.status, 200);
 
-  /* Loggen skrives med vilje etter at svaret er sendt — en import som
-     lyktes skal ikke feile fordi en linje ikke lot seg skrive. */
   const brukere = await fs.readdir(path.join(katalog, "brukere"));
   const sti = path.join(katalog, "brukere", brukere[0], "importlogg.jsonl");
   let logg = "";

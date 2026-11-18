@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { nyttIntervju, endreIntervju, slettIntervju, kommende, starttid } from "../../src/intervju/intervjuer.mjs";
 
-const NÅ = new Date(2026, 9, 4, 12, 0);          /* søndag 4. oktober 2026, kl. 12 lokal tid */
+const NÅ = new Date(2026, 9, 4, 12, 0);
 const VALG = { iDag: "2026-10-04", nå: NÅ, lagId: () => "iv1" };
 const jobb = (o = {}) => ({ id: "a1", selskap: "Aker BP", stilling: "ML Engineer", status: "todo",
                             hendelser: [], intervjuer: [], ...o });
@@ -83,9 +83,9 @@ test("slettIntervju fjerner ett og gir feil på et ukjent", () => {
 test("kommende: pågående, senere og dagens heldagsintervju er med, avsluttede er ikke", () => {
   const iv = (id, dato, tid, varighet = null) => ({ id, dato, tid, varighet, sted: "", type: "", lenke: "", runde: "", notat: "" });
   const j = jobb({ intervjuer: [
-    iv("ferdig", "2026-10-04", "10:00", 60),     /* sluttet 11:00 */
-    iv("pagar", "2026-10-04", "11:30", 60),      /* slutter 12:30 */
-    iv("uten-varighet", "2026-10-04", "10:30"),  /* 60 min som standard, slutter 11:30 */
+    iv("ferdig", "2026-10-04", "10:00", 60),
+    iv("pagar", "2026-10-04", "11:30", 60),
+    iv("uten-varighet", "2026-10-04", "10:30"),
     iv("heldag-i-dag", "2026-10-04", null),
     iv("heldag-i-går", "2026-10-03", null),
     iv("senere", "2026-10-09", "09:00")

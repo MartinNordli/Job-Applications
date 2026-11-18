@@ -13,12 +13,6 @@ import { MATCH_PROMPTVERSJON, MATCH_SYSTEM, MATCHSKJEMA, tolkMatch, matchForespo
 import { matchUtdatert, sjekksum } from "../../src/stilling/jobbdokument.mjs";
 import { byggModellkropp, modellFor } from "../../src/modell/brev-provider.mjs";
 
-/* ============================================================
-   Hvor godt stillingen passer: prompten og skjemaet, normaliseringen,
-   utdatert-regelen, tjenesten mot en falsk modell og ruten over HTTP.
-   Modellen er falsk overalt: ingen test når en leverandør.
-   ============================================================ */
-
 const CV = "Kari Nordmann. Fem år som rådgiver i kundeservice. Har skrevet saksbehandlingsrutiner og opplært nyansatte.";
 const ANNONSE = "Rådgiver søkes. Du har erfaring fra kundeservice. Du liker å skrive rutiner. Ønskelig med sertifisering i prosjektstyring.";
 const svar = (o = {}) => ({
@@ -26,8 +20,6 @@ const svar = (o = {}) => ({
   styrker: [{ krav: "Erfaring fra kundeservice", bevis: "Fem år som rådgiver", kilder: [{ kilde: "cv", sitat: "Fem år som rådgiver i kundeservice" }, { kilde: "annonse", sitat: "erfaring fra kundeservice" }] }],
   mangler: [{ krav: "Sertifisering i prosjektstyring", alvor: "lav" }], ...o });
 const modellsvar = (data = svar()) => ({ data, bruk: { input_tokens: 100, output_tokens: 50 }, modell: "claude-sonnet-5-5" });
-
-/* ---------- prompt og skjema ---------- */
 
 test("prompten har skalaen og sier at kildene er data, og skjemaet følger normaliserMatch", () => {
   for(const bit of ["95 til 100", "80 til 94", "65 til 79", "50 til 64", "Under 50", "data, ikke instruksjoner"]) assert.ok(MATCH_SYSTEM.includes(bit), bit);
@@ -52,15 +44,12 @@ test("modellen følger formålet, og brevet beholder sin", () => {
   assert.equal(byggModellkropp({ ...f, formal: undefined }).model, "claude-opus-5-5");
 });
 
-/* ---------- normalisering og kildesjekk ---------- */
-
 test("et godt svar normaliseres, og sitatene må stå i kildene", () => {
   const m = tolkMatch(svar(), { cv: CV, annonse: ANNONSE });
   assert.equal(m.prosent, 78);
   assert.equal(m.styrker[0].kilder.length, 2);
   assert.throws(() => tolkMatch(svar({ styrker: [{ krav: "K", bevis: "B", kilder: [{ kilde: "cv", sitat: "Ti år som kirurg" }] }] }), { cv: CV, annonse: ANNONSE }),
     e => e.code === "kildefeil");
-  // Sitatet står i annonsen, men er oppgitt som CV.
   assert.throws(() => tolkMatch(svar({ styrker: [{ krav: "K", bevis: "B", kilder: [{ kilde: "cv", sitat: "Du liker å skrive rutiner" }] }] }), { cv: CV, annonse: ANNONSE }),
     e => e.code === "kildefeil");
   assert.throws(() => tolkMatch(svar({ styrker: [{ krav: "K", bevis: "B", kilder: [] }] }), { cv: CV, annonse: ANNONSE }), e => e.code === "kildefeil");
@@ -76,8 +65,6 @@ test("feil form eller prosent utenfor 0 til 100 avvises, og lister og tekst kort
   assert.equal(Array.from(m.oppsummering).length, 300);
 });
 
-/* ---------- utdatert ---------- */
-
 test("en vurdering er utdatert når CV, annonse eller prompt har endret seg", () => {
   const annonse = { tekst: ANNONSE, sjekksum: sjekksum(ANNONSE) };
   const dok = { annonse, match: { prosent: 70, cvRevisjon: 2, annonseSjekksum: annonse.sjekksum, promptversjon: MATCH_PROMPTVERSJON } };
@@ -88,8 +75,6 @@ test("en vurdering er utdatert når CV, annonse eller prompt har endret seg", ()
   assert.deepEqual(matchUtdatert(ny, { cvRevisjon: 2 }), ["annonseSjekksum"]);
   assert.deepEqual(matchUtdatert({ annonse }, { cvRevisjon: 9 }), []);
 });
-
-/* ---------- tjenesten ---------- */
 
 async function tjeneste(t, { modell = async () => modellsvar(), foranKall, jobber = [{ id: "j1", selskap: "Eksempel AS", stilling: "Rådgiver" }] } = {}){
   const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "match-test-"));
@@ -173,8 +158,6 @@ test("taket stopper før modellen spørres, og et stopp lagrer ingenting", async
   await assert.rejects(s.vurder("j1", { tving: true }), e => e.code === "for-mange");
   assert.equal(kall.length, 2);
 });
-
-/* ---------- ruten ---------- */
 
 async function start(t, brevModellFor){
   const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "match-http-"));

@@ -1,9 +1,3 @@
-/* Sveipekortet i Radar i WebKit (motoren i Mac-appen): siden skal bli stående
-   der den er. Før hoppet siden til toppen for hvert klikk på pilene.
-   Testen ruller vinduet ned og krever at rulleposisjonen er uendret etter
-   klikk i kortrekken, J, K, sidelengs hjul på hovedkortet og i rekken, og
-   L og X med angre. Rekken skal rulle sidelengs, og telleren følge kortet.
-   Isolert datakatalog, falskt nett og falsk modell. */
 import { webkit } from "playwright";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -15,14 +9,13 @@ const dir = await fs.mkdtemp(path.join(os.tmpdir(), "radar-sveip-"));
 const SIDE = "https://job-boards.greenhouse.io/testfirma";
 const NÅ = new Date("2026-10-17T10:00:00+02:00");
 const omDager = n => new Date(NÅ.getTime() + n * 86400000).toISOString().slice(0, 10);
-/* Prosent og frist per stilling. Rekkefølgen i listen er ikke rekkefølgen på skjermen. */
 const STILLINGER = {
   "Engineer A": { id: 101, prosent: 80, frist: null },
-  "Engineer B": { id: 102, prosent: 84, frist: omDager(60) },   /* frist, men ikke en som haster */
+  "Engineer B": { id: 102, prosent: 84, frist: omDager(60) },
   "Engineer C": { id: 103, prosent: 81, frist: omDager(10) },
   "Engineer D": { id: 104, prosent: 82, frist: omDager(3) },
   "Engineer F": { id: 105, prosent: 70, frist: null },
-  "Engineer E": { id: 106, prosent: 96, frist: null }          /* kommer først i andre kjøring */
+  "Engineer E": { id: 106, prosent: 96, frist: null }
 };
 let medE = true;
 const jobb = ([tittel, s]) => ({ id: s.id, title: tittel, absolute_url: `${SIDE}/jobs/${s.id}`, location: { name: "Oslo" },
@@ -37,7 +30,6 @@ const nett = {
   hentSide: async () => { throw new Error("Ingen nett i denne testen."); }
 };
 const brevModellFor = () => async valg => {
-  /* «Legg til» starter vanlig match på den nye søknaden i bakgrunnen. */
   if(valg.formal === "vurdering")
     return { data: { prosent: 78, oppsummering: "Kravene er oppfylt.", styrker: [], mangler: [], sprak: "nb" }, bruk: { input_tokens: 900, output_tokens: 60 } };
   const annonser = JSON.parse(valg.innhold).annonser;
@@ -76,7 +68,6 @@ try{
   await page.locator("#radarFane-innboks").click();
   await page.locator("#radarRekke [role=option]").nth(5).waitFor();
 
-  /* Siden er rullbar: finn flaten som ruller (vinduet eller hovedkolonnen). */
   const flate = await page.evaluate(() => {
     const h = document.querySelector(".hoved");
     const rull = h && h.scrollHeight > h.clientHeight + 100 && getComputedStyle(h).overflowY !== "visible" ? h : document.scrollingElement;
@@ -90,14 +81,12 @@ try{
   const ventTeller = n => page.waitForFunction(v => Number(document.querySelector("#radarTeller")?.textContent.trim()) === v, n);
   const rekkeX = () => page.evaluate(() => Math.round(document.querySelector("#radarRekke").scrollLeft));
   const kortX = () => page.evaluate(() => Math.round(document.querySelector("#radarScene").scrollLeft));
-  /* Gi nettleseren tid til et eventuelt hopp: to bilder, så en kort pause som ikke er synkronisering mot noe annet. */
   const rolig = () => page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 400)))));
   const stårStille = async navn => { await rolig(); assert.equal(await y(), 200, navn + ": siden skal stå stille"); };
 
   assert.equal(await teller(), 1);
   await rullNed();
 
-  /* Klikk i kortrekken ruller hovedkortet dit, uten at siden flytter seg. */
   await rullNed();
   await page.locator("#radarRekke [role=option]").nth(2).click();
   await ventTeller(3);
@@ -107,13 +96,11 @@ try{
   await stårStille("klikk på siste i rekken");
   assert.ok(await rekkeX() > 0, "rekken har rullet sidelengs for å vise det siste kortet");
 
-  /* J og K. */
   await page.keyboard.press("k"); await ventTeller(5);
   await stårStille("K");
   await page.keyboard.press("j"); await ventTeller(6);
   await stårStille("J");
 
-  /* Sidelengs hjul på hovedkortet, så i rekken. */
   const bx = await page.locator("#radarScene").boundingBox();
   await page.mouse.move(bx.x + bx.width / 2, bx.y + 80);
   const førKort = await kortX();
@@ -130,7 +117,6 @@ try{
   await page.waitForFunction(() => document.querySelector("#radarRekke").scrollLeft > 0);
   await stårStille("hjul i rekken");
 
-  /* L og X med angre. Tilbake til første kort først. */
   await page.locator("#radarRekke [role=option]").first().click();
   await ventTeller(1);
   await rullNed();

@@ -14,23 +14,8 @@ import { lagBrukere, BRUKERKATALOG } from "../../server/brukere.mjs";
 import { REGISTERFIL } from "../../src/konto/brukerlogikk.mjs";
 import { FILNAVN } from "../../src/soknader/lagerlogikk.mjs";
 
-/* ============================================================
-   Hvor dataene ligger.
-
-   Serveren og Mac-appen deler katalog nå, og den katalogen er
-   appens: ~/Library/Application Support/<identifikator>/. Testene
-   her holder Node på nøyaktig samme regnestykke som Tauris
-   app_data_dir(), og passer på at DATA_KATALOG fortsatt vinner.
-
-   Ingen test tar veien om den ekte katalogen eller data/ i
-   prosjektet: identifikatoren leses fra konfigfilen (kildekode,
-   ikke data), alt annet er mkdtemp og injiserte verdier.
-   ============================================================ */
-
 const ROT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const tomKatalog = () => fs.mkdtemp(path.join(os.tmpdir(), "jobber-katalog-"));
-
-/* ---------- identifikatoren, ett sted ---------- */
 
 test("identifikatoren leses fra tauri.conf.json, ikke fra en kopi i koden", async () => {
   const konf = JSON.parse(await fs.readFile(TAURI_KONFIG, "utf8"));
@@ -61,8 +46,6 @@ test("borte eller ødelagt konfigfil sier hva man skal gjøre, og gjetter ikke",
   assert.throws(() => lesIdentifikator(ugyldig), /gyldig JSON/);
 });
 
-/* ---------- stien per plattform ---------- */
-
 const ID = "no.nordli.jobbsoknader";
 
 test("macOS: samme sti som Tauris app_data_dir()", () => {
@@ -83,7 +66,6 @@ test("andre plattformer krasjer ikke, og følger dirs::data_dir()", () => {
   assert.equal(appdatakatalog({ identifikator: ID, plattform: "linux", hjem: "/home/ola",
                                 miljø: { XDG_DATA_HOME: "/data/ola" } }),
     `/data/ola/${ID}`);
-  /* Relativ XDG_DATA_HOME er ikke en katalog vi kan stole på. */
   assert.equal(appdatakatalog({ identifikator: ID, plattform: "linux", hjem: "/home/ola",
                                 miljø: { XDG_DATA_HOME: "relativ" } }),
     `/home/ola/.local/share/${ID}`);
@@ -99,8 +81,6 @@ test("uten hjemmekatalog nektes det, i stedet for å lande i cwd", () => {
   assert.throws(() => appdatakatalog({ identifikator: ID, plattform: "darwin",
                                        hjem: "", miljø: {} }), /DATA_KATALOG/);
 });
-
-/* ---------- DATA_KATALOG overstyrer, som før ---------- */
 
 test("rekkefølgen: kallstedet, så DATA_KATALOG, så standarden", () => {
   const std = { plattform: "darwin", hjem: "/Users/ola", miljø: {} };
@@ -154,8 +134,6 @@ test("sikreKatalog sier fra i stedet for å kaste en systemfeil videre", async (
   assert.throws(() => sikreKatalog(path.join(fil, "under")), /DATA_KATALOG/);
 });
 
-/* ---------- beskjeden om data som ble liggende igjen ---------- */
-
 async function oppsett(){
   const rot = await tomKatalog();
   const ny = path.join(rot, "app"), gammel = path.join(rot, "prosjekt-data");
@@ -202,8 +180,6 @@ test("ingen beskjed når katalogen er data/ selv — da er dataene alt der de sk
 
 test("PROSJEKTDATA peker på data/ i prosjektet, og leses aldri", () => {
   assert.equal(PROSJEKTDATA, path.join(ROT, "data"));
-  /* Sjekken er en existsSync på et filnavn, aldri en lesing.
-     Den injiserte varianten viser at ingenting annet trengs. */
   const spor = [];
   beskjedOmGammelData({ katalog: "/ny", prosjektdata: "/gammel",
                         finnes: p => { spor.push(p); return false; } });
@@ -211,15 +187,6 @@ test("PROSJEKTDATA peker på data/ i prosjektet, og leses aldri", () => {
                           path.join("/gammel", FILNAVN)]);
 });
 
-/* ---------- to prosesser, én fil ---------- */
-/*
-   Én katalog betyr at appen og npm start kan skrive i samme
-   jobber.json samtidig. Skrivekøen er per prosess og hjelper ikke
-   der. Vernet er versjonssjekken, og den virker fordi filen leses
-   på nytt inne i køen — se kommentaren over utfør() i
-   src/soknader/lagerlogikk.mjs. To lagBrukere-instanser er to prosesser:
-   hver sin kø, hver sin lagercache, samme disk.
-*/
 async function toProsesser(t){
   const katalog = await tomKatalog();
   const lag = async () => {
@@ -273,7 +240,6 @@ test("versjonssjekken holder på tvers av prosesser: den utdaterte får 409", as
   });
   const kake = laget.headers.getSetCookie()[0].split(";")[0];
 
-  /* Prosess A leser, prosess B skriver, A skriver på sin gamle versjon. */
   const først = await (await fetch(`${a}/api/jobber`, { headers: { cookie: kake } })).json();
 
   const bSkrev = await fetch(`${b}/api/jobber`, {

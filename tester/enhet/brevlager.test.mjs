@@ -59,7 +59,6 @@ test("jobbdokument og radar.json har samme revisjon, kopi og sletting som breven
   await assert.rejects(lager.skriv("jobb-j1.json",a,0),e=>e.code==="konflikt");
   const b=await lager.skriv("jobb-j1.json",{...a,annonse:{tekst:"Andre annonse.",kilde:"limt"}},1);
   assert.equal(JSON.parse(await fs.readFile(path.join(dir,"jobb-j1.forrige.json"),"utf8")).annonse.tekst,"Første annonse.");
-  // Lagret dokument er normalisert: ukjente felt er borte, skjemaet er satt av lageret.
   assert.equal("ukjent" in await lager.skriv("jobb-j1.json",{...b,ukjent:1,skjemaVersjon:7},2),false);
   const r=await lager.skriv("radar.json",{revisjon:0,innstillinger:{pa:true,sokeord:["data"]}},0);
   assert.equal(r.innstillinger.pa,true);assert.deepEqual(r.innstillinger.sokeord,["data"]);

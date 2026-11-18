@@ -1,7 +1,3 @@
-/* Hendelsesloggen slik den vises: ventetiden og intervjuene på radene
-   under Sendt, og flisene Svartid og Uten svar under Tall, i bred og
-   smal visning. Isolert datakatalog og syntetisk konto. Skjermbildene
-   blir liggende i arbeidskatalogen. */
 import { chromium } from "playwright";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -36,7 +32,6 @@ const JOBBER = [
       intervjuer: [{ id: "b", dato: omDager(-9) }, { id: "c", dato: omDager(9) }] }),
   jobb("forbi", "Njord NTNU", "interview",
     { sendtDato: omDager(-30), hendelser: [h("sent", -30), h("interview", -21)] }),
-  /* Svartid: 9, 10, 17 og 21 dager, median 13,5, vist som 14. Avslaget er ute av Sendt, men teller i svartiden. */
   jobb("avslag", "Cognite", "rejected",
     { sendtDato: omDager(-30), hendelser: [h("sent", -30), h("rejected", -9)] }),
   jobb("todo1", "Visma", "todo", { frist: omDager(-2), sektor: "teknologi" })
@@ -58,11 +53,8 @@ try{
   const feil = [];
   page.on("pageerror", e => feil.push(e.message));
   await page.goto(url);
-  /* Den eneste søknaden under Frister har gått ut og ligger sammenfoldet,
-     så det er listen som ventes på, ikke en synlig rad. */
   await page.waitForFunction(() => document.querySelector("#innhold")?.children.length > 0);
 
-  /* ---------- radene under Sendt ---------- */
   await page.locator('[data-visning="sendt"]').click();
   const om = id => page.locator(`.rad[data-id="${id}"] .rad__om`);
   assert.equal(await om("lenge").textContent(), "venter 40 dager");
@@ -75,13 +67,11 @@ try{
   assert.equal(await om("imorgen").getAttribute("data-kommer"), "");
   assert.equal(await om("forbi").getAttribute("data-kommer"), null);
 
-  /* Den tomme kolonnen holder bredden, så selskapsnavnet står likt. */
   const bredde = id => om(id).evaluate(el => el.getBoundingClientRect().width);
   assert.ok(await bredde("udatert") >= 92, "kolonnen skal være reservert også når den er tom");
   assert.equal(await page.locator('.rad[data-id="imorgen"] .monogram').textContent(), "AW");
   await page.screenshot({ path: path.join(dir, "sendt.png"), fullPage: true });
 
-  /* ---------- flisene under Tall ---------- */
   await page.locator('[data-visning="tall"]').click();
   const flis = navn => page.locator(".nokkel", { has: page.locator(".nokkel__merke", { hasText: new RegExp("^" + navn + "$") }) });
   assert.equal(await page.locator(".nokkel").count(), 7);
@@ -91,29 +81,24 @@ try{
   assert.equal(await flis("Uten svar").locator(".nokkel__under").textContent(), "Over 30 dager: Aker BP, Statnett",
     "den som har ventet lengst står først, og 30 dager er ikke over 30");
 
-  /* Tallene i én rad står på samme linje, også når en underlinje brytes. */
   const linjer = await page.$$eval(".nokkel__verdi", v => v.map(x => Math.round(x.getBoundingClientRect().top)));
   assert.equal(new Set(linjer.slice(0, 3)).size, 1, "første rad");
   assert.equal(new Set(linjer.slice(3)).size, 1, "andre rad");
   await page.screenshot({ path: path.join(dir, "tall-bred.png") });
 
-  /* Uten ekte svar står flisen tom og sier hvordan den fylles. */
   await page.locator("#filtSektor").selectOption("teknologi");
   assert.equal(await flis("Svartid").locator(".nokkel__verdi").textContent(), "–");
   assert.match(await flis("Svartid").locator(".nokkel__under").textContent(), /^Måles fra du merker/);
   assert.equal(await flis("Uten svar").locator(".nokkel__under").textContent(), "Ingen har ventet over 30 dager");
   await page.locator("#filtSektor").selectOption("");
 
-  /* ---------- telefonbredde ---------- */
   await page.setViewportSize({ width: 390, height: 844 });
-  /* En del av en underlinje brytes aldri inni seg selv. */
   const brutt = await page.$$eval(".nokkel__del", d => d.filter(x => x.getClientRects().length > 1).map(x => x.textContent));
   assert.deepEqual(brutt, []);
   const verdier = await page.$$eval(".nokkel__verdi", v => v.map(x => Math.round(x.getBoundingClientRect().top)));
   assert.equal(new Set(verdier.slice(1, 3)).size, 1, "flisene står parvis");
   await page.screenshot({ path: path.join(dir, "tall-390.png"), fullPage: true });
 
-  /* Alle radknappene er innenfor kortet, også «Slett» helt til slutt. */
   await page.locator('[data-visning="sendt"]').click();
   const utenfor = await page.$$eval(".rad", rader => rader.flatMap(r => {
     const kant = r.closest(".stabel").getBoundingClientRect().right;

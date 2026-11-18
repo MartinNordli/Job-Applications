@@ -7,10 +7,7 @@ import path from "node:path";
 import { lagServer } from "../../server/server.mjs";
 import { lagBrukere, BRUKERKATALOG } from "../../server/brukere.mjs";
 
-/* Fristvarselet over HTTP: innstillingen per profil og sjekken som
-   fører loggen. Ekte server, ekte filer, og en fast klokke. */
-
-const NÅ = new Date(2026, 9, 4, 9, 0);            /* søndag 4. oktober, lokal tid */
+const NÅ = new Date(2026, 9, 4, 9, 0);
 
 async function start(){
   const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "jobber-varsel-"));
@@ -21,7 +18,6 @@ async function start(){
   return { katalog, base, stopp: () => new Promise(r => tjener.close(() => r())) };
 }
 
-/* Én konto med sin egen informasjonskapsel. */
 async function konto(base, epost){
   const r = await fetch(base + "/api/registrer", { method: "POST",
     headers: { "content-type": "application/json" },
@@ -59,7 +55,6 @@ test("innstillingen har en standard, lagres per profil og avviser ugyldige verdi
     path.join(s.katalog, BRUKERKATALOG, ola.id, "varsel.json"), "utf8")),
     { versjon: 2, på: false, dagerFør: 3, intervju: true });
 
-  /* Kari ser ikke Olas valg. */
   assert.deepEqual(await (await kari.kall("/api/varsel")).json(), { på: true, dagerFør: 1, intervju: true });
 
   const feil = await ola.kall("/api/varsel", "PUT", { på: true, dagerFør: 30 });
@@ -87,7 +82,6 @@ test("sjekken varsler en frist én gang og fører den i loggen", async t => {
 
   assert.deepEqual((await (await ola.kall("/api/varsel/sjekk", "POST")).json()).varsler, []);
 
-  /* Lengre varsel fanger den neste, men ikke den som alt er varslet. */
   await ola.kall("/api/varsel", "PUT", { på: true, dagerFør: 5 });
   assert.deepEqual((await (await ola.kall("/api/varsel/sjekk", "POST")).json()).varsler.map(v => v.id), ["b2"]);
 

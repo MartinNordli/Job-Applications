@@ -1,18 +1,8 @@
-/* ============================================================
-   De automatiske sjekkene i evalueringen. Rene funksjoner uten
-   nettverk, så de kan prøves i den vanlige testpakken.
-
-   De fanger det som kan måles: språk, ordtall, hilsen og avslutning,
-   antall avsnitt, kjente stilbrudd, lånte fakta og forbudte ord. De
-   sier ingenting om brevet er godt. Det avgjør den menneskelige
-   vurderingen (se evals/README.md).
-   ============================================================ */
 import { finnStilbrudd, finnStrukturbrudd, finnLånteFakta, innholdsavsnitt, ordtall, validerGrunnlag } from "../src/brev/brevlogikk.mjs";
 
 const SPRÅK = { norsk: "nb", bokmål: "nb", nynorsk: "nn", engelsk: "en", english: "en" };
 const kode = s => SPRÅK[String(s).trim().toLowerCase()] || String(s).trim().toLowerCase();
 
-/* Tom liste betyr at alle sjekkene er bestått. */
 export function sjekkBrev(tilfelle, brev){
   const funn = [], tekst = String(brev?.tekst ?? "");
   if(!tekst.trim()) return ["Brevet er tomt."];

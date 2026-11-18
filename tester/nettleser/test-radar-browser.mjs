@@ -1,11 +1,3 @@
-/* Radar i en ekte nettleser: av til på med CV-en fra Innstillinger,
-   «Foreslå fra CV» som fyller ordlistene uten å lagre, «Søk nå» som gir
-   innboks og tall i sidepanelet, «Legg til» som lager én søknad med annonse
-   i jobbdokumentet, «Ikke interessert» med angre, det som havnet under
-   terskelen og flytter opp når terskelen senkes, og «Søk nå» to ganger på
-   under et minutt. Isolert datakatalog, syntetisk konto, falskt nett (de
-   lagrede Greenhouse-svarene i tester/data/) og falsk modell: ingenting utenfor
-   maskinen blir spurt. */
 import { chromium } from "playwright";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -17,7 +9,6 @@ const dir = await fs.mkdtemp(path.join(os.tmpdir(), "radar-nettleser-"));
 const full = JSON.parse(await fs.readFile(new URL("../data/radar/greenhouse/cognite-jobs-content.json", import.meta.url), "utf8"));
 const SIDE = "https://job-boards.greenhouse.io/cognite";
 const CV = "Astrid Eksempel. To år med dataflyt i Python og SQL hos et kraftselskap.";
-/* Den ene stillingen vurderes under terskelen (50 % som standard). */
 const LAV = full.jobs.find(j => j.title.startsWith("Account Executive"));
 const nett = {
   hentJson: async url => ({ status: 200, json: url.endsWith("/jobs") ? full : full.jobs.find(j => url.endsWith(`/${j.id}`)) }),
@@ -29,19 +20,17 @@ const brevModellFor = () => async valg => {
     kall.forslag++;
     return { data: { sokeord: ["Engineer", "Account Executive"], steder: [], ekskluder: ["lærling"] }, bruk: { input_tokens: 700, output_tokens: 30 } };
   }
-  /* «Legg til» starter vanlig match på den nye søknaden i bakgrunnen. */
   if(valg.formal === "vurdering"){
     kall.match++;
     return { data: { prosent: 78, oppsummering: "Kravene er oppfylt.", styrker: [], mangler: [], sprak: "nb" }, bruk: { input_tokens: 900, output_tokens: 60 } };
   }
   let annonser;
-  try{ annonser = JSON.parse(valg.innhold).annonser; }catch{ /* ikke en radarvurdering */ }
+  try{ annonser = JSON.parse(valg.innhold).annonser; }catch{}
   if(!annonser){ kall.annet++; throw new Error("Uventet modellkall: " + valg.trinn); }
   kall.vurdering++;
   return { data: { vurderinger: annonser.map(a => ({ id: a.id, prosent: a.stilling === LAV.title ? 45 : 80,
     grunner: [a.stilling === LAV.title ? "Salg, ikke dataflyt." : "Passer CV-en."] })) }, bruk: { input_tokens: 100, output_tokens: 20 } };
 };
-/* Serverens klokke er låst og flyttes for hånd, så minuttgrensen ikke krever venting. */
 let nåMs = Date.now();
 const server = lagServer({ katalog: path.join(dir, "data"), nett, brevModellFor, nå: () => new Date(nåMs) });
 await new Promise(r => server.listen(0, "127.0.0.1", r));
@@ -57,7 +46,6 @@ try{
   assert.ok((await api.post(url + "/api/registrer",
     { data: { epost: "test@eksempel.no", navn: "Astrid Eksempel", passord: "syntetisk-passord-123" } })).ok());
   assert.ok((await api.put(url + "/api/nokler/anthropic", { data: { nokkel: "sk-syntetisk-testnokkel-abcdefghijklmnopqrstuvwxyz" } })).ok());
-  /* Radar er av, med bare én karriereside som kilde. */
   assert.ok((await api.put(url + "/api/radar/innstillinger", { data: { pa: false, kilder: { nav: { pa: false }, jobbnorge: { pa: false } } } })).ok());
   assert.ok((await api.post(url + "/api/radar/karrieresider", { data: { url: SIDE, navn: "Cognite" } })).ok());
 
@@ -73,7 +61,6 @@ try{
   page.on("pageerror", e => feil.push(e.message));
   page.on("console", m => { if(m.type() === "error" && !/404|Failed to load resource/.test(m.text())) feil.push(m.text()); });
 
-  /* ---------- av: CV-en legges inn under Innstillinger ---------- */
   await page.goto(url + "/");
   await page.locator('[data-visning="radar"]').click();
   await page.locator('[data-radar="pa"]').click();
@@ -81,16 +68,15 @@ try{
   assert.equal((await radar()).innstillinger.pa, true, "Radar er slått på");
   await page.locator('[data-radar="tilCv"]').click();
   await page.locator("#cvInnst").waitFor();
-  await page.locator("#cvInnstTekst").waitFor();   /* mangler CV-en, står tekstfeltet åpent */
+  await page.locator("#cvInnstTekst").waitFor();
   await page.locator("#cvInnstTekst").fill(CV);
   await page.locator("#cvInnstStatus", { hasText: /^Lagret/ }).waitFor();
   assert.equal((await (await api.get(url + "/api/cv")).json()).tekst, CV, "CV-en er lagret");
   await page.keyboard.press("Escape");
   await page.locator('[data-merknad="cv"]').waitFor({ state: "detached" });
 
-  /* ---------- Foreslå fra CV fyller ordlistene, men lagrer ikke ---------- */
   await page.locator('[data-visning="radar"]').click();
-  await page.locator("#radarFane-innstillinger[aria-selected=true]").waitFor();   /* Radar på uten søkeord: Innstillinger er valgt */
+  await page.locator("#radarFane-innstillinger[aria-selected=true]").waitFor();
   await page.locator('[data-radar="foresla"]').first().click();
   await page.locator("#radarOrd-sokeord").locator("xpath=ancestor::*[contains(@class,'ordliste')][1]")
     .getByText("Engineer", { exact: true }).waitFor();
@@ -101,11 +87,8 @@ try{
   assert.deepEqual((await radar()).innstillinger.ekskluder, ["lærling"]);
   await page.locator("#radarLagret", { hasText: /^Lagret/ }).waitFor();
 
-  /* ---------- Søk nå: innboks og tall i sidepanelet ---------- */
-  /* Slå-på-kjøringen uten CV har allerede brukt minuttet, så klokken flyttes. */
   nåMs += 120_000;
   await page.locator("#radarSokNa").click();
-  /* Bare karrieresiden er på, så kjøringen er en oppfølging, ikke et søk gjennom alle aktive. */
   await page.locator("#radarStatus", { hasText: /^\d\d:\d\d: / }).waitFor();
   const antall = full.jobs.length, antallNye = antall - 1;
   await page.locator("#radarFane-innboks").click();
@@ -117,7 +100,6 @@ try{
     new RegExp(`^\\d\\d:\\d\\d: ${antall} nye stillinger, ${antall} passet søkeordene, ${antall} vurdert, ${antallNye} nådde 50 %, 1 under terskelen\\.$`));
   assert.equal(kall.vurdering, 1);
 
-  /* ---------- Under terskelen: egen fane, med den lave ---------- */
   const under = page.locator("#radarUnder");
   assert.equal(await under.count(), 0, "bare valgt fane tegnes");
   assert.equal((await page.locator("#radarFane-under .radar__fanetall").textContent()).trim(), "1");
@@ -128,7 +110,6 @@ try{
   assert.match(await lav.textContent(), /Account Executive/);
   const lavId = await lav.getAttribute("data-radar-id");
 
-  /* ---------- Legg til: én søknad med annonse, raden merkes ---------- */
   await page.locator("#radarFane-innboks").click();
   const radId = await innboks.first().getAttribute("data-radar-id");
   const rad = page.locator(`[data-radar-id="${radId}"]`);
@@ -147,7 +128,6 @@ try{
   for(let i = 0; i < 50 && !kall.match; i++) await page.waitForTimeout(100);
   assert.equal(kall.match, 1, "«Legg til» starter match på søknaden");
 
-  /* ---------- Ikke interessert under terskelen, med angre ---------- */
   await page.locator("#radarFane-innboks").click();
   await page.locator(".radar__tomt", { hasText: "1 stilling ble vurdert lavere" }).waitFor();
   await page.locator("#radarFane-under").click();
@@ -157,9 +137,8 @@ try{
   assert.ok((await radar()).under.some(r => r.id === lavId), "serveren venter med fjerningen til angrefristen er ute");
   await page.locator("#angreKnapp").click();
   await page.locator(`[data-radar-id="${lavId}"]`).waitFor();
-  await page.waitForFunction(id => document.activeElement?.dataset.fokus === "legg-" + id, lavId, { timeout: 2000 });   /* fokus tilbake på raden */
+  await page.waitForFunction(id => document.activeElement?.dataset.fokus === "legg-" + id, lavId, { timeout: 2000 });
 
-  /* ---------- Senk terskelen: den lave flytter opp i innboksen ---------- */
   await under.locator('[data-radar="tilTerskel"]').click();
   assert.equal(await page.evaluate(() => document.activeElement?.id), "radarTerskel");
   await page.keyboard.press("ArrowLeft");
@@ -173,7 +152,6 @@ try{
   assert.equal((await radar()).innstillinger.terskel, 40);
   assert.equal((await radar()).under.length, 0);
 
-  /* ---------- feilvei: Søk nå to ganger på under et minutt ---------- */
   const modellFør = kall.vurdering;
   await page.locator("#radarSokNa").click();
   await page.locator("#radarStatus", { hasText: /sekunder/ }).waitFor();

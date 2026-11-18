@@ -10,25 +10,9 @@ import { lagBrukere } from "../../server/brukere.mjs";
 import { REGISTERFIL, REGISTER_FORRIGE, BRUKERKATALOG, NOKKELFIL,
          tolkHash, erGyldigBrukerId, OKT_LEVETID } from "../../src/konto/brukerlogikk.mjs";
 
-/* ============================================================
-   Appmodus sin økt — reglene fra src/konto/okt-app.mjs, kjørt i Node.
-
-   Modulen har ingen Tauri i seg: den får `filerFor` og `minne`
-   utenfra. Her er filerFor server/lager.mjs pekt på nøyaktig de
-   katalogene bruker_katalog() i Rust ville pekt på — <katalog> for
-   None og <katalog>/brukere/<id> for Some(id) — så det som testes
-   er de samme stiene appen bruker.
-
-   Iterasjonstallet senkes til 1: det som testes er reglene, ikke
-   PBKDF2. Ett tilfelle nede går motsatt vei og logger inn på en
-   hash server/brukere.mjs har skrevet, som er det som holder de to
-   modiene på samme format.
-   ============================================================ */
-
 const PASSORD = "et-godt-nok-passord";
 const konto = (o = {}) => ({ epost: "ola@example.no", navn: "Ola", passord: PASSORD, ...o });
 
-/* Et minne som localStorage: bare de tre metodene modulen bruker. */
 function lagMinne(){
   const kart = new Map();
   return {
@@ -39,7 +23,6 @@ function lagMinne(){
   };
 }
 
-/* Samme oppdeling som bruker_katalog() i src-tauri/src/lib.rs. */
 const filerFor = katalog => bruker =>
   lagFiler(bruker ? path.join(katalog, BRUKERKATALOG, bruker) : katalog);
 
@@ -54,9 +37,6 @@ async function nytt(valg = {}){
 const finnes = async p => !!(await fs.stat(p).catch(() => null));
 const les = (katalog, ...deler) => fs.readFile(path.join(katalog, ...deler), "utf8");
 
-/* Rehashen legges i skrivekøen etter at innloggingen har svart, så den
-   er ikke ferdig når kallet er det. Et fast antall millisekunder er en
-   gjetning som ryker når maskinen er travel; her ventes det på filen. */
 async function ventPåIterasjoner(katalog, iterasjoner){
   for(let i = 0; i < 400; i++){
     const h = JSON.parse(await les(katalog, REGISTERFIL)).brukere[0].hash;
@@ -66,8 +46,6 @@ async function ventPåIterasjoner(katalog, iterasjoner){
   throw new Error(`hashen ble aldri skrevet om til ${iterasjoner} iterasjoner`);
 }
 
-/* ---------- registrering ---------- */
-
 test("første registrering gir en økt, en id og en profil i registeret", async () => {
   const { katalog, minne, økt } = await nytt();
 
@@ -75,7 +53,6 @@ test("første registrering gir en økt, en id og en profil i registeret", async 
   assert.equal(r.ok, true);
   assert.equal(r.erFørste, true);
   assert.ok(erGyldigBrukerId(r.bruker.id));
-  /* Aldri mer enn dette om en konto. */
   assert.deepEqual(Object.keys(r.bruker).sort(), ["epost", "id", "navn"]);
 
   const dok = JSON.parse(await les(katalog, REGISTERFIL));
@@ -87,7 +64,6 @@ test("første registrering gir en økt, en id og en profil i registeret", async 
   const lagret = JSON.parse(minne.getItem(ØKTNØKKEL));
   assert.equal(lagret.id, r.bruker.id);
   assert.ok(lagret.utløper > Math.floor(Date.now() / 1000));
-  /* Ingen signatur — se hodet i okt-app.mjs. Bare id og utløp. */
   assert.deepEqual(Object.keys(lagret).sort(), ["id", "utløper"]);
 });
 
@@ -124,8 +100,6 @@ test("for kort passord og ugyldig adresse gir «ugyldig» med feltnavn", async (
   assert.deepEqual(r.detaljer.map(d => d.felt).sort(), ["epost", "passord"]);
 });
 
-/* ---------- migreringen ---------- */
-
 test("den gamle enbrukerfilen tilfaller første profil, og originalen er urørt", async () => {
   const { katalog, økt } = await nytt();
   const rot = lagFiler(katalog);
@@ -144,7 +118,6 @@ test("den gamle enbrukerfilen tilfaller første profil, og originalen er urørt"
   assert.equal(await fs.readFile(path.join(min, "jobber.json"), "utf8"), før[0]);
   assert.equal(await fs.readFile(path.join(min, NOKKELFIL), "utf8"), før[3]);
 
-  /* Kopi, ikke flytting: originalen er sikkerhetskopien vår. */
   const etter = await Promise.all(["jobber.json", "jobber.forrige.json", "importlogg.jsonl", NOKKELFIL]
     .map(n => les(katalog, n)));
   assert.deepEqual(etter, før);
@@ -172,8 +145,6 @@ test("uten noe å migrere er registreringen like vellykket", async () => {
   assert.equal(r.migreringsfeil, undefined);
 });
 
-/* ---------- innlogging ---------- */
-
 test("riktig passord logger inn, feil passord og ukjent adresse gir samme svar", async () => {
   const { minne, økt } = await nytt();
   await økt.registrer(konto());
@@ -192,8 +163,6 @@ test("riktig passord logger inn, feil passord og ukjent adresse gir samme svar",
 });
 
 test("en hash skrevet av Node-siden verifiseres her, og omvendt", async () => {
-  /* Det er dette som holder de to modiene på samme format: en konto
-     laget av serveren skal kunne logge inn i appen. */
   const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "jobber-appokt-node-"));
   const brukere = lagBrukere({ katalog, iterasjoner: 1 });
   const laget = await brukere.registrer(konto());
@@ -204,7 +173,6 @@ test("en hash skrevet av Node-siden verifiseres her, og omvendt", async () => {
   assert.equal(inn.ok, true, "appen godtok ikke serverens hash");
   assert.equal(inn.bruker.id, laget.bruker.id);
 
-  /* Og motsatt vei: en konto laget i appen logger inn på serveren. */
   const iApp = await økt.registrer(konto({ epost: "kari@example.no" }));
   assert.equal(iApp.ok, true);
   const tilbake = await brukere.loggInn({ epost: "kari@example.no", passord: PASSORD });
@@ -217,7 +185,6 @@ test("en for svak hash skrives om ved neste innlogging", async () => {
   const før = JSON.parse(await les(katalog, REGISTERFIL)).brukere[0].hash;
   assert.equal(tolkHash(før).iterasjoner, 1);
 
-  /* Samme register, men nå med dagens innstilling. */
   const strengere = påNytt({ iterasjoner: 3 });
   assert.equal((await strengere.loggInn({ epost: "ola@example.no", passord: PASSORD })).ok, true);
 
@@ -225,8 +192,6 @@ test("en for svak hash skrives om ved neste innlogging", async () => {
   assert.notEqual(etter, før);
   assert.equal((await strengere.loggInn({ epost: "ola@example.no", passord: PASSORD })).ok, true);
 });
-
-/* ---------- økten ---------- */
 
 test("økten overlever at appen startes på nytt", async () => {
   const { økt, påNytt } = await nytt();
@@ -247,8 +212,6 @@ test("utløpt økt er ingen økt", async () => {
   const om40dager = () => new Date(Date.now() + 40 * 24 * 3600 * 1000);
   const senere = lagAppØkt({ filerFor: filerFor("/finnes-ikke"), minne, nå: om40dager,
                              iterasjoner: 1 });
-  /* Utløpet avgjøres uten å røre filsystemet — derfor holder det med
-     en katalog som ikke finnes her. */
   assert.equal(OKT_LEVETID, 30 * 24 * 3600);
   assert.equal((await senere.hentØkt()).innlogget, false);
 });
@@ -256,8 +219,6 @@ test("utløpt økt er ingen økt", async () => {
 test("økt for en profil som ikke finnes ryddes bort", async () => {
   const { katalog, minne, økt } = await nytt();
   await økt.registrer(konto());
-  /* Registeret redigeres for hånd — det er dokumentert som veien ut
-     hvis noen glemmer passordet sitt. */
   await lagFiler(katalog).skrivAtomisk(REGISTERFIL,
     JSON.stringify({ versjon: 1, brukere: [] }));
 
@@ -279,8 +240,6 @@ test("tomt register betyr «ingen profiler ennå», ikke en feil", async () => {
   const { økt } = await nytt();
   assert.deepEqual(await økt.hentØkt(), { innlogget: false, harBrukere: false });
 });
-
-/* ---------- et register vi ikke forstår ---------- */
 
 test("ødelagt register blir liggende urørt, og ingenting skrives over det", async () => {
   const { katalog, økt } = await nytt();
@@ -317,8 +276,6 @@ test("forrige register tas vare på før det skrives over", async () => {
   assert.equal(JSON.parse(await les(katalog, REGISTER_FORRIGE)).brukere.length, 1);
 });
 
-/* ---------- passordbytte ---------- */
-
 test("passordbytte krever det gamle passordet og hever generasjonen", async () => {
   const { katalog, økt } = await nytt();
   await økt.registrer(konto());
@@ -345,8 +302,6 @@ test("passordbytte uten økt gjør ingenting", async () => {
                "utlogget");
 });
 
-/* ---------- nøkkelen ---------- */
-
 const NØKKEL = "sk-ant-en-nokkel-som-er-lang-nok-1234";
 
 test("nøkkelen går inn og aldri ut — bare halen", async () => {
@@ -360,7 +315,6 @@ test("nøkkelen går inn og aldri ut — bare halen", async () => {
   assert.equal(status.hale, "1234");
   assert.ok(!JSON.stringify(status).includes(NØKKEL), "hele nøkkelen kom tilbake i svaret");
 
-  /* Den ligger i profilens katalog, ikke i rota. */
   assert.equal((await les(katalog, BRUKERKATALOG, r.bruker.id, NOKKELFIL)).trim(), NØKKEL);
   assert.equal(await finnes(path.join(katalog, NOKKELFIL)), false);
 
@@ -371,7 +325,6 @@ test("en nøkkel med linjeskift eller feil lengde avvises før den skrives", asy
   const { økt } = await nytt();
   await økt.registrer(konto());
 
-  /* Et \r her ville blitt et ekstra HTTP-hode i kallet til modellen. */
   const medCR = await økt.settNokkel("sk-ant-noe\r\nx-annet-hode: ja-takk-1234");
   assert.equal(medCR.ok, false);
   assert.equal(medCR.feil, "ugyldig");
@@ -391,7 +344,6 @@ test("å fjerne nøkkelen er idempotent og etterlater ingen nøkkel", async () =
   const status = await økt.hentNokkel();
   assert.equal(status.finnes, false);
   assert.equal(status.kilde, "ingen");
-  /* Rust har ingen sletting: en tom fil er ingen nøkkel. */
   assert.equal((await les(katalog, BRUKERKATALOG, r.bruker.id, NOKKELFIL)).trim(), "");
   assert.equal((await økt.hentØkt()).harNokkel, false);
 });
@@ -402,8 +354,6 @@ test("nøkkeloppslag uten økt svarer «utlogget», ikke «ingen nøkkel»", asy
   assert.equal((await økt.settNokkel(NØKKEL)).feil, "utlogget");
   assert.equal((await økt.fjernNokkel()).feil, "utlogget");
 });
-
-/* ---------- profilene er adskilte ---------- */
 
 test("to profiler deler verken nøkkel eller katalog", async () => {
   const { katalog, minne, økt } = await nytt();
@@ -417,6 +367,5 @@ test("to profiler deler verken nøkkel eller katalog", async () => {
   assert.equal((await økt.hentNokkel()).finnes, false, "profil to så profil éns nøkkel");
   assert.equal(await finnes(path.join(katalog, BRUKERKATALOG, b.bruker.id, NOKKELFIL)), false);
 
-  /* Og profil én har fortsatt sin. */
   assert.equal((await les(katalog, BRUKERKATALOG, a.bruker.id, NOKKELFIL)).trim(), NØKKEL);
 });

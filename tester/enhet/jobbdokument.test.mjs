@@ -7,15 +7,12 @@ import { sjekksum, validerJobbdokument, validerRadar, tomtJobbdokument, normalis
   matchUtdatert, forberedelseUtdatert, utdatert, MAKS_ANNONSE, tomRadar, RADAR } from "../../src/stilling/jobbdokument.mjs";
 import { tolkStier, utdragAv } from "../../src/dokumenter/dokumentutdrag.mjs";
 
-/* Den samme filen leses av Rust-testene i src-tauri/src/brev.rs. */
 const felles = JSON.parse(await fs.readFile(new URL("../data/dokumenter.json", import.meta.url), "utf8"));
 
 const match = (over = {}) => ({ prosent: 82, oppsummering: "Passer godt.", styrker: [], mangler: [], sprak: "nb",
   cvRevisjon: 3, annonseSjekksum: sjekksum("Annonse."), promptversjon: "match-1", leverandor: "anthropic",
   modell: "syntetisk", vurdert: "2026-10-01T10:00:00.000Z", bruk: { input_tokens: 10, output_tokens: 5 }, ...over });
 const dok = (over = {}) => ({ skjemaVersjon: 1, revisjon: 1, annonse: { tekst: "Annonse.", url: "", kilde: "limt", hentet: null }, ...over });
-
-/* ---------- navn ---------- */
 
 test("dokumentnavnene er de samme som i Rust", () => {
   for(const [navn, type] of Object.entries(felles.navn.gyldige)){
@@ -40,11 +37,7 @@ test("id og navn går begge veier, og bare for typer med id", () => {
   assert.equal(navnFor("__proto__", "x"), null);
 });
 
-/* ---------- sjekksum ---------- */
-
 test("sjekksummen er FNV-1a og stabil over versjoner", () => {
-  // Kjente testverdier for FNV-1a 32 bit, og én låst norsk tekst: endres
-  // normaliseringen, blir alle lagrede vurderinger utdaterte på en gang.
   assert.equal(sjekksum(""), "811c9dc5");
   assert.equal(sjekksum("a"), "e40c292c");
   assert.equal(sjekksum("foobar"), "bf9cf968");
@@ -54,10 +47,10 @@ test("sjekksummen er FNV-1a og stabil over versjoner", () => {
 
 test("sjekksummen ser bort fra NFKC-forskjeller og mellomrom", () => {
   const like = [
-    ["ﬁne", "fine"],                       // ligatur
-    ["Ａ", "A"],                            // full bredde
-    ["å", "å"],                       // dekomponert og sammensatt
-    ["a b", "a b"],                    // hardt mellomrom
+    ["ﬁne", "fine"],
+    ["Ａ", "A"],
+    ["å", "å"],
+    ["a b", "a b"],
     ["  Vi søker\r\n\r\n\ten rådgiver  ", "Vi søker en rådgiver"],
     ["linje linje", "linje linje"]
   ];
@@ -66,11 +59,8 @@ test("sjekksummen ser bort fra NFKC-forskjeller og mellomrom", () => {
   assert.notEqual(sjekksum("ab"), sjekksum("a b"));
 });
 
-/* ---------- dokumentet ---------- */
-
 test("et tomt eller minimalt dokument får hele formen", () => {
   assert.deepEqual(lesDokument("jobb-j1.json", null), tomtJobbdokument("j1"));
-  // Det Rust lager etter en sletting: bare skjema, revisjon og tidsstempel.
   const fraRust = lesDokument("jobb-j1.json", JSON.stringify({ skjemaVersjon: 1, revisjon: 4, oppdatert: null }));
   assert.deepEqual(fraRust, { ...tomtJobbdokument("j1"), revisjon: 4 });
   assert.deepEqual(lesDokument("radar.json", JSON.stringify({ skjemaVersjon: 1, revisjon: 2, oppdatert: null })),
@@ -88,7 +78,6 @@ test("lesDokument velger validator etter navnet og avviser ukjent skjema", () =>
   assert.throws(() => lesDokument("jobb-j1.json", "ikke json"), e => e.code === "odelagt" && e.status === 503);
   assert.throws(() => lesDokument("jobb-../x.json", null), e => e.code === "ugyldig");
   assert.throws(() => lesDokument("jobb-j1.json", JSON.stringify(dok({ revisjon: -1 }))), e => e.code === "ugyldig");
-  // Uten skjemaversjon vet vi ikke hva det er, og da tolkes det ikke.
   assert.throws(() => lesDokument("jobb-j1.json", "[]"), e => e.code === "versjon");
   assert.throws(() => validerJobbdokument("j1", []), e => e.code === "ugyldig");
 });
@@ -165,8 +154,6 @@ test("dokumentet har et tak på 4 MiB", () => {
   assert.throws(() => validerJobbdokument("j1", dok({ forberedelser })), e => e.code === "for-stort" && e.status === 413);
 });
 
-/* ---------- utdatert ---------- */
-
 test("en vurdering er utdatert når CV, annonse eller prompt har endret seg", () => {
   const d = validerJobbdokument("j1", dok({ match: match() }));
   const nå = { cvRevisjon: 3, promptversjon: "match-1" };
@@ -175,12 +162,10 @@ test("en vurdering er utdatert når CV, annonse eller prompt har endret seg", ()
   assert.deepEqual(matchUtdatert(d, { ...nå, promptversjon: "match-2" }), ["promptversjon"]);
   const nyAnnonse = validerJobbdokument("j1", { ...d, annonse: { tekst: "En annen annonse." } });
   assert.deepEqual(matchUtdatert(nyAnnonse, nå), ["annonseSjekksum"]);
-  // Samme annonse limt inn med andre linjeskift er ikke en endring.
   const samme = validerJobbdokument("j1", { ...d, annonse: { tekst: " Annonse.\n" } });
   assert.deepEqual(matchUtdatert(samme, nå), []);
   const utenAnnonse = validerJobbdokument("j1", { ...d, annonse: null });
   assert.deepEqual(matchUtdatert(utenAnnonse, nå), ["annonseSjekksum"]);
-  // Det som ikke er oppgitt, kan ikke ha endret seg. Ingen vurdering er aldri utdatert.
   assert.deepEqual(matchUtdatert(d, {}), []);
   assert.deepEqual(matchUtdatert(validerJobbdokument("j1", dok()), { cvRevisjon: 9 }), []);
   assert.deepEqual(utdatert(null, { cvRevisjon: 1 }), []);
@@ -197,8 +182,6 @@ test("en forberedelse er også utdatert når brevversjonen er byttet", () => {
   assert.deepEqual(forberedelseUtdatert(d, "toString", nå), []);
 });
 
-/* ---------- radar.json ---------- */
-
 const rad = (over = {}) => ({ id: "nav:a1", kilde: "nav", kildeId: "a1", url: "https://arbeidsplassen.nav.no/stillinger/stilling/a1",
   lenker: ["https://arbeidsplassen.nav.no/stillinger/stilling/a1"], selskap: "Eksempel AS", stilling: "Dataanalytiker", sted: "Oslo",
   frist: "2026-10-30", publisert: "2026-10-09T00:00:00+02:00", tekst: "Annonse.", prosent: 82, grunner: ["Python"],
@@ -214,7 +197,6 @@ test("radar.json får hele formen med standardverdier", () => {
   for(const k of ["innboks", "under", "ko", "sett", "avvist", "avvistFingeravtrykk", "kjoringer"]) assert.deepEqual(d[k], []);
   assert.deepEqual(d.forbruk, { dato: null, vurderinger: 0 });
   assert.equal(d.leie, null);
-  // Det gamle formatet fra før Radar fantes, blir et gyldig dokument.
   assert.equal(validerRadar({ skjemaVersjon: 1, revisjon: 2, innstillinger: { pa: true, terskel: 60 }, ukjent: 1 }).innstillinger.terskel, 60);
 });
 
@@ -224,7 +206,6 @@ test("en terskel på 70 i skjema 1 var den gamle standarden og blir 50, men bare
   assert.equal(med(undefined, 70), 50);
   assert.equal(med(2, 70), 70);
   assert.equal(med(1, 65), 65);
-  // Et skjema 1-dokument på disk kan fortsatt leses, og løftes ved lesing.
   assert.equal(lesDokument("radar.json", JSON.stringify({ skjemaVersjon: 1, revisjon: 3, innstillinger: { terskel: 70 } })).innstillinger.terskel, 50);
   assert.equal(lesDokument("radar.json", JSON.stringify({ skjemaVersjon: 2, revisjon: 3, innstillinger: { terskel: 70 } })).innstillinger.terskel, 70);
   assert.throws(() => lesDokument("radar.json", JSON.stringify({ skjemaVersjon: 3 })), e => e.code === "versjon");
@@ -301,19 +282,15 @@ test("innhold betyr det en gjenoppretting ville skrevet over", () => {
   assert.equal(harInnhold("jobb-j1.json", validerJobbdokument("j1", { revisjon: 1, match: match() })), true);
   assert.equal(harInnhold("jobb-j1.json", validerJobbdokument("j1", { revisjon: 1, forberedelser: { i1: {} } })), true);
   assert.equal(harInnhold("radar.json", { skjemaVersjon: 1, revisjon: 3, oppdatert: null }), false);
-  // Standardverdiene alene er ikke innhold, og heller ikke en leie.
   assert.equal(harInnhold("radar.json", { ...tomRadar(), revisjon: 3, leie: { eier: "a", utloper: "2026-10-09T10:00:00.000Z" } }), false);
   assert.equal(harInnhold("radar.json", validerRadar({ revisjon: 3, innstillinger: { pa: true } })), true);
   assert.equal(harInnhold("radar.json", validerRadar({ revisjon: 3, avvistFingeravtrykk: [{ fingeravtrykk: "a|b", dato: "2026-10-01" }] })), true);
 });
-
-/* ---------- utdrag ---------- */
 
 test("utdraget følger de samme tilfellene som Rust", () => {
   for(const t of felles.utdrag) assert.deepEqual(utdragAv(t.dok, tolkStier(t.stier)), t.ventet, t.om);
   for(const stier of felles.ugyldigeStier) assert.throws(() => tolkStier(stier), e => e.code === "ugyldig", JSON.stringify(stier));
   assert.deepEqual(tolkStier("match.prosent, annonse.hentet,match.prosent"), ["match.prosent", "annonse.hentet"]);
   for(const inn of [undefined, null, 5, {}, "", ",", Array(101).fill("a")]) assert.throws(() => tolkStier(inn), e => e.code === "ugyldig");
-  // Arvede nøkler følges aldri, heller ikke de som ser harmløse ut.
   assert.deepEqual(utdragAv({ a: {} }, ["a.toString", "a.hasOwnProperty", "valueOf"]), {});
 });

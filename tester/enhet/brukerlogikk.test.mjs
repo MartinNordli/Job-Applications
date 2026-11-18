@@ -12,14 +12,6 @@ import {
   MIN_PASSORD, MAKS
 } from "../../src/konto/brukerlogikk.mjs";
 
-/* ============================================================
-   Rene regler. Ingen fil, ingen server, ingen krypto — modulen
-   skal kunne lastes rett inn i et nettleservindu, og testene her
-   rører ingenting den ikke kan.
-   ============================================================ */
-
-/* ---------- base64url ---------- */
-
 test("base64url koder og dekoder alle lengder tilbake til seg selv", () => {
   for(let n = 0; n <= 40; n++){
     const b = new Uint8Array(n);
@@ -33,7 +25,7 @@ test("base64url koder og dekoder alle lengder tilbake til seg selv", () => {
 test("base64url avviser ugyldig tekst i stedet for å kaste", () => {
   assert.equal(fraBase64url("a+b/c"), null);
   assert.equal(fraBase64url("abcde="), null);
-  assert.equal(fraBase64url("abcde"), null);        /* lengde % 4 === 1 er umulig */
+  assert.equal(fraBase64url("abcde"), null);
   assert.equal(fraBase64url(null), null);
   assert.equal(fraBase64url(42), null);
 });
@@ -41,8 +33,6 @@ test("base64url avviser ugyldig tekst i stedet for å kaste", () => {
 test("modulen holder seg fri for Node- og nettleserspesifikke API-er", async () => {
   const { readFile } = await import("node:fs/promises");
   const kilde = await readFile(new URL("../../src/konto/brukerlogikk.mjs", import.meta.url), "utf8");
-  /* Kommentarene nevner Buffer og atob for å forklare hvorfor de ikke
-     brukes. Testen ser derfor bare på koden. */
   const kode = kilde.replace(/\/\*[\s\S]*?\*\//g, "");
   assert.doesNotMatch(kode, /\bBuffer\b/);
   assert.doesNotMatch(kode, /\batob\b|\bbtoa\b/);
@@ -56,14 +46,11 @@ test("likeBytes er sann bare for like lengder og likt innhold", () => {
   assert.equal(fraBytes(tilBytes("æøå")), "æøå");
 });
 
-/* ---------- bruker-id ---------- */
-
 test("bruker-id er 16 heksadesimale tegn og ingenting annet", () => {
   const id = lagBrukerId(new Uint8Array([0, 1, 15, 16, 200, 255, 128, 7]));
   assert.equal(id, "00010f10c8ff8007");
   assert.equal(id.length, 16);
   assert.ok(erGyldigBrukerId(id));
-  /* Tegnene Rust-siden allerede godtar i trygt_navn(). */
   assert.match(id, /^[0-9a-f]+$/);
 });
 
@@ -72,8 +59,6 @@ test("bruker-id avviser feil lengde og alt som ikke er ren heks", () => {
   for(const v of ["", "..", "../x", "ABCDEF0123456789", "0123456789abcde", null, 1])
     assert.equal(erGyldigBrukerId(v), false, String(v));
 });
-
-/* ---------- hashformat ---------- */
 
 test("hashen er selvbeskrivende og tolkes tilbake", () => {
   const salt = new Uint8Array(16).fill(3);
@@ -108,8 +93,6 @@ test("måHashesPåNytt fanger for lavt iterasjonstall, men ikke dagens", () => {
   assert.equal(måHashesPåNytt(formaterHash({ iterasjoner: ITERASJONER, salt: new Uint8Array(8), nøkkel })), true);
   assert.equal(måHashesPåNytt("tull"), false, "ugyldig er ødelagt, ikke gammelt");
 });
-
-/* ---------- validering ---------- */
 
 test("e-post normaliseres til små bokstaver og trimmes", () => {
   assert.equal(normaliserEpost("  Ola@Example.NO \n"), "ola@example.no");
@@ -151,8 +134,6 @@ test("validerRegistrering samler feil per felt", () => {
 });
 
 test("validerInnlogging sier bare ja eller nei — aldri hvorfor", () => {
-  /* Et for kort passord skal ikke gi en annen beskjed enn et feil et:
-     «for kort» ville røpet at kontoen ikke har det passordet. */
   const r = validerInnlogging({ epost: "a@b.no", passord: "kort" });
   assert.equal(r.ok, true, "lengden avgjøres ikke her");
   assert.equal(validerInnlogging({ epost: "", passord: "x" }).ok, false);
@@ -167,8 +148,6 @@ test("offentligBruker slipper aldri hash, salt eller generasjon ut", () => {
   assert.equal(JSON.stringify(b).includes("pbkdf2"), false);
   assert.equal(offentligBruker(null), null);
 });
-
-/* ---------- registeret ---------- */
 
 const rad = (o = {}) => ({
   id: "00112233445566aa", epost: "a@b.no", navn: "Ola",
@@ -242,8 +221,6 @@ test("migreringen gir dagens versjon tilbake", () => {
   assert.equal(m.register.versjon, REGISTER_VERSJON);
   assert.deepEqual(tomtRegister(), { versjon: REGISTER_VERSJON, brukere: [] });
 });
-
-/* ---------- øktens nyttelast ---------- */
 
 test("nyttelasten kodes og tolkes tilbake", () => {
   const n = lagNyttelast({ id: "00112233445566aa", generasjon: 3, utstedt: 1000, levetid: 60 });

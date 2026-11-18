@@ -4,10 +4,7 @@ import assert from "node:assert/strict";
 import { forfalne, runde, ryddLogg, varseltekst, validerInnstilling, lesInnstilling,
          lesLogg, standardInnstilling, dagerMellom, isoDato, loggnøkkel } from "../../src/soknader/fristvarsel.mjs";
 
-/* Reglene for når en frist varsles. Rust har sin egen kopi i
-   src-tauri/src/varsel.rs, med de samme tilfellene som tester. */
-
-const I_DAG = "2026-10-04";            /* en søndag */
+const I_DAG = "2026-10-04";
 const PÅ = { versjon: 2, på: true, dagerFør: 1, intervju: true };
 const jobb = (o = {}) => ({ id: "a1", selskap: "Aker BP", stilling: "ML Engineer",
                             frist: "2026-10-05", status: "todo", ...o });
@@ -79,13 +76,11 @@ test("innstillingen valideres strengt inn og leses raust fra disk", () => {
 });
 
 test("datoregningen bryr seg ikke om sommertid eller klokkeslett", () => {
-  assert.equal(dagerMellom("2026-10-24", "2026-10-26"), 2);   /* over overgangen til vintertid */
-  assert.equal(dagerMellom("2026-03-28", "2026-03-30"), 2);   /* og til sommertid */
+  assert.equal(dagerMellom("2026-10-24", "2026-10-26"), 2);
+  assert.equal(dagerMellom("2026-03-28", "2026-03-30"), 2);
   assert.equal(isoDato(new Date(2026, 0, 5, 23, 59)), "2026-01-05");
   assert.equal(dagerMellom("2026-10-04", "ikke en dato"), null);
 });
-
-/* ---------- felles tilfeller (leses også av Rust) ---------- */
 
 import { readFileSync } from "node:fs";
 import { intervjuvarsler, VERSJON } from "../../src/soknader/fristvarsel.mjs";

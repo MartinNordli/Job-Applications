@@ -15,15 +15,6 @@ import { validerSoknad, normaliserIsoDato } from "../../src/felles/felles.mjs";
 import { lagLinje, leggTil, tolkLogg, sammendrag, kroner,
          MAKS_LINJER } from "../../src/import/importlogg.mjs";
 
-/* ============================================================
-   Nettet stubbes overalt. Ingen test her rører en ekte adresse —
-   det er derfor de to operasjonene injiseres i lagServer.
-   ============================================================ */
-
-/* Importen krever nå en økt, og lista den leser er brukerens egen.
-   Derfor opprettes én bruker per test, og eventuelle rader legges i
-   brukerens katalog — ikke i roten. `api` bærer cookien videre, så
-   selve testene ser like ut som før. */
 async function start(nett, jobber = []){
   const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "jobber-import-"));
   const brukere = lagBrukere({ katalog, iterasjoner: 1 });
@@ -73,8 +64,6 @@ const stilling = (o = {}) => ({
   ...o
 });
 
-/* ---------- strukturerte data ---------- */
-
 test("JobPosting leses ut av @graph", () => {
   const html = ldJson({ "@context": "https://schema.org",
     "@graph": [{ "@type": "WebPage" }, stilling()] });
@@ -100,15 +89,13 @@ test("flere jobLocation blir til ett lesbart sted", () => {
 });
 
 test("employmentType oversettes fra schema.org", () => {
-  const rolig = o => stilling({ title: "Analytiker", ...o });   /* tittel uten «graduate» */
+  const rolig = o => stilling({ title: "Analytiker", ...o });
   assert.equal(tolkStrukturert(ldJson(rolig({ employmentType: "INTERN" }))).jobbtype, "internship");
   assert.equal(tolkStrukturert(ldJson(rolig({ employmentType: ["FULL_TIME"] }))).jobbtype, "fulltid");
   assert.equal(tolkStrukturert(ldJson(rolig())).jobbtype, null);
 });
 
 test("«graduate» i tittelen presiserer fulltid fra schema.org", () => {
-  /* Et graduateprogram står i schema.org som FULL_TIME. Tittelen er
-     den eneste kilden til at det er et graduateløp. */
   assert.equal(tolkStrukturert(ldJson(stilling({ employmentType: "FULL_TIME" }))).jobbtype, "graduate");
 });
 
@@ -151,9 +138,6 @@ test("en svak verdi taper ikke mot ingenting", () => {
 });
 
 test("modellen får vite hvilken dag det er", () => {
-  /* Norske annonser skriver «søk senest 13. september» uten år. Uten
-     dagens dato gjettet modellen året, og to like annonser fikk hvert
-     sitt svar. */
   const be = byggForespørsel("tekst", ["frist"], new Date("2026-09-03T10:00:00Z"));
   assert.match(be.messages[0].content, /^I dag er 2026-09-03\./);
 });
@@ -169,8 +153,6 @@ test("avkod tåller tallreferanser og lar ukjente stå", () => {
   assert.equal(avkod("&#65;&#x42;&ukjent;"), "AB&ukjent;");
 });
 
-/* ---------- etiketterte verdier ---------- */
-
 const dl = par => "<dl>" + par.map(([d, v]) => `<dt>${d}</dt><dd>${v}</dd>`).join("") + "</dl>";
 
 test("dt/dd med norske etiketter leses ut", () => {
@@ -182,13 +164,11 @@ test("dt/dd med norske etiketter leses ut", () => {
   ]));
   assert.equal(e.stilling, "Graduate Skyplattform");
   assert.equal(e.selskap, "TINE SA");
-  assert.equal(e.jobbtype, "fulltid");    /* «Fast, heltid 100%» */
-  assert.equal(e.sted, "Oslo");           /* postnummeret ryddes bort */
+  assert.equal(e.jobbtype, "fulltid");
+  assert.equal(e.sted, "Oslo");
 });
 
 test("tittelen presiserer ansettelsesformen i tolkStrukturert", () => {
-  /* tolkEtiketter leser bare etiketten; presiseringen hører hjemme
-     der alle kildene ses under ett. */
   const s = tolkStrukturert(dl([["Stillingstittel", "Graduate Skyplattform"],
                                 ["Type ansettelse", "Fast, heltid 100%"]]));
   assert.equal(s.jobbtype, "graduate");
@@ -202,7 +182,6 @@ test("th/td og engelske etiketter virker like godt", () => {
 });
 
 test("«Sektor» leses ikke — det er en annen akse enn appens", () => {
-  /* arbeidsplassen.no mener eierskap («Privat»), ikke bransje. */
   const e = tolkEtiketter(dl([["Sektor", "Privat"], ["Stillingstittel", "Analytiker"]]));
   assert.equal("sektor" in e, false);
   assert.equal(e.stilling, "Analytiker");
@@ -225,8 +204,6 @@ test("h1 brukes når ingenting bedre finnes, men er svak", () => {
   assert.equal(s.svak.stilling, true);
 });
 
-/* ---------- frist i fritekst ---------- */
-
 const iDag = new Date("2026-09-03");
 
 test("«Søk senest søndag 13. september» blir en dato", () => {
@@ -239,7 +216,6 @@ test("«Søk senest søndag 13. september» blir en dato", () => {
 test("året rulles til neste gang datoen inntreffer", () => {
   assert.equal(fristFraTekst("Frist 1. februar", iDag), "2027-02-01");
   assert.equal(fristFraTekst("Frist 30. september", iDag), "2026-09-30");
-  /* Står året der, gjettes det ikke. */
   assert.equal(fristFraTekst("Søknadsfrist 13. september 2028", iDag), "2028-09-13");
 });
 
@@ -254,7 +230,6 @@ test("løpende opptak kjennes igjen, men taper mot en frist", () => {
   assert.equal(erLopende("accepting applications on a rolling basis"), true);
   assert.equal(erLopende("Søk senest 13. september"), false);
 
-  /* Annonser sier ofte begge deler. Fristen er den harde opplysningen. */
   const s = tolkStrukturert("<p>Søknadsfrist 13. september 2026. Vi intervjuer underveis.</p>");
   assert.equal(s.frist, "2026-09-13");
   assert.equal(s.lopende, false, "en frist slår løpende");
@@ -267,8 +242,6 @@ test("uten frist noe sted er løpende et gyldig svar", () => {
   assert.equal(s.lopende, true);
   assert.equal(slåSammen(s, null, "https://a.no/1").utkast.lopende, true);
 });
-
-/* ---------- tekstbudsjettet ---------- */
 
 test("budsjettet følger av hva som gjenstår", () => {
   assert.equal(tekstbehov(["selskap", "sektor"]), TEKSTBUDSJETT.topp);
@@ -286,8 +259,6 @@ test("sidekrom kastes ut av teksten", () => {
   assert.equal(/Hopp til innhold|Del annonsen/.test(t), false);
   assert.match(t, /Vi søker en analytiker\./);
 });
-
-/* ---------- modellsvaret ---------- */
 
 const svarMed = o => tolkModellsvar({ content: [{ type: "text", text: JSON.stringify(o) }] });
 
@@ -310,7 +281,7 @@ test("ukjente enum-verdier forkastes felt for felt", () => {
   const r = svarMed({ sector: "romfart", job_type: "sesong", title: "Analytiker" });
   assert.equal(r.sektor, null);
   assert.equal(r.jobbtype, null);
-  assert.equal(r.stilling, "Analytiker");     /* resten står */
+  assert.equal(r.stilling, "Analytiker");
 });
 
 test("feil type og søppel gir null, ikke en kastet feil", () => {
@@ -323,8 +294,6 @@ test("for lang tekst kuttes i stedet for å velte raden", () => {
   const r = svarMed({ title: "x".repeat(500) });
   assert.equal(r.stilling.length, 200);
 });
-
-/* ---------- sammenslåing ---------- */
 
 test("deterministisk vinner over modellen", () => {
   const { utkast, kilder } = slåSammen(
@@ -355,7 +324,6 @@ test("byggForespørsel spør bare om det som mangler, og null om ingenting", () 
   assert.deepEqual(be.output_config.format.schema.required, ["sector", "job_type"]);
   assert.equal(be.output_config.format.schema.additionalProperties, false);
   assert.equal(be.model, "claude-haiku-5-5");
-  // Haiku 5.5 avviser budget_tokens og sampling, og tenkningen teller i max_tokens.
   assert.equal(be.output_config.effort, "low");
   for(const felt of ["thinking", "temperature", "top_p", "top_k"]) assert.equal(Object.hasOwn(be, felt), false, felt);
   assert.ok(be.max_tokens >= 4096);
@@ -363,14 +331,10 @@ test("byggForespørsel spør bare om det som mangler, og null om ingenting", () 
   assert.equal(byggForespørsel("tekst", []), null);
 });
 
-/* ---------- sektor på selskapsnivå ---------- */
-
 test("selskap i listen gir sektoren derfra", () => {
   assert.equal(sektorForSelskap("aker bp", {}, [{ selskap: "Aker BP", sektor: "energi" }]), "energi");
   assert.equal(sektorForSelskap("Ukjent AS", {}, []), null);
 });
-
-/* ---------- endepunktet ---------- */
 
 test("strukturerte data alene: modellen blir aldri spurt", async t => {
   let spurt = false;
@@ -497,14 +461,11 @@ test("endepunktet tar bare POST, og krever en url", async t => {
   assert.equal((await u.json()).feil, "mangler url");
 });
 
-/* ---------- duplikat ---------- */
-
 test("lenker sammenliknes forbi sporing og skråstrek", () => {
   const a = normaliserLenke("https://www.finn.no/job/123/?utm_source=nyhetsbrev&fbclid=x#topp");
   assert.equal(a, normaliserLenke("https://finn.no/job/123"));
   assert.notEqual(a, normaliserLenke("https://finn.no/job/124"));
   assert.equal(normaliserLenke("javascript:alert(1)"), null);
-  /* Ekte parametre er en del av adressen og skal bli stående. */
   assert.notEqual(normaliserLenke("https://a.no/j?id=1"), normaliserLenke("https://a.no/j?id=2"));
 });
 
@@ -533,16 +494,11 @@ test("en annonse du har fra før hentes ikke i det hele tatt", async t => {
   assert.equal(j.id, "a1");
   assert.match(j.melding, /Sommerjobb.*Equinor/);
 
-  /* Poenget: sjekken skjer før hentingen, så den koster ingenting. */
   assert.equal(hentet, 0, "siden skulle ikke vært hentet");
   assert.equal(spurt, 0, "modellen skulle ikke vært spurt");
 });
 
-/* ---------- hva vi spør om ---------- */
-
 test("fastslått løpende opptak fjerner fristen fra spørsmålet", () => {
-  /* Ellers ville vi sendt hele annonsen for å lete etter en dato vi
-     allerede vet ikke finnes. */
   assert.equal(manglendeFelt({ lopende: true }).includes("frist"), false);
   assert.equal(manglendeFelt({ lopende: false }).includes("frist"), true);
   assert.equal(manglendeFelt({ frist: "2026-09-13" }).includes("frist"), false);
@@ -554,11 +510,8 @@ test("ledeteksten bærer bare reglene for feltene vi spør om", () => {
   assert.equal(/deadline_type/.test(utenFrist), false);
   assert.equal(/deadline_type/.test(medFrist), true);
   assert.ok(medFrist.length > utenFrist.length);
-  /* Dagens dato hører til fristen og skal ikke sendes ellers. */
   assert.equal(/I dag er/.test(byggForespørsel("t", ["selskap"]).messages[0].content), false);
 });
-
-/* ---------- importloggen ---------- */
 
 const linje = (o = {}) => lagLinje({
   url: "https://www.arbeidsplassen.nav.no/stillinger/x",
@@ -601,13 +554,11 @@ test("sammendraget teller de tre tallene", () => {
   assert.equal(s.utenModell, 1);
   assert.equal(s.inn, 800);
   assert.deepEqual(s.felt[0], ["selskap", 2]);
-  /* Snittet regnes over alle importer, også de gratis. */
   assert.ok(Math.abs(s.snittKroner - s.kroner / 3) < 1e-12);
   assert.equal(sammendrag(""), null);
 });
 
 test("prisen regnes av de ekte tokentallene", () => {
-  /* Haiku 5.5: 1 000 000 inn = $0,10 = kr 1,10, og 1 000 000 ut = $0,50 = kr 5,50. */
   assert.ok(Math.abs(kroner({ inn: 1e6, ut: 0 }) - 1.1) < 1e-9);
   assert.ok(Math.abs(kroner({ inn: 0, ut: 1e6 }) - 5.5) < 1e-9);
 });
@@ -622,9 +573,6 @@ test("en vellykket import skriver én linje, og endepunktet leser den", async t 
 
   await importer(api, "https://ukjent.no/jobb/1");
 
-  /* Loggen skrives uten å blokkere svaret, så den er ikke der ennå når
-     importen er ferdig. Et fast antall millisekunder er en gjetning som
-     ryker når maskinen er travel; her ventes det på linjen selv. */
   let s = null;
   for(let i = 0; i < 100 && !s; i++){
     s = (await (await api("/api/importlogg")).json()).sammendrag;
@@ -632,7 +580,7 @@ test("en vellykket import skriver én linje, og endepunktet leser den", async t 
   }
   assert.ok(s, "loggen ble skrevet");
   assert.equal(s.antall, 1);
-  assert.equal(s.vert, undefined);                  /* sammendraget bærer ingen adresser */
+  assert.equal(s.vert, undefined);
   assert.ok(await fs.readFile(path.join(minKatalog, "importlogg.jsonl"), "utf8"));
 });
 
@@ -642,8 +590,6 @@ test("importloggen tar bare GET", async t => {
   const r = await api("/api/importlogg", { method: "POST" });
   assert.equal(r.status, 405);
 });
-
-/* ---------- vernet ---------- */
 
 test("interne adresser kjennes igjen", () => {
   for(const ip of ["127.0.0.1", "10.1.2.3", "192.168.0.5", "169.254.169.254",
@@ -658,9 +604,6 @@ test("utvendige adresser slipper gjennom", () => {
     assert.equal(erIntern(ip), false, `${ip} skulle sluppet gjennom`);
 });
 
-/* ---------- nøkkelen ---------- */
-
-/* Nøkkelen leses for seg, uten at noe kall går ut på nettet. */
 async function medMiljø(verdi, fn){
   const før = process.env.ANTHROPIC_API_KEY;
   if(verdi === undefined) delete process.env.ANTHROPIC_API_KEY;
@@ -689,13 +632,6 @@ test("nokkel.txt leses, og trimmes", async () => {
   assert.equal(await medMiljø(undefined, () => lesNokkel({ katalog })), "sk-ant-fra-fil");
 });
 
-/* Denne testen sto før på hodet: miljøvariabelen gikk foran filen.
-   Rekkefølgen er snudd bevisst da nøkkelen ble per bruker. En delt
-   ANTHROPIC_API_KEY ville ellers overstyrt hver enkelt brukers egen
-   nøkkel — og med åpen registrering ville det gitt bort operatørens
-   kreditt til hvem som helst. Nå vinner brukerens egen fil alltid,
-   og miljøvariabelen gjelder bare der kallstedet tillater den.
-   Reglene rundt står i server/nokkel.mjs og testes der. */
 test("brukerens egen nøkkelfil går foran miljøvariabelen", async () => {
   const katalog = await tomKatalog();
   await fs.writeFile(path.join(katalog, "nokkel.txt"), "sk-ant-fra-fil");
@@ -709,8 +645,6 @@ test("tomme verdier teller som ingen nøkkel", async () => {
   await assert.rejects(() => medMiljø("   ",
     () => lesNokkel({ katalog, tillatMiljø: true })), ManglerNokkel);
 });
-
-/* ---------- feltet overlever lagringen ---------- */
 
 test("jobbtype kommer helskinnet gjennom valideringen", () => {
   const r = validerSoknad({ selskap: "Aker BP", stilling: "Graduate", jobbtype: "graduate" },

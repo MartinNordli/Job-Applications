@@ -8,12 +8,6 @@ import { Readable } from "node:stream";
 import { lagHentJson, lagNett } from "../../server/nett.mjs";
 import { sjekkJsonAdresse, erJsonType, tolkNavToken, hodeverdi, lagRadarnett, MAKS_JSON, NAV_TOKENFIL } from "../../src/radar/radarnett.mjs";
 
-/* ============================================================
-   hentJson uten nett: oppslaget og selve forespørselen er injisert.
-   Reglene leses fra tester/data/hentjson.json, den samme filen som
-   Rust-testene i src-tauri/src/nett.rs leser.
-   ============================================================ */
-
 const felles = JSON.parse(await fs.readFile(new URL("../data/hentjson.json", import.meta.url), "utf8"));
 const TOKENSVAR = await fs.readFile(new URL("../data/radar/nav/publicToken.txt", import.meta.url), "utf8");
 const TOKEN = tolkNavToken(TOKENSVAR);
@@ -22,7 +16,6 @@ const utvendig = async () => [{ address: "93.184.216.34", family: 4 }];
 const kropp = tekst => Readable.from([Buffer.from(tekst)]);
 const json = (data, hoder = {}, status = 200) => ({ status, hoder: { "content-type": "application/json; charset=utf-8", ...hoder }, kropp: kropp(JSON.stringify(data)) });
 
-/* En falsk transport som svarer fra en liste og husker hva den ble spurt. */
 function falsk(svar){
   const kall = [];
   const forespør = async ({ url, hoder, adresse }) => {
@@ -106,7 +99,6 @@ test("over 5 MiB er en feil og ikke et stille kutt, også når lengden lyver", a
     forespør: falsk([{ status: 200, hoder: { "content-type": "application/json", "content-length": "10" }, kropp: stor }]).forespør });
   await assert.rejects(hentJson("https://api.lever.co/v0/postings/bekk", { kilde: "lever" }), /større enn 5 MiB/);
   assert.equal(stor.destroyed, true, "strømmen skal stenges ved taket");
-  // Akkurat på taket er greit.
   const akkurat = "[" + " ".repeat(MAKS_JSON - 2) + "]";
   const ok = lagHentJson({ slåOpp: utvendig, forespør: falsk([{ status: 200, hoder: { "content-type": "application/json" }, kropp: kropp(akkurat) }]).forespør });
   assert.deepEqual((await ok("https://api.lever.co/v0/postings/bekk", { kilde: "lever" })).json, []);
@@ -144,8 +136,6 @@ test("tidsavbrudd og brudd gir meldinger brukeren kan lese", async () => {
   await assert.rejects(lagHentJson({ slåOpp: utvendig, forespør: falsk([{ status: 200, hoder: { "content-type": "application/json" }, kropp: brudd }]).forespør })(
     "https://api.lever.co/v0/postings/x", { kilde: "lever" }), /Mistet forbindelsen/);
 });
-
-/* ---------- NAV-tokenet ---------- */
 
 const NAVFEED = "https://pam-stilling-feed.nav.no/api/v1/feed?last";
 const tokensvar = (tekst = TOKENSVAR) => ({ status: 200, hoder: { "content-type": "text/plain;charset=utf-8" }, kropp: kropp(tekst) });
@@ -196,7 +186,6 @@ test("et privat token i profilen brukes i stedet, og avvises det, sier vi fra", 
   await assert.rejects(lagHentJson({ slåOpp: utvendig, forespør: avvist.forespør })(NAVFEED, { kilde: "nav", katalog }), /tokenet i nav-token.txt/);
   assert.equal(avvist.kall.length, 1, "ingen stille overgang til det offentlige tokenet");
 
-  // En tom fil er ingen fil, som for nokkel.txt: da gjelder det offentlige tokenet.
   await fs.writeFile(path.join(katalog, NAV_TOKENFIL), "  \n");
   const tom = falsk(url => url.pathname === "/api/publicToken" ? tokensvar() : json({}));
   await lagHentJson({ slåOpp: utvendig, forespør: tom.forespør })(NAVFEED, { kilde: "nav", katalog });
@@ -221,8 +210,6 @@ test("lagNett har hentJson, og den ekte transporten nekter interne adresser uten
   assert.equal(typeof nett.hentJson, "function");
   await assert.rejects(nett.hentJson("https://127.0.0.1/api", { kilde: "nav" }), /hører ikke til kilden/);
 });
-
-/* ---------- transportvalget ---------- */
 
 test("lagRadarnett sender bare de kjente feltene, til Rust eller til Node", async () => {
   const kall = [];

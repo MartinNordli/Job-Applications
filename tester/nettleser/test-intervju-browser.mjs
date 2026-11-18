@@ -1,10 +1,3 @@
-/* Intervju-fanen i en ekte nettleser: et nytt intervju flytter en sendt
-   søknad til intervju og kan angres uten å ta intervjuet bort, fanemerket
-   viser datoen for det neste, forberedelsen lages av en falsk modell og
-   vises fra lageret uten nytt kall, mangler annonsen sender knappen til
-   Annonse-fanen, og et intervju med forberedelse slettes først etter
-   bekreftelse. Isolert datakatalog, syntetisk konto, falskt nett og
-   falsk modell: ingenting utenfor maskinen blir spurt. */
 import { chromium } from "playwright";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -72,7 +65,6 @@ try{
   page.on("pageerror", e => feil.push(e.message));
   page.on("console", m => { if(m.type() === "error" && !/404|Failed to load resource/.test(m.text())) feil.push(m.text()); });
 
-  /* ---------- nytt intervju: status, angre og fanemerke ---------- */
   await page.goto(url + "/#jobb/sendt/intervju");
   await page.locator("#detalj").waitFor();
   assert.equal(await page.locator('[data-fanemerke="intervju"]').isHidden(), true, "intet merke uten intervju");
@@ -97,7 +89,6 @@ try{
   assert.equal((await påDisk("sendt")).intervjuer.length, 1, "angre tar ikke intervjuet bort");
   await page.locator(".iv").waitFor();
 
-  /* ---------- forberedelse: ett kall, så fra lageret ---------- */
   await page.locator('[data-iv="forbered"]').click();
   const forb = page.locator("[data-forb] .forb__sammendrag");
   await forb.waitFor();
@@ -109,7 +100,6 @@ try{
   assert.equal(modellkall, 1, "en lagret forberedelse gir ikke nytt kall");
   assert.equal(await page.locator('[data-iv="forbered"]').count(), 0);
 
-  /* ---------- sletting med forberedelse krever bekreftelse ---------- */
   await page.locator('[data-iv="slett"]').click();
   await page.locator('[data-iv="bekreft-slett"]').waitFor();
   assert.equal((await påDisk("sendt")).intervjuer.length, 1, "ingenting er slettet før bekreftelsen");
@@ -121,7 +111,6 @@ try{
   await vent(async () => (await påDisk("sendt")).intervjuer.length === 0, "intervjuet slettet");
   await vent(async () => Object.keys((await dokument("sendt")).forberedelser ?? {}).length === 0, "forberedelsen slettet");
 
-  /* ---------- feilvei: uten annonse sendes brukeren til Annonse-fanen ---------- */
   const førKall = modellkall;
   await page.goto(url + "/#jobb/utenannonse/intervju");
   await page.locator(".forb__mangler[data-mangler='annonse']").waitFor();

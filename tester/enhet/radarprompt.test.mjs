@@ -13,13 +13,6 @@ import { byggModellkropp } from "../../src/modell/brev-provider.mjs";
 import { radartilfeller } from "../../evals/radar-tilfeller.mjs";
 import { sjekkVurdering, sjekkForslag, forespørslerFor, språkI } from "../../evals/radar-sjekker.mjs";
 
-/* ============================================================
-   Radarpromptene uten modellkall: at forespørselen bygges riktig og
-   bufres, at fiendtlige og ødelagte svar avvises, og at forslaget
-   filtreres til ord forfilter kan bruke. Tilfellene er syntetiske
-   (evals/radar-tilfeller.mjs).
-   ============================================================ */
-
 const falskModell = svar => {
   const kall = [];
   const f = async valg => { kall.push(valg); if(svar instanceof Error) throw svar; return typeof svar === "function" ? svar(valg) : svar; };
@@ -179,8 +172,6 @@ test("evalsjekkene fanger feil bånd, feil språk, injeksjonsspor og et forslag 
 });
 
 test("kostnaden for en kjøring regnes med Haiku 5.5-prisen og bufferen", () => {
-  /* 5 bolker: én skriver 1 000 tokens til bufferen, fire leser dem, 20 000
-     ubufrede tokens med annonser og 3 000 tokens ut. */
   const kr = kjoringskostnad({ input_tokens: 20_000, cache_creation_input_tokens: 1_000, cache_read_input_tokens: 4_000, output_tokens: 3_000 });
   const dollar = (20_000 * 0.10 + 1_000 * 0.125 + 4_000 * 0.01 + 3_000 * 0.50) / 1e6;
   assert.equal(kr, Math.round(dollar * 11 * 10000) / 10000);

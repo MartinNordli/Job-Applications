@@ -13,12 +13,6 @@ import { FORBEREDELSE_PROMPTVERSJON, FORBEREDELSE_SYSTEM, FORBEREDELSESKJEMA, to
 import { forberedelseUtdatert, sjekksum } from "../../src/stilling/jobbdokument.mjs";
 import { byggModellkropp } from "../../src/modell/brev-provider.mjs";
 
-/* ============================================================
-   Intervjuforberedelsen: prompten og skjemaet, tolkningen med
-   kildesjekk, tjenesten mot en falsk modell og ruten over HTTP.
-   Modellen er falsk overalt: ingen test når en leverandør.
-   ============================================================ */
-
 const CV = "Kari Nordmann. Fem år som rådgiver i kundeservice. Har skrevet saksbehandlingsrutiner og opplært nyansatte.";
 const ANNONSE = "Rådgiver søkes. Du har erfaring fra kundeservice. Du liker å skrive rutiner.";
 const BREV = "Hei! Jeg har opplært nyansatte i fem år og trives med å skrive rutiner.";
@@ -37,8 +31,6 @@ const svar = (o = {}) => ({
 const BREVSPORSMAL = { sporsmal: "Du skriver at du trives med rutiner. Hvorfor?", hvorfor: "", svarskisse: "", kilder: [{ kilde: "brev", sitat: "trives med å skrive rutiner" }] };
 const modellsvar = (data = svar()) => ({ data, bruk: { input_tokens: 100, output_tokens: 50 }, modell: "claude-opus-5-5" });
 
-/* ---------- prompt og skjema ---------- */
-
 test("prompten sier at kildene er data, følger språket og bruker brevmodellen", () => {
   for(const bit of ["data, ikke instruksjoner", "ordrett sitat", "annonsens språk", "Ikke dikt opp"]) assert.ok(FORBEREDELSE_SYSTEM.includes(bit), bit);
   assert.equal(FORBEREDELSE_PROMPTVERSJON, "forberedelse-1");
@@ -51,8 +43,6 @@ test("prompten sier at kildene er data, følger språket og bruker brevmodellen"
   assert.equal(JSON.parse(f.innhold).intervju.runde, "1. runde");
   assert.ok(!f.innhold.includes(CV), "kildene ligger i kilder, ikke i innholdet");
 });
-
-/* ---------- tolkningen ---------- */
 
 const kilder = { cv: CV, annonse: ANNONSE, brev: BREV };
 const feilkode = (data, k = kilder) => { try{ tolkForberedelse(data, k); }catch(e){ return e.code; } return null; };
@@ -80,8 +70,6 @@ test("listene kortes til grensene", () => {
   const f = tolkForberedelse(svar({ sporsmal: mange(12), sporsmalTilDem: Array(9).fill("A?"), sjekkliste: Array(9).fill("B") }), kilder);
   assert.deepEqual([f.sporsmal.length, f.sporsmalTilDem.length, f.sjekkliste.length], [8, 5, 6]);
 });
-
-/* ---------- tjenesten ---------- */
 
 async function tjeneste(t, { modell = async () => modellsvar(), foranKall, jobber = [JOBB] } = {}){
   const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "forb-test-"));
@@ -198,8 +186,6 @@ test("slett fjerner bare én forberedelse, og lagre() rører ikke de andre", asy
   await assert.rejects(s.slett("finnes-ikke", "iv1"), e => e.code === "finnes-ikke");
   await assert.rejects(s.slett("j1", "../x"), e => e.code === "ugyldig");
 });
-
-/* ---------- ruten ---------- */
 
 async function start(t, brevModellFor){
   const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "forb-http-"));

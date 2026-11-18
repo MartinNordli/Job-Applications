@@ -12,11 +12,6 @@ import { validerSoknad } from "../../src/felles/felles.mjs";
 import { forfilter, fingeravtrykk, nøklerFor, hukommelse, tolkVurdering, varseltekst, kjørRadar, lagreInnstillinger,
          ikkeInteressert, markerLagtTil, soknadFraRad, leggTilKarriereside, søkNå, MAKS_VARSEL, tilstandFra, rydd, holdUnderTak } from "../../src/radar/radarlogikk.mjs";
 
-/* ============================================================
-   Radarkjernen mot et ekte lager i en midlertidig katalog, med falskt
-   nett og falsk modell. Ingen test går ut på nettet eller til en modell.
-   ============================================================ */
-
 const les = async navn => JSON.parse(await fs.readFile(new URL(`../data/radar/${navn}`, import.meta.url), "utf8"));
 const NÅ = new Date("2026-10-09T10:00:00Z");
 const nå = () => NÅ;
@@ -32,7 +27,6 @@ async function oppsett(t, innstillinger = {}, ekstra = {}){
   return { dir, lager };
 }
 
-/* Modellen svarer det svar(valg) gir, og husker hvert kall. */
 function falskModell(svar){
   const kall = [];
   const f = async valg => { kall.push(valg); return typeof svar === "function" ? svar(valg, kall.length) : svar; };
@@ -45,9 +39,6 @@ const alleGir = prosent => valg => ({
   bruk: { input_tokens: 100, output_tokens: 20 }
 });
 
-/* NAV og Jobbnorge fra de lagrede svarene. Jobbnorge har samme annonse
-   som NAV (309820), men med en annen tittel, så den bare kan kjennes
-   igjen på Jobbnorge-id-en i NAV-detaljen. */
 async function kildenett(){
   const sider = { forste: await les("nav/feed-forste-side.json"), neste: await les("nav/feed-neste-side.json"), siste: await les("nav/feed-siste-side.json") };
   const aktiv = await les("nav/feedentry-aktiv.json");
@@ -193,7 +184,6 @@ test("et ødelagt svar hopper over bolken men flytter pekerne; et kall som feile
   assert.equal(db.leie, null);
   assert.match(db.kjoringer[0].feil.join(" "), /API-nøkkelen/);
 
-  /* Neste kjøring tar stillingen fra køen, henter detaljen igjen og vurderer den. */
   nett.kall.length = 0;
   const kallModell = falskModell(alleGir(82));
   const igjen = await kjørRadar({ dokumenter: b.lager, nett, kallModell, nå, vent: ingenPause });
@@ -231,7 +221,6 @@ test("takene: NAV høyst 60 detaljer, høyst 40 vurderinger per kjøring i bolke
   assert.equal(etter1.ko.length, 30, "de 30 over takene venter");
   assert.equal(r.kjoring.venter, 30);
 
-  /* Neste kjøring vurderer de 30 som ventet, og bare dem. */
   const vurdertFør = new Set(kallModell.kall.flatMap(annonserI).map(a => a.stilling));
   const m1 = falskModell(alleGir(30));
   const r1 = await kjørRadar({ dokumenter: lager, nett: lagNett(), kallModell: m1, nå, vent: ingenPause });
@@ -280,7 +269,6 @@ test("leien: en samtidig kjøring gir seg, og en kjøring som har mistet leien, 
   const andre = await kjørRadar({ dokumenter: annet, nett: ekte, kallModell: falskModell(alleGir(90)), nå, vent: ingenPause, eier: "radar:b" });
   assert.deepEqual(andre, { kjort: false, grunn: "opptatt" });
 
-  /* Mens den første henger, tar en annen kjøring over leien. */
   const d = await annet.les("radar.json");
   await annet.skriv("radar.json", { ...d, leie: { eier: "radar:c", utloper: "2026-10-09T11:00:00.000Z" } }, d.revisjon);
   slipp();
@@ -290,7 +278,6 @@ test("leien: en samtidig kjøring gir seg, og en kjøring som har mistet leien, 
   assert.equal(etter.leie.eier, "radar:c");
   assert.equal(etter.innboks.length, 0);
 
-  /* En utløpt leie kan tas over. */
   await lager.skriv("radar.json", { ...etter, leie: { eier: "radar:c", utloper: "2026-10-09T09:00:00.000Z" } }, etter.revisjon);
   const tredje = await kjørRadar({ dokumenter: lager, nett: ekte, kallModell: falskModell(alleGir(90)), nå, vent: ingenPause });
   assert.equal(tredje.lagret, true);
@@ -358,7 +345,6 @@ test("«Søk nå»: en kjøring som stoppet før kildene (ingen CV), sperrer ikk
 });
 
 test("søket gjennom alle aktive: et gammelt radar.json får det, det gjentas når innstillingene endres, og ellers bare som avtalt", async t => {
-  /* Et radar.json fra før søket fantes: pekerne står, men ingenting om søket. */
   const { lager } = await oppsett(t, { sokeord: ["data scientist", "maskinlæring"], steder: ["Oslo"] }, {
     kildetilstand: { nav: { side: "gammel-side", sist: "2026-10-09T09:00:00Z" }, jobbnorge: { sisteId: 300000, sist: "2026-10-09T09:00:00Z" } } });
   const brukt = [];
@@ -432,8 +418,6 @@ test("et søk hos NAV som stopper halvveis, fortsetter der det slapp, og oppføl
   assert.ok(d.kildetilstand.nav.sokFerdig);
 });
 
-/* ---------- under terskelen ---------- */
-
 const urad = (id, prosent, funnet = NÅ.toISOString()) => ({ id, kilde: "nav", kildeId: id, url: `https://arbeidsplassen.nav.no/stillinger/stilling/${id}`,
   lenker: [], selskap: "Eksempel AS", stilling: `Stilling ${id}`, sted: "Oslo", frist: null, publisert: null, tekst: "Tekst.", prosent,
   grunner: ["Grunn."], status: "ny", funnet, nokler: [id], fingeravtrykk: `eksempel|${id}`, promptversjon: RADAR_PROMPTVERSJON });
@@ -452,7 +436,6 @@ test("det som er vurdert under terskelen, gjemmes og kommer fram når terskelen 
   assert.equal(d.kjoringer[0].under, 1);
   assert.equal(tilstandFra(d, NÅ).antallNye, 0);
 
-  /* Neste kjøring kjenner den igjen og vurderer ikke på nytt. */
   await kjørRadar({ dokumenter: lager, nett: await kildenett(), kallModell, nå, vent: ingenPause });
   assert.equal(kallModell.kall.length, 1);
   assert.equal((await lager.les("radar.json")).under.length, 1);
@@ -481,7 +464,6 @@ test("«Legg til» og «Ikke interessert» virker på en rad under terskelen, og
   d = await ikkeInteressert(lager, "a2", { nå });
   assert.deepEqual(d.under.map(x => x.id), ["a3"]);
   assert.equal(d.avvist.length, 1);
-  /* Senkes terskelen, kommer ikke de to tilbake som nye. */
   d = await lagreInnstillinger(lager, { terskel: 50 });
   assert.deepEqual(d.innboks.map(x => [x.id, x.status]).sort(), [["a1", "lagtTil"], ["a3", "ny"]]);
   assert.deepEqual(tilstandFra(d, NÅ).under, []);
@@ -500,7 +482,6 @@ test("en vurdering gjort med en annen promptversjon stopper ikke en ny vurdering
     await kjørRadar({ dokumenter: lager, nett: await kildenett(), kallModell, nå, vent: ingenPause });
     assert.equal(kallModell.kall.length, ventet, `promptversjon ${versjon}`);
   }
-  /* Er stillingen vurdert på nytt og nå over terskelen, forlater den «under». */
   const { lager } = await oppsett(t, { sokeord: ["seksjonssjef"], terskel: 60 },
     { under: [{ ...urad("jobbnorge:309820", 45), promptversjon: "radar-1" }] });
   await kjørRadar({ dokumenter: lager, nett: await kildenett(), kallModell: falskModell(alleGir(82)), nå, vent: ingenPause });

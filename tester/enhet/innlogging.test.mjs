@@ -8,16 +8,6 @@ import path from "node:path";
 import { lagServer } from "../../server/server.mjs";
 import { lagBrukere, REGISTERFIL, BRUKERKATALOG } from "../../server/brukere.mjs";
 
-/* ============================================================
-   De sju rutene, sett fra utsiden. Alt her går over HTTP, fordi
-   det er der løftet står: adskillelsen håndheves på serveren,
-   per forespørsel — ikke i flaten.
-
-   Iterasjonstallet senkes til 1. Reglene er de samme; det er bare
-   PBKDF2 som er billigere. tester/enhet/brukere.test.mjs har et eget
-   tilfelle som sjekker at drift bruker 600 000.
-   ============================================================ */
-
 async function start(valg = {}){
   const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "jobber-innlogging-"));
   const brukere = lagBrukere({ katalog, iterasjoner: 1 });
@@ -52,8 +42,6 @@ const rad = (o = {}) => ({ id: "a1", selskap: "Equinor", stilling: "Sommerjobb",
   lenke: "", sted: "Stavanger", frist: null, status: "todo", sektor: "energi",
   notat: "", sendtDato: null, ...o });
 
-/* fetch og URL normaliserer bort både «..» og et falskt Host-hode,
-   så forsøket må sendes rått. Samme hjelper som i server.test.mjs. */
 function råForespørsel(port, mål, vert = "127.0.0.1"){
   return new Promise((ok, feil) => {
     const s = net.connect(port, "127.0.0.1", () => {
@@ -66,8 +54,6 @@ function råForespørsel(port, mål, vert = "127.0.0.1"){
     s.on("error", feil);
   });
 }
-
-/* ---------- GET /api/okt ---------- */
 
 test("GET /api/okt gir 200 uten cookie, og sier om det finnes brukere", async t => {
   const { base, stopp } = await start();
@@ -110,8 +96,6 @@ test("feil metode på /api/okt gir 405", async t => {
   assert.equal(r.status, 405);
   assert.equal(r.headers.get("allow"), "GET");
 });
-
-/* ---------- POST /api/registrer ---------- */
 
 test("registrering gir 201, en cookie uten Secure, og ingen hash i svaret", async t => {
   const { base, stopp } = await start();
@@ -159,8 +143,6 @@ test("to samtidige registreringer: bare én er først", async t => {
   assert.equal([ja.erFørste, jb.erFørste].filter(Boolean).length, 1);
 });
 
-/* ---------- POST /api/logg-inn ---------- */
-
 test("innlogging gir 200 og cookie; feil passord og ukjent e-post gir samme 401", async t => {
   const { base, stopp } = await start();
   t.after(stopp);
@@ -196,7 +178,6 @@ test("elleve mislykkede forsøk gir 429 med retryEtter", async t => {
   assert.equal(j.feil, "for-mange");
   assert.ok(j.retryEtter > 0);
 
-  /* Sperren gjelder også riktig passord — ellers er den ingen sperre. */
   assert.equal((await send(base, "/api/logg-inn",
     { method: "POST", kropp: { epost: "ola@example.no", passord: PASSORD } })).status, 429);
 });
@@ -214,8 +195,6 @@ test("en vellykket innlogging nullstiller telleren", async t => {
     { method: "POST", kropp: { epost: "ola@example.no", passord: "helt-feil-passord" } })).status, 401);
 });
 
-/* ---------- POST /api/logg-ut ---------- */
-
 test("utlogging nuller cookien og er idempotent uten den", async t => {
   const { base, stopp } = await start();
   t.after(stopp);
@@ -228,8 +207,6 @@ test("utlogging nuller cookien og er idempotent uten den", async t => {
   const uten = await send(base, "/api/logg-ut", { method: "POST" });
   assert.equal(uten.status, 200, "idempotent uten cookie");
 
-  /* Cookien er nullet i nettleseren, men tokenet er fortsatt gyldig —
-     det er meningen. «allePlasser» er det som faktisk tilbakekaller. */
   assert.equal((await send(base, "/api/jobber", som(cookie))).status, 200);
 });
 
@@ -244,8 +221,6 @@ test("allePlasser gjør alle utstedte økter ugyldige", async t => {
   assert.equal((await send(base, "/api/jobber", som(cookie))).status, 401);
   assert.equal((await send(base, "/api/jobber", som(annenFane))).status, 401);
 });
-
-/* ---------- POST /api/passord ---------- */
 
 test("passordbytte gir ny cookie og feller alle gamle økter", async t => {
   const { base, stopp } = await start();
@@ -284,8 +259,6 @@ test("feil gammelt passord gir 403, og uten økt gir 401", async t => {
   assert.equal(uten.status, 401);
 });
 
-/* ---------- de tre gamle endepunktene ---------- */
-
 test("jobber, importer og importlogg krever økt", async t => {
   const { base, stopp } = await start({ nett: { hentSide: async () => ({ html: "" }) } });
   t.after(stopp);
@@ -318,9 +291,6 @@ test("to brukere ser hvert sitt lager, på hver sin katalog", async t => {
   const aSer = await (await send(base, "/api/jobber", som(a.cookie))).json();
   assert.equal(aSer.jobber[0].selskap, "Equinor");
 
-  /* Adskillelsen er på filsystemet, ikke i et filter: As rader ligger
-     i As katalog, og B har ikke engang fått en katalog ennå — den
-     lages først når B selv skriver noe. */
   assert.deepEqual(await fs.readdir(path.join(katalog, BRUKERKATALOG, a.kropp.bruker.id)),
                    ["jobber.json"]);
   assert.deepEqual(await fs.readdir(path.join(katalog, BRUKERKATALOG)), [a.kropp.bruker.id]);
@@ -354,8 +324,6 @@ test("importloggen er per bruker", async t => {
   assert.deepEqual(await r.json(), { sammendrag: null });
 });
 
-/* ---------- tuklede token ---------- */
-
 test("ett endret tegn i signaturen eller nyttelasten gir 401", async t => {
   const { base, stopp } = await start();
   t.after(stopp);
@@ -382,8 +350,6 @@ test("et gyldig token for en slettet bruker gir 401", async t => {
   assert.equal((await send(base, "/api/jobber", som(cookie))).status, 401);
 });
 
-/* ---------- host og opphav ---------- */
-
 test("et fremmed Host-hode gir 403, sendt rått", async t => {
   const { port, stopp } = await start();
   t.after(stopp);
@@ -393,8 +359,6 @@ test("et fremmed Host-hode gir 403, sendt rått", async t => {
     assert.match(svar.split("\r\n")[0], /^HTTP\/1\.1 403/, `forventet 403 for Host: ${vert}`);
     assert.match(svar, /feil-opphav/);
   }
-  /* Også statiske filer: DNS-rebinding leser like gjerne index.html
-     og henter cookien derfra. */
   assert.match((await råForespørsel(port, "/", "ond.example")).split("\r\n")[0], /^HTTP\/1\.1 403/);
 
   for(const vert of ["127.0.0.1", "127.0.0.1:4173", "localhost", "[::1]:4173"])
@@ -415,8 +379,6 @@ test("et fremmed Origin-hode gir 403, også med gyldig cookie", async t => {
   assert.equal((await send(base, "/api/jobber",
     som(cookie, { headers: { origin: base } }))).status, 200);
 });
-
-/* ---------- grenser ---------- */
 
 test("en for stor kropp gir 413 også på auth-rutene", async t => {
   const { base, stopp } = await start();

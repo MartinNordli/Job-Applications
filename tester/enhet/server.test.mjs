@@ -8,13 +8,6 @@ import path from "node:path";
 import { lagServer } from "../../server/server.mjs";
 import { lagBrukere, BRUKERKATALOG } from "../../server/brukere.mjs";
 
-/* Egen katalog og port 0 per test — ingenting deles mellom testene.
-
-   Alt under /api krever nå en økt. Testene her handler om lageret og
-   om de statiske filene, ikke om innloggingen — den har sin egen fil —
-   så vi oppretter én bruker og lar cookien følge med hvert kall.
-   `minKatalog` er brukerens egen mappe, som er der datafilen faktisk
-   ligger etter at flerbruker kom til. */
 async function start(){
   const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "jobber-http-"));
   const brukere = lagBrukere({ katalog, iterasjoner: 1 });
@@ -49,7 +42,6 @@ const put = (api, kropp) => api("/api/jobber", {
   body: typeof kropp === "string" ? kropp : JSON.stringify(kropp)
 });
 
-/* fetch og URL normaliserer bort «..», så forsøket må sendes rått. */
 function råForespørsel(port, mål){
   return new Promise((ok, feil) => {
     const s = net.connect(port, "127.0.0.1", () => {
@@ -71,7 +63,6 @@ test("GET på tom katalog gir tom:true", async t => {
   assert.equal(r.status, 200);
   assert.equal(r.headers.get("content-type"), "application/json; charset=utf-8");
   assert.deepEqual(await r.json(), { versjon: 0, jobber: null, tom: true });
-  /* En lesing skriver ingenting — brukerkatalogen finnes ikke engang. */
   assert.equal(await fs.stat(minKatalog).then(() => true, () => false), false);
 });
 
@@ -151,8 +142,6 @@ test("ødelagt datafil gir 503", async t => {
   const k = await r.json();
   assert.equal(k.feil, "ødelagt");
 
-  /* Filen skal ligge urørt, og en vanlig PUT skal fortsatt nektes —
-     ellers ville neste lagring blitt godtatt mot en tom katalog. */
   assert.equal(await fs.readFile(path.join(minKatalog, "jobber.json"), "utf8"), "ikke json");
   const p2 = await api("/api/jobber", {
     method: "PUT", headers: { "content-type": "application/json" },
@@ -167,7 +156,6 @@ test("ukjent sti gir 404 og feil metode gir 405", async t => {
 
   assert.equal((await api("/finnes-ikke")).status, 404);
   assert.equal((await api("/api/annet")).status, 404);
-  /* Uten økt røper ikke en ukjent api-sti om den finnes. */
   assert.equal((await fetch(`${base}/api/annet`)).status, 401);
 
   const m = await api("/api/jobber", { method: "DELETE" });

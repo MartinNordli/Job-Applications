@@ -1,18 +1,3 @@
-/* ============================================================
-   Syntetiske tilfeller for Radar: vurderingen (radar-3) og «Foreslå
-   fra CV» (radarforslag-1).
-
-   Alle personer, selskaper og steder i teksten er oppdiktet. Ingen
-   tekst er hentet fra brukerens egne brev eller CV-er.
-
-   Hvert tilfelle er én CV og opptil åtte annonser, altså én bolk.
-   forventet er båndet prosenten bør ligge i etter skalaen i
-   src/stilling/matchlogikk.mjs (SKALA), og er vidt med vilje: sjekken skal
-   fange en vurdering som er åpenbart feil, ikke jakte på ett tall.
-   relevant sier om forslaget fra samme CV bør slippe annonsen gjennom
-   forfilter (true), stenge den ute (false) eller ikke ha noe å si (null).
-   ============================================================ */
-
 const annonse = (id, stilling, selskap, sted, tekst, forventet, relevant = null) =>
   ({ id, stilling, selskap, sted, frist: null, tekst, forventet, relevant });
 

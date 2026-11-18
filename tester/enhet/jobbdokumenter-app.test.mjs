@@ -6,25 +6,10 @@ import path from "node:path";
 
 import { lagBrevlager } from "../../server/brevlager.mjs";
 
-/* ============================================================
-   src/stilling/jobbdokumenter.js i appmodus, uten appen.
-
-   Webviewet snakker med Rust gjennom invoke. Her står en falsk
-   window.__TAURI__ i stedet, og hver kommando godtar nøyaktig de
-   argumentnavnene Rust-funksjonen har i src-tauri/src/lib.rs og
-   brev.rs. Et feilstavet argument ville ellers bare vist seg i den
-   pakkede appen. Filoperasjonene gjøres av Node-lageret, som har de
-   samme reglene, og feil kommer tilbake som strenger slik Rust sender
-   dem.
-
-   Egen fil fordi I_APP avgjøres når modulene lastes.
-   ============================================================ */
-
 const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "jobbdok-app-"));
 const profil = bruker => bruker ? path.join(katalog, "brukere", bruker) : katalog;
 const lesRå = async fil => { try{ return await fs.readFile(fil, "utf8"); }catch(e){ if(e.code === "ENOENT") return null; throw e; } };
 
-/* [påkrevde, valgfrie] per kommando, som i Rust-signaturene. */
 const SIGNATURER = {
   data_katalog: [[], ["bruker"]],
   les_tekst: [["navn"], ["bruker"]],
@@ -40,7 +25,6 @@ const SIGNATURER = {
   brev_modell: [["bruker", "leverandor", "kropp", "kjoringId"], ["kanal"]],
   brev_avbryt_modell: [["bruker", "kjoringId"], []]
 };
-/* Kroppene brev_modell fikk, så testen kan se hvilken modell som ble bedt om. */
 const modellkropper = [];
 const ramme = (hendelse, data) => `event: ${hendelse}\ndata: ${JSON.stringify(data)}\n\n`;
 const FALSK_MATCH = { prosent: 81, oppsummering: "Kravene er dekket.", sprak: "nb", mangler: [],
@@ -48,8 +32,6 @@ const FALSK_MATCH = { prosent: 81, oppsummering: "Kravene er dekket.", sprak: "n
 const FALSK_FORBEREDELSE = { sammendrag: "Rollen krever kundeservice.", sporsmalTilDem: ["Hvordan er teamet satt sammen?"], sjekkliste: ["Les annonsen på nytt"],
   sporsmal: [{ sporsmal: "Fortell om en krevende kunde.", hvorfor: "Teste ro", svarskisse: "Situasjon, grep, resultat", kilder: [] }],
   eksempler: [{ krav: "Kundeservice", situasjon: "Fem år i kundeservice", kilder: [{ kilde: "cv", sitat: "Fem år i kundeservice" }] }] };
-/* Det falske nettet bak hent_side. En streng er en feil, slik Rust sender
-   den; alt annet er HTML. */
 const sider = new Map();
 const hentet = [];
 const kall = [];
@@ -117,7 +99,6 @@ test("klienten går gjennom Rust-kommandoene med riktige argumenter", async () =
   const konto = await Økt.registrer({ epost: "ola@example.no", passord: "et-godt-nok-passord" });
   assert.equal(konto.ok, true, JSON.stringify(konto));
   const id = konto.bruker.id;
-  // Profilkatalogen lages ved første skriving, som i appen.
   await fs.mkdir(profil(id), { recursive: true });
   await fs.writeFile(path.join(profil(id), "jobber.json"),
     JSON.stringify({ versjon: 1, jobber: [{ id: "j1", selskap: "Eksempel AS", stilling: "Rådgiver" }] }));
@@ -171,7 +152,6 @@ test("annonsen hentes, limes inn og flyttes fra brevet gjennom Rust-kommandoene"
   assert.equal((await Jobbdokumenter.annonseFor("a4")).kilde, "brev");
   assert.equal((await lager.les("jobb-a4.json")).revisjon, 1);
 
-  // Alt har annonse nå, bortsett fra den døde lenken som fikk en limt inn.
   hentet.length = 0;
   const r = await Jobbdokumenter.hentManglendeAnnonser();
   assert.deepEqual(r, { hentet: [], fraBrev: [], hadde: 4, utenLenke: [], feilet: [], gjenstar: [], stoppet: null });

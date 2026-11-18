@@ -10,15 +10,6 @@ import { lagBrevlager } from "../../server/brevlager.mjs";
 import * as Økt from "../../src/konto/okt.js";
 import * as Jobbdokumenter from "../../src/stilling/jobbdokumenter.js";
 
-/* ============================================================
-   src/stilling/jobbdokumenter.js i nettlesermodus, mot en ekte server.
-
-   Samme nettleser i miniatyr som i tester/enhet/okt-flyt.test.mjs: én
-   informasjonskapsel og relative stier. Appmodusen har sin egen fil,
-   tester/enhet/jobbdokumenter-app.test.mjs, fordi I_APP avgjøres når
-   modulen lastes.
-   ============================================================ */
-
 const ekteFetch = globalThis.fetch;
 let base = null, kake = null;
 globalThis.fetch = async (sti, valg = {}) => {
@@ -61,13 +52,11 @@ test("klienten henter, lagrer, gir konflikt, utdrag og gjenoppretting over HTTP"
   assert.throws(() => Jobbdokumenter.utdrag(["__proto__"]), e => e.code === "ugyldig");
   await assert.rejects(Jobbdokumenter.hent("finnes-ikke"), e => e.code === "finnes-ikke" && e.status === 404);
 
-  // Et skadet dokument viser seg som feil og kan legges tilbake fra forrige lagring.
   const profil = path.join(katalog, BRUKERKATALOG, konto.bruker.id);
   await fs.writeFile(path.join(profil, "jobb-j1.json"), "ødelagt");
   await assert.rejects(Jobbdokumenter.hent("j1"), e => e.code === "odelagt");
   assert.equal((await Jobbdokumenter.gjenopprett("j1")).annonse.tekst, "Første.");
 
-  // Den samme lageret ser det klienten skrev: ingen egen kopi i nettleseren.
   assert.equal((await lagBrevlager(profil).les("jobb-j1.json")).annonse.tekst, "Første.");
 });
 

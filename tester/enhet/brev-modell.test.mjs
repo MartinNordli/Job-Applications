@@ -13,8 +13,6 @@ const NOKKEL = "en-testnokkel-uten-ekte-tilgang-012345";
 async function profil(t){ const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "brev-modell-")); t.after(()=>fs.rm(katalog,{recursive:true,force:true})); return { katalog }; }
 
 const ramme = (hendelse, data) => `event: ${hendelse}\ndata: ${JSON.stringify(data)}\n\n`;
-/* En ekte SSE-kropp, delt i små biter, så transporten prøves slik den
-   faktisk møter leverandøren og ikke som én ferdig JSON-streng. */
 function sseSvar(leverandor, tekst, biter = 3){
   const deler = [];
   for(let i = 0; i < tekst.length; i += Math.ceil(tekst.length / biter)) deler.push(tekst.slice(i, i + Math.ceil(tekst.length / biter)));
@@ -53,14 +51,11 @@ test("modelltabellen er den samme som Rust godtar (tester/data/modeller.json)", 
   }
 });
 test("Anthropic får innsatsen eksplisitt per formål, og ingen tenkeinnstilling", () => {
-  /* Opus 5.5 avviser thinking: disabled og budget_tokens, og standarden for
-     innsats er ikke lik mellom modellene. Derfor står den alltid i kroppen. */
   const innsats = Object.fromEntries(FORMAL.map(formal => [formal, byggModellkropp({ ...inn, leverandor: "anthropic", formal })]));
   assert.deepEqual(Object.fromEntries(Object.entries(innsats).map(([f, k]) => [f, [k.model, k.output_config.effort]])), {
     brev: ["claude-opus-5-5", "medium"], vurdering: ["claude-sonnet-5-5", "high"], radar: ["claude-haiku-5-5", "medium"],
     annonse: ["claude-haiku-5-5", "low"]
   });
-  // Brevet tenker, skriver og leser gjennom i ett kall, og får plass til alt.
   assert.equal(innsats.brev.max_tokens, 16000);
   for(const k of Object.values(innsats)) assert.equal(Object.hasOwn(k, "thinking"), false);
   assert.equal(Object.hasOwn(byggModellkropp({ ...inn, leverandor: "openai" }), "output_config"), false);
@@ -74,18 +69,14 @@ test("system, kilder og oppgave kommer i den rekkefølgen, og de to første er m
   ] }]);
   const o = byggModellkropp({ ...inn, leverandor: "openai" });
   assert.deepEqual(o.input, [{ role: "user", content: [{ type: "input_text", text: inn.kilder }, { type: "input_text", text: JSON.stringify(inn.innhold) }] }]);
-  // Flere kildeblokker får hvert sitt merke, i rekkefølgen de kom.
   const flere = byggModellkropp({ ...inn, kilder: ["profil", "søknad"], leverandor: "anthropic" });
   assert.deepEqual(flere.messages[0].content.map(b => [b.text, !!b.cache_control]), [["profil", true], ["søknad", true], [JSON.stringify(inn.innhold), false]]);
   assert.deepEqual(byggModellkropp({ ...inn, kilder: ["profil", "søknad"], leverandor: "openai" }).input[0].content.map(b => b.text), ["profil", "søknad", JSON.stringify(inn.innhold)]);
-  // Systemet har ett av de fire merkene Anthropic tillater.
   assert.throws(() => byggModellkropp({ ...inn, kilder: ["a", "b", "c", "d"], leverandor: "anthropic" }), /grunnlag/);
   assert.throws(() => byggModellkropp({ ...inn, kilder: ["a", " "], leverandor: "anthropic" }), /grunnlag/);
-  // Uten kildeblokk er det bare oppgaven, som før.
   const uten = byggModellkropp({ ...inn, kilder: undefined, leverandor: "anthropic" });
   assert.equal(uten.messages[0].content.length, 1);
   assert.throws(() => byggModellkropp({ ...inn, kilder: " ", leverandor: "anthropic" }), /grunnlag/);
-  // Den eneste feilen brukeren kan rette, og derfor en Brevfeil som når fram til flaten.
   assert.throws(() => byggModellkropp({ ...inn, kilder: "x".repeat(500_001), leverandor: "openai" }), { code: "for-stort", status: 413, message: /for stort/ });
 });
 test("bufringen telles med fra begge leverandørene", () => {
@@ -123,16 +114,13 @@ test("API-transporter sender nøkkel til fast vert, strømmer og normaliserer be
       assert.equal(leverandor==="openai"?req.headers.authorization:req.headers["x-api-key"],leverandor==="openai"?`Bearer ${NOKKEL}`:NOKKEL);
       const kropp=JSON.parse(req.body);
       assert.equal(kropp.stream,true);
-      // Kildene går over nettet i sin egen blokk, og oppgaven etter dem.
       const blokker=leverandor==="openai"?kropp.input[0].content:kropp.messages[0].content;
       assert.equal(blokker[0].text,inn.kilder);
       return sseSvar(leverandor,JSON.stringify({tekst:"Et nøkternt brev."}));
     }});
     const r=await kall({...inn,leverandor,felt:"tekst",påDelta:t=>deltaer.push(t)});
     assert.equal(r.data.tekst,"Et nøkternt brev."); assert.equal(r.bruk.output_tokens,7);
-    // Tellingen fra starten av strømmen overlever slutthendelsens tellinger.
     assert.equal(r.bruk.cache_read_input_tokens,2900);
-    // Deltaene er dekodet tekst, aldri rå JSON, og utgjør hele feltverdien.
     assert.equal(deltaer.join(""),"Et nøkternt brev.");
     assert.ok(deltaer.length>1);
     assert.ok(deltaer.every(d=>!d.includes("{")));
@@ -160,8 +148,6 @@ test("påDelta fyres ikke etter avbrudd", async t => {
       + ramme("content_block_start",{type:"content_block_start",index:0,content_block:{type:"text",text:""}})
       + ramme("content_block_delta",{type:"content_block_delta",index:0,delta:{type:"text_delta",text:'{"tekst":"før'}}),
     ramme("content_block_delta",{type:"content_block_delta",index:0,delta:{type:"text_delta",text:' og etter"}'}})];
-  // Brukeren avbryter mens forhåndsvisningen tegnes. Resten av strømmen leses
-  // fortsatt ut, men ingen flere deltaer skal nå fram.
   const kall = lagBrevModell({...p,fetch:async()=>new Response(new ReadableStream({start(k){
     for(const b of biter) k.enqueue(kode.encode(b));
     k.close();

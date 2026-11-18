@@ -10,15 +10,6 @@ import {
 } from "../../server/brukere.mjs";
 import { erGyldigBrukerId, tolkHash, ITERASJONER, kodNyttelast } from "../../src/konto/brukerlogikk.mjs";
 
-/* ============================================================
-   Registeret, øktene og lagrene — med et ekte filsystem, men
-   alltid i en egen mkdtemp-katalog. Ingen test her ser data/.
-
-   Iterasjonstallet senkes til 1: hver innlogging koster ellers
-   et tredjedels sekund, og det vi tester her er reglene, ikke
-   PBKDF2. Ett eget tilfelle nede sjekker at drift bruker 600 000.
-   ============================================================ */
-
 const RASKT = { iterasjoner: 1 };
 
 async function nytt(valg = {}){
@@ -32,12 +23,9 @@ const konto = (o = {}) => ({ epost: "ola@example.no", navn: "Ola", passord: PASS
 const finnes = async p => !!(await fs.stat(p).catch(() => null));
 const modus  = async p => ((await fs.stat(p)).mode & 0o777).toString(8);
 
-/* ---------- cookier ---------- */
-
 test("cookienavnet og stiene er ASCII", () => {
   assert.equal(COOKIE, "okt");
   assert.match(byggØktcookie("abc.def"), /^okt=abc\.def;/);
-  /* Et cookienavn er et RFC 6265-token; «økt» ville ikke vært lovlig. */
   assert.match(COOKIE, /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/);
 });
 
@@ -46,7 +34,6 @@ test("cookien er HttpOnly og SameSite=Strict, men ikke Secure", () => {
   assert.match(c, /HttpOnly/);
   assert.match(c, /SameSite=Strict/);
   assert.match(c, /Max-Age=2592000/);
-  /* Secure ville gjort cookien ubrukelig: appen er http på loopback. */
   assert.doesNotMatch(c, /Secure/);
 });
 
@@ -59,12 +46,9 @@ test("cookier tolkes, første vinner, og hodet er bundet", () => {
   assert.equal(tolkCookies("okt=først; okt=sist").okt, "først");
   assert.equal(tolkCookies("okt=x".padEnd(9000, "y")).okt, undefined);
   assert.equal(tolkCookies(undefined).okt, undefined);
-  /* Ingen prototype å forgifte. */
   assert.equal(Object.getPrototypeOf(tolkCookies("a=1")), null);
   assert.equal(tolkCookies("__proto__=x").toString, undefined);
 });
-
-/* ---------- ratebegrenser ---------- */
 
 test("ratebegrenseren slipper gjennom til taket og sier hvor lenge", () => {
   const r = lagRatebegrenser({ tak: 3, vindu: 1000 });
@@ -81,8 +65,6 @@ test("kartet i ratebegrenseren er bundet", () => {
   for(let i = 0; i < 100; i++) r.tell("n" + i);
   assert.equal(r.størrelse, 10);
 });
-
-/* ---------- hemmeligheten ---------- */
 
 test("hemmelighetsfilen lages med 0600 og gjenbrukes", async () => {
   const { katalog, brukere } = await nytt();
@@ -102,8 +84,6 @@ test("en hemmelighetsfil på feil form overskrives ikke", async () => {
   assert.equal(await fs.readFile(path.join(katalog, HEMMELIGHETSFIL), "utf8"), "ikke heks");
 });
 
-/* ---------- registrering ---------- */
-
 test("første registrering gir konto, cookie og erFørste", async () => {
   const { katalog, brukere } = await nytt();
   const r = await brukere.registrer(konto());
@@ -114,7 +94,6 @@ test("første registrering gir konto, cookie og erFørste", async () => {
   assert.equal(r.bruker.generasjon, 1);
   assert.match(r.token, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
 
-  /* Registeret ligger 0600 og har en sikkerhetskopi etter neste skriving. */
   assert.equal(await modus(path.join(katalog, REGISTERFIL)), "600");
   assert.equal(await finnes(path.join(katalog, REGISTER_FORRIGE)), false, "ingen forrige å kopiere ennå");
 
@@ -134,7 +113,7 @@ test("passordet lagres bare som pbkdf2-hash, aldri i klartekst", async () => {
 
 test("drift bruker 600 000 iterasjoner", async () => {
   const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "jobber-brukere-"));
-  const b = lagBrukere({ katalog });                 /* uten RASKT */
+  const b = lagBrukere({ katalog });
   const r = await b.registrer(konto());
   assert.equal(tolkHash(r.bruker.hash).iterasjoner, ITERASJONER);
 });
@@ -184,8 +163,6 @@ test("ugyldig registrering gir feil per felt og skriver ingenting", async () => 
   assert.equal(await finnes(path.join(katalog, REGISTERFIL)), false);
 });
 
-/* ---------- innlogging ---------- */
-
 test("innlogging med riktig passord gir bruker og token", async () => {
   const { brukere } = await nytt();
   const r = await brukere.registrer(konto());
@@ -206,9 +183,6 @@ test("feil passord og ukjent e-post gir samme svar", async () => {
 });
 
 test("ukjent e-post koster et ekte pbkdf2-kall", async () => {
-  /* Med et høyt iterasjonstall må ukjent e-post ta omtrent like lang
-     tid som feil passord — ellers røper svartiden hvilke kontoer som
-     finnes. Vi måler grovt: begge skal ligge langt over null. */
   const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "jobber-brukere-"));
   const b = lagBrukere({ katalog, iterasjoner: 200_000 });
   await b.registrer(konto());
@@ -246,8 +220,6 @@ test("en svak hash skrives om ved neste vellykkede innlogging", async () => {
   assert.equal((await sterk.loggInn({ epost: "ola@example.no", passord: PASSORD })).ok, true);
 });
 
-/* ---------- øktene ---------- */
-
 test("et ferskt token verifiserer", async () => {
   const { brukere } = await nytt();
   const r = await brukere.registrer(konto());
@@ -284,7 +256,7 @@ test("et utløpt token avvises", async () => {
   const b = lagBrukere({ katalog, ...RASKT, nå: () => klokke });
   const { token } = await b.registrer(konto());
   assert.ok(await b.verifiserToken(token));
-  klokke = new Date("2026-03-01T00:00:00Z");          /* 59 dager senere */
+  klokke = new Date("2026-03-01T00:00:00Z");
   assert.equal(await b.verifiserToken(token), null);
 });
 
@@ -324,8 +296,6 @@ test("et token fra en annen hemmelighet avvises", async () => {
   assert.equal(await b.brukere.verifiserToken(r.token), null);
 });
 
-/* ---------- passordbytte ---------- */
-
 test("feil gammelt passord gir feil-passord og endrer ingenting", async () => {
   const { brukere } = await nytt();
   const r = await brukere.registrer(konto());
@@ -343,8 +313,6 @@ test("et for kort nytt passord avvises", async () => {
   assert.equal(b.detaljer[0].felt, "nytt");
 });
 
-/* ---------- et ødelagt register ---------- */
-
 test("et uleselig register blir liggende, og alt nekter å svare", async () => {
   const { katalog, brukere } = await nytt();
   const r = await brukere.registrer(konto());
@@ -356,8 +324,6 @@ test("et uleselig register blir liggende, og alt nekter å svare", async () => {
   assert.equal((await brukere.loggInn({ epost: "ola@example.no", passord: PASSORD })).feil, "ødelagt-register");
   assert.equal(await brukere.verifiserToken(r.token), null);
 
-  /* Registeret bærer passordhashene. Det settes aldri i karantene av
-     seg selv slik datafilen blir — det ville låst brukeren ute for godt. */
   assert.equal(await fs.readFile(path.join(katalog, REGISTERFIL), "utf8"), "{ikke json");
 });
 
@@ -369,8 +335,6 @@ test("et register fra en nyere versjon nektes i stedet for å skrives over", asy
   assert.equal((await brukere.registrer(konto())).feil, "ødelagt-register");
   assert.match(JSON.parse(await fs.readFile(path.join(katalog, REGISTERFIL), "utf8")).versjon + "", /99/);
 });
-
-/* ---------- lagerinstanser ---------- */
 
 test("samme bruker får samme lagerinstans — én kø, ingen tapt skriving", async () => {
   const { brukere } = await nytt();
@@ -430,8 +394,6 @@ test("to samtidige skrivinger fra samme bruker havner begge på disk", async () 
   assert.equal((await lager.les()).jobber.length, 2);
 });
 
-/* ---------- migreringen ---------- */
-
 async function medGamleData(){
   const katalog = await fs.mkdtemp(path.join(os.tmpdir(), "jobber-brukere-"));
   const gammel = JSON.stringify({ versjon: 25, oppdatert: "2026-01-01T00:00:00.000Z", jobber: [
@@ -457,7 +419,6 @@ test("første bruker arver de gamle radene, og originalen er bit for bit uendret
   assert.equal(await fs.readFile(path.join(min, "jobber.json"), "utf8"), gammel);
   assert.equal((await brukere.lagerFor(r.bruker.id).lager.les()).jobber.length, 2);
 
-  /* Originalen er sikkerhetskopien vår. Kopi, aldri flytting. */
   assert.deepEqual(await fs.readFile(path.join(katalog, "jobber.json")), før);
   assert.equal(await finnes(path.join(katalog, "nokkel.txt")), true);
   assert.equal(await modus(path.join(min, "nokkel.txt")), "600", "nøkkelen ligger 0600 hos brukeren");
@@ -481,8 +442,6 @@ test("migreringen parser ikke — en ødelagt rotfil stopper ikke registreringen
   const r = await brukere.registrer(konto());
   assert.equal(r.ok, true);
   assert.deepEqual(r.migrert, ["jobber.json"]);
-  /* Filen fulgte med som den var — lagerlogikken tar seg av at den er
-     ødelagt, på nøyaktig samme måte som før flerbruker. */
   assert.equal(await fs.readFile(path.join(katalog, BRUKERKATALOG, r.bruker.id, "jobber.json"), "utf8"),
                "{ikke json i det hele tatt");
   assert.equal((await brukere.lagerFor(r.bruker.id).lager.les()).ødelagt, true);
@@ -494,8 +453,6 @@ test("uten gamle data er det ingenting å migrere", async () => {
   assert.equal(r.migrert, undefined);
   assert.equal(r.migreringsfeil, undefined);
 });
-
-/* ---------- status ---------- */
 
 test("status sier om det finnes brukere i det hele tatt", async () => {
   const { brukere } = await nytt();

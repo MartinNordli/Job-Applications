@@ -1,10 +1,3 @@
-/* Detaljpanelet og «⋯»-menyen i en ekte nettleser: åpning med klikk og
-   Enter, direktelenker og tilbakeknappen, stegraden med angre, notatet,
-   annonsen (visning, tom, innliming og hentefeil), brevet, menyen med
-   tastaturet, radknappenes kolonne og arket på telefonbredde.
-   Isolert datakatalog, syntetisk konto og falskt nett: ingen side
-   utenfor maskinen blir spurt. Skjermbildene, også av alle fem temaene
-   i fem bredder, blir liggende i arbeidskatalogen. */
 import { chromium } from "playwright";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -18,7 +11,6 @@ const nett = {
   hentSide: async url => { throw new Error(url.includes("borte") ? "Siden svarte 404." : "Adressen peker ikke til en nettside."); },
   spørModell: async () => { throw new Error("Ingen modell i denne testen."); }
 };
-/* Vurderingen går til en falsk modell. modellFeil slår på en manglende nøkkel. */
 let modellFeil = false, modellkall = 0;
 const CV_TEKST = "Astrid Eksempel. To år med dataflyt i Python og SQL hos et kraftselskap.";
 const brevModellFor = () => async () => {
@@ -70,8 +62,6 @@ try{
   assert.ok((await context.request.put(url + "/api/jobber", { data: { versjon: v.versjon, jobber: JOBBER } })).ok());
   assert.ok((await context.request.put(url + "/api/jobber/annonse/dokument", { data: { revisjon: 0,
     annonse: { tekst: ANNONSE, url: "https://jobb.example.invalid/fjordnett", kilde: "limt", hentet: new Date().toISOString() } } })).ok());
-  /* Vurderingen skrives bare av tjenesten som lager den, så den legges
-     rett i filen her, slik en ferdig vurdering ville ligget. */
   const fil = path.join(dir, "data", "brukere", brukerId, "jobb-annonse.json");
   const lagret = JSON.parse(await fs.readFile(fil, "utf8"));
   lagret.match = { prosent: 78, oppsummering: "Godt treff på data og Python, svakere på domenet.",
@@ -96,7 +86,6 @@ try{
   const hash = () => page.evaluate(() => location.hash);
   const aktiv = () => page.evaluate(() => document.activeElement?.id || document.activeElement?.className || "");
 
-  /* ---------- raden: alle knappene i én kolonne, i alle bånd ---------- */
   await page.locator("#utgatt > summary").click();
   const kolonner = await page.$$eval("#innhold .rad", rader => {
     const x = s => rader.map(r => Math.round(r.querySelector(s).getBoundingClientRect().right));
@@ -105,19 +94,16 @@ try{
   });
   for(const [hva, xs] of Object.entries(kolonner)) assert.equal(new Set(xs).size, 1, hva + " står i samme kolonne: " + xs);
   assert.equal(await page.locator(".rad__mer").count(), 0, "ingen skjulte sidehandlinger");
-  /* Ingenting dukker opp når musa går over raden. */
   const førHover = await page.locator('.rad[data-id="utgatt"] button').count();
   await page.locator('.rad[data-id="utgatt"]').hover();
   assert.equal(await page.locator('.rad[data-id="utgatt"] button:visible').count(), førHover);
   await page.screenshot({ animations: "disabled", path: path.join(dir, "01-liste.png"), fullPage: true });
 
-  /* Sendt-visningen blander «Fikk intervju» og «Fikk tilbud» og merkelapper. */
   await page.locator('[data-visning="sendt"]').click();
   const sendtKol = await page.$$eval("#innhold .rad", rader => rader.map(r => Math.round(r.querySelector(".handling--hoved").getBoundingClientRect().left)));
   assert.equal(new Set(sendtKol).size, 1, "hovedknappen har samme bredde uansett tekst");
   await page.locator('[data-visning="frister"]').click();
 
-  /* ---------- «⋯»-menyen med tastaturet ---------- */
   const knapp = page.locator('.rad[data-id="utgatt"] [data-meny]');
   await knapp.focus();
   await page.keyboard.press("ArrowDown");
@@ -137,7 +123,6 @@ try{
   assert.equal(await knapp.getAttribute("aria-expanded"), "false");
   assert.equal(await page.evaluate(() => document.activeElement.dataset.meny), "utgatt", "fokus tilbake på knappen");
   assert.equal(await panel.isHidden(), true, "Esc i menyen lukker bare menyen");
-  /* Enter åpner, en bokstav hopper, og valget utføres. */
   await page.keyboard.press("Enter");
   await page.keyboard.press("m");
   assert.equal(await page.evaluate(() => document.activeElement.textContent), "Marker som utløpt");
@@ -145,13 +130,11 @@ try{
   await vent(async () => (await påDisk("utgatt")).status === "expired", "utløpt fra menyen");
   await page.locator("#angreKnapp").click();
   await vent(async () => (await påDisk("utgatt")).status === "todo", "angret");
-  /* Klikk utenfor lukker. */
   await page.locator('.rad[data-id="snart"] [data-meny]').click();
   await page.locator("#radmeny").waitFor();
   await page.locator("#sidetittel").click();
   assert.equal(await page.locator("#radmeny").isHidden(), true);
 
-  /* ---------- åpne med klikk, lukke med Esc ---------- */
   await page.locator('.rad[data-id="snart"] .dato').click();
   await panel.waitFor();
   assert.equal(await hash(), "#jobb/snart/oversikt");
@@ -159,7 +142,6 @@ try{
   await page.waitForFunction(() => document.activeElement?.id === "detaljTittel");
   assert.equal(await panel.getAttribute("role"), "complementary", "på bred skjerm er panelet ikke modalt");
   assert.equal(await page.locator(".skall > .hoved").getAttribute("inert"), null);
-  /* Knapper og lenker i raden gjør sitt eget, ikke panelets. */
   await page.keyboard.press("Escape");
   await panel.waitFor({ state: "hidden" });
   assert.equal(await hash(), "");
@@ -169,7 +151,6 @@ try{
   assert.equal(await panel.isHidden(), true, "menyknappen åpner ikke panelet");
   await page.keyboard.press("Escape");
 
-  /* ---------- Enter på raden, og tilbakeknappen ---------- */
   await page.locator('.rad[data-id="sendt"]').count();
   await page.locator('[data-visning="sendt"]').click();
   await page.locator('.rad[data-id="sendt"] .rad__selskap').focus();
@@ -187,7 +168,6 @@ try{
   await panel.waitFor({ state: "hidden" });
   await page.locator('[data-visning="frister"]').click();
 
-  /* ---------- direktelenke rett på annonsen ---------- */
   await page.goto(url + "/#jobb/annonse/annonse");
   await panel.waitFor();
   await page.locator(".annonse__tekst").waitFor();
@@ -200,7 +180,6 @@ try{
   assert.equal(await page.locator('.rad[data-id="annonse"]').getAttribute("aria-current"), "true");
   await page.screenshot({ animations: "disabled", path: path.join(dir, "03-annonse.png") });
 
-  /* Fanene med piltastene. */
   await page.locator("#detaljFane-annonse").focus();
   await page.keyboard.press("ArrowLeft");
   await page.waitForFunction(() => location.hash === "#jobb/annonse/oversikt");
@@ -209,7 +188,6 @@ try{
   assert.match(await page.locator(".match").textContent(), /78 %.*Python og SQL.*kraftbransjen/s);
   await page.screenshot({ animations: "disabled", path: path.join(dir, "04-oversikt-match.png") });
 
-  /* ---------- stegraden, med samme angre som raden ---------- */
   await page.locator('#detalj [data-status="sent"]').click();
   await vent(async () => (await påDisk("annonse")).status === "sent", "sendt fra stegraden");
   assert.equal(await page.locator('#detalj .steg__post[data-tilstand="naa"] .steg__navn').textContent(), "Sendt");
@@ -221,14 +199,12 @@ try{
   assert.equal(await page.locator('#detalj .steg__post[data-tilstand="naa"] .steg__navn').textContent(), "Å søke på");
   assert.equal(await page.locator("#detaljFane-oversikt").getAttribute("aria-selected"), "true", "fanen står");
 
-  /* ---------- notatet ---------- */
   await page.locator("#detaljNotat").fill("Ring Kari om rotasjonsordningen.\nSpør om oppstart.");
   await page.keyboard.press("Tab");
   await vent(async () => (await påDisk("annonse")).notat === "Ring Kari om rotasjonsordningen.\nSpør om oppstart.", "notatet på disk");
   await page.waitForFunction(() => document.querySelector('[data-del="notatstatus"]')?.textContent === "Lagret");
   assert.match(await page.locator('.rad[data-id="annonse"] .rad__notat').textContent(), /Ring Kari/);
 
-  /* ---------- endringer i skuffen vises i panelet ---------- */
   await page.locator('#detalj [data-panel="rediger"]').click();
   await page.locator("#skuff.er-apen").waitFor();
   assert.equal(await page.locator("#fnotat").inputValue(), "Ring Kari om rotasjonsordningen.\nSpør om oppstart.", "linjeskiftet står");
@@ -238,7 +214,6 @@ try{
   assert.match(await page.locator(".detalj__stilling").textContent(), /Senior dataingeniør/);
   assert.equal(await panel.isVisible(), true);
 
-  /* ---------- tom annonse, hentefeil og innliming ---------- */
   await page.locator('.rad[data-id="snart"] .rad__selskap').click();
   await page.waitForFunction(() => location.hash === "#jobb/snart/oversikt");
   await page.locator("#detaljFane-annonse").click();
@@ -263,21 +238,18 @@ try{
   assert.equal(dSnart.annonse.kilde, "limt");
   assert.match(dSnart.annonse.tekst, /prognoser for kraftmarkedet/);
 
-  /* Esc i innlimingen avbryter den, ikke panelet. */
   await page.getByRole("button", { name: "Lim inn", exact: true }).click();
   await page.locator("#annonseLim").waitFor();
   await page.keyboard.press("Escape");
   await page.locator(".annonse__tekst").waitFor();
   assert.equal(await panel.isVisible(), true);
 
-  /* Uten lenke: bare innliming, og veien til skjemaet. */
   await page.locator('.rad[data-id="utenlenke"] .rad__selskap').click();
   await page.waitForFunction(() => location.hash === "#jobb/utenlenke/annonse");
   await page.locator(".annonse--tom").waitFor();
   assert.equal(await page.getByRole("button", { name: "Hent annonsen" }).count(), 0);
   assert.match(await page.locator(".detalj__tomtekst").textContent(), /ingen lenke/);
 
-  /* ---------- brevet monteres, og rydder etter seg ---------- */
   await page.locator("#detaljFane-brev").click();
   await page.locator("#brevTekst").waitFor({ state: "attached" });
   await page.waitForFunction(() => document.querySelector(".brev")?.getAttribute("aria-busy") === "false");
@@ -288,13 +260,9 @@ try{
   await page.locator(".oversikt").waitFor();
   assert.equal(await page.locator("#brevTekst").count(), 0, "brevflaten er borte");
   assert.equal(await page.locator("#detaljBunn").isHidden(), true);
-  /* Med panelet ved siden av en smal liste er radknappene tatt ut:
-     panelet har dem alle. */
   assert.equal(await page.locator('.rad[data-id="snart"] [data-gjor="brev"]').isHidden(), true);
   await page.locator('#detalj [data-panel="lukk"]').click();
   await panel.waitFor({ state: "hidden" });
-  /* «Søknadsbrev» på raden åpner panelet rett på brevet, og lukking
-     venter på at brevet er lagret. */
   await page.locator('.rad[data-id="snart"] [data-gjor="brev"]').click();
   await page.waitForFunction(() => location.hash === "#jobb/snart/brev");
   await page.waitForFunction(() => document.querySelector(".brev")?.getAttribute("aria-busy") === "false");
@@ -304,7 +272,6 @@ try{
   const brev = await (await context.request.get(url + "/api/jobber/snart/brev")).json();
   assert.equal(brev.tekst, "Jeg vil jobbe med kraftmarkedet.", "brevet ble lagret før panelet lukket seg");
 
-  /* ---------- en slettet søknad lukker panelet ---------- */
   await page.locator('.rad[data-id="utgatt"]').click({ position: { x: 30, y: 20 } });
   await page.waitForFunction(() => location.hash === "#jobb/utgatt/oversikt");
   assert.match(await page.locator(".steg__utganger").textContent(), /Marker som utløpt/);
@@ -315,7 +282,6 @@ try{
   await page.locator("#angreKnapp").click();
   await page.locator('.rad[data-id="utgatt"]').waitFor();
 
-  /* ---------- en direktelenke viser raden, også i en annen visning ---------- */
   await page.goto(url + "/#jobb/avslag/oversikt");
   await panel.waitFor();
   assert.equal(await page.locator('[data-visning="arkiv"]').getAttribute("aria-selected"), "true");
@@ -324,14 +290,12 @@ try{
   assert.equal(await page.locator('.steg__post[data-tilstand="ferdig"]').count(), 3, "avslaget kom etter intervjuet");
   await page.screenshot({ animations: "disabled", path: path.join(dir, "10-avslag.png") });
 
-  /* ---------- en lenke til noe som ikke finnes ---------- */
   await page.goto(url + "/#jobb/finnesikke/oversikt");
   await page.locator(".rad").first().waitFor();
   await page.waitForFunction(() => /Fant ikke søknaden/.test(document.querySelector("#varsel")?.textContent || ""));
   assert.equal(await panel.isHidden(), true);
   assert.equal(await hash(), "");
 
-  /* ---------- hent manglende annonser, fra «Dataene dine» ---------- */
   await page.locator("#apneEksport").click();
   await page.waitForFunction(() => document.querySelector("#manglendeTall")?.textContent === "(5)");
   await page.locator("#hentManglende").click();
@@ -343,7 +307,6 @@ try{
   await page.screenshot({ animations: "disabled", path: path.join(dir, "11-manglende.png") });
   await page.keyboard.press("Escape");
 
-  /* ---------- telefonbredde: et ark, modalt ---------- */
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(url);
   await page.locator(".rad").first().waitFor();
@@ -369,7 +332,6 @@ try{
   await panel.waitFor({ state: "hidden" });
   assert.equal(await page.locator(".skall > .hoved").getAttribute("inert"), null);
 
-  /* ---------- hvor godt stillingen passer: knapp, utdatert og merke ---------- */
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.evaluate(() => localStorage.setItem("jobbsoknader-tema", "lys"));
   await page.goto(url);
@@ -380,7 +342,6 @@ try{
   assert.ok(await merke("annonse").evaluate(e => e.classList.contains("er-utdatert")), "en vurdering uten grunnlag er utdatert");
   assert.equal(await merke("utenlenke").count(), 0, "ingen vurdering, intet merke");
 
-  // Uten CV og nøkkel gjør auto-kjøringen ingenting, og knappen sier hva som mangler.
   await page.goto(url + "/#jobb/annonse/oversikt");
   await page.locator(".match").waitFor();
   assert.match(await page.locator(".match__utdatert").textContent(), /Utdatert/);
@@ -408,7 +369,6 @@ try{
   const lysMerke = path.join(dir, "10-merke-lys.png");
   await page.locator('.rad[data-id="annonse"]').screenshot({ animations: "disabled", path: lysMerke });
 
-  // En ny CV merker vurderingen utdatert uten å kjøre den på nytt.
   const tilCv = modellkall;
   assert.ok((await context.request.put(url + "/api/cv", { data: { revisjon: 1, tekst: CV_TEKST + " Sertifisert i prosjektstyring.", navn: "", format: "tekst" } })).ok());
   await page.reload();
@@ -425,7 +385,6 @@ try{
   await merke("annonse").waitFor();
   await page.locator('.rad[data-id="annonse"]').screenshot({ animations: "disabled", path: path.join(dir, "10-merke-mork-utdatert.png") });
 
-  // Lagres en annonse, vurderes den i bakgrunnen når CV og nøkkel finnes.
   await page.goto(url + "/#jobb/utenlenke/annonse");
   await page.getByRole("button", { name: "Lim inn", exact: true }).click();
   await page.locator("#annonseLim").fill("Havbruk Vest søker dataingeniør.\n\nDu jobber med dataflyt i Python og SQL for oppdrettsanlegg.");
@@ -435,7 +394,6 @@ try{
   await vent(async () => (await merke("utenlenke").count()) === 1, "merket på den nye raden");
   await page.evaluate(() => localStorage.setItem("jobbsoknader-tema", "lys"));
 
-  /* ---------- skjermbilder: fem temaer, fem bredder ---------- */
   for(const tema of ["lys", "mork", "ink", "blush", "midnatt"]){
     for(const [b, h] of [[1440, 900], [1280, 800], [1100, 760], [900, 760], [390, 844]]){
       await page.setViewportSize({ width: b, height: h });

@@ -22,7 +22,6 @@ test("SSE-leseren tåler delte rammer, flere rammer per bit, CRLF og kommentarer
   assert.deepEqual(del("data:uten mellomrom\n\n"), [{ hendelse: "", data: "uten mellomrom" }]);
   assert.deepEqual(del("id: 7\nretry: 10\nevent: bare\n\n"), []);
   assert.deepEqual(del("data: [DONE]\n\n"), [{ hendelse: "", data: "[DONE]" }]);
-  // En ramme uten avsluttende blank linje er ikke sendt, og forkastes.
   assert.deepEqual(del("data: halv\n"), []);
 });
 
@@ -54,15 +53,11 @@ test("Anthropic-strøm settes sammen til nøyaktig et ikke-strømmet svar", () =
   assert.deepEqual(s.svar(), {
     id: "msg_1", type: "message", role: "assistant", model: "claude-opus-5-5",
     content: [{ type: "text", text: tekst }], stop_reason: "end_turn", stop_sequence: null,
-    // Tellingen er kumulativ og settes: 1 + 42 ville vært feil.
     usage: { input_tokens: 31, output_tokens: 42 }
   });
 });
 
 test("tenkeblokker foran svaret når verken forhåndsvisningen eller teksten", () => {
-  /* Opus 5.5 tenker alltid, og svaret begynner med en thinking-blokk.
-     Den er tom som standard, men heller ikke en oppsummert tanke skal
-     vises som brev eller tolkes som JSON. */
   const s = lagSvarsamler("anthropic");
   const del = delSse();
   const tekst = "{\"tekst\":\"Et brev.\"}";
@@ -164,11 +159,8 @@ test("feltstrømmen tåler escape, \\uXXXX og surrogatpar delt mellom biter", ()
   assert.equal(delt('{"tekst":"a\\', '"b"}'), 'a"b');
   assert.equal(delt('{"tekst":"a\\u00', 'e5b"}'), "aåb");
   assert.equal(delt('{"tekst":"a\\u', '00e5b"}'), "aåb");
-  // Surrogatpar som escape, delt midt i paret.
   assert.equal(delt('{"tekst":"\\ud83d', '\\ude00"}'), "\u{1f600}");
-  // Surrogatpar som rå tegn, delt midt i paret.
   assert.equal(delt('{"tekst":"\u{1f600}'.slice(0, -1), "\u{1f600}".slice(1) + '"}'), "\u{1f600}");
-  // Et ensomt høyt surrogat holdes tilbake i stedet for å vises som erstatningstegn.
   const ensom = lagFeltstrøm("tekst");
   assert.equal(ensom.ta('{"tekst":"a\\ud83d'), "a");
   assert.equal(ensom.ferdig, false);

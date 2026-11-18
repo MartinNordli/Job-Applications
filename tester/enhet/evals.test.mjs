@@ -6,10 +6,6 @@ import { validerGrunnlag, STILEKSEMPLER } from "../../src/brev/brevlogikk.mjs";
 import { dollar, medModell, fordel, blindfil, PRISER } from "../../evals/sammenligning.mjs";
 import { byggModellkropp, modellFor } from "../../src/modell/brev-provider.mjs";
 
-/* Evalueringen kjøres sjelden og koster penger. Disse testene sørger for
-   at den er brukbar når den først kjøres: tilfellene er gyldige, og de
-   automatiske sjekkene gjør det de sier. */
-
 test("tilfellene er gyldige, unike og dekker bokmål, nynorsk og engelsk",()=>{
   assert.ok(tilfeller.length>=20);
   assert.equal(new Set(tilfeller.map(t=>t.id)).size,tilfeller.length);
@@ -50,7 +46,6 @@ test("sjekkene fanger språk, lengde, avsnitt, hilsen, kontaktperson, lån og fo
   assert.match(sjekkBrev(tilfelle,{...brev,tekst:brev.tekst.replace("Jeg vil gjerne bidra","Jeg brenner for å bidra")}).join(" "),/tomme fraser/);
 });
 
-/* ---------- modellsammenligningen ---------- */
 test("sammenligningen bytter bare modell og innsats, og resten av kroppen er byte for byte lik",async()=>{
   const kropp=byggModellkropp({leverandor:"anthropic",system:"Regler.",kilder:"{\"kilder\":{}}",innhold:"{}",skjema:{type:"object"},trinn:"skriv"});
   let sendt;
@@ -64,7 +59,6 @@ test("sammenligningen bytter bare modell og innsats, og resten av kroppen er byt
   assert.throws(()=>medModell("claude-opus-5","maks"),/Innsatsen/);
 });
 test("kostnaden regnes av alle fire tellingene, og er ukjent uten pris",()=>{
-  // Én million av hver: inn 4 + ut 20 + skriv 5 + les 0,2 dollar for Opus 5.5.
   const mill={input_tokens:1e6,output_tokens:1e6,cache_creation_input_tokens:1e6,cache_read_input_tokens:1e6};
   assert.ok(Math.abs(dollar([mill,null],"claude-opus-5-5")-29.2)<1e-9);
   assert.ok(Math.abs(dollar(mill,"claude-opus-5")-36.75)<1e-9);

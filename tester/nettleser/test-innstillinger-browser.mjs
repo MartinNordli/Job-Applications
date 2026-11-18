@@ -1,7 +1,3 @@
-/* Innstillingene i en ekte nettleser: alle fargetemaene og fristvarselet.
-   Isolert datakatalog, syntetisk konto, og nettleserens Notification
-   byttet ut med et opptak, så testen ser hva som ville blitt vist.
-   Skjermbildene av hvert tema blir liggende i arbeidskatalogen. */
 import { chromium } from "playwright";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -19,7 +15,6 @@ const omDager = n => { const d = new Date(); d.setDate(d.getDate() + n); return 
 const jobb = (id, selskap, frist) => ({ id, selskap, stilling: "ML Engineer", lenke: "", sted: "Oslo",
   frist, status: "todo", sektor: "energi", jobbtype: "fulltid", notat: "", sendtDato: null });
 
-/* Bunnfargen hvert tema skal gi. System følger lys modus her. */
 const BUNN = { system: "rgb(235, 232, 225)", lys: "rgb(235, 232, 225)", mork: "rgb(22, 19, 15)",
                ink: "rgb(247, 245, 240)", blush: "rgb(251, 245, 246)", midnatt: "rgb(15, 21, 32)" };
 
@@ -53,11 +48,9 @@ try{
   await page.goto(url);
   await page.locator(".rad").first().waitFor();
 
-  /* Oppstarten sjekker fristene: med standarden varsles bare den i morgen. */
   await page.waitForFunction(() => window.__varsler.length > 0);
   assert.deepEqual(await varsler(), ["Frist i morgen: Aker BP"]);
 
-  /* ---------- temaene ---------- */
   await page.locator("#apneInnstillinger").click();
   await page.locator("#skuff.er-apen").waitFor();
   assert.equal(await page.locator("#skuffTittel").textContent(), "Innstillinger");
@@ -78,7 +71,6 @@ try{
     await page.locator("#skuff.er-apen").waitFor();
   }
 
-  /* Valget overlever en omlasting, og piltastene går mellom temaene. */
   await page.reload();
   await page.locator(".rad").first().waitFor();
   assert.equal(await page.evaluate(() => document.documentElement.dataset.tema), "midnatt");
@@ -89,14 +81,11 @@ try{
   await page.locator('label.tema:has(input[value="system"])').click();
   assert.equal(await page.evaluate(() => document.documentElement.hasAttribute("data-tema")), false);
 
-  /* ---------- fristvarselet ---------- */
   await page.waitForFunction(() => !document.querySelector("#varselPa").disabled);
   assert.equal(await page.locator("#varselPa").isChecked(), true);
   assert.equal(await page.locator("#varselDager").inputValue(), "1");
   assert.match(await page.locator("#varselHjelp").textContent(), /mens Hired er åpen/);
 
-  /* Lengre varsel fanger fristen om tre dager. Den i morgen er varslet
-     før omlastingen og kommer ikke igjen, selv om opptaket er tømt. */
   await page.locator("#varselDager").selectOption("3");
   await page.waitForFunction(() => window.__varsler.length > 0);
   assert.deepEqual(await varsler(), ["Frist om 3 dager: Equinor"]);
@@ -109,7 +98,6 @@ try{
   assert.match(await page.locator("#varselHjelp").textContent(), /Ingen varsler/);
   await page.screenshot({ path: path.join(dir, "varsel-av.png") });
 
-  /* Innstillingen står på disk og leses tilbake når panelet åpnes på nytt. */
   await page.keyboard.press("Escape");
   await page.locator("#apneInnstillinger").click();
   await page.waitForFunction(() => !document.querySelector("#varselPa").disabled);
@@ -119,7 +107,6 @@ try{
   await page.waitForFunction(() => !document.querySelector("#varselDager").disabled);
   await page.keyboard.press("Escape");
 
-  /* ---------- smal skjerm: innstillingene er et ikon i toppstripa ---------- */
   await page.setViewportSize({ width: 600, height: 820 });
   const boks = await page.locator("#apneInnstillinger").boundingBox();
   assert.ok(boks && boks.width === 44 && boks.height === 44, JSON.stringify(boks));

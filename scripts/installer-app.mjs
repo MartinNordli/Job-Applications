@@ -1,23 +1,3 @@
-/* ============================================================
-   Bygger Hired fra main og bytter ut appen i /Applications.
-
-   Appen i /Applications er den som brukes til daglig, og den skal
-   aldri ligge etter main. Dette er den ene veien dit, så det skjer
-   likt hver gang:
-
-   1. Bare fra main med et rent arbeidstre, så den installerte appen
-      er nøyaktig det som er flettet inn. --tving overstyrer.
-   2. Bygger med tauri build. Feiler bygget, står den gamle appen urørt.
-   3. Kjører appen, bes den avslutte på vanlig måte, så den rekker å
-      lagre. Den drepes aldri: svarer den ikke, avbrytes byttet.
-   4. Den nye kopieres ved siden av først og byttes inn med to rename, så
-      /Applications aldri står uten en app som virker.
-   5. Kjørte appen før, startes den igjen.
-
-   Dataene ligger i appkatalogen under ~/Library/Application Support
-   og røres ikke.
-   ============================================================ */
-
 import { spawnSync } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -30,7 +10,6 @@ const MÅL = "/Applications/Hired.app";
 const BINÆR = path.join(MÅL, "Contents/MacOS/");
 const tving = process.argv.includes("--tving");
 
-/* Rustup fra Homebrew legger cargo utenfor den vanlige PATH. */
 const PATH = ["/opt/homebrew/opt/rustup/bin", path.join(os.homedir(), ".cargo/bin"), process.env.PATH].join(":");
 
 function kjør(cmd, args, { stille = false } = {}){
@@ -53,7 +32,6 @@ const commit = kjør("git", ["log", "-1", "--format=%h %s"], { stille: true }).u
 console.log(`Bygger Hired fra ${commit}`);
 if(!kjør("npm", ["run", "app:bygg"]).ok) stopp("Bygget feilet. Appen i /Applications er ikke endret.");
 
-/* Kopien legges klar før appen lukkes, så den er borte kortest mulig. */
 const ny = MÅL + ".ny";
 const gammel = MÅL + ".forrige";
 await fs.rm(ny, { recursive: true, force: true });

@@ -11,12 +11,6 @@ import { tomCv } from "../../src/dokumenter/brevdata.mjs";
 import { tomRadar, tomeRadarinnstillinger } from "../../src/stilling/jobbdokument.mjs";
 import { leggTilFraRad } from "../../src/radar/radarlogikk.mjs";
 
-/* ============================================================
-   Radar over HTTP mot en ekte server i en midlertidig katalog, med
-   falskt nett (Greenhouse-svarene i tester/data/) og falsk modell.
-   Ingen test går ut på nettet eller til en modell.
-   ============================================================ */
-
 const full = JSON.parse(await fs.readFile(new URL("../data/radar/greenhouse/cognite-jobs-content.json", import.meta.url), "utf8"));
 const SIDE = "https://job-boards.greenhouse.io/cognite";
 const jobbRad = { id: "j1", selskap: "Eksempelbedrift", stilling: "Rådgiver", lenke: "https://example.invalid/jobb", sted: "Oslo",
@@ -56,7 +50,6 @@ async function start(t){
   return { api, registrer, utenOkt: apiFor(), modellkall, katalog, server, brukere };
 }
 
-/* Radar på, bare én karriereside som kilde. */
 async function slåPå(api){
   let r = await api("/api/radar/innstillinger", "PUT", { pa: true, kilder: { nav: { pa: false }, jobbnorge: { pa: false } } });
   assert.equal(r.status, 200);
@@ -135,7 +128,6 @@ test("«Legg til»: annonsen havner i jobbdokumentet, raden merkes, og matchen s
   assert.equal(etter.data.tilstand.antallNye, full.jobs.length - 1);
   assert.deepEqual(vurdert, ["j1"], "vanlig match kjøres for søknaden");
 
-  /* Feiler annonsen, står raden som ny, så den kan legges til igjen. */
   await assert.rejects(leggTilFraRad({ rad: etter.data.tilstand.innboks[1], jobbId: "j1",
     lagreAnnonse: async () => { throw new Error("nei"); }, marker, vurder: async () => { vurdert.push("feil"); } }));
   assert.equal(vurdert.length, 1);
@@ -201,14 +193,12 @@ test("timen kjører profiler som har Radar på og en gammel kjøring, hopper ove
   assert.equal((await dok.les("radar.json")).kjoringer.length, 1);
   assert.equal(modellkall.length, 1);
 
-  /* Ny oppstart med en fersk kjøring: ingenting skjer. */
   const igjen = startRadartimer({ brukere: server.brukere, tjeneste: server.radartjeneste, logg });
   await igjen.første;
   assert.equal((await dok.les("radar.json")).kjoringer.length, 1);
   await igjen.stopp();
   await timer.stopp();
 
-  /* Etter stopp starter ingen ny kjøring. */
   const radar = await dok.les("radar.json");
   await dok.skriv("radar.json", { ...radar, kjoringer: [] }, radar.revisjon);
   const stoppet = startRadartimer({ brukere: server.brukere, tjeneste: server.radartjeneste, logg });

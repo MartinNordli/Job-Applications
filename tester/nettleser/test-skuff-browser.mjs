@@ -1,6 +1,3 @@
-/* «Legg til søknad», «Dataene dine» og intervjutallene i en ekte nettleser.
-   Isolert datakatalog og syntetisk konto. Skjermbildene blir liggende i
-   arbeidskatalogen. */
 import { chromium } from "playwright";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -38,7 +35,6 @@ try{
   await page.goto(url);
   await page.locator(".rad").first().waitFor();
 
-  /* ---------- to veier inn, lenken først ---------- */
   await page.locator("#apneNy").click();
   await page.locator("#skuff.er-apen").waitFor();
   const faner = () => page.$$eval("#skuff [data-modus]", k => k.map(x => [x.dataset.modus, x.getAttribute("aria-selected")]));
@@ -46,7 +42,6 @@ try{
   assert.equal(await page.locator("#importLenke").count(), 1);
   assert.equal(await page.getByText("Fra notat").count(), 0);
 
-  /* ---------- bryteren står fast når skjemaet rulles ---------- */
   await page.locator('[data-modus="skjema"]').click();
   const kropp = page.locator("#skuffKropp");
   const før = await page.locator(".modus").boundingBox();
@@ -54,31 +49,26 @@ try{
   assert.ok(rullet > 0, "skjemaet må være høyere enn skuffen for at testen skal si noe");
   const etter = await page.locator(".modus").boundingBox();
   assert.equal(Math.round(etter.y), Math.round(før.y), "bryteren skal ikke rulle bort");
-  /* Feltene glir under bryteren, ikke over den. */
   const øverst = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest(".modus") !== null,
     { x: etter.x + etter.width / 2, y: etter.y + etter.height / 2 });
   assert.ok(øverst, "bryteren skal ligge øverst når skjemaet er rullet");
   await page.screenshot({ path: path.join(dir, "skjema-rullet.png") });
 
-  /* Valget huskes til neste gang skuffen åpnes. */
   await page.keyboard.press("Escape");
   await page.locator("#apneNy").click();
   await page.locator("#skuff.er-apen").waitFor();
   assert.deepEqual(await faner(), [["lenke", "false"], ["skjema", "true"]]);
   await page.keyboard.press("Escape");
 
-  /* ---------- dataene dine: tallet, annonsene og startlisten ---------- */
   await page.locator("#apneEksport").click();
   await page.locator("#skuff.er-apen").waitFor();
   assert.match(await page.locator("#skuffKropp").textContent(), /5 søknader ligger i jobber\.json/);
   assert.deepEqual(await page.$$eval("#skuffKropp button", k => k.map(x => x.dataset.gjor)), ["hentManglende", "tilbakestill"]);
-  /* Ingen av søknadene har lenke eller annonse: alle fem mangler. */
   await page.waitForFunction(() => document.querySelector("#manglendeTall")?.textContent === "(5)");
   assert.equal(await page.locator("#apiNokkel").count(), 0);
   await page.screenshot({ path: path.join(dir, "dataene-dine.png") });
   await page.keyboard.press("Escape");
 
-  /* ---------- API-nøkkelen ligger under innstillingene ---------- */
   await page.locator("#apneInnstillinger").click();
   await page.locator("#skuff.er-apen").waitFor();
   await page.waitForFunction(() => document.querySelector("#nokkelTilstand")?.textContent);
@@ -91,23 +81,19 @@ try{
   await page.screenshot({ path: path.join(dir, "innstillinger-nokkel.png") });
   await page.keyboard.press("Escape");
 
-  /* ---------- intervjuet overlever et avslag ---------- */
   await page.locator('[data-visning="sendt"]').click();
   await page.locator('.rad[data-id="sendt1"] [data-gjor="interview"]').click();
-  /* Rediger ligger bak «⋯» på raden. */
   await page.locator('.rad[data-id="sendt1"] [data-meny]').click();
   await page.locator('#radmeny [data-gjor="rediger"]').click();
   await page.locator("#skuff.er-apen").waitFor();
   assert.equal(await page.locator("#fintervju").isChecked(), true);
   await page.locator("#fStatus").selectOption("rejected");
   await page.locator("#lagreSkjema").click();
-  /* Lagringen er utsatt litt; vent til avslaget står på disk. */
   let lagret;
   for(let i = 0; i < 50 && (lagret = await påDisk("sendt1")).status !== "rejected"; i++) await page.waitForTimeout(100);
   assert.equal(lagret.status, "rejected");
   assert.equal(lagret.intervju, true);
 
-  /* Sendt: Equinor, Bekk, Statkraft, Cognite. Intervju: Equinor og Statkraft. */
   await page.locator('[data-visning="tall"]').click();
   const flis = await page.locator(".nokkel", { hasText: "Intervju" });
   assert.equal(await flis.locator(".nokkel__verdi").textContent(), "2");
