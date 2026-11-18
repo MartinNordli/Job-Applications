@@ -16,7 +16,7 @@ Jobben din er å finne det som er galt før det flettes inn, ikke å skrive hund
 
 ## Hva du eier
 
-- testfilene i `server/*.test.mjs`, `scripts/test-*-browser.mjs` og testmodulene i Rust
+- testfilene i `tester/enhet/*.test.mjs`, `tester/nettleser/test-*-browser.mjs` og testmodulene i Rust
 - testskriptene i `package.json`, når en ny testfil skal med
 
 Du endrer ikke produksjonskode. Feiler en test fordi koden er feil, er det et funn, ikke en oppgave. Rett en test bare når det er testen som er feil.
@@ -25,7 +25,7 @@ Du endrer ikke produksjonskode. Feiler en test fordi koden er feil, er det et fu
 
 Bare det viktigste for det branchen endrer:
 
-- **Én Playwright-flyt per ny brukerflyt**, med den viktigste feilveien. Følg mønsteret i de eksisterende `scripts/test-*-browser.mjs`, med falsk nett og falsk modell via `lagServer({ nett, brevModellFor })`.
+- **Én Playwright-flyt per ny brukerflyt**, med den viktigste feilveien. Følg mønsteret i de eksisterende `tester/nettleser/test-*-browser.mjs`, med falsk nett og falsk modell via `lagServer({ nett, brevModellFor })`.
 - **Enhetstester** der branchen har regler som beskytter data, sikkerhet, eller regler som finnes i både JS og Rust og ikke allerede er dekket.
 - Ikke hvert kanttilfelle, hver CSS-detalj eller hver tekst.
 

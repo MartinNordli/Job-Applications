@@ -5,9 +5,9 @@
   "scripts": {
     "prestart": "node scripts/bygg-dokumenter.mjs",
     "start": "node server/server.mjs",
-    "test": "node --test server/*.test.mjs",
+    "test": "node --test tester/enhet/*.test.mjs",
     "pretest:ui": "node scripts/bygg-dokumenter.mjs",
-    "test:ui": "node scripts/test-brev-browser.mjs && node scripts/test-innstillinger-browser.mjs && node scripts/test-skuff-browser.mjs && node scripts/test-hendelser-browser.mjs && node scripts/test-frister-browser.mjs && node scripts/test-annonse-browser.mjs && node scripts/test-panel-browser.mjs && node scripts/test-intervju-browser.mjs && node scripts/test-radar-browser.mjs && node scripts/test-radar-baand-browser.mjs && node scripts/test-radar-sveip-browser.mjs",
+    "test:ui": "node tester/nettleser/test-brev-browser.mjs && node tester/nettleser/test-innstillinger-browser.mjs && node tester/nettleser/test-skuff-browser.mjs && node tester/nettleser/test-hendelser-browser.mjs && node tester/nettleser/test-frister-browser.mjs && node tester/nettleser/test-annonse-browser.mjs && node tester/nettleser/test-panel-browser.mjs && node tester/nettleser/test-intervju-browser.mjs && node tester/nettleser/test-radar-browser.mjs && node tester/nettleser/test-radar-baand-browser.mjs && node tester/nettleser/test-radar-sveip-browser.mjs",
     "bygg:dokumenter": "node scripts/bygg-dokumenter.mjs",
     "bygg:front": "node scripts/bygg-front.mjs",
     "tauri": "tauri",

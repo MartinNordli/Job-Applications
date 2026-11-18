@@ -7,7 +7,7 @@ alle de andre som er avrundet.
 
 Bruk:  python3 scripts/lag-ikon.py
 Skriver src-tauri/icons/master.png (et mellomtrinn, ikke sjekket inn)
-og src/ikon.png. Kjør deretter
+og src/felles/ikon.png. Kjør deretter
 `npx tauri icon src-tauri/icons/master.png` og behold filene som
 tauri.conf.json lister.
 """
@@ -18,13 +18,13 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 ROT = Path(__file__).resolve().parent.parent
 KILDE = ROT / "src-tauri/icons/kilde.png"
 MASTER = ROT / "src-tauri/icons/master.png"
-FANEIKON = ROT / "src/ikon.png"
+FANEIKON = ROT / "src/felles/ikon.png"
 
 STR = 1024
-FLATE = 824                 # Apples mal for macOS-ikoner
+FLATE = 824
 MARG = (STR - FLATE) // 2
-RADIUS = 185                # 22,5 % av flaten, som malen
-SKALA = 4                   # tegn masken stort og skaler ned for glatte kanter
+RADIUS = 185
+SKALA = 4
 
 
 def avrundet_maske(storrelse, radius):
@@ -48,7 +48,6 @@ def main():
     master.alpha_composite(kilde, (MARG, MARG))
     master.save(MASTER)
 
-    # Fanen er for liten til margen og skyggen: der brukes flaten alene.
     kilde.resize((32, 32), Image.LANCZOS).save(FANEIKON)
 
 

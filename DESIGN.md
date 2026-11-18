@@ -286,7 +286,7 @@ components:
     size: "36px"
 ---
 
-<!-- Opphav: skrevet etter at Radar ble bygd om til «Dagens utvalg», fra koden som ble sendt (src/stiler.css, src/skrifter.css, src/radarflate.js) på feat/radar-dagens-utvalg. -->
+<!-- Opphav: skrevet etter at Radar ble bygd om til «Dagens utvalg», fra koden som ble sendt (src/felles/stiler.css, src/felles/skrifter.css, src/radar/radarflate.js) på feat/radar-dagens-utvalg. -->
 <!-- Oppdatert etter at «Dagens utvalg» ble et kort man sveiper i med en kortrekke under, fra koden som ble sendt på feat/radar-sveip. -->
 <!-- Seed: seed:3ab3da59f904a2e2, bekreftet på denne maskinen fra trekningsloggen i hovedrepoet. Hånden fra trekningen ble avvist av brukeren; retningen kom fra en idérunde på designflaten etterpå, og brukeren godkjente det finpussede forslaget («Dagens utvalg») og siden prototypen man sveiper i. -->
 <!-- Sluttgjennomgang for «Dagens utvalg»: fix. Rettelsene er lagt inn: seed-linjen i kontrakten, ordlyden om første skjermbilde i kontrakten, og grunnene i kortet fordelt over kolonner så kortet ikke har et tomt felt midt i. -->

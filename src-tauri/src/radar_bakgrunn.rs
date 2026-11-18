@@ -1,25 +1,3 @@
-/* ============================================================
-   Radar i bakgrunnen: appen startet av launchd med `--radar`.
-
-   Kjernen (src/radarlogikk.mjs) er JavaScript og kjører i et webview.
-   Derfor starter bakgrunnskjøringen samme binær som vanlig, men med et
-   skjult vindu som laster src/radar-bakgrunn.html, og ingen hovedvindu.
-   Målingene bak valgene under ligger i spike/RAPPORT.md på branchen
-   spike/radar-bakgrunn.
-
-   Rekkefølgen, og hvorfor:
-   1. main(): les radar.json for profilene og avslutt med en gang hvis
-      ingen har Radar på, eller hvis appen alt er åpen (den kjører Radar
-      selv hver time). Det koster ingen vinduer og ingen WebKit.
-   2. main(): sett aktiveringspolicyen til Prohibited før NSApplication
-      er startet. Ellers står prosessen et øyeblikk som en vanlig app
-      med Dock-ikon, og tao tar tastaturfokus med activateIgnoringOtherApps.
-   3. Det skjulte vinduet har background_throttling Disabled. Standarden
-      fra macOS 14 fryser en skjult side etter noen sekunder, også svar
-      på invoke.
-   4. Vakthunden avslutter prosessen etter ti minutter, uansett.
-   ============================================================ */
-
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -34,7 +12,7 @@ use crate::varsel;
 pub const ARGUMENT: &str = "--radar";
 pub const RADARVINDU: &str = "radar";
 pub const HOVEDVINDU: &str = "main";
-const SIDE: &str = "src/radar-bakgrunn.html";
+const SIDE: &str = "src/radar/radar-bakgrunn.html";
 const RADARFIL: &str = "radar.json";
 pub const VAKTHUNDTID: Duration = Duration::from_secs(10 * 60);
 const MAKS_LOGG: u64 = 200_000;
@@ -43,9 +21,6 @@ pub fn agentetikett() -> String {
     format!("{}.radar", varsel::IDENTIFIKATOR)
 }
 
-/// Ingen RunAtLoad: Radar skal ikke kjøre hver gang appen installerer
-/// agenten på nytt, og den åpne appen kjører Radar selv. Første kjøring
-/// kommer en time etter at agenten ble lastet.
 pub fn agentplist(exe: &Path) -> String {
     format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -71,15 +46,10 @@ pub fn agentplist(exe: &Path) -> String {
     )
 }
 
-/* ---------- valg av modus ---------- */
-
 #[derive(Debug, PartialEq)]
 pub enum Modus {
-    /// Ingen `--radar`: en vanlig oppstart med hovedvindu.
     Vanlig,
-    /// Ingenting å gjøre; avslutt uten å ha startet noe. Grunnen er til loggen.
     Avslutt(&'static str),
-    /// Kjør Radar for disse profilene.
     Radar(Vec<String>),
 }
 
@@ -87,9 +57,6 @@ pub fn er_radar(args: &[String]) -> bool {
     args.iter().any(|a| a == ARGUMENT)
 }
 
-/// Rent valg ut fra det main() har funnet. Den åpne appen går foran: den
-/// kjører Radar selv hver time, og to kjøringer samtidig skal ikke være
-/// mulig (leien i radar.json er vernet bak dette, ikke det eneste).
 pub fn velg_modus(args: &[String], profiler_med_radar: Vec<String>, annen_instans: bool) -> Modus {
     if !er_radar(args) {
         Modus::Vanlig
@@ -102,8 +69,6 @@ pub fn velg_modus(args: &[String], profiler_med_radar: Vec<String>, annen_instan
     }
 }
 
-/// Bare `innstillinger.pa === true` teller. En fil som mangler, ikke kan
-/// leses eller har en annen form, betyr at Radar er av.
 fn radar_på(rot: &Path, id: &str) -> bool {
     let Ok(dir) = crate::bruker_katalog_i(rot, Some(id)) else { return false };
     let Ok(Some(tekst)) = crate::les_i(&dir, RADARFIL) else { return false };
@@ -117,16 +82,12 @@ pub fn profiler_med_radar(rot: &Path) -> Vec<String> {
     varsel::profiler(rot).unwrap_or_default().into_iter().filter(|id| radar_på(rot, id)).collect()
 }
 
-/* ---------- main() ---------- */
-
 static PROFILER: OnceLock<Vec<String>> = OnceLock::new();
 
-/// Profilene bakgrunnskjøringen gjelder, eller None i en vanlig oppstart.
 pub fn profiler_i_kjøring() -> Option<&'static Vec<String>> {
     PROFILER.get()
 }
 
-/// Kalles først i main(). Avslutter prosessen når det ikke er noe å gjøre.
 pub fn forbered() -> Modus {
     let args: Vec<String> = std::env::args().collect();
     if !er_radar(&args) {
@@ -155,9 +116,6 @@ pub fn forbered() -> Modus {
     modus
 }
 
-/// Før NSApplication er ferdig startet. tao setter policyen først i
-/// applicationDidFinishLaunching, og da har macOS alt registrert appen som
-/// en vanlig app ut fra Info.plist (målt: 40 til 300 ms i Dock).
 #[cfg(target_os = "macos")]
 fn tidlig_bakgrunn() {
     use objc2::MainThreadMarker;
@@ -170,8 +128,6 @@ fn tidlig_bakgrunn() {
 #[cfg(not(target_os = "macos"))]
 fn tidlig_bakgrunn() {}
 
-/// launchd starter binæren direkte og ikke via LaunchServices, så en åpen
-/// app og en bakgrunnskjøring blir to prosesser med samme identitet.
 #[cfg(target_os = "macos")]
 fn annen_instans_kjører() -> bool {
     use objc2_app_kit::NSRunningApplication;
@@ -187,18 +143,11 @@ fn annen_instans_kjører() -> bool {
     false
 }
 
-/// Aktiveringspolicyen til Tauri-appen før hendelsesløkka starter. Uten
-/// den setter tao standarden Regular tilbake.
 #[cfg(target_os = "macos")]
 pub fn policy_for_bakgrunn() -> tauri::ActivationPolicy {
     tauri::ActivationPolicy::Prohibited
 }
 
-/* ---------- vakthunden ---------- */
-
-/// Henger kjøringen, avsluttes prosessen. Men har brukeren åpnet appen
-/// underveis (Dock-klikk), er prosessen blitt brukerens, og da skal
-/// vakthunden la den være.
 pub fn start_vakthund(
     etter: Duration,
     brukeren_har_overtatt: impl Fn() -> bool + Send + 'static,
@@ -221,10 +170,6 @@ pub fn brukeren_har_overtatt() -> bool {
     OVERTATT.load(Ordering::SeqCst)
 }
 
-/* ---------- loggen ---------- */
-
-/* Testene kjører vakthunden og resten av koden som skriver hit, men skal
-   aldri skrive i brukerens ekte logg. */
 fn loggfil() -> Option<PathBuf> {
     if cfg!(test) {
         return None;
@@ -236,7 +181,6 @@ fn logg_til(sti: &Path, melding: &str) {
     if let Some(dir) = sti.parent() {
         let _ = std::fs::create_dir_all(dir);
     }
-    /* Én generasjon er nok: loggen er til å se hva siste kjøringer gjorde. */
     if std::fs::metadata(sti).map(|m| m.len() > MAKS_LOGG).unwrap_or(false) {
         let _ = std::fs::rename(sti, sti.with_extension("log.1"));
     }
@@ -252,9 +196,6 @@ pub fn logg(melding: &str) {
     }
 }
 
-/* ---------- vinduene ---------- */
-
-/// Det skjulte vinduet som kjører kjernen.
 pub fn start(app: &AppHandle) -> tauri::Result<()> {
     start_vakthund(VAKTHUNDTID, brukeren_har_overtatt, || std::process::exit(3));
     WebviewWindowBuilder::new(app, RADARVINDU, WebviewUrl::App(SIDE.into()))
@@ -266,7 +207,6 @@ pub fn start(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-/// Hovedvinduet fra konfigurasjonen, der det står med `create: false`.
 pub fn lag_hovedvindu(app: &AppHandle) -> tauri::Result<()> {
     if let Some(v) = app.get_webview_window(HOVEDVINDU) {
         v.show()?;
@@ -285,8 +225,6 @@ pub fn lag_hovedvindu(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-/// Brukeren klikket på appen i Dock mens Radar kjørte. Da blir prosessen en
-/// vanlig app med et vanlig vindu; Radar-siden får fullføre.
 #[cfg(target_os = "macos")]
 pub fn ved_gjenåpning(app: &AppHandle) {
     if app.get_webview_window(HOVEDVINDU).is_some() {
@@ -300,8 +238,6 @@ pub fn ved_gjenåpning(app: &AppHandle) {
     }
 }
 
-/* ---------- kommandoene ---------- */
-
 #[tauri::command]
 pub fn radar_profiler() -> Vec<String> {
     profiler_i_kjøring().cloned().unwrap_or_default()
@@ -313,8 +249,6 @@ pub fn radar_logg(melding: String) {
     logg(&format!("side: {kort}"));
 }
 
-/// Ferdig. Er hovedvinduet åpnet underveis, lukkes bare det skjulte
-/// vinduet; ellers hadde vi tatt vinduet fra brukeren.
 #[tauri::command]
 pub fn radar_ferdig(app: AppHandle, kode: i32) {
     if app.get_webview_window(HOVEDVINDU).is_some() {
@@ -397,9 +331,9 @@ mod tester {
         .unwrap();
         profil(&r, "aaaaaaaaaaaaaaaa", Some(r#"{"innstillinger":{"pa":true}}"#));
         profil(&r, "bbbbbbbbbbbbbbbb", Some(r#"{"innstillinger":{"pa":false}}"#));
-        profil(&r, "cccccccccccccccc", None); /* aldri brukt Radar */
+        profil(&r, "cccccccccccccccc", None);
         profil(&r, "dddddddddddddddd", Some("ikke json"));
-        profil(&r, "eeeeeeeeeeeeeeee", Some(r#"{"innstillinger":{"pa":"true"}}"#)); /* feil type: av */
+        profil(&r, "eeeeeeeeeeeeeeee", Some(r#"{"innstillinger":{"pa":"true"}}"#));
         profil(&r, "ffffffffffffffff", Some(r#"{"innstillinger":{"pa":true}}"#));
 
         assert_eq!(profiler_med_radar(&r), ider(&["aaaaaaaaaaaaaaaa", "ffffffffffffffff"]));

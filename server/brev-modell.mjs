@@ -1,14 +1,10 @@
-/* Nett og profilnøkler for skriveverkstedet. Ingen rå leverandørfeil
-   forlater transporten: de kan inneholde personopplysninger eller nøkler. */
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { validerNokkel, hale } from "../src/brukerlogikk.mjs";
-import { leverandorFor, byggModellkropp, tolkModellsvar } from "../src/brev-provider.mjs";
-import { delSse, lagSvarsamler, lagFeltstrøm } from "../src/brev-strom.mjs";
+import { validerNokkel, hale } from "../src/konto/brukerlogikk.mjs";
+import { leverandorFor, byggModellkropp, tolkModellsvar } from "../src/modell/brev-provider.mjs";
+import { delSse, lagSvarsamler, lagFeltstrøm } from "../src/modell/brev-strom.mjs";
 
-/* Brevet tenker, skriver og leser gjennom i ett kall, og kan bruke
-   flere minutter. Tidsgrensen gjelder hele kallet, også strømmen. */
 const TIDSGRENSE = 300_000;
 const MAKS_SVAR = 2 * 1024 * 1024;
 
@@ -66,9 +62,6 @@ export function lagBrevModell({ katalog, tillatMiljø = false, fetch: hent = glo
     signal?.addEventListener("abort", avbrytFraBruker, { once: true });
     if(signal?.aborted) avbryt.abort();
     const timer = setTimeout(() => avbryt.abort(), TIDSGRENSE);
-    /* Forhåndsvisningen slutter i samme øyeblikk kallet er over eller avbrutt:
-       en delta som kommer etter at svaret har satt seg, ville vist tekst som
-       ikke lenger er sann. En feil i mottakeren skal heller ikke rive kallet. */
     let ferdig = false;
     const meld = typeof påDelta === "function"
       ? tekst => { if(ferdig || avbryt.signal.aborted) return; try{ påDelta(tekst); }catch{} }
@@ -87,9 +80,6 @@ export function lagBrevModell({ katalog, tillatMiljø = false, fetch: hent = glo
         if(r.status === 429) throw new BrevModellfeil("for-mange", "Leverandøren har nådd en grense. Vent litt og prøv igjen.", 429);
         throw new BrevModellfeil("modell", `Modelltjenesten svarte ${r.status}. Prøv igjen senere.`);
       }
-      /* Svaret er en SSE-strøm. Rammene settes sammen til nøyaktig samme
-         objekt et ikke-strømmet kall ga, og forhåndsvisningen dekodes ved
-         siden av. Deltaene er provisoriske og brukes aldri til resultatet. */
       const del = delSse(), samler = lagSvarsamler(leverandor);
       const feltstrøm = meld && felt ? lagFeltstrøm(felt) : null;
       const mat = bit => {
@@ -115,7 +105,6 @@ export function lagBrevModell({ katalog, tillatMiljø = false, fetch: hent = glo
         }finally{ reader.releaseLock(); }
       }else mat(await r.text());
       const raa = samler.svar();
-      // En strøm som slutter uten avsluttende hendelse er et halvt svar.
       if(!raa) throw new BrevModellfeil("modellformat", "Modellen svarte i feil format.");
       return tolkModellsvar(leverandor, raa);
     }catch(e){

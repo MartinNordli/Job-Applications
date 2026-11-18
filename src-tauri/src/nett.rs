@@ -1,19 +1,3 @@
-/* ============================================================
-   De utgående operasjonene, i appmodus: siden importen henter,
-   modellen, og JSON-en Radar henter fra kjente kilder.
-
-   Motstykket til server/nett.mjs: samme operasjoner, samme vern,
-   men utført av Rust. Reglene over dette laget ligger i
-   src/importlogikk.mjs og src/radarnett.mjs og deles med
-   nettleserversjonen. Reglene for hent_json står i begge språk, og
-   testdata/hentjson.json holder dem like.
-
-   Nøkkelen og NAV-tokenet leses her og forlater aldri Rust. Adressene
-   til modellen og til NAVs token står i koden, ikke i et argument.
-   Ellers ville en fiendtlig utlysning kunnet be oss sende nøkkelen
-   et annet sted.
-   ============================================================ */
-
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::sync::Mutex;
 use std::time::Duration;
@@ -36,10 +20,6 @@ pub struct Side {
     pub html: String,
 }
 
-/// Adresser vi aldri skal hente fra. Brukeren limer inn lenken, og
-/// appen kjører på samme maskin som datafilen: uten denne sjekken er
-/// «importer denne utlysningen» en måte å be appen lese det som ligger
-/// på loopback eller på skymetadata-adressen.
 pub fn er_intern(ip: &IpAddr) -> bool {
     match ip {
         IpAddr::V4(v4) => {
@@ -51,7 +31,6 @@ pub fn er_intern(ip: &IpAddr) -> bool {
                 || v4.is_multicast()
                 || v4.is_unspecified()
                 || v4.octets()[0] == 0
-                // operatør-NAT, 100.64.0.0/10
                 || (v4.octets()[0] == 100 && (64..=127).contains(&v4.octets()[1]))
         }
         IpAddr::V6(v6) => {
@@ -61,18 +40,12 @@ pub fn er_intern(ip: &IpAddr) -> bool {
             v6.is_loopback()
                 || v6.is_multicast()
                 || v6.is_unspecified()
-                // unike lokale adresser, fc00::/7
                 || (v6.segments()[0] & 0xfe00) == 0xfc00
-                // link-local, fe80::/10
                 || (v6.segments()[0] & 0xffc0) == 0xfe80
         }
     }
 }
 
-/// Slår opp verten og godtar den bare hvis hver eneste adresse er
-/// utvendig. Den kontrollerte adressen sendes tilbake, slik at
-/// klienten kan pinnes til den — ellers kunne oppslaget gitt ett svar
-/// til sjekken og et annet til koblingen.
 fn sjekk_vert(vert: &str, port: u16) -> Result<SocketAddr, String> {
     let treff: Vec<SocketAddr> = (vert, port)
         .to_socket_addrs()
@@ -88,8 +61,6 @@ fn sjekk_vert(vert: &str, port: u16) -> Result<SocketAddr, String> {
     Ok(treff[0])
 }
 
-/// Redirects følges for hånd. Lot vi reqwest gjøre det, ville hoppene
-/// vært usynlige for sjekken over — og det er hoppene som er hullet.
 pub async fn hent_side(url: String) -> Result<Side, String> {
     let mut na = url;
 
@@ -162,7 +133,6 @@ pub async fn hent_side(url: String) -> Result<Side, String> {
     Err("Siden sendte oss videre for mange ganger.".into())
 }
 
-/// Content-Length kan lyve; taket må gjelde det som faktisk kommer inn.
 async fn les_med_tak(mut svar: reqwest::Response) -> Result<String, String> {
     let mut biter: Vec<u8> = Vec::new();
     while let Some(bit) = svar
@@ -183,8 +153,6 @@ fn prøv_igjen(kode: u16) -> bool {
     matches!(kode, 408 | 409 | 429 | 500 | 502 | 503 | 504 | 529)
 }
 
-/// Kroppen kommer som tekst fra JavaScript; adressen og nøkkelen gjør
-/// ikke det. Nøkkelen returneres aldri, heller ikke i en feilmelding.
 pub async fn spor_modell(nokkel: String, kropp: String) -> Result<String, String> {
     let klient = reqwest::Client::builder()
         .timeout(TIDSGRENSE_MODELL)
@@ -212,8 +180,6 @@ pub async fn spor_modell(nokkel: String, kropp: String) -> Result<String, String
 
     let mut svar = send().await.map_err(feilmelding)?;
 
-    /* Ett nytt forsøk når køen er full eller noe er nede et øyeblikk.
-       Uten det må brukeren trykke selv, og betaler hentingen på nytt. */
     if prøv_igjen(svar.status().as_u16()) {
         let pause = svar
             .headers()
@@ -243,24 +209,6 @@ pub async fn spor_modell(nokkel: String, kropp: String) -> Result<String, String
     Ok(tekst)
 }
 
-/* ---------- hent JSON for Radar ---------- */
-/*
-   Samme regler som src/radarnett.mjs og lagHentJson i server/nett.mjs:
-   bare https og bare vertene under, ingen videresendinger, typen må
-   være application/json, 304 er «ingenting nytt», og over 5 MiB er en
-   feil, ikke et stille kutt. 30 s for NAV, 15 s ellers.
-
-   DNS låses som i hent_side: oppslaget sjekkes, og klienten får den
-   sjekkede adressen med .resolve(). Uten videresendinger er det ett
-   oppslag per kall.
-
-   Det offentlige NAV-tokenet holdes i minnet i prosessen. Det roterer
-   etter rundt 86 minutter uten at exp sier fra, så et 401 gir ett nytt
-   token og ett nytt forsøk. Et privat token fra nav-token.txt brukes
-   hvis filen finnes, og avvises det, sier vi fra i stedet for å bytte
-   stille til det offentlige.
-*/
-
 const MAKS_JSON: usize = 5 * 1024 * 1024;
 const MAKS_TOKEN: usize = 8 * 1024;
 const NAV_TOKENURL: &str = "https://pam-stilling-feed.nav.no/api/publicToken";
@@ -277,7 +225,6 @@ pub struct JsonSvar {
     pub sist_endret: Option<String>,
 }
 
-/// Verten hver kilde får hente fra. Ukjent kilde har ingen vert.
 pub fn vert_for(kilde: &str) -> Option<&'static str> {
     match kilde {
         "nav" => Some("pam-stilling-feed.nav.no"),
@@ -292,9 +239,6 @@ fn tidsgrense_for(kilde: &str) -> Duration {
     Duration::from_secs(if kilde == "nav" { 30 } else { 15 })
 }
 
-/// Adressen, eller en melding brukeren kan lese. Brukernavn, passord
-/// og annen port enn 443 avvises: ingen av API-ene trenger dem, og
-/// alle tre er måter å få samme vertsnavn til å bety noe annet.
 pub fn sjekk_json_adresse(url: &str, kilde: &str) -> Result<reqwest::Url, String> {
     let vert = vert_for(kilde).ok_or("Ukjent kilde.")?;
     let u = reqwest::Url::parse(url).map_err(|_| "Ugyldig adresse til kilden.".to_string())?;
@@ -310,7 +254,6 @@ pub fn sjekk_json_adresse(url: &str, kilde: &str) -> Result<reqwest::Url, String
     Ok(u)
 }
 
-/// «application/json», med eller uten parametre. Tom type avvises.
 pub fn er_json_type(type_: &str) -> bool {
     let t = type_.trim().to_ascii_lowercase();
     match t.strip_prefix("application/json") {
@@ -322,17 +265,12 @@ pub fn er_json_type(type_: &str) -> bool {
     }
 }
 
-/// ETag og Last-Modified kommer tilbake fra radar.json. Bare synlige
-/// ASCII-tegn og mellomrom, så ingenting kan bære et linjeskift inn i
-/// et hode.
 pub fn hodeverdi(v: Option<&str>, maks: usize) -> Option<String> {
     let v = v?;
     let ok = !v.is_empty() && v.len() <= maks && v.bytes().all(|b| (0x20..=0x7e).contains(&b));
     ok.then(|| v.to_owned())
 }
 
-/// Siste ikke-tomme linje, og bare hvis den har formen til en JWT.
-/// Formen er også vernet mot hodeinjeksjon i Authorization.
 pub fn tolk_nav_token(tekst: &str) -> Option<String> {
     let siste = tekst.lines().map(str::trim).filter(|l| !l.is_empty()).last()?;
     let deler: Vec<&str> = siste.split('.').collect();
@@ -372,8 +310,6 @@ async fn send_json(
     })
 }
 
-/// Taket er en feil, ikke et kutt. Content-Length kan lyve, så det
-/// telles det som faktisk kommer inn.
 async fn les_med_hardt_tak(
     mut svar: reqwest::Response,
     tak: usize,
@@ -418,10 +354,6 @@ async fn nytt_offentlig_token() -> Result<String, String> {
     Ok(token)
 }
 
-/// Innholdet i nav-token.txt. Ingen fil, eller en tom fil, er intet
-/// privat token, som for nokkel.txt. En fil med noe annet enn et token
-/// er en feil: da stopper vi heller enn å bruke et annet token enn det
-/// brukeren la der.
 pub fn privat_token(innhold: Option<String>) -> Result<Option<String>, String> {
     let Some(t) = innhold else { return Ok(None) };
     if t.trim().is_empty() {
@@ -439,7 +371,6 @@ fn lagret_token() -> Option<String> {
     OFFENTLIG_TOKEN.lock().ok().and_then(|t| t.clone())
 }
 
-/// `privat` er innholdet i nav-token.txt hvis filen finnes.
 pub async fn hent_json_med(
     url: String,
     kilde: String,
@@ -524,8 +455,6 @@ pub async fn hent_json_med(
     Ok(JsonSvar { status: 200, json, etag: ny_etag, sist_endret: ny_sist })
 }
 
-/// Kommandoen webviewet kaller. `bruker` sier hvilken profilkatalog et
-/// privat NAV-token leses fra; tokenet selv går aldri tilbake.
 #[tauri::command]
 pub async fn hent_json(
     app: AppHandle,
@@ -560,15 +489,15 @@ mod tester {
             "172.16.0.1",
             "172.31.255.254",
             "192.168.0.5",
-            "169.254.169.254", // skymetadata
+            "169.254.169.254",
             "0.0.0.0",
-            "100.64.0.1",      // operator-NAT
+            "100.64.0.1",
             "224.0.0.1",
             "::1",
             "::",
             "fe80::1",
             "fd00::1",
-            "::ffff:127.0.0.1", // IPv4 i IPv6-drakt
+            "::ffff:127.0.0.1",
             "::ffff:10.0.0.1",
         ] {
             assert!(er_intern(&ip(a)), "{a} skulle vaert avvist");
@@ -580,8 +509,8 @@ mod tester {
         for a in [
             "93.184.216.34",
             "8.8.8.8",
-            "172.32.0.1", // rett utenfor 172.16/12
-            "99.64.0.1",  // rett utenfor 100.64/10
+            "172.32.0.1",
+            "99.64.0.1",
             "2606:2800:220:1:248:1893:25c8:1946",
         ] {
             assert!(!er_intern(&ip(a)), "{a} skulle sluppet gjennom");
@@ -606,9 +535,6 @@ mod tester {
         assert!(feil.contains("internt nett"), "uventet melding: {feil}");
     }
 
-    /* De to under går ut på nettet og koster penger. De kjøres ikke av
-       `npm run test:rust` — bare med `cargo test -- --ignored`, når man
-       vil se at appmodus faktisk snakker med omverdenen. */
     #[tokio::test]
     #[ignore = "går ut på nettet"]
     async fn henter_en_ekte_side() {
@@ -642,7 +568,6 @@ mod tester {
         assert!(svar.contains("\"content\""), "uventet svar: {}", &svar[..svar.len().min(200)]);
     }
 
-    /* Samme katalog som appen bruker, uten en AppHandle å spørre. */
     fn dirs_datakatalog() -> std::path::PathBuf {
         std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default())
             .join("Library/Application Support/no.nordli.jobbsoknader")
@@ -655,11 +580,8 @@ mod tester {
         }
     }
 
-    /* ---------- hent_json ---------- */
-
-    /* Den samme filen leses av server/hentjson.test.mjs. */
     fn felles() -> serde_json::Value {
-        serde_json::from_str(include_str!("../../testdata/hentjson.json")).expect("hentjson.json er gyldig")
+        serde_json::from_str(include_str!("../../tester/data/hentjson.json")).expect("hentjson.json er gyldig")
     }
 
     #[test]
@@ -684,7 +606,7 @@ mod tester {
             let tekst = t["tekst"].as_str().unwrap();
             assert_eq!(tolk_nav_token(tekst).as_deref(), t["token"].as_str(), "{tekst:?}");
         }
-        let lagret = include_str!("../../testdata/radar/nav/publicToken.txt");
+        let lagret = include_str!("../../tester/data/radar/nav/publicToken.txt");
         assert!(tolk_nav_token(lagret).is_some_and(|t| t.starts_with("eyJ")));
     }
 

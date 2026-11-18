@@ -1,75 +1,83 @@
-# Agentene i Hired
+# AGENTS.md
 
-Denne filen beskriver hvordan arbeidet i appen deles mellom en orkestrator og fem underagenter.
-Definisjonene ligger i `.claude/agents/`, og hver av dem gjentar de felles reglene kort.
+Hired er en søknadsliste for én person.
+Den kjører som `npm start` i nettleseren og som Tauri-app på Mac, over samme data og samme regler.
+Oppbyggingen og filkartet står i README under Utvikling, og gjentas ikke her.
 
-## Orkestratoren
+## Kommandoer
 
-Orkestratoren er hovedsesjonen.
-Den skriver ikke selv funksjoner av betydning, men gjør dette:
+```sh
+npm test                                       # alle enhetstester, rundt 10 s
+node --test tester/enhet/lager.test.mjs              # én fil
+node --test --test-name-pattern="karantene" tester/enhet/lager.test.mjs
 
-1. Lager branch og worktree i `/Users/nordli/Projects/Jobbsoknader-wt/<navn>`, med `node_modules` som symlenke til hovedrepoet.
-2. Skriver en brief til agenten: målet, den delen av planen som gjelder, filene å starte i, funksjoner som kan gjenbrukes, ferdigkriterier og testnivå.
-   Agenten får bare den konteksten oppgaven trenger, ikke hele planen.
-3. Ser gjennom diffen når agenten er ferdig.
-4. Sender branchen til `tester`, og funnene tilbake til den som skrev koden, samlet i én liste.
-   Små rettelser gjør orkestratoren selv.
-5. Fletter: rebase på oppdatert `main`, `npm test && npm run test:ui && npm run test:rust`, `git merge --ff-only`, og så fjernes worktree og branch.
-   En konflikt som ikke kan løses mekanisk, går til brukeren.
-6. Oppdaterer Mac-appen med `npm run app:installer` fra `main`, så brukeren kan ta den i bruk med en gang.
-   Det gjøres etter hver fletting brukeren merker (ny funksjon eller synlig rettelse), og alltid etter den siste flettingen før arbeidet stopper.
-   Kjører `npm start` fra hovedrepoet, startes serveren på nytt når serverkoden er endret.
+npm run test:ui                                # alle nettlesertester, rundt 1 min
+node tester/nettleser/test-radar-browser.mjs            # én flyt, rundt 10 s
 
-Høyst to agenter jobber samtidig, og bare på oppgaver som ikke rører de samme filene.
-To agenter deler aldri worktree samtidig.
-Flere agenter kan jobbe etter hverandre i samme worktree når en funksjon trenger både backend og grensesnitt.
+PATH="/opt/homebrew/opt/rustup/bin:$PATH" npm run test:rust   # rundt 1 min, flere minutter første gang i en worktree
+cd src-tauri && cargo test <navn>              # et utvalg, når dist/ finnes
 
-## Rollene
+DATA_KATALOG=$(mktemp -d) PORT=<ledig port> npm start
+```
 
-| Agent | Modell | Eier | Typiske oppgaver |
-| --- | --- | --- | --- |
-| `frontend-designer` | opus | `index.html`, `src/stiler.css`, visningsfilene i `src/` (`app.js`, `detaljpanel.js`, `brevflate.js`, `annonseflate.js`, `tidslinje.js`, `radmeny.js` og lignende), `temaer/` | Nye visninger, faner og skjema, utseende, tilgjengelighet, mobilbredde |
-| `backend-developer` | sonnet | `server/`, de rene `.mjs`-modulene i `src/` (logikk, tjenester, validering, lagring), Rust-speilingen i `src-tauri/src/` av fil-, nett- og varseloperasjoner, `testdata/` | Ruter, dokumenter og datamodell, kilder og nett, regler som må være like i Node og Rust |
-| `app-plattform` | sonnet | Tauri-appens livsløp: oppstart og vinduer i `main.rs` og `lib.rs`, `tauri.conf.json`, capabilities, launchd-agenter og plist, pakking og installasjon i `/Applications` | Kjøring i bakgrunnen, skjulte webview, Dock og aktiveringsregler, alt som bare kan prøves i en pakket app |
-| `modell-og-prompt` | opus | prompter og utdataskjema, modelltabellen i `src/brev-provider.mjs`, `evals/`, hurtigbuffer, tak og kostnad | Nye modellkall, kalibrering, modellbytte, evals |
-| `tester` | sonnet | testfilene i `server/`, `scripts/test-*-browser.mjs`, testmodulene i Rust, testskriptene i `package.json` | Porten før fletting |
+Under arbeidet kjører du den filen eller flyten du rører.
+Alle tre suitene kjøres før fletting.
+Det finnes ingen linter eller formatter, så følg stilen i filen du endrer.
 
-Grensene er der for at hver agent skal kunne holde sitt område i hodet.
-Trenger en oppgave endringer på andre siden av en grense, gjør agenten sin del, og skriver i rapporten nøyaktig hva den andre siden må gjøre.
+## Oppsett i en worktree
 
-## Felles regler
+- Worktreene ligger i `/Users/nordli/Projects/Jobbsoknader-wt/<navn>`, med `node_modules` som symlenke til hovedrepoet.
+- `src/vendor/` og `dist/` er ikke sjekket inn.
+  Kjør `npm run bygg:dokumenter` før en enkelt nettlesertest, og `npm run bygg:front` før `cargo test` direkte.
+  `npm run test:ui` og `npm run test:rust` bygger selv.
+- `src-tauri/target/` er per worktree, så den første Rust-kjøringen kompilerer alt.
+- Nettlesertestene bruker installert Chrome, ellers `npx playwright install chromium`.
+- Rust-verktøyet ligger ikke på PATH i agentskallet, derav `PATH=` over.
 
-- Jobb bare i worktree-stien du har fått.
-  Ikke bytt branch, ikke flett, ikke push.
-- Rør aldri `data/` eller appkatalogen i `~/Library/Application Support/no.nordli.jobbsoknader/`, og les aldri API-nøkkelen.
-  Kjør serveren med `DATA_KATALOG=$(mktemp -d)`.
-- Rust-verktøyet ligger ikke på PATH i agentskallet. Kjør `PATH="/opt/homebrew/opt/rustup/bin:$PATH" npm run test:rust`.
-- Ingen test eller kjøring når et ekte nett eller en ekte modell, med mindre orkestratoren har sagt det, etter at brukeren har godkjent kostnaden.
-- Bokmål i kode, kommentarer, tekst i appen og commit-meldinger.
-- Aldri tankestrek (U+2014).
+## Det som koster
+
+- Ekte nett og ekte modellkall koster brukeren penger.
+  Ingen test, eval eller kjøring når dem uten at orkestratoren har sagt at brukeren har godkjent kostnaden.
+  Testene bruker falskt nett og falsk modell via `lagServer({ katalog, nett, brevModellFor })`.
+- `node evals/kjor.mjs` og `node evals/radar-kjor.mjs` er gratis.
+  Betalte evals kjøres ikke.
+- `npm run app:bygg` og `npm run app:installer` bygger en release av Mac-appen og tar lang tid.
+
+## Grenser
+
+- Rør aldri `data/` eller `~/Library/Application Support/no.nordli.jobbsoknader/`, og les aldri API-nøkkelen.
+- Repoet er offentlig.
+  Ingenting fra `data/`, `examples/` (ekte brev med navn), nøkler eller ekte søknader havner i kode, tester, evals eller commits.
+- Ingen nye avhengigheter, ingen rammeverk og ikke noe byggesteg for frontenden.
+- En regel som endres i Node og ikke i Rust, er en feil.
+  Regler som finnes begge steder, låses av en felles fil i `tester/data/`.
+- En agent jobber bare i worktreen den har fått, og bytter ikke branch, fletter ikke og pusher ikke.
+
+## Konvensjoner
+
+- Bokmål i navn, tekst i appen og commit-meldinger.
+- Ikke lag kommentarer i koden.
+- Aldri tankestrek (U+2014), heller ikke i tekst i appen.
 - En setning per linje i lange Markdown-filer.
-- Små commits underveis, når en del er ferdig og prøvd.
-  Meldingen sier hva endringen oppnår, ikke hvilke filer den rører.
-  Ingen medforfatterlinje.
+- Små commits når en del er ferdig og prøvd.
+  Meldingen sier hva endringen oppnår, og har ingen medforfatterlinje.
 - README oppdateres i samme branch når oppførselen endres.
-- Ser du en feil, en lint-advarsel eller en ustabil test som ikke er din, nevn den i rapporten.
+- En feil, en ustabil test eller noe som ser galt ut utenfor oppgaven nevnes i rapporten.
 
-## Testnivået
+## Testnivå
 
-Det testes det som beskytter brukeren, ikke hver detalj.
-
-- Enhetstester for regler som beskytter data (validering, lagring, konflikter), for sikkerhet (vertsliste, interne adresser, tak) og for regler som finnes i både JS og Rust, via en felles testfil i `testdata/`.
+- Enhetstester for regler som beskytter data, for sikkerhet og for regler som finnes i både JS og Rust.
 - Én Playwright-flyt per ny brukerflyt, med den viktigste feilveien.
-  Falsk nett og falsk modell via `lagServer({ nett, brevModellFor })`.
+- Visuelt: ett lyst og ett mørkt tema og 390 px bredde, alle fem temaene bare når nye CSS-tokens er lagt til.
 - Ikke tester for hvert kanttilfelle, hver CSS-detalj eller hver tekst.
-- Visuelt: ett lyst og ett mørkt tema, og 390 px bredde.
-  Alle fem temaene bare når nye CSS-tokens er lagt til.
 
-## Rapporten tilbake
+## Orkestrering
 
-Høyst rundt 25 linjer:
+Hovedsesjonen skriver briefer og fletter, og lar agentene i `.claude/agents/` skrive koden.
 
-- hva som er gjort, og begrunnelsen for valg som ikke er opplagte
-- commitene
-- testresultatet, med faktisk utdata hvis noe feilet
-- hva som er åpent, blokkert eller må gjøres på andre siden av en grense
+- Høyst to agenter samtidig, i hver sin worktree, på oppgaver som ikke rører de samme filene.
+- Briefen har målet, filene å starte i, ferdigkriterier og testnivå, ikke hele planen.
+- Før fletting: `tester` går gjennom branchen, rebase på `main`, alle tre suitene, `git merge --ff-only`, og så fjernes worktree og branch.
+  En konflikt som ikke kan løses mekanisk, går til brukeren.
+- Etter en fletting brukeren merker, og før arbeidet stopper: `npm run app:installer` fra `main`.
+  Kjører `npm start` fra hovedrepoet, startes den på nytt når serverkoden er endret.

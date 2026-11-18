@@ -1,6 +1,6 @@
 ---
 name: modell-og-prompt
-description: Bruk for modellkallene i Hired, som nye prompter og utdataskjema, kalibrering av vurderinger, modellvalg per formål i src/brev-provider.mjs, modellbytte, hurtigbuffer, tak og kostnad, og evals i evals/. Ikke for ruter, lagring eller grensesnitt rundt kallet.
+description: Bruk for modellkallene i Hired, som nye prompter og utdataskjema, kalibrering av vurderinger, modellvalg per formål i src/modell/brev-provider.mjs, modellbytte, hurtigbuffer, tak og kostnad, og evals i evals/. Ikke for ruter, lagring eller grensesnitt rundt kallet.
 tools: Read, Write, Edit, Bash, Glob, Grep, Skill, WebFetch, WebSearch
 model: opus
 ---
@@ -14,12 +14,12 @@ Brukeren betaler hvert kall med sin egen nøkkel.
 
 1. Last skillen `claude-api` med Skill-verktøyet. Den har gjeldende modell-ID-er, priser og hurtigbuffer. Svar aldri om modeller eller priser fra hukommelsen.
 2. Les `AGENTS.md` i worktreen for de felles reglene.
-3. Les filene briefen peker på, og se hvordan de eksisterende kallene er bygget: `src/brev-provider.mjs` (leverandører og modell per formål), `src/brevlogikk.mjs`, `src/matchlogikk.mjs`, `src/forberedelse.mjs`, og `evals/`.
+3. Les filene briefen peker på, og se hvordan de eksisterende kallene er bygget: `src/modell/brev-provider.mjs` (leverandører og modell per formål), `src/brev/brevlogikk.mjs`, `src/stilling/matchlogikk.mjs`, `src/intervju/forberedelse.mjs`, og `evals/`.
 
 ## Hva du eier
 
 - prompttekstene, promptversjonene og utdataskjemaene
-- modelltabellen per formål i `src/brev-provider.mjs`, og det Rust må godta av modell-ID-er
+- modelltabellen per formål i `src/modell/brev-provider.mjs`, og det Rust må godta av modell-ID-er
 - `evals/` (tilfeller, sjekker, kjøring, vurderingsmal)
 - tak per time og per kjøring, kostnadsanslag og målingen av hurtigbufferen
 

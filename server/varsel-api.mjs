@@ -1,24 +1,8 @@
-/* ============================================================
-   Fristvarsel over HTTP: innstillingen og runden for nettleseren.
-
-   GET  /api/varsel        → { på, dagerFør, intervju }
-   PUT  /api/varsel        ← { på, dagerFør, intervju? }  → 200 med det lagrede
-   POST /api/varsel/sjekk  → { varsler: [{ id, art, dager?, iid?, type?, tittel, tekst }] }
-
-   Sjekken fører det den returnerer i varslet.json, den samme loggen
-   Mac-appens bakgrunnsjobb bruker, så en frist varsles én gang selv
-   om både nettleseren og jobben ser den. Reglene står i
-   src/fristvarsel.mjs.
-   ============================================================ */
-
 import { INNSTILLINGSFIL, LOGGFIL, validerInnstilling, lesInnstilling,
-         lesLogg, runde, isoDato } from "../src/fristvarsel.mjs";
+         lesLogg, runde, isoDato } from "../src/soknader/fristvarsel.mjs";
 
 export const erVarselbane = bane => bane === "/api/varsel" || bane === "/api/varsel/sjekk";
 
-/* Sjekken leser loggen, regner og skriver den tilbake. To sjekker for
-   samme profil samtidig ville begge sett en logg uten varselet og
-   begge sendt det, så de går etter hverandre. */
 const køer = new Map();
 function iKø(nøkkel, fn){
   const oppgave = (køer.get(nøkkel) ?? Promise.resolve()).then(fn);
@@ -60,7 +44,6 @@ export function lagVarselRuter({ svar, lesJson, ikkeTillatt, nå = () => new Dat
       const logg = lesLogg(await lesFil(filer, LOGGFIL));
       const r = runde({ jobber: data.jobber, iDag: isoDato(tid), logg, nå: tid,
                         innstilling: lesInnstilling(await lesFil(filer, INNSTILLINGSFIL)) });
-      /* Ingenting å varsle og ingenting å rydde: filen står urørt. */
       if(r.varsler.length || Object.keys(logg).length !== Object.keys(r.logg).length)
         await filer.skrivAtomisk(LOGGFIL, JSON.stringify(r.logg, null, 2) + "\n");
       return r.varsler;

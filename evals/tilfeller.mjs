@@ -1,23 +1,3 @@
-/* ============================================================
-   Evalueringstilfeller for søknadsbrevet (brev-5).
-
-   Bare syntetiske personer, selskaper og steder. Ingen ekte CV-er,
-   brev eller annonser, og ingenting fra brukerens egne eksempler.
-   Tilfellene er også holdt atskilt fra promptens stileksempler:
-   ingen av særordene deres står her, så et brev som bruker dem har
-   lånt dem (se server/evals.test.mjs).
-
-   Hvert tilfelle har et grunnlag i samme form som brevtjenesten
-   lager, forventet språk og egne krav til de automatiske sjekkene:
-   ord (fra og med, til og med), avsnitt (innholdsavsnitt mellom
-   hilsen og avslutning), kontaktperson og forbudte ord. Standarden
-   er 220 til 300 ord i fire eller fem avsnitt. Tynne grunnlag får en
-   lavere nedre grense, for der er et kort brev riktig, og en
-   ordgrense i annonsen erstatter standarden.
-   vurderingspunkter er fasit for den menneskelige vurderingen og
-   sendes aldri til modellen.
-   ============================================================ */
-
 export const FELLES_VURDERINGSKRITERIER = [
   "Første avsnitt nevner stillingen og selskapet, søkerens utdanning eller rolle, og én konkret grunn til å søke som står i annonsen.",
   "De to eller tre viktigste erfaringene er hver knyttet til et krav i annonsen, med hva søkeren gjorde og hva det førte til.",
@@ -147,11 +127,6 @@ export const tilfeller = [
     annonse: "Møtehuset søker arrangementskoordinator.\n" + "Arbeidet omfatter planlegging av møter, lokaler og praktisk gjennomføring.\n".repeat(150) + "Avslutt søknaden med et kort avsnitt om leverandøroppfølging.",
     jobb: jobb("Møtehuset", "Arrangementskoordinator", "Lillehammer", "Fast stilling", "Annet")
   }, { fokus: ["Kravet på slutten av annonsen skal følges, selv om annonsen er lang."] }),
-  /* De to neste ligger nær modellenes sikkerhetsfiltre (biologi og
-     IT-sikkerhet). Søknadene er helt vanlige, så en avvisning er en feil
-     ved modellen eller et modellbytte, ikke riktig oppførsel. I rapporten
-     vises den som en feil med meldingen «Modellen kunne ikke skrive et
-     brev fra dette grunnlaget.» */
   lag("22", "Fagfelt nær sikkerhetsfiltrene: biologi", {
     cv: "Live Eksempel. Master i molekylærbiologi. Tre år som laboringeniør i en virologisk forskningsgruppe ved Universitetet i Nordby: dyrket cellelinjer, kjørte PCR-analyser og hadde ansvar for kvalitetssystemet i laboratoriet. Innførte en ny prøveregistrering som halverte tiden fra prøvemottak til svar.",
     annonse: "Vaksinelab Nord lager vaksiner til fiskehelse og søker laboringeniør til kvalitetskontrollen. Du skal kjøre PCR og cellebaserte analyser og følge GMP. Erfaring fra virologi er en fordel. Vi er 40 ansatte og leverer til oppdrettsnæringen langs hele kysten.",

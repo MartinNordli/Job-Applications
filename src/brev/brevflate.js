@@ -1,0 +1,779 @@
+import * as Brev from "./brev.js";
+import * as Jobbdokumenter from "../stilling/jobbdokumenter.js";
+import * as Økt from "../konto/okt.js";
+import { eksporterBrev, lagreFil } from "./brev-dokumenter.mjs";
+import { CV_FILTYPER, cvNavn, medTekst, lesFil as lesCv, lagreCv, slettCv, påCvEndring } from "./cvflate.js";
+import { MAKS_STIL } from "../dokumenter/brevdata.mjs";
+import { FASE } from "./brevlogikk.mjs";
+import { feilmelding } from "../stilling/annonseflate.js";
+import { esc, tilIso, datoMedÅr, vert } from "../felles/formater.js";
+
+const tidspunkt = verdi => {
+  const dato = new Date(verdi);
+  return Number.isNaN(dato.getTime()) ? "" : dato.toLocaleString("nb-NO", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+};
+const tall = n => n.toLocaleString("nb-NO");
+const I_ARBEID = new Set(Object.values(FASE));
+const UFERDIG = new Set(["klar", "avbrutt", "analyserer", "venter", "skrevet", "kontrollerer"]);
+const TEKSTER = {
+  utkast: { leser: "Leser annonsen og CV-en…", skriver: "Skriver utkastet…" },
+  versjon: { leser: "Leser brevet og ønsket ditt…", skriver: "Skriver den nye versjonen…" }
+};
+const ANNONSEFEIL = new Set(["dod-lenke", "ikke-nettside", "henting", "tom-annonse", "ikke-annonse", "for-lang"]);
+const NØKKELFEIL = new Set(["mangler-nokkel", "nokkel"]);
+const kanHentes = lenke => /^https?:\/\//i.test(lenke);
+const GJENOPPRETTBAR = ["odelagt", "gjenoppretting", "versjon"];
+
+export function åpneBrevflate({ jobb: førsteJobb, navn = "", kropp, bunn, ktx = {}, påLukk,
+  åpneFane = () => {}, settDokument = () => {}, lastDokument = () => {} }) {
+  const liv = new AbortController();
+  const profil = Økt.nåværendeBruker()?.id;
+  const leverandørnøkkel = profil ? `jobbsoknader-brev-leverandor-${profil}` : null;
+  const huskLeverandør = verdi => { try { if (leverandørnøkkel) localStorage.setItem(leverandørnøkkel, verdi); } catch {} };
+  const husketLeverandør = () => { try { return leverandørnøkkel && localStorage.getItem(leverandørnøkkel) === "openai" ? "openai" : "anthropic"; } catch { return "anthropic"; } };
+  const id = førsteJobb.id;
+  let k = { ...ktx, jobb: ktx.jobb || førsteJobb };
+  const jobb = () => k.jobb;
+  let dokument = null, cv = null, aktiv = true, opptatt = false, blokkert = false;
+  let endring = 0, lagret = 0, cvEndring = 0, cvLagret = 0, lagring = null, ventetid;
+  let forespørsel = null, arbeidsnr = 0, modellarbeid = false;
+  let gjenoppretting = null, arbeid = null, uferdig = null;
+  let annonseHenter = false, annonseTilBrev = false, annonseFokus = false;
+  let stil = null, stilEndret = false, stilLastes = null;
+  let hensikt = ["cv", "nokkel"].includes(ktx.hensikt) ? ktx.hensikt : null;
+  function brukHensikt() {
+    if (!hensikt || !dokument || !aktiv) return;
+    const h = hensikt; hensikt = null;
+    if (h === "cv") visCvTekst(true);
+    else visInnstillinger(true, "nøkkel");
+  }
+  const finn = velger => kropp.querySelector(velger) || bunn.querySelector(velger);
+  const lytt = (element, type, funksjon) => element.addEventListener(type, funksjon, { signal: liv.signal });
+
+  kropp.classList.add("skuff__kropp--brev");
+  bunn.classList.add("skuff__bunn--brev");
+  kropp.innerHTML = `
+    <div class="brev__statusrad" id="brevFremdrift" data-fase="hvile">
+      <p class="brev__tilbakemelding" role="status" aria-live="polite"><span id="brevStatus">Henter grunnlaget…</span></p>
+      <span class="brev__tid" id="brevTid" aria-hidden="true" hidden></span>
+      <button class="knapp knapp--stille brev__statusknapp" type="button" data-brev="skrivIgjen" hidden>Skriv på nytt</button>
+      <button class="knapp knapp--stille brev__statusknapp" type="button" data-brev="stopp" hidden>Avbryt</button>
+    </div>
+    <div class="brev__feil" id="brevFeil" role="alert" hidden></div>
+    <div class="brev__gjenoppretting" id="brevGjenoppretting" hidden><button class="knapp" type="button" data-brev="gjenopprett">Gjenopprett forrige lagring</button><p class="felt__hjelp">Den forrige lokale sikkerhetskopien brukes. Originalfilen blir bevart.</p></div>
+    <div class="brev__lukkevalg" id="brevLukkevalg" hidden><p>Endringene er ikke lagret. Prøv igjen, eller kopier brevet før du lukker.</p><div class="brev__småhandlinger"><button class="knapp" type="button" data-brev="prøv">Prøv å lagre</button><button class="knapp" type="button" data-brev="hentLagret">Hent lagret versjon</button><button class="knapp knapp--fare" type="button" data-brev="forkast">Lukk uten å lagre</button></div></div>
+    <div class="brev" data-panel="kilder" aria-busy="true">
+      <section class="brev__kilder" id="brevGrunnlag" aria-label="Grunnlaget for brevet">
+        <div class="brev__kilde" id="brevCvRad">
+          <span class="brev__kildenavn">CV</span>
+          <span class="brev__kildeverdi" id="brevCvNavn">Henter…</span>
+          <span class="brev__kildehandlinger">
+            <label class="knapp knapp--stille brev__lenkeknapp brev__filknapp er-av"><span id="brevCvFilTekst" aria-hidden="true">Velg fil</span><input id="brevCvFil" type="file" aria-label="Velg CV-fil" aria-describedby="brevCvHjelp" disabled accept="${CV_FILTYPER}"></label>
+            <button class="knapp knapp--stille brev__lenkeknapp" type="button" data-brev="cvTekst" aria-expanded="false" aria-controls="brevCvPanel" disabled>Lim inn</button>
+          </span>
+        </div>
+        <div class="brev__cvpanel" id="brevCvPanel" hidden>
+          <label class="skjult" for="brevCvTekst">CV-tekst</label>
+          <textarea class="felt__omr brev__kildetekst" id="brevCvTekst" maxlength="100000" placeholder="Lim inn teksten fra CV-en din" disabled></textarea>
+          <p class="felt__hjelp" id="brevCvHjelp">PDF, Word eller tekst. Du kan også slippe filen på CV-linjen. Skannede dokumenter må limes inn som tekst.</p>
+        </div>
+        <div class="brev__kilde" id="brevAnnonseRad">
+          <span class="brev__kildenavn">Annonse</span>
+          <span class="brev__kildeverdi" id="brevAnnonseVerdi">Henter…</span>
+          <span class="brev__kildehandlinger" id="brevAnnonseHandlinger"></span>
+        </div>
+        <div class="brev__kilde">
+          <label class="brev__kildenavn" for="brevSprak">Språk</label>
+          <span class="brev__kildeverdi"><select class="brev__velger" id="brevSprak" disabled><option value="auto">Som annonsen</option><option value="nb">Norsk bokmål</option><option value="nn">Norsk nynorsk</option><option value="en">Engelsk</option><option value="sv">Svensk</option><option value="da">Dansk</option><option value="de">Tysk</option><option value="fr">Fransk</option></select></span>
+          <span class="brev__kildehandlinger"><button class="knapp knapp--stille brev__lenkeknapp" type="button" data-brev="innstillinger" aria-expanded="false" aria-controls="brevInnstillinger">Innstillinger</button></span>
+        </div>
+        <div class="brev__kilde" id="brevNokkelvarsel" hidden>
+          <span class="brev__kildenavn">Nøkkel</span>
+          <span class="brev__kildeverdi er-tom" id="brevNokkelmangel">Mangler</span>
+          <span class="brev__kildehandlinger"><button class="knapp knapp--stille brev__lenkeknapp" type="button" data-brev="tilNøkkel">Legg til nøkkel</button></span>
+        </div>
+      </section>
+      <section class="brev__skriveflate" id="brevSkriveflate" aria-label="Søknadsbrevet">
+        <div class="brev__verktoylinje"><label class="skjult" for="brevVersjon">Brevversjon</label><select class="brev__versjon" id="brevVersjon" disabled><option>Første utkast</option></select><span class="brev__lagret" id="brevLagret" role="status" aria-live="polite"></span></div>
+        <p class="brev__endret" id="brevEndret" hidden>Grunnlaget er endret siden denne versjonen.</p>
+        <div class="brev__papir">
+          <label class="skjult" for="brevTekst">Søknadsbrevet ditt</label>
+          <textarea class="brev__tekst" id="brevTekst" maxlength="16000" spellcheck="true" disabled placeholder="Brevet vises her.\n\nIngenting skrives før du trykker Skriv utkast. Du får et utkast du kan gjøre til ditt eget."></textarea>
+          <div class="brev__strom" id="brevStrom" aria-hidden="true" hidden><span id="brevStromTekst"></span><span class="brev__markor"></span></div>
+        </div>
+        <div class="brev__forbedring" id="brevForbedring" hidden><label class="felt__merke" for="brevInstruks">Hva vil du forbedre?</label><div class="brev__forbedringsrad"><textarea class="felt__omr" id="brevInstruks" maxlength="2000" rows="1" placeholder="For eksempel: Gjør åpningen mer konkret" aria-describedby="brevInstruksHjelp"></textarea><button class="knapp" type="button" data-brev="forbedre">Lag ny versjon</button></div><p class="skjult" id="brevInstruksHjelp">Tar utgangspunkt i teksten du ser nå. Tidligere versjoner beholdes i versjonslisten.</p></div>
+      </section>
+      <section class="brev__innstillinger" id="brevInnstillinger" aria-labelledby="brevInnstillingerTittel" hidden>
+        <div class="brev__innstillingstopp"><h3 id="brevInnstillingerTittel">Innstillinger</h3><button class="knapp knapp--stille brev__lenkeknapp" type="button" data-brev="lukkInnstillinger">Lukk innstillinger</button></div>
+        <section class="brev__avsnitt brev__avsnitt--smal">
+          <label class="felt__merke" for="brevLeverandor">Skriv med</label>
+          <select class="felt__inn" id="brevLeverandor"><option value="anthropic">Claude</option><option value="openai">OpenAI</option></select>
+          <p class="felt__hjelp">Valget huskes på profilen din, og hver leverandør har sin egen nøkkel. CV-en, annonsen og stilreferansen sendes dit når et utkast skrives.</p>
+        </section>
+        <section class="brev__avsnitt">
+          <label class="felt__merke" for="brevNokkel">API-nøkkel for valgt leverandør</label>
+          <input class="felt__inn" id="brevNokkel" type="password" autocomplete="off" spellcheck="false">
+          <p class="felt__hjelp" id="brevNokkelstatus">Henter nøkkelstatus…</p>
+          <div class="brev__småhandlinger"><button class="knapp" type="button" data-brev="nøkkel">Lagre nøkkel</button><button class="knapp knapp--stille" type="button" data-brev="fjernNøkkel" hidden>Fjern nøkkel</button></div>
+        </section>
+        <section class="brev__avsnitt brev__stil">
+          <label class="felt__merke" for="brevStil">Stilreferanse</label>
+          <p class="felt__hjelp brev__stilhjelp" id="brevStilHjelp">Et søknadsbrev du har skrevet selv og er fornøyd med. Nye utkast får samme tone og form, men ingenting av innholdet brukes som fakta. Det lagres bare på denne maskinen.</p>
+          <textarea class="felt__omr brev__kildetekst" id="brevStil" maxlength="${MAKS_STIL}" aria-describedby="brevStilHjelp brevStilTeller" placeholder="Lim inn brevet her" disabled></textarea>
+          <div class="brev__stilrad"><span class="brev__lagret" id="brevStilStatus" role="status" aria-live="polite"></span><span class="brev__teller" id="brevStilTeller"></span></div>
+          <div class="brev__småhandlinger"><button class="knapp" type="button" data-brev="lagreStil" disabled>Lagre stilreferansen</button><button class="knapp knapp--stille knapp--fare" type="button" data-brev="slettStil" hidden>Slett</button></div>
+        </section>
+        <section class="brev__datahandlinger">
+          <h4>Dataene dine</h4>
+          <button class="knapp knapp--stille" type="button" data-brev="backup">Last ned sikkerhetskopi</button>
+          <label class="brev__importvalg">Gjenopprett fra sikkerhetskopi<input id="brevImporter" type="file" accept=".json,application/json"></label>
+          <p class="felt__hjelp">Sikkerhetskopien har med CV-en, stilreferansen, brevene, det som er lagret om hver søknad (annonse, vurdering og forberedelser) og Radar. API-nøkler følger ikke med.</p>
+          <button class="knapp knapp--stille knapp--fare" type="button" data-brev="slettCv">Slett CV fra profilen</button>
+          <button class="knapp knapp--stille knapp--fare" type="button" data-brev="slettBrev">Slett brevet og versjonene</button>
+        </section>
+      </section>
+    </div>`;
+  bunn.innerHTML = `<button class="knapp knapp--primar brev__generer" type="button" data-brev="skriv" aria-describedby="brevSkrivGrunn" disabled>Skriv utkast</button><span class="brev__grunn" id="brevSkrivGrunn"></span><span class="brev__ord" id="brevOrd"></span><span class="brev__kopistatus" id="brevKopistatus" role="status" aria-live="polite"></span><button class="knapp" type="button" data-brev="kopier" disabled>Kopier brev</button><details class="brev__nedlasting"><summary class="knapp knapp--primar">Last ned <span aria-hidden="true">⌄</span></summary><div class="brev__meny"><button type="button" data-brev="docx" disabled>Word (.docx)</button><button type="button" data-brev="pdf" disabled>PDF (.pdf)</button></div></details>`;
+
+  function melding(tekst = "") {
+    if (!aktiv) return;
+    const status = finn("#brevStatus");
+    if (fase === "stoppet" && status.textContent !== tekst) settFase("hvile");
+    status.textContent = tekst;
+  }
+  function feil(feilen) {
+    if (!aktiv || feilen?.name === "AbortError") return;
+    finn("#brevFeil").textContent = typeof feilen === "string" ? feilen : feilen?.melding || feilen?.message || String(feilen);
+    finn("#brevFeil").hidden = false;
+  }
+  function ryddFeil() { finn("#brevFeil").hidden = true; }
+
+  let fase = "hvile", tekster = TEKSTER.utkast, tekstKommet = false, startet = 0, ur = null;
+  function settFase(ny) { fase = ny; finn("#brevFremdrift").dataset.fase = ny; }
+  function visTid() {
+    const s = Math.floor((Date.now() - startet) / 1000);
+    finn("#brevTid").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  }
+  function startUr() { startet = Date.now(); visTid(); finn("#brevTid").hidden = false; clearInterval(ur); ur = setInterval(() => { if (aktiv) visTid(); }, 1000); }
+  function stoppUr() { clearInterval(ur); ur = null; if (aktiv) finn("#brevTid").hidden = true; }
+  function påFase({ nullstill }) {
+    if (nullstill) strømTøm();
+    const hentet = fase === "henter";
+    settFase("skriver"); tekstKommet = false;
+    melding(tekster.leser);
+    tegnAnnonse();
+    if (hentet) lastDokument();
+  }
+  function førsteTekst() { if (tekstKommet || fase !== "skriver") return; tekstKommet = true; melding(tekster.skriver); }
+
+  let strømAv = false, strømFølger = true;
+  function strømTøm() { finn("#brevStromTekst").textContent = ""; finn("#brevStrom").hidden = true; strømFølger = true; }
+  function strømSkjul() { finn("#brevStrom").hidden = true; }
+  function strømTillegg(tekst) {
+    if (strømAv || !tekst) return;
+    const flate = finn("#brevStrom");
+    if (flate.hidden) { flate.hidden = false; flate.scrollTop = 0; strømFølger = true; visPapiret(); }
+    finn("#brevStromTekst").textContent += tekst;
+    if (strømFølger) flate.scrollTop = flate.scrollHeight;
+  }
+  function visPapiret() {
+    const rulle = finn(".brev"), papir = finn(".brev__papir");
+    if (papir.getBoundingClientRect().top < rulle.getBoundingClientRect().top) papir.scrollIntoView({ block: "start" });
+  }
+  function tilpassPapir() {
+    const felt = finn("#brevTekst"), rulle = finn(".brev");
+    if (!felt || !rulle) return;
+    const topp = rulle.scrollTop;
+    felt.style.minHeight = "0px"; felt.style.height = "0px";
+    const høyde = felt.scrollHeight;
+    felt.style.height = ""; felt.style.minHeight = høyde + "px";
+    rulle.scrollTop = topp;
+  }
+  function strømOverta() { if (!finn("#brevStrom").hidden) { strømAv = true; strømSkjul(); } }
+  function lagMelder(nummer) {
+    return {
+      påFase: data => { if (nummer === arbeidsnr) påFase(data); },
+      påDelta: tekst => { if (nummer === arbeidsnr) { førsteTekst(); strømTillegg(tekst); } }
+    };
+  }
+
+  const annonsen = () => k.dok?.annonse || null;
+  const harAnnonse = () => !!annonsen()?.tekst?.trim();
+  const harCv = () => !!finn("#brevCvTekst").value.trim();
+  const lenke = () => (jobb()?.lenke || "").trim();
+  const dokVenter = () => !k.dok && !k.dokFeil;
+  const henterFørst = () => !harAnnonse() && kanHentes(lenke());
+  function skrivGrunn() {
+    if (!dokument || dokVenter()) return "";
+    const annonse = harAnnonse() || henterFørst();
+    if (!harCv() && !annonse) return "Legg til CV og annonse først";
+    if (!harCv()) return "Legg til CV-en først";
+    if (!annonse) return "Legg til annonsen først";
+    return "";
+  }
+  function skrivMerknad() {
+    if (!dokument || dokVenter() || !henterFørst()) return "";
+    const v = vert(lenke());
+    return "Annonsen hentes fra " + (v || "lenken") + " først";
+  }
+  function tegnAnnonse() {
+    if (!aktiv) return;
+    const verdi = finn("#brevAnnonseVerdi"), handlinger = finn("#brevAnnonseHandlinger");
+    const henter = annonseHenter || annonseTilBrev;
+    const av = henter || opptatt || !dokument;
+    const knapp = (hva, tekst) => `<button class="knapp knapp--stille brev__lenkeknapp" type="button" data-brev="${hva}"${av && hva !== "seAnnonse" ? " disabled" : ""}>${tekst}</button>`;
+    let tekst, html = "", mangler = false;
+    if (henter) {
+      const v = vert(lenke());
+      tekst = "Henter" + (v ? " fra " + v : "") + "…";
+      html = knapp("hentAnnonse", "Hent") + knapp("limAnnonse", "Lim inn");
+    } else if (dokVenter()) tekst = "Henter…";
+    else if (!k.dok) { tekst = "Fikk ikke lest annonsen"; mangler = true; html = knapp("seAnnonse", "Se annonsen"); }
+    else if (harAnnonse()) {
+      const dato = annonsen().hentet ? new Date(annonsen().hentet) : null;
+      tekst = "Lagret" + (dato && !Number.isNaN(dato.getTime()) ? " " + datoMedÅr(tilIso(dato), k.iDag || new Date()) : "");
+      html = knapp("seAnnonse", "Se annonsen");
+    } else {
+      tekst = "Mangler"; mangler = true;
+      html = (lenke() ? knapp("hentAnnonse", "Hent") : "") + knapp("limAnnonse", "Lim inn");
+    }
+    verdi.textContent = tekst;
+    verdi.classList.toggle("er-tom", mangler);
+    const fokusInne = handlinger.contains(document.activeElement);
+    handlinger.innerHTML = html;
+    if ((fokusInne || annonseFokus) && !henter) { annonseFokus = false; handlinger.querySelector("button:not(:disabled)")?.focus({ preventScroll: true }); }
+  }
+  function oppdaterKnapper() {
+    const tekst = finn("#brevTekst").value.trim();
+    const grunn = skrivGrunn();
+    bunn.classList.toggle("har-brev", !!tekst);
+    const skriv = finn('[data-brev="skriv"]');
+    skriv.textContent = tekst ? "Skriv nytt utkast" : "Skriv utkast";
+    skriv.classList.toggle("knapp--primar", !tekst);
+    skriv.disabled = opptatt || blokkert || !dokument || dokVenter() || !!grunn;
+    finn("#brevSkrivGrunn").textContent = opptatt ? "" : grunn || skrivMerknad();
+    const igjen = finn('[data-brev="skrivIgjen"]');
+    igjen.hidden = !uferdig || opptatt || blokkert;
+    igjen.disabled = skriv.disabled;
+    finn('[data-brev="forbedre"]').disabled = opptatt || blokkert || !dokument;
+    finn("#brevOrd").textContent = tekst ? `${tekst.split(/\s+/u).length} ord` : "";
+    ["kopier", "docx", "pdf"].forEach(handling => finn(`[data-brev="${handling}"]`).disabled = !tekst || (opptatt && handling !== "kopier"));
+    finn("#brevForbedring").hidden = !tekst;
+    tilpassPapir();
+  }
+  function settOpptatt(verdi, tekst = "") {
+    if (!aktiv) return;
+    opptatt = verdi; melding(tekst);
+    const låst = verdi || !dokument;
+    finn(".brev").setAttribute("aria-busy", String(verdi));
+    ["#brevCvFil", "#brevCvTekst", '[data-brev="cvTekst"]', "#brevSprak"].forEach(velger => finn(velger).disabled = låst);
+    finn(".brev__filknapp").classList.toggle("er-av", låst);
+    finn("#brevLeverandor").disabled = låst;
+    finn("#brevTekst").disabled = !dokument;
+    finn("#brevInstruks").disabled = verdi;
+    finn("#brevVersjon").disabled = låst || !dokument?.versjoner?.length;
+    finn('[data-brev="stopp"]').hidden = !(verdi && forespørsel) && !blokkert;
+    tegnAnnonse(); oppdaterKnapper();
+  }
+  function fyllVersjoner() {
+    const versjoner = dokument.versjoner || [];
+    finn("#brevVersjon").innerHTML = versjoner.length
+      ? [...versjoner].reverse().map((versjon, indeks) => `<option value="${esc(versjon.id)}">Versjon ${versjoner.length - indeks}${versjon.manuell ? " (din redigering)" : ""}${versjon.opprettet ? " · " + esc(tidspunkt(versjon.opprettet)) : ""}</option>`).join("")
+      : '<option value="">Første utkast</option>';
+    finn("#brevVersjon").value = dokument.aktivVersjon || "";
+    finn("#brevVersjon").disabled = opptatt || !versjoner.length;
+  }
+  function fyllDokument() {
+    const språk = dokument.sprak || "auto";
+    if (![...finn("#brevSprak").options].some(valg => valg.value === språk)) finn("#brevSprak").add(new Option(språk, språk));
+    finn("#brevSprak").value = språk;
+    finn("#brevLeverandor").value = dokument.leverandor || "anthropic";
+    finn("#brevTekst").value = dokument.tekst || "";
+    finn("#brevTekst").lang = dokument.versjoner?.find(v => v.id === dokument.aktivVersjon)?.sprak || (språk === "auto" ? "" : språk);
+    fyllVersjoner(); oppdaterKnapper();
+  }
+  function fyllCv() {
+    finn("#brevCvTekst").value = cv?.tekst || "";
+    tegnCv();
+  }
+  function tegnCv() {
+    const har = harCv(), åpen = !finn("#brevCvPanel").hidden;
+    const verdi = finn("#brevCvNavn");
+    verdi.textContent = cvNavn(cv, finn("#brevCvTekst").value);
+    verdi.classList.toggle("er-tom", !har);
+    finn("#brevCvFilTekst").textContent = har ? "Bytt fil" : "Velg fil";
+    finn('[data-brev="cvTekst"]').textContent = åpen ? "Skjul teksten" : har ? "Se teksten" : "Lim inn";
+    oppdaterKnapper();
+  }
+  function visCvTekst(åpen) {
+    finn("#brevCvPanel").hidden = !åpen;
+    finn('[data-brev="cvTekst"]').setAttribute("aria-expanded", String(åpen));
+    tegnCv();
+    if (åpen) finn("#brevCvTekst").focus();
+  }
+  const leverandørnavn = () => finn("#brevLeverandor").selectedOptions[0]?.textContent || "leverandøren";
+  function visNøkkelmangel(mangler) {
+    finn("#brevNokkelvarsel").hidden = !mangler;
+    if (mangler) finn("#brevNokkelmangel").textContent = `Mangler for ${leverandørnavn()}`;
+  }
+  async function visNøkkel() {
+    const leverandør = finn("#brevLeverandor").value;
+    finn("#brevNokkelstatus").textContent = "Henter nøkkelstatus…";
+    try {
+      const status = await Brev.nokkelStatus(leverandør);
+      if (!aktiv || leverandør !== finn("#brevLeverandor").value) return;
+      finn("#brevNokkelstatus").textContent = status.finnes ? `Nøkkel satt${status.hale ? " · ····" + status.hale : ""}` : `Legg til en API-nøkkel for å skrive med ${leverandørnavn()}.`;
+      finn('[data-brev="fjernNøkkel"]').hidden = !status.finnes;
+      visNøkkelmangel(!status.finnes);
+    } catch (e) { if (aktiv) { finn("#brevNokkelstatus").textContent = e.message || "Kunne ikke lese nøkkelstatus"; visNøkkelmangel(false); } }
+  }
+
+  function visInnstillinger(åpen, fokus = "felt") {
+    const knapp = finn('[data-brev="innstillinger"]');
+    finn(".brev").dataset.panel = åpen ? "innstillinger" : "kilder";
+    finn("#brevInnstillinger").hidden = !åpen;
+    knapp.setAttribute("aria-expanded", String(åpen));
+    if (åpen && !stil && !stilLastes) lastStil();
+    if (!åpen) knapp.focus();
+    else if (fokus === "nøkkel") finn("#brevNokkel").focus();
+    else finn("#brevLeverandor").focus();
+  }
+  function tegnStil() {
+    if (!aktiv) return;
+    const felt = finn("#brevStil");
+    felt.disabled = !stil;
+    finn("#brevStilTeller").textContent = `${tall(felt.value.length)} av ${tall(MAKS_STIL)} tegn`;
+    finn('[data-brev="lagreStil"]').disabled = !stil || !stilEndret;
+    finn('[data-brev="slettStil"]').hidden = !stil?.tekst;
+    finn("#brevStilStatus").textContent = !stil ? (stilLastes ? "Henter…" : "") : stilEndret ? "Ikke lagret" : stil.tekst ? "Lagret" : "";
+  }
+  async function lastStil() {
+    stilLastes = Brev.hentStil();
+    tegnStil();
+    try {
+      const svar = await stilLastes; if (!aktiv) return;
+      stil = svar; stilEndret = false; finn("#brevStil").value = stil.tekst || "";
+    } catch (e) {
+      if (!aktiv) return;
+      feil(e);
+      if (GJENOPPRETTBAR.includes(e.code)) { gjenoppretting = "stil"; finn("#brevGjenoppretting").hidden = false; }
+    } finally { stilLastes = null; tegnStil(); }
+  }
+  async function stilKonflikt(e) {
+    if (e?.code !== "konflikt") throw e;
+    stil = await Brev.hentStil(); if (!aktiv) return;
+    stilEndret = true; tegnStil();
+    feil("Stilreferansen ble endret i et annet vindu. Teksten din står fortsatt i feltet. Lagre igjen for å erstatte den.");
+  }
+  async function lagreStil() {
+    if (!stil || !stilEndret) return;
+    const tekst = finn("#brevStil").value;
+    finn("#brevStilStatus").textContent = "Lagrer…";
+    ryddFeil();
+    try {
+      const svar = await Brev.lagreStil({ revisjon: stil.revisjon, tekst }); if (!aktiv) return;
+      stil = svar; stilEndret = finn("#brevStil").value !== (stil.tekst || "");
+      tegnStil(); melding(tekst.trim() ? "Stilreferansen er lagret. Nye utkast skrives i samme tone." : "Stilreferansen er tømt.");
+    } catch (e) { if (!aktiv) return; tegnStil(); await stilKonflikt(e); }
+  }
+
+  function endret(erGrunnlag = false) {
+    endring++;
+    if (erGrunnlag && dokument?.tekst) finn("#brevEndret").hidden = false;
+    finn("#brevLagret").textContent = "Ikke lagret";
+    clearTimeout(ventetid);
+    if (!modellarbeid) ventetid = setTimeout(() => lagre().catch(feil), 700);
+  }
+  function lesDokument() {
+    return { ...dokument, sprak: finn("#brevSprak").value, leverandor: finn("#brevLeverandor").value, tekst: finn("#brevTekst").value };
+  }
+  async function lagre() {
+    clearTimeout(ventetid);
+    if (!aktiv || !dokument) return;
+    if (lagring) { await lagring; if (aktiv && (endring !== lagret || cvEndring !== cvLagret)) return lagre(); return; }
+    lagring = (async () => {
+      while (aktiv && (endring !== lagret || cvEndring !== cvLagret)) {
+        finn("#brevLagret").textContent = "Lagrer…";
+        if (cvEndring !== cvLagret) {
+          const mitt = cvEndring;
+          const svar = await lagreCv(medTekst(cv, finn("#brevCvTekst").value), { fra: påCv });
+          if (!aktiv) return;
+          cv = cvEndring === mitt ? svar : { ...cv, revisjon: svar.revisjon }; cvLagret = mitt;
+        }
+        if (endring !== lagret) {
+          const mitt = endring;
+          const svar = await Brev.lagreBrev(id, lesDokument());
+          if (!aktiv) return;
+          dokument = endring === mitt ? svar : { ...dokument, revisjon: svar.revisjon }; lagret = mitt;
+        }
+      }
+      if (aktiv) { finn("#brevLagret").textContent = "Lagret"; finn("#brevLukkevalg").hidden = true; }
+    })();
+    try { await lagring; }
+    catch (e) { if (aktiv) { finn("#brevLagret").textContent = "Ikke lagret"; finn("#brevLukkevalg").hidden = false; } throw e; }
+    finally { lagring = null; }
+  }
+  async function taImot(resultat) {
+    const manuelt = endring !== lagret;
+    const tekst = finn("#brevTekst").value;
+    const forrige = dokument.versjoner?.find(v => v.id === dokument.aktivVersjon);
+    dokument = resultat;
+    if (manuelt) {
+      dokument.tekst = tekst;
+      const finnes = dokument.versjoner.find(v => v.tekst === tekst);
+      if (finnes) dokument.aktivVersjon = finnes.id;
+      else if (dokument.versjoner.length < 100) {
+        const manuell = { ...forrige, id: crypto.randomUUID(), tekst, opprettet: new Date().toISOString(), manuell: true };
+        dokument.versjoner.push(manuell); dokument.aktivVersjon = manuell.id;
+      } else dokument.aktivVersjon = forrige?.id || null;
+      finn("#brevLagret").textContent = "Lagrer…";
+    } else {
+      finn("#brevTekst").value = resultat.tekst || "";
+      finn("#brevLagret").textContent = "Lagret";
+    }
+    fyllVersjoner();
+    finn("#brevTekst").lang = resultat.versjoner?.find(v => v.id === resultat.aktivVersjon)?.sprak || "";
+    oppdaterKnapper();
+    if (manuelt) await lagre();
+    return manuelt || resultat.kjoring?.nyttForslag;
+  }
+  async function ferskRevisjon() {
+    try {
+      const fersk = await Brev.hentBrev(id);
+      if (aktiv) dokument = { ...dokument, revisjon: fersk.revisjon, kjoring: fersk.kjoring, versjoner: fersk.versjoner };
+    } catch (e) { feil(e); }
+  }
+  async function lesFil(fil) {
+    if (!fil || opptatt) return;
+    settOpptatt(true, "Leser CV-en…"); ryddFeil();
+    try {
+      const lest = await lesCv(cv, fil);
+      if (!aktiv) return;
+      cv = lest; fyllCv(); cvEndring++; endret(true); await lagre(); melding("CV-en er klar. Se gjerne over teksten.");
+    } catch (e) { feil(e); }
+    finally { if (aktiv) settOpptatt(false, finn("#brevStatus").textContent === "Leser CV-en…" ? "" : finn("#brevStatus").textContent); }
+  }
+  async function avbryt() {
+    const fraStopp = document.activeElement === finn('[data-brev="stopp"]');
+    arbeidsnr++; forespørsel?.abort();
+    if (annonseTilBrev) { annonseTilBrev = false; lastDokument(); }
+    strømSkjul(); stoppUr(); settFase("hvile");
+    if (blokkert && dokument?.kjoring?.id) { try { await Brev.avbryt(id, dokument.kjoring.id); } catch (e) { if (aktiv) feil(e); } }
+    if (arbeid) await arbeid.catch(() => {});
+    if (aktiv) await ferskRevisjon();
+    blokkert = false; modellarbeid = false; forespørsel = null;
+    if (!aktiv) return;
+    finn('[data-brev="stopp"]').textContent = "Avbryt";
+    settOpptatt(false, "Skrivingen er avbrutt. Grunnlaget og tidligere brev er beholdt.");
+    if (fraStopp) finn('[data-brev="skriv"]').focus();
+  }
+  function feilMedVei({ tittel, hjelp = "" }, vei) {
+    const område = finn("#brevFeil"); område.hidden = false;
+    område.innerHTML = `<p>${esc(tittel)}</p>${hjelp ? `<p>${esc(hjelp)}</p>` : ""}<div class="brev__småhandlinger">${vei}</div>`;
+  }
+  const annonsefeil = e => feilMedVei(feilmelding(e), '<button class="knapp" type="button" data-brev="limAnnonse">Lim inn annonsen</button>');
+  function kjøringsfeil(e, fasen) {
+    if (!aktiv || e?.name === "AbortError") return;
+    const kode = e?.code;
+    if (ANNONSEFEIL.has(kode) || (fasen === "henter" && kode === "for-mange")) annonsefeil(e);
+    else if (NØKKELFEIL.has(kode)) feilMedVei({ tittel: e.melding || e.message || "Nøkkelen kunne ikke brukes." }, '<button class="knapp" type="button" data-brev="tilNøkkel">Legg til nøkkel</button>');
+    else feil(e);
+  }
+  async function kjør({ slags, kall, ferdig, stoppet, lagreFørst }) {
+    const nummer = ++arbeidsnr;
+    const henter = henterFørst(), v = vert(lenke());
+    const fraIgjen = document.activeElement === finn('[data-brev="skrivIgjen"]');
+    forespørsel = new AbortController(); modellarbeid = true; strømAv = false; uferdig = null;
+    tekster = TEKSTER[slags]; tekstKommet = false;
+    settFase(henter ? "henter" : "skriver"); startUr(); annonseTilBrev = henter;
+    settOpptatt(true, henter ? "Henter annonsen" + (v ? " fra " + v : "") + "…" : tekster.leser);
+    if (fraIgjen) finn('[data-brev="stopp"]').focus();
+    try {
+      if (lagreFørst) { await lagre(); if (!aktiv || nummer !== arbeidsnr) return false; }
+      const resultat = await kall({ signal: forespørsel.signal, ...lagMelder(nummer) });
+      if (!aktiv || nummer !== arbeidsnr) return false;
+      const beholdt = await taImot(resultat);
+      if (!aktiv || nummer !== arbeidsnr) return false;
+      strømSkjul(); settFase("hvile");
+      finn("#brevEndret").hidden = true;
+      melding(beholdt ? "Endringene dine er beholdt. Det nye forslaget ligger i versjonslisten." : ferdig);
+      return true;
+    } catch (e) {
+      if (nummer === arbeidsnr) {
+        const fasen = fase;
+        strømSkjul(); kjøringsfeil(e, fasen);
+        if (fasen === "henter") annonseTilBrev = false;
+        await ferskRevisjon();
+        melding(fasen === "henter" ? "Brevet er ikke skrevet, fordi annonsen ikke kunne hentes." : stoppet);
+        settFase("stoppet");
+      }
+      return false;
+    } finally {
+      if (nummer === arbeidsnr) {
+        modellarbeid = false; forespørsel = null; stoppUr();
+        if (aktiv) {
+          settOpptatt(false, finn("#brevStatus").textContent);
+          if (endring !== lagret) lagre().catch(feil);
+        }
+      }
+    }
+  }
+  function lagUtkast() {
+    if (opptatt) return;
+    ryddFeil();
+    const grunn = skrivGrunn(); if (grunn) { feil(grunn + "."); return; }
+    endring++;
+    return kjør({
+      slags: "utkast",
+      kall: valg => Brev.lagUtkast(id, valg),
+      ferdig: "Utkastet er klart. Les gjennom og gjør teksten til din egen.",
+      stoppet: "Skrivingen stoppet. Grunnlaget og tidligere brev er beholdt.",
+      lagreFørst: true
+    });
+  }
+  async function forbedre(ønske = "") {
+    if (opptatt) return;
+    const instruks = ønske || finn("#brevInstruks").value.trim();
+    if (!instruks) { feil("Skriv hva du vil forbedre først."); finn("#brevInstruks").focus(); return; }
+    ryddFeil();
+    const ok = await kjør({
+      slags: "versjon",
+      kall: valg => Brev.forbedre(id, instruks, valg),
+      ferdig: "En ny versjon er klar. Den forrige ligger i versjonslisten.",
+      stoppet: "Skrivingen stoppet. Teksten din er beholdt.",
+      lagreFørst: true
+    });
+    if (ok && aktiv && finn("#brevInstruks").value.trim() === instruks) finn("#brevInstruks").value = "";
+  }
+  function skrivIgjen() {
+    const k = uferdig; if (!k) return;
+    return k.instruks ? forbedre(k.instruks) : lagUtkast();
+  }
+  async function hentAnnonse() {
+    if (annonseHenter || opptatt) return;
+    annonseHenter = true; annonseFokus = true; ryddFeil(); tegnAnnonse();
+    const v = vert(lenke());
+    melding("Henter annonsen" + (v ? " fra " + v : "") + "…");
+    try {
+      const dok = await Jobbdokumenter.hentAnnonse(id);
+      if (!aktiv) return;
+      annonseHenter = false;
+      settDokument(id, dok);
+      melding("Annonsen er hentet.");
+    } catch (e) {
+      if (!aktiv) return;
+      annonseHenter = false; tegnAnnonse(); oppdaterKnapper(); melding("");
+      if (e?.code === "utlogget") return;
+      annonsefeil(e);
+    }
+  }
+  async function bekreft(tekst, handling) {
+    const område = finn("#brevFeil"); område.hidden = false;
+    område.innerHTML = `<p>${esc(tekst)}</p><div class="brev__småhandlinger"><button class="knapp knapp--fare" type="button" id="brevBekreft">Bekreft</button><button class="knapp knapp--stille" type="button" id="brevAvstå">Avbryt</button></div>`;
+    finn("#brevBekreft").onclick = async () => { ryddFeil(); try { await handling(); } catch (e) { feil(e); } };
+    finn("#brevAvstå").onclick = ryddFeil;
+    finn("#brevAvstå").focus();
+  }
+  async function handle(handling) {
+    if (handling === "stopp") return avbryt();
+    if (handling === "forkast") { rydd(); påLukk(); return; }
+    if (handling === "innstillinger") { visInnstillinger(finn(".brev").dataset.panel !== "innstillinger"); return; }
+    if (handling === "lukkInnstillinger") { visInnstillinger(false); return; }
+    if (handling === "tilNøkkel") { visInnstillinger(true, "nøkkel"); return; }
+    if (handling === "seAnnonse") { åpneFane("annonse"); return; }
+    if (handling === "limAnnonse") { åpneFane("annonse", "lim"); return; }
+    if (handling === "gjenopprett") {
+      if (!gjenoppretting) return;
+      return bekreft("Bruk forrige lokale lagring av dette dokumentet? Den uleselige originalen blir bevart.", async () => {
+        const hva = gjenoppretting;
+        if (hva === "cv") await Brev.gjenopprettCv();
+        else if (hva === "stil") await Brev.gjenopprettStil();
+        else await Brev.gjenopprettBrev(id);
+        if (!aktiv) return;
+        gjenoppretting = null; finn("#brevGjenoppretting").hidden = true;
+        if (hva === "stil") await lastStil(); else await hentGrunnlag();
+      });
+    }
+    if (handling === "lagreStil") return lagreStil();
+    if (handling === "slettStil") {
+      return bekreft("Slett stilreferansen? Nye utkast skrives da uten den. Brev du allerede har, endres ikke.", async () => {
+        try { await Brev.slettStil(stil.revisjon); } catch (e) { return stilKonflikt(e); }
+        stil = await Brev.hentStil(); if (!aktiv) return;
+        stilEndret = false; finn("#brevStil").value = stil.tekst || ""; tegnStil(); melding("Stilreferansen er slettet.");
+      });
+    }
+    if (!dokument) return;
+    if (handling === "prøv") { ryddFeil(); await lagre(); return; }
+    if (handling === "hentLagret") {
+      return bekreft("Hent den lagrede CV-en og brevet på nytt? Ulagrede endringer i denne flaten går tapt. Kopier teksten først hvis du vil beholde den.", async () => {
+        clearTimeout(ventetid);
+        const svar = await Promise.all([Brev.hentCv(), Brev.hentBrev(id)]);
+        if (!aktiv) return;
+        [cv, dokument] = svar; endring = lagret = cvEndring = cvLagret = 0;
+        fyllCv(); fyllDokument(); finn("#brevLukkevalg").hidden = true;
+        finn("#brevLagret").textContent = "Lagret"; melding("Den lagrede versjonen er hentet.");
+      });
+    }
+    if (handling === "skriv") { arbeid = lagUtkast(); return arbeid; }
+    if (handling === "skrivIgjen") { arbeid = skrivIgjen(); return arbeid; }
+    if (handling === "forbedre") { arbeid = forbedre(); return arbeid; }
+    if (opptatt && handling !== "kopier") return;
+    if (handling === "hentAnnonse") return hentAnnonse();
+    if (handling === "cvTekst") { visCvTekst(finn("#brevCvPanel").hidden); return; }
+    ryddFeil();
+    if (handling === "nøkkel") {
+      const nøkkel = finn("#brevNokkel").value.trim();
+      if (!nøkkel) { feil("Lim inn API-nøkkelen først."); finn("#brevNokkel").focus(); return; }
+      await Brev.settNokkel(finn("#brevLeverandor").value, nøkkel); if (!aktiv) return; finn("#brevNokkel").value = ""; await visNøkkel();
+    } else if (handling === "fjernNøkkel") {
+      await bekreft("Fjern API-nøkkelen for valgt leverandør?", async () => { await Brev.slettNokkel(finn("#brevLeverandor").value); if (aktiv) await visNøkkel(); });
+    } else if (handling === "kopier") {
+      const tekst = finn("#brevTekst").value;
+      try { await navigator.clipboard.writeText(tekst); if (aktiv) finn("#brevKopistatus").textContent = "Kopiert"; }
+      catch { finn("#brevTekst").focus(); finn("#brevTekst").select(); feil("Kopiering ble blokkert. Brevet er markert, så du kan kopiere med tastaturet."); }
+    } else if (handling === "pdf" || handling === "docx") {
+      await lagre(); if (!aktiv) return;
+      await eksporterBrev({ tekst: finn("#brevTekst").value, stilling: jobb().stilling, selskap: jobb().selskap, navn }, handling);
+      if (aktiv) finn(".brev__nedlasting").open = false;
+    } else if (handling === "backup") {
+      await lagre(); if (!aktiv) return;
+      if (stilEndret) { await lagreStil(); if (!aktiv) return; }
+      const data = await Brev.eksporterData(); if (!aktiv) return;
+      await lagreFil({ bytes: new TextEncoder().encode(JSON.stringify(data, null, 2)), mime: "application/json", navn: "soknadsbrev-sikkerhetskopi.json" });
+    } else if (handling === "slettCv") {
+      await bekreft("Slett CV-en fra profilen? Tidligere brev og kildegrunnlaget i versjonene blir beholdt.", async () => { await lagre(); const tom = await slettCv(cv?.revisjon, { fra: påCv }); if (!aktiv) return; cv = tom; cvEndring = cvLagret = 0; fyllCv(); melding("CV-en er slettet fra profilen."); });
+    } else if (handling === "slettBrev") {
+      await bekreft("Slett brevet og alle versjonene for denne jobben? Dette kan ikke angres. CV-en og annonsen beholdes.", async () => { await lagre(); await Brev.slettBrev(id, dokument.revisjon); if (!aktiv) return; dokument = await Brev.hentBrev(id); if (!aktiv) return; endring = lagret = 0; fyllDokument(); melding("Brevet og versjonene er slettet."); });
+    }
+  }
+  for (const område of [kropp, bunn]) lytt(område, "click", hendelse => {
+    const knapp = hendelse.target.closest("[data-brev]");
+    if (!knapp || knapp.disabled) return;
+    handle(knapp.dataset.brev).catch(feil);
+  });
+  lytt(kropp, "keydown", hendelse => {
+    if (hendelse.key !== "Escape" || hendelse.defaultPrevented || finn(".brev").dataset.panel !== "innstillinger") return;
+    hendelse.preventDefault(); visInnstillinger(false);
+  });
+  lytt(kropp, "input", hendelse => {
+    const felt = hendelse.target.id;
+    if (felt === "brevStil") { stilEndret = hendelse.target.value !== (stil?.tekst || ""); tegnStil(); return; }
+    if (!dokument || (opptatt && felt !== "brevTekst")) return;
+    if (felt === "brevCvTekst") { cvEndring++; if (!cv?.navn) cv = { ...cv, navn: "CV", format: "tekst" }; tegnCv(); endret(true); }
+    else if (felt === "brevTekst") { strømOverta(); endret(); oppdaterKnapper(); finn("#brevKopistatus").textContent = ""; }
+  });
+  lytt(finn(".brev"), "scroll", () => finn(".brev").classList.toggle("er-rullet", finn(".brev").scrollTop > 0));
+  lytt(finn("#brevTekst"), "focus", strømOverta);
+  lytt(finn("#brevStrom"), "scroll", () => {
+    const flate = finn("#brevStrom");
+    strømFølger = flate.scrollHeight - flate.scrollTop - flate.clientHeight < 24;
+  });
+  lytt(finn("#brevStrom"), "pointerdown", hendelse => { hendelse.preventDefault(); strømOverta(); finn("#brevTekst").focus(); });
+  lytt(kropp, "change", hendelse => {
+    const felt = hendelse.target.id;
+    if (felt === "brevCvFil") { lesFil(hendelse.target.files?.[0]); hendelse.target.value = ""; }
+    if (felt === "brevLeverandor" || felt === "brevSprak") { endret(true); if (felt === "brevLeverandor") { huskLeverandør(hendelse.target.value); finn("#brevNokkel").value = ""; visNøkkel(); } }
+    if (felt === "brevVersjon") {
+      const valgt = hendelse.target.value;
+      lagre().then(() => {
+        if (!aktiv) return;
+        const versjon = dokument.versjoner?.find(v => v.id === valgt); if (!versjon) return;
+        if (dokument.tekst && !dokument.versjoner.some(v => v.tekst === dokument.tekst)) {
+          if (dokument.versjoner.length >= 100) throw new Error("Historikken er full. Ta en sikkerhetskopi før du bytter versjon.");
+          const forrige = dokument.versjoner.find(v => v.id === dokument.aktivVersjon);
+          dokument.versjoner.push({ ...forrige, id: crypto.randomUUID(), tekst: dokument.tekst, opprettet: new Date().toISOString(), manuell: true });
+        }
+        dokument.aktivVersjon = valgt; finn("#brevTekst").value = versjon.tekst; finn("#brevTekst").lang = versjon.sprak || ""; endret(); oppdaterKnapper();
+        fyllVersjoner();
+      }).catch(feil);
+    }
+    if (felt === "brevImporter") {
+      const fil = hendelse.target.files?.[0]; hendelse.target.value = ""; if (!fil) return;
+      if (fil.size > 30 * 1024 * 1024) { feil("Sikkerhetskopien er for stor. Velg en JSON-fil under 30 MB."); return; }
+      fil.text().then(tekst => {
+        const data = JSON.parse(tekst); if (!aktiv) return;
+        return bekreft("Legg tilbake dokumentene fra denne sikkerhetskopien? Bare dokumenter som ikke allerede finnes, kan gjenopprettes.", async () => {
+          await lagre(); await Brev.importerData(data); if (!aktiv) return;
+          const svar = await Promise.all([Brev.hentCv(), Brev.hentBrev(id)]); if (!aktiv) return;
+          [cv, dokument] = svar; endring = lagret = cvEndring = cvLagret = 0; fyllCv(); fyllDokument();
+          stil = null; await lastStil(); lastDokument();
+          melding("Sikkerhetskopien er gjenopprettet.");
+        });
+      }).catch(e => feil(e instanceof SyntaxError ? "Filen inneholder ikke gyldig JSON." : e));
+    }
+  });
+  function påCv(ny) {
+    if (!aktiv || !dokument || cvEndring !== cvLagret) return;
+    if (dokument.tekst && (ny?.tekst || "") !== (cv?.tekst || "")) finn("#brevEndret").hidden = false;
+    cv = ny; fyllCv();
+  }
+  påCvEndring(påCv, liv.signal);
+  const slipp = finn("#brevCvRad");
+  lytt(slipp, "dragover", hendelse => { hendelse.preventDefault(); if (!opptatt && dokument) slipp.classList.add("er-over"); });
+  lytt(slipp, "dragleave", () => slipp.classList.remove("er-over"));
+  lytt(slipp, "drop", hendelse => { hendelse.preventDefault(); slipp.classList.remove("er-over"); if (!opptatt && dokument) lesFil(hendelse.dataTransfer?.files?.[0]); });
+  const førAvreise = hendelse => { if (endring !== lagret || cvEndring !== cvLagret || stilEndret) { hendelse.preventDefault(); hendelse.returnValue = ""; } };
+  window.addEventListener("beforeunload", førAvreise, { signal: liv.signal });
+  let papirbredde = 0;
+  const måler = new ResizeObserver(([måling]) => {
+    const bredde = Math.round(måling.contentRect.width);
+    if (bredde !== papirbredde) { papirbredde = bredde; tilpassPapir(); }
+  });
+  måler.observe(finn(".brev__papir"));
+  liv.signal.addEventListener("abort", () => måler.disconnect());
+
+  const avmeldØkt = Økt.påUtlogget(() => { rydd(); påLukk(); });
+  function rydd() {
+    if (!aktiv) return;
+    aktiv = false; arbeidsnr++; clearTimeout(ventetid); clearInterval(ur); forespørsel?.abort(); liv.abort(); avmeldØkt();
+    dokument = null; cv = null; stil = null;
+    kropp.replaceChildren(); bunn.replaceChildren();
+    kropp.classList.remove("skuff__kropp--brev"); bunn.classList.remove("skuff__bunn--brev", "har-brev");
+  }
+  async function lukk() {
+    if (!aktiv) return true;
+    if (forespørsel) await avbryt();
+    try {
+      await lagre();
+      if (stilEndret) { await lagreStil(); if (stilEndret) return false; }
+      rydd(); return true;
+    } catch (e) { feil(e); if (aktiv) finn("#brevLukkevalg").hidden = false; return false; }
+  }
+  function oppdater(ny) {
+    if (!aktiv) return;
+    const merke = () => harAnnonse() ? (annonsen().sjekksum || annonsen().tekst) : null;
+    const før = merke();
+    k = { ...ny, jobb: ny.jobb || k.jobb };
+    const nå = merke();
+    if (før && nå && før !== nå && dokument?.tekst) finn("#brevEndret").hidden = false;
+    if (nå || ny.dokFeil) annonseTilBrev = false;
+    tegnAnnonse(); oppdaterKnapper();
+  }
+  async function hentGrunnlag() {
+    const svar = await Promise.allSettled([Brev.hentCv(), Brev.hentBrev(id)]);
+    if (!aktiv) return;
+    const feilindeks = svar.findIndex(r => r.status === "rejected");
+    if (feilindeks >= 0) {
+      const e = svar[feilindeks].reason; feil(e); melding("Kunne ikke hente grunnlaget.");
+      if (GJENOPPRETTBAR.includes(e.code)) { gjenoppretting = feilindeks === 0 ? "cv" : "brev"; finn("#brevGjenoppretting").hidden = false; }
+      return;
+    }
+    [cv, dokument] = svar.map(r => r.value);
+    if (!dokument.revisjon) dokument.leverandor = husketLeverandør();
+    fyllCv(); fyllDokument(); settOpptatt(false);
+    brukHensikt();
+    const kjøring = dokument.kjoring;
+    if (kjøring && UFERDIG.has(kjøring.status)) {
+      uferdig = kjøring;
+      settOpptatt(false, kjøring.instruks ? "Den nye versjonen ble ikke ferdig." : "Utkastet ble ikke ferdig.");
+    } else if (kjøring && I_ARBEID.has(kjøring.status)) {
+      blokkert = true;
+      finn('[data-brev="stopp"]').textContent = "Avbryt forrige kjøring";
+      settOpptatt(false, "Et tidligere utkast er under arbeid. Avbryt det før du skriver på nytt.");
+    }
+    visNøkkel();
+  }
+  tegnAnnonse(); tegnStil();
+  hentGrunnlag().catch(feil);
+  return { lukk, rydd, oppdater, fokuser: brukHensikt };
+}

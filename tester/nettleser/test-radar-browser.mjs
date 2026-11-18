@@ -1,0 +1,167 @@
+import { chromium } from "playwright";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import assert from "node:assert/strict";
+import { lagServer } from "../../server/server.mjs";
+
+const dir = await fs.mkdtemp(path.join(os.tmpdir(), "radar-nettleser-"));
+const full = JSON.parse(await fs.readFile(new URL("../data/radar/greenhouse/cognite-jobs-content.json", import.meta.url), "utf8"));
+const SIDE = "https://job-boards.greenhouse.io/cognite";
+const CV = "Astrid Eksempel. To år med dataflyt i Python og SQL hos et kraftselskap.";
+const LAV = full.jobs.find(j => j.title.startsWith("Account Executive"));
+const nett = {
+  hentJson: async url => ({ status: 200, json: url.endsWith("/jobs") ? full : full.jobs.find(j => url.endsWith(`/${j.id}`)) }),
+  hentSide: async () => { throw new Error("Ingen nett i denne testen."); }
+};
+const kall = { forslag: 0, vurdering: 0, match: 0, annet: 0 };
+const brevModellFor = () => async valg => {
+  if(valg.trinn === "radarforslag"){
+    kall.forslag++;
+    return { data: { sokeord: ["Engineer", "Account Executive"], steder: [], ekskluder: ["lærling"] }, bruk: { input_tokens: 700, output_tokens: 30 } };
+  }
+  if(valg.formal === "vurdering"){
+    kall.match++;
+    return { data: { prosent: 78, oppsummering: "Kravene er oppfylt.", styrker: [], mangler: [], sprak: "nb" }, bruk: { input_tokens: 900, output_tokens: 60 } };
+  }
+  let annonser;
+  try{ annonser = JSON.parse(valg.innhold).annonser; }catch{}
+  if(!annonser){ kall.annet++; throw new Error("Uventet modellkall: " + valg.trinn); }
+  kall.vurdering++;
+  return { data: { vurderinger: annonser.map(a => ({ id: a.id, prosent: a.stilling === LAV.title ? 45 : 80,
+    grunner: [a.stilling === LAV.title ? "Salg, ikke dataflyt." : "Passer CV-en."] })) }, bruk: { input_tokens: 100, output_tokens: 20 } };
+};
+let nåMs = Date.now();
+const server = lagServer({ katalog: path.join(dir, "data"), nett, brevModellFor, nå: () => new Date(nåMs) });
+await new Promise(r => server.listen(0, "127.0.0.1", r));
+const url = `http://127.0.0.1:${server.address().port}`;
+
+let browser, page;
+try{
+  browser = await chromium.launch({ headless: true, ...(process.env.BROWSER_EXECUTABLE
+    ? { executablePath: process.env.BROWSER_EXECUTABLE }
+    : process.platform === "darwin" ? { executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" } : {}) });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "light" });
+  const api = context.request;
+  assert.ok((await api.post(url + "/api/registrer",
+    { data: { epost: "test@eksempel.no", navn: "Astrid Eksempel", passord: "syntetisk-passord-123" } })).ok());
+  assert.ok((await api.put(url + "/api/nokler/anthropic", { data: { nokkel: "sk-syntetisk-testnokkel-abcdefghijklmnopqrstuvwxyz" } })).ok());
+  assert.ok((await api.put(url + "/api/radar/innstillinger", { data: { pa: false, kilder: { nav: { pa: false }, jobbnorge: { pa: false } } } })).ok());
+  assert.ok((await api.post(url + "/api/radar/karrieresider", { data: { url: SIDE, navn: "Cognite" } })).ok());
+
+  const radar = async () => (await (await api.get(url + "/api/radar")).json()).tilstand;
+  const jobber = async () => (await (await api.get(url + "/api/jobber")).json()).jobber;
+  async function vent(fn, hva){
+    for(let i = 0; i < 80; i++){ const r = await fn(); if(r) return r; await page.waitForTimeout(100); }
+    throw new Error("Ventet forgjeves på " + hva);
+  }
+
+  page = await context.newPage();
+  const feil = [];
+  page.on("pageerror", e => feil.push(e.message));
+  page.on("console", m => { if(m.type() === "error" && !/404|Failed to load resource/.test(m.text())) feil.push(m.text()); });
+
+  await page.goto(url + "/");
+  await page.locator('[data-visning="radar"]').click();
+  await page.locator('[data-radar="pa"]').click();
+  await page.locator('[data-merknad="cv"]').waitFor();
+  assert.equal((await radar()).innstillinger.pa, true, "Radar er slått på");
+  await page.locator('[data-radar="tilCv"]').click();
+  await page.locator("#cvInnst").waitFor();
+  await page.locator("#cvInnstTekst").waitFor();
+  await page.locator("#cvInnstTekst").fill(CV);
+  await page.locator("#cvInnstStatus", { hasText: /^Lagret/ }).waitFor();
+  assert.equal((await (await api.get(url + "/api/cv")).json()).tekst, CV, "CV-en er lagret");
+  await page.keyboard.press("Escape");
+  await page.locator('[data-merknad="cv"]').waitFor({ state: "detached" });
+
+  await page.locator('[data-visning="radar"]').click();
+  await page.locator("#radarFane-innstillinger[aria-selected=true]").waitFor();
+  await page.locator('[data-radar="foresla"]').first().click();
+  await page.locator("#radarOrd-sokeord").locator("xpath=ancestor::*[contains(@class,'ordliste')][1]")
+    .getByText("Engineer", { exact: true }).waitFor();
+  assert.equal(kall.forslag, 1);
+  assert.deepEqual((await radar()).innstillinger.sokeord, [], "forslaget er ikke lagret");
+  await page.locator('[data-radar="lagre"]').click();
+  await vent(async () => (await radar()).innstillinger.sokeord.includes("Engineer"), "lagrede søkeord");
+  assert.deepEqual((await radar()).innstillinger.ekskluder, ["lærling"]);
+  await page.locator("#radarLagret", { hasText: /^Lagret/ }).waitFor();
+
+  nåMs += 120_000;
+  await page.locator("#radarSokNa").click();
+  await page.locator("#radarStatus", { hasText: /^\d\d:\d\d: / }).waitFor();
+  const antall = full.jobs.length, antallNye = antall - 1;
+  await page.locator("#radarFane-innboks").click();
+  await page.locator("[data-radar-id]").first().waitFor();
+  const innboks = page.locator("#radarInnboks [data-radar-id]");
+  assert.equal(await innboks.count(), antallNye);
+  assert.equal((await page.locator("#tallRadar").textContent()).trim(), String(antallNye));
+  assert.match((await page.locator("#radarStatus").textContent()).replace(/\u00a0/g, " "),
+    new RegExp(`^\\d\\d:\\d\\d: ${antall} nye stillinger, ${antall} passet søkeordene, ${antall} vurdert, ${antallNye} nådde 50 %, 1 under terskelen\\.$`));
+  assert.equal(kall.vurdering, 1);
+
+  const under = page.locator("#radarUnder");
+  assert.equal(await under.count(), 0, "bare valgt fane tegnes");
+  assert.equal((await page.locator("#radarFane-under .radar__fanetall").textContent()).trim(), "1");
+  await page.locator("#radarFane-under").click();
+  const lav = under.locator("[data-radar-id]");
+  assert.equal(await lav.count(), 1);
+  assert.match((await lav.textContent()).replace(/\u00a0/g, " "), /45 %/);
+  assert.match(await lav.textContent(), /Account Executive/);
+  const lavId = await lav.getAttribute("data-radar-id");
+
+  await page.locator("#radarFane-innboks").click();
+  const radId = await innboks.first().getAttribute("data-radar-id");
+  const rad = page.locator(`[data-radar-id="${radId}"]`);
+  const førJobber = (await jobber()).length;
+  await rad.locator('[data-radar="leggTil"]').click();
+  await page.locator("#radarFane-lagt").click();
+  await rad.locator('[data-radar="apneSoknad"]').waitFor();
+  const etter = await jobber();
+  assert.equal(etter.length, førJobber + 1, "én søknad");
+  const ny = etter.at(-1);
+  const dok = await (await api.get(`${url}/api/jobber/${ny.id}/dokument`)).json();
+  assert.equal(dok.annonse.kilde, "radar");
+  assert.ok(dok.annonse.tekst.length > 50, "annonsen ligger i jobbdokumentet");
+  assert.equal((await radar()).innboks.find(r => r.id === radId).status, "lagtTil");
+  assert.equal((await page.locator("#tallRadar").textContent()).trim(), String(antallNye - 1));
+  for(let i = 0; i < 50 && !kall.match; i++) await page.waitForTimeout(100);
+  assert.equal(kall.match, 1, "«Legg til» starter match på søknaden");
+
+  await page.locator("#radarFane-innboks").click();
+  await page.locator(".radar__tomt", { hasText: "1 stilling ble vurdert lavere" }).waitFor();
+  await page.locator("#radarFane-under").click();
+  await lav.locator('[data-radar="ikke"]').click();
+  await page.locator("#angreKnapp").waitFor();
+  assert.equal(await page.locator(`[data-radar-id="${lavId}"]`).count(), 0, "raden er ute av Under terskelen");
+  assert.ok((await radar()).under.some(r => r.id === lavId), "serveren venter med fjerningen til angrefristen er ute");
+  await page.locator("#angreKnapp").click();
+  await page.locator(`[data-radar-id="${lavId}"]`).waitFor();
+  await page.waitForFunction(id => document.activeElement?.dataset.fokus === "legg-" + id, lavId, { timeout: 2000 });
+
+  await under.locator('[data-radar="tilTerskel"]').click();
+  assert.equal(await page.evaluate(() => document.activeElement?.id), "radarTerskel");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
+  assert.equal((await page.locator("#radarTerskelVerdi").textContent()).replace(/\u00a0/g, " "), "40 %");
+  await page.locator('[data-radar="lagre"]').click();
+  await page.locator("#radarFane-innboks").click();
+  await innboks.filter({ has: page.locator('[data-radar="leggTil"]') }).first().waitFor();
+  assert.equal(await innboks.filter({ hasText: "Account Executive" }).count(), 1, "raden står i innboksen");
+  assert.equal((await page.locator("#tallRadar").textContent()).trim(), "1");
+  assert.equal((await radar()).innstillinger.terskel, 40);
+  assert.equal((await radar()).under.length, 0);
+
+  const modellFør = kall.vurdering;
+  await page.locator("#radarSokNa").click();
+  await page.locator("#radarStatus", { hasText: /sekunder/ }).waitFor();
+  assert.equal(kall.vurdering, modellFør, "ingen nytt modellkall");
+  assert.equal(kall.annet, 0, "ingen uventede modellkall");
+  assert.equal(await page.locator("[data-radar-id]").count(), antall - 1, "innboksen står som den var");
+
+  assert.deepEqual(feil, [], "ingen feil i konsollen");
+  console.log("Nettlesertest av Radar bestått. Datakatalog: " + dir);
+}finally{
+  await browser?.close();
+  await new Promise(r => server.close(r));
+}

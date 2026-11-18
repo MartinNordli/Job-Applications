@@ -1,29 +1,19 @@
 import { randomUUID } from "node:crypto";
 import { lagBrevlager } from "./brevlager.mjs";
-import { lagBrevtjeneste } from "../src/brevtjeneste.mjs";
-import { lagMatchtjeneste } from "../src/matchtjeneste.mjs";
-import { lagForberedelsetjeneste } from "../src/forberedelsetjeneste.mjs";
-import { lagJobbdokumenter } from "../src/jobbdokumenttjeneste.mjs";
-import { Brevfeil } from "../src/brevdata.mjs";
-import { FASE } from "../src/brevlogikk.mjs";
+import { lagBrevtjeneste } from "../src/brev/brevtjeneste.mjs";
+import { lagMatchtjeneste } from "../src/stilling/matchtjeneste.mjs";
+import { lagForberedelsetjeneste } from "../src/intervju/forberedelsetjeneste.mjs";
+import { lagJobbdokumenter } from "../src/stilling/jobbdokumenttjeneste.mjs";
+import { Brevfeil } from "../src/dokumenter/brevdata.mjs";
+import { FASE } from "../src/brev/brevlogikk.mjs";
 import { lagBrevModell, brevNokkelStatus, settBrevNokkel, fjernBrevNokkel } from "./brev-modell.mjs";
 import { lagRatebegrenser } from "./brukere.mjs";
-import { erId } from "../src/dokumentnavn.mjs";
+import { erId } from "../src/dokumenter/dokumentnavn.mjs";
 
-/* Henting av annonser går ut på nettet for brukeren. Samme tak som
-   importen, 30 i timen per profil, men egen teller: å hente annonsene
-   til gamle søknader skal ikke stenge for neste import. */
 const ANNONSETAK = { tak: 30, vindu: 60 * 60_000 };
-/* Hver vurdering er et modellkall som koster penger. 60 i timen rommer
-   en hel import av gamle søknader, men stopper en løkke som går løpsk. */
 const MATCHTAK = { tak: 60, vindu: 60 * 60_000 };
-/* En forberedelse er et stort kall til den dyreste modellen. 30 i timen
-   rommer en dag med intervjuer, men stopper en løkke som går løpsk. */
 const FORBEREDELSETAK = { tak: 30, vindu: 60 * 60_000 };
 
-/* Alt som går til profildokumentene. /api/jobber selv er listen og
-   hører til server.mjs; under en søknad er brev og dokument her.
-   Utdraget har egen rot, så «utdrag» aldri kan forveksles med en id. */
 export const erBrevbane = p => /^\/api\/(cv(?:\/gjenopprett)?|stil(?:\/gjenopprett)?|brevdata|nokler\/[^/]+|jobbdokumenter\/(?:utdrag|hent-manglende)|jobber\/[^/]+\/(?:brev(?:\/.*)?|dokument(?:\/gjenopprett)?|annonse(?:\/hent)?|match|intervjuer\/[^/]+\/forberedelse))$/.test(p);
 export function send(res,status,data){
   res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"});
@@ -35,11 +25,6 @@ export async function kropp(req){
   try{return b.length?JSON.parse(Buffer.concat(b).toString("utf8")):{};}
   catch{throw new Brevfeil("ugyldig","Forespørselen er ikke gyldig JSON.");}
 }
-/* Bare feil vi selv har formulert, går ut til klienten: Brevfeil, og
-   feil med et eget navn (modellfeilene). Alt annet er uventet, og en
-   filsystemfeil har den fulle stien til profilkatalogen i meldingen.
-   Den blir i serverloggen, og klienten får en kort referanse å lete
-   etter der. */
 export function offentligFeil(e){
   if(e instanceof Brevfeil) return {status:e.status||400,feil:e.code,melding:e.melding};
   if(typeof e?.navn==="string" && /^[a-z-]{1,40}$/.test(e.navn) && typeof e.message==="string")
@@ -54,16 +39,10 @@ export function objekt(v){
 }
 export function metode(req,...lov){if(!lov.includes(req.method))throw new Brevfeil("metode","Metoden er ikke tillatt.",405);}
 
-/* Trinn-endepunktet svarer alltid text/event-stream. Ingen JSON-variant og
-   ingen Accept-forhandling: to transportveier betyr to feilsemantikker som må
-   holdes korrekte for alltid, og den veien flaten ikke bruker ville råtnet i
-   akkurat de kanttilfellene der det gjør mest skade. */
 const HJERTESLAG = 15_000;
 function åpneStrøm(res){
   res.writeHead(200,{"Content-Type":"text/event-stream; charset=utf-8","Cache-Control":"no-store",
     "Connection":"keep-alive","X-Accel-Buffering":"no"});
-  // Et hjerteslag holder strømmen åpen gjennom mellomledd som ellers ville
-  // stengt en stille forbindelse midt i et modellkall på titalls sekunder.
   const slag=setInterval(()=>{if(!res.writableEnded)res.write(":\n\n");},HJERTESLAG);
   slag.unref?.();
   let avsluttet=false;
@@ -74,8 +53,6 @@ function åpneStrøm(res){
   return {
     fase:d=>skriv("fase",d),
     delta:d=>skriv("delta",d),
-    // Nøyaktig én avsluttende hendelse. En strøm som slutter uten er et
-    // transportbrudd, og klienten behandler den som frakoblet.
     slutt(hendelse,data){ skriv(hendelse,data); avsluttet=true; clearInterval(slag); if(!res.writableEnded)res.end(); }
   };
 }
@@ -88,8 +65,6 @@ export function lagBrevRuter({nett,modellFor,annonsegrense=lagRatebegrenser(ANNO
   function tjeneste(ktx){
     const {katalog,tillatMiljø,lager}=ktx;
     const nøkkel=katalog+":"+tillatMiljø;
-    /* Jobbdokumentene har hentingen og taket på den, så en annonse brevet
-       må hente, teller med i de 30 hentingene i timen. */
     if(!tjenester.has(nøkkel))tjenester.set(nøkkel,lagBrevtjeneste({
       lager:lagBrevlager(katalog),
       jobbdokumenter:jobbdokumenter(ktx),
@@ -253,10 +228,6 @@ export function lagBrevRuter({nett,modellFor,annonsegrense=lagRatebegrenser(ANNO
   };
 }
 
-/* Skilt ut fordi den har én ting å si: hodene skrives først rett før
-   tjenesten kalles, slik at metodesjekk, kroppsparsing og ukjent trinn
-   fortsatt svarer med vanlig HTTP-status og JSON. Etter det er alt en
-   hendelse i strømmen, også feil. Det finnes ett trinn, «skriv». */
 async function kjørTrinn(t,res,id,kid,inn,controller){
   if(!Object.hasOwn(FASE,inn?.trinn)) throw new Brevfeil("ugyldig","Ukjent skrivetrinn.");
   const strøm=åpneStrøm(res);

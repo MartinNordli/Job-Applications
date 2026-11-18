@@ -1,0 +1,328 @@
+import * as Økt from "./okt.js";
+
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+let el = null;
+let modus = "inn";
+let grunn = "oppstart";
+let status = null;
+let ingress = "";
+let ulagret = false;
+let løs = null;
+let hentenr = 0;
+let sperretTil = 0, ur = null;
+let feil = null;
+
+export async function krevØkt(){
+  reisPorten("oppstart");
+  const inne = await sjekk();
+  if(inne) return inne;
+  return new Promise(r => { løs = r; });
+}
+
+export function krevØktIgjen({ melding, forrigeBruker, ulagret: u } = {}){
+  ulagret = !!u;
+  ingress = melding || "Du er logget ut. Logg inn på nytt.";
+  modus = "inn";
+  status = { innlogget: false, harBrukere: true };
+  feil = null;
+  reisPorten("utlogget");
+  tegn();
+  if(forrigeBruker && forrigeBruker.epost) settVerdi("portEpost", forrigeBruker.epost);
+  fokusFørste();
+  return new Promise(r => { løs = r; });
+}
+
+export const portenStår = () => !!el && !el.hidden;
+
+function reisPorten(hvorfor){
+  grunn = hvorfor;
+  el = $("#port");
+  el.className = "port" + (hvorfor === "utlogget" ? " port--over" : "");
+  el.hidden = false;
+  baksiden(true);
+}
+
+function senkPorten(){
+  stoppUret();
+  sperretTil = 0;
+  if(el){ el.hidden = true; el.innerHTML = ""; }
+  baksiden(false);
+}
+
+function baksiden(på){
+  Array.from(document.body.children).forEach(e => {
+    if(e.id === "port") return;
+    if(på) e.setAttribute("inert", "");
+    else if(e.id === "varsel"){ if(e.classList.contains("er-apen")) e.removeAttribute("inert"); }
+    else e.removeAttribute("inert");
+  });
+}
+
+const nyKonto = () => modus === "ny";
+
+function tegn(){
+  if(!el) return;
+  const verdier = lesFeltene();
+  stoppUret();
+
+  el.innerHTML = '<div class="port__ramme">' + kroppen(verdier) + '</div>';
+
+  if(verdier) fyllFeltene(verdier);
+  if(feil && feil.teller && erSperret()){ tegnUret(); startUret(); }
+}
+
+function kroppen(verdier){
+  const merke = '<div class="merke merke--port">'
+    + '<h2 class="merke__navn" id="portTittel">Hired</h2></div>';
+
+  if(status && status.ødelagt)
+    return '<div class="port__kort">' + merke
+      + '<p class="port__ingress">' + esc(status.melding
+          || "Brukerregisteret kan ikke leses. Rett opp brukere.json før du logger inn.") + '</p>'
+      + '<p class="felt__hjelp" style="margin:0 0 18px">Filen ligger i datakatalogen. '
+      + 'Søknadene er urørt. Det er bare registeret over hvem som eier dem som er skadet.</p>'
+      + '<button class="knapp knapp--bred" type="button" data-port="påNytt">Sjekk på nytt</button>'
+      + '</div>' + foten();
+
+  if(status && status.frakoblet)
+    return '<div class="port__kort">' + merke
+      + '<p class="port__ingress">' + esc(status.melding || "Ingen kontakt med serveren.") + '</p>'
+      + '<p class="felt__hjelp" style="margin:0 0 18px">Kjør <code>npm start</code> i prosjektmappa, '
+      + 'og prøv igjen.</p>'
+      + '<button class="knapp knapp--bred" type="button" data-port="påNytt">Prøv igjen</button>'
+      + '</div>' + foten();
+
+  const ny = nyKonto();
+  const førstegang = status && status.harBrukere === false;
+
+  return '<form class="port__kort" id="portSkjema" novalidate>' + merke
+    + (ingress || førstegang
+        ? '<p class="port__ingress">'
+          + esc(ingress || "Ingen konto på denne maskinen ennå. Opprett den første.")
+          + (ulagret ? '<span class="port__ingress-2">Endringen din ligger her og skrives '
+                       + 'når du er inne igjen.</span>' : "")
+          + '</p>'
+        : "")
+    + '<div class="modus modus--port" role="tablist" aria-label="Logg inn eller opprett konto">'
+      + '<button class="modus__knapp" type="button" role="tab" data-port="inn" aria-selected="'
+        + (!ny) + '">Logg inn</button>'
+      + '<button class="modus__knapp" type="button" role="tab" data-port="ny" aria-selected="'
+        + ny + '">Opprett konto</button></div>'
+    + feilHtml()
+    + '<div class="felt"><label class="felt__merke" for="portEpost">E-post</label>'
+      + '<input class="felt__inn" id="portEpost" type="email" inputmode="email" spellcheck="false"'
+      + ' autocomplete="username" aria-describedby="portFeil" autocapitalize="off"></div>'
+    + (ny
+        ? '<div class="felt"><label class="felt__merke" for="portNavn">Navn</label>'
+          + '<input class="felt__inn" id="portNavn" type="text" autocomplete="name"'
+          + ' aria-describedby="portFeil">'
+          + '<p class="felt__hjelp">Valgfritt. Vises i sidepanelet.</p></div>'
+        : "")
+    + '<div class="felt"><label class="felt__merke" for="portPassord">Passord</label>'
+      + '<input class="felt__inn" id="portPassord" type="password" aria-describedby="portFeil"'
+      + ' autocomplete="' + (ny ? "new-password" : "current-password") + '">'
+      + (ny ? '<p class="felt__hjelp">Minst ' + Økt.MIN_PASSORD + ' tegn.</p>' : "")
+    + '</div>'
+    + '<button class="knapp knapp--primar knapp--bred" type="submit" id="portSend"'
+      + ' aria-describedby="portFeil">' + (ny ? "Opprett konto" : "Logg inn") + '</button>'
+    + '<p class="henter" id="portVenter" role="status" aria-live="polite"></p>'
+    + '</form>' + foten();
+}
+
+function foten(){
+  return '<p class="port__fot">Kontoen og søknadene ligger på denne maskinen.</p>';
+}
+
+function feilHtml(){
+  return '<p class="feil" id="portFeil"' + (feil ? "" : " hidden") + '>'
+    + (feil ? feilInnmat(feil) : "") + '</p>';
+}
+function feilInnmat(f){
+  return esc(f.melding)
+    + (f.hjelp ? '<span class="feil__felt">' + f.hjelp + '</span>' : "")
+    + (f.teller ? '<span class="feil__felt">Prøv igjen om '
+                  + '<span class="port__ur" id="portUr">–</span></span>' : "");
+}
+
+function lesFeltene(){
+  if(!$("#portEpost")) return null;
+  return {
+    epost:   $("#portEpost").value,
+    navn:    $("#portNavn") ? $("#portNavn").value : "",
+    passord: $("#portPassord") ? $("#portPassord").value : ""
+  };
+}
+function fyllFeltene(v){
+  settVerdi("portEpost", v.epost);
+  settVerdi("portNavn", v.navn);
+  settVerdi("portPassord", v.passord);
+}
+function settVerdi(id, verdi){
+  const e = $("#" + id);
+  if(e && verdi) e.value = verdi;
+}
+
+function fokusFørste(){
+  const e = $("#portEpost"), p = $("#portPassord");
+  const mål = (e && !e.value) ? e : (p || e || $("[data-port='påNytt']"));
+  if(mål) mål.focus();
+}
+
+async function sjekk(){
+  const mitt = ++hentenr;
+  const sen = setTimeout(() => {
+    if(mitt === hentenr && el && !$("#portSkjema"))
+      el.innerHTML = '<div class="port__ramme"><p class="henter port__laster">Sjekker innlogging…</p></div>';
+  }, 400);
+
+  const st = await Økt.hentØkt();
+  clearTimeout(sen);
+  if(mitt !== hentenr) return null;
+
+  if(st.innlogget){
+    senkPorten();
+    return { bruker: st.bruker, erFørste: st.erFørste };
+  }
+
+  status = st;
+  modus = st.harBrukere ? "inn" : "ny";
+  tegn();
+  fokusFørste();
+  return null;
+}
+
+function visFeil(f){
+  feil = f;
+  const e = $("#portFeil");
+  if(!e){ tegn(); return; }
+  e.innerHTML = feilInnmat(f);
+  e.hidden = false;
+  if(f.teller) tegnUret();
+  const mål = f.felt ? $("#port" + f.felt[0].toUpperCase() + f.felt.slice(1)) : null;
+  const fokus = mål || $("#portSend") || $("#portEpost");
+  if(fokus) fokus.focus();
+}
+
+function tømFeil(){
+  if(!feil) return;
+  feil = null;
+  stoppUret();
+  sperretTil = 0;
+  const e = $("#portFeil");
+  if(e){ e.hidden = true; e.innerHTML = ""; }
+}
+
+function startUret(){ stoppUret(); ur = setInterval(tegnUret, 1000); }
+function stoppUret(){ if(ur){ clearInterval(ur); ur = null; } }
+function tegnUret(){
+  const igjen = Math.max(0, Math.ceil((sperretTil - Date.now()) / 1000));
+  const e = $("#portUr");
+  if(e) e.textContent = Math.floor(igjen / 60) + ":" + String(igjen % 60).padStart(2, "0");
+  const knapp = $("#portSend");
+  if(knapp) knapp.disabled = igjen > 0;
+  if(igjen <= 0 && ur){ stoppUret(); tømFeil(); }
+}
+
+const erSperret = () => sperretTil > Date.now();
+
+async function send(){
+  if(erSperret()) return;
+  const v = lesFeltene();
+  if(!v) return;
+  const ny = nyKonto();
+
+  if(!v.epost.trim()) return visFeil({ melding: "Skriv inn e-postadressen din.", felt: "epost" });
+  if(!v.passord)      return visFeil({ melding: "Skriv inn et passord.", felt: "passord" });
+
+  tømFeil();
+  const mitt = ++hentenr;
+  const knapp = $("#portSend"), venter = $("#portVenter");
+  if(knapp) knapp.disabled = true;
+  if(venter) venter.textContent = ny ? "Oppretter konto…" : "Logger inn…";
+
+  const svar = ny
+    ? await Økt.registrer({ epost: v.epost, navn: v.navn, passord: v.passord })
+    : await Økt.loggInn({ epost: v.epost, passord: v.passord });
+
+  if(mitt !== hentenr) return;
+  if($("#portVenter")) $("#portVenter").textContent = "";
+  if($("#portSend")) $("#portSend").disabled = false;
+
+  if(svar.ok){
+    const ferdig = løs;
+    løs = null;
+    senkPorten();
+    ingress = ""; ulagret = false; feil = null;
+    if(ferdig) ferdig({ bruker: svar.bruker, erFørste: !!svar.erFørste,
+                        migrert: svar.migrert, migreringsfeil: svar.migreringsfeil });
+    return;
+  }
+
+  if(svar.feil === "for-mange")
+    sperretTil = Date.now() + Math.max(1, svar.retryEtter || 60) * 1000;
+  visFeil(tolkFeil(svar, ny));
+  if(svar.feil === "for-mange") startUret();
+}
+
+function tolkFeil(svar, ny){
+  if(svar.feil === "ugyldig" && svar.detaljer && svar.detaljer.length){
+    const f = svar.detaljer[0];
+    return {
+      melding: f.melding,
+      felt: f.felt,
+      hjelp: svar.detaljer.length > 1
+        ? svar.detaljer.slice(1).map(d => esc(d.melding)).join("<br>") : null
+    };
+  }
+  if(svar.feil === "feil-innlogging")
+    return { melding: "Feil e-postadresse eller passord.", felt: "passord" };
+  if(svar.feil === "finnes")
+    return { melding: "Det finnes allerede en konto med den adressen.",
+             hjelp: "Velg «Logg inn» over.", felt: "epost" };
+  if(svar.feil === "stengt")
+    return { melding: "Det er ikke plass til flere kontoer på denne maskinen." };
+  if(svar.feil === "for-mange")
+    return { melding: "For mange forsøk.", teller: true };
+  if(svar.feil === "frakoblet")
+    return { melding: "Ingen kontakt med serveren.",
+             hjelp: "Kjør <code>npm start</code> i prosjektmappa, og prøv igjen." };
+  if(svar.feil === "ødelagt-register")
+    return { melding: "Brukerregisteret kan ikke leses.",
+             hjelp: "Rett opp <code>brukere.json</code> i datakatalogen." };
+  return { melding: svar.melding || (ny ? "Kontoen ble ikke opprettet." : "Innloggingen stoppet."),
+           hjelp: "Prøv igjen." };
+}
+
+document.addEventListener("click", e => {
+  if(!portenStår()) return;
+  const t = e.target.closest("[data-port]");
+  if(!t || !t.closest("#port")) return;
+  const hva = t.dataset.port;
+
+  if(hva === "påNytt"){
+    feil = null;
+    t.disabled = true;
+    sjekk().then(inne => {
+      if(inne && løs){ const f = løs; løs = null; f(inne); }
+      else if(t.isConnected) t.disabled = false;
+    });
+    return;
+  }
+
+  if(hva === "inn" || hva === "ny"){
+    if(modus === hva) return;
+    modus = hva;
+    tømFeil();
+    tegn();
+    fokusFørste();
+  }
+});
+
+document.addEventListener("submit", e => {
+  if(!portenStår() || e.target.id !== "portSkjema") return;
+  e.preventDefault();
+  send();
+});

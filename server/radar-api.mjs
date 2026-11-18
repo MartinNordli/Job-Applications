@@ -1,36 +1,9 @@
-/* ============================================================
-   Radar på serveren: rutene og timen.
-
-   GET    /api/radar                          tilstanden (tilstandFra)
-   PUT    /api/radar/innstillinger            ← innstillingene
-   POST   /api/radar/kjor                     ← { leverandor? }  «Søk nå»
-   POST   /api/radar/forslag                  ← { leverandor? }  «Foreslå fra CV»
-   POST   /api/radar/ikke-interessert         ← { id }
-   POST   /api/radar/lagt-til                 ← { id }  merker raden
-   POST   /api/radar/karrieresider            ← { url, navn? }
-   PUT    /api/radar/karrieresider/<id>        slår på igjen en side som er slått av
-   DELETE /api/radar/karrieresider/<id>
-
-   Alle svarer med { tilstand }, og kjor i tillegg med utfallet av
-   kjøringen. forslag svarer bare med { forslag: { sokeord, steder,
-   ekskluder } } og lagrer ingenting: brukeren retter forslaget og
-   lagrer det med innstillingene. Id-en til en rad kan være en lenke, så den går i
-   kroppen og ikke i stien.
-
-   Serveren varsler ikke selv: varselet vises av appen eller
-   nettleseren som har siden åpen.
-
-   Timen. Hver time, og ved oppstart når siste kjøring er eldre enn
-   en time, kjøres Radar for hver profil som har den på. Leien i
-   radar.json hindrer dobbeltkjøring mot appen, og timen stoppes og
-   avbryter en pågående kjøring når serveren stopper.
-   ============================================================ */
 import { lagBrevlager } from "./brevlager.mjs";
 import { lagBrevModell, brevNokkelStatus } from "./brev-modell.mjs";
-import { lagRadarnett } from "../src/radarnett.mjs";
-import { Brevfeil } from "../src/dokumentfeil.mjs";
+import { lagRadarnett } from "../src/radar/radarnett.mjs";
+import { Brevfeil } from "../src/dokumenter/dokumentfeil.mjs";
 import { kjørRadar, søkNå, tilstandFra, lagreInnstillinger, ikkeInteressert, markerLagtTil,
-         leggTilKarriereside, fjernKarriereside, slåPåKarriereside, foreslåFraProfil } from "../src/radarlogikk.mjs";
+         leggTilKarriereside, fjernKarriereside, slåPåKarriereside, foreslåFraProfil } from "../src/radar/radarlogikk.mjs";
 import { deltMiljønokkel } from "./nokkel.mjs";
 import { offentligFeil, send, kropp, objekt, metode } from "./brev-api.mjs";
 
@@ -42,14 +15,11 @@ export const erRadarbane = bane => bane === "/api/radar"
 
 export function lagRadartjeneste({ nett, modellFor, nå = () => new Date(), vent, kilder } = {}){
   const lagre = new Map();
-  /* Én instans per katalog: «Søk nå»-grensen henger på den. */
   const dokumenter = katalog => {
     if(!lagre.has(katalog)) lagre.set(katalog, lagBrevlager(katalog));
     return lagre.get(katalog);
   };
 
-  /* Brukerens valg i appen følger ikke med hit, så uten ønske brukes
-     Anthropic, og OpenAI bare når det er den eneste nøkkelen. */
   async function leverandorFor(ktx, ønsket){
     if(ønsket !== undefined){
       if(!LEVERANDORER.includes(ønsket)) throw new Brevfeil("ugyldig", "Velg en støttet leverandør.");
@@ -132,8 +102,6 @@ export function lagRadarRuter(tjeneste){
   };
 }
 
-/* ---------- timen ---------- */
-
 export function startRadartimer({ brukere, tjeneste, intervall = TIME, logg = console }){
   const avbryt = new AbortController();
   let pågår = null;
@@ -151,7 +119,6 @@ export function startRadartimer({ brukere, tjeneste, intervall = TIME, logg = co
         if(bareGamle && tjeneste.nå().getTime() - sist < intervall) continue;
         await tjeneste.kjør({ lager, filer, katalog, tillatMiljø: i === 0 || deltMiljønokkel() }, { signal: avbryt.signal });
       }catch(e){
-        /* Meldingen er skrevet for brukeren og har ingen stier; resten blir i loggen som kode. */
         logg.error?.(`Radar kunne ikke kjøre for en profil: ${e?.melding || e?.code || "uventet feil"}`);
       }
     }

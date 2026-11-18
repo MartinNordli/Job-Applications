@@ -1,14 +1,14 @@
 ---
 version: 1
 slug: "src-radarflate-js"
-primary_target: "src/radarflate.js"
-related_targets: ["src/stiler.css"]
+primary_target: "src/radar/radarflate.js"
+related_targets: ["src/felles/stiler.css"]
 ---
 
 # Radar
 
 Modus: Operate.
-Omfang: Radar-visningen i `src/radarflate.js` og reglene for den i `src/stiler.css`.
+Omfang: Radar-visningen i `src/radar/radarflate.js` og reglene for den i `src/felles/stiler.css`.
 Resten av Hired beholder sitt uttrykk; bare Radar får metallaksenten og avdelingstonene.
 
 Jobben: se på sekunder om noe nytt er verdt å søke på, legge det til, og avvise resten.
