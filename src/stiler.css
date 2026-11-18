@@ -554,7 +554,6 @@ a.rad__stilling:hover{color:var(--hav-t);text-decoration:underline;text-underlin
 .rad:hover .handling--stille:not(:hover),
 .rad:focus-within .handling--stille:not(:hover){background:none;color:var(--blekk-3);font-weight:500;padding:6px 9px}
 .handling--stille:hover{background:var(--innfelt-2);color:var(--blekk)}
-.handling--fare:hover{background:var(--ild-vask);color:var(--ild-t)}
 /* «⋯» står fast i hver rad, så ingenting dukker opp eller forsvinner når
    musa går over. Den er stille som de andre sidehandlingene var. */
 .rad__meny,
@@ -1649,10 +1648,10 @@ a.knapp{display:inline-flex;align-items:center;text-decoration:none;color:inheri
 .avd-brikke{flex:none;display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 11px;border-radius:999px;
             background:var(--avd-vask);color:var(--avd-t);font-size:12.5px;font-weight:600;white-space:nowrap}
 .avd-brikke .radar__tid{font-size:12.5px}
-.avd-brikke__prikk,.avd-prikk{flex:none;width:7px;height:7px;border-radius:50%;background:var(--avd)}
+.avd-prikk{flex:none;width:7px;height:7px;border-radius:50%;background:var(--avd)}
 .avd-prikk{width:9px;height:9px}
 /* Midt i blinken er selve det mørke kortet: mørk prikk med metallring. */
-[data-avd="blink"] > .avd-prikk,[data-avd="blink"] > .avd-brikke__prikk{background:var(--utvalg);box-shadow:inset 0 0 0 2px var(--metall)}
+[data-avd="blink"] > .avd-prikk{background:var(--utvalg);box-shadow:inset 0 0 0 2px var(--metall)}
 .avd-brikke[data-avd="blink"]{box-shadow:inset 0 0 0 1px var(--utvalg-ring)}
 
 .utvalg-liste{padding:6px 24px;border-radius:22px;background:var(--kort);box-shadow:var(--loft)}

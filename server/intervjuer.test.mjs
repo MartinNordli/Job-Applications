@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { nyttIntervju, endreIntervju, slettIntervju, kommende, nesteIntervju, starttid } from "../src/intervjuer.mjs";
+import { nyttIntervju, endreIntervju, slettIntervju, kommende, starttid } from "../src/intervjuer.mjs";
 
 const NÅ = new Date(2026, 9, 4, 12, 0);          /* søndag 4. oktober 2026, kl. 12 lokal tid */
 const VALG = { iDag: "2026-10-04", nå: NÅ, lagId: () => "iv1" };
@@ -92,13 +92,4 @@ test("kommende: pågående, senere og dagens heldagsintervju er med, avsluttede 
   ] });
   assert.deepEqual(kommende(j, NÅ).map(i => i.id), ["heldag-i-dag", "pagar", "senere"]);
   assert.equal(starttid({ dato: "2026-10-04", tid: null }), null);
-});
-
-test("nesteIntervju velger det nærmeste på tvers av søknader og hopper over arkiverte", () => {
-  const med = (id, status, dato, tid) => jobb({ id, status, intervjuer: [{ id: "i", dato, tid, varighet: null, sted: "", type: "", lenke: "", runde: "", notat: "" }] });
-  const liste = [med("a", "interview", "2026-10-09", "10:00"), med("b", "sent", "2026-10-06", "14:00"),
-                 med("c", "rejected", "2026-10-05", "09:00"), med("d", "todo", "2026-10-06", null)];
-  assert.equal(nesteIntervju(liste, NÅ).jobb.id, "d", "heldag 6. oktober er før kl. 14 samme dag");
-  assert.equal(nesteIntervju([liste[2]], NÅ), null);
-  assert.equal(nesteIntervju(null, NÅ), null);
 });

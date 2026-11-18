@@ -21,7 +21,7 @@
    og et intervju uten klokkeslett til dagen er omme.
    ============================================================ */
 
-import { validerIntervju, validerIntervjuer, MAKS_INTERVJU, ER_ARKIV } from "./felles.mjs";
+import { validerIntervju, validerIntervjuer, MAKS_INTERVJU } from "./felles.mjs";
 import { medStatus, lokalDato } from "./hendelser.mjs";
 
 const STANDARD_VARIGHET = 60;
@@ -96,17 +96,4 @@ function erKommende(intervju, nå){
 export function kommende(jobb, nå = new Date()){
   const t = somDate(nå);
   return liste(jobb).filter(i => erKommende(i, t));
-}
-
-/* Det nærmeste intervjuet på tvers av søknader, uten de arkiverte:
-   { jobb, intervju } eller null. Gir «neste intervju» i oversikten. */
-export function nesteIntervju(jobber, nå = new Date()){
-  let beste = null;
-  const nøkkel = i => (starttid(i) ?? new Date(+i.dato.slice(0, 4), +i.dato.slice(5, 7) - 1, +i.dato.slice(8, 10))).getTime();
-  for(const jobb of Array.isArray(jobber) ? jobber : []){
-    if(!jobb || ER_ARKIV(jobb.status)) continue;
-    const i = kommende(jobb, nå)[0];
-    if(i && (!beste || nøkkel(i) < nøkkel(beste.intervju))) beste = { jobb, intervju: i };
-  }
-  return beste;
 }
