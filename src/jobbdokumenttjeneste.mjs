@@ -36,7 +36,7 @@ import { annonseFraSide, hentefeil } from "./annonsetekst.mjs";
 
 /* Kildene klienten selv kan oppgi. «hentet» settes av hentAnnonse og
    «brev» av flyttingen. «radar» er «Legg til» fra innboksen. */
-export const KLIENTKILDER = ["import", "limt", "radar"];
+const KLIENTKILDER = ["import", "limt", "radar"];
 
 const harTekst = a => !!normaliserAnnonse(a?.tekst);
 const erNettlenke = v => typeof v === "string" && /^https?:\/\//i.test(v.trim());

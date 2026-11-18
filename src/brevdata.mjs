@@ -27,7 +27,7 @@ export const tomCv = () => ({ skjemaVersjon: SKJEMA, revisjon: 0, tekst: "", nav
    endret stilreferanse skal ikke gi CV-en ny revisjon og dermed gjøre
    alle vurderinger som bygger på CV-en utdatert. */
 export const MAKS_STIL = 16000;
-export const tomStil = () => ({ skjemaVersjon: SKJEMA, revisjon: 0, tekst: "", oppdatert: null });
+const tomStil = () => ({ skjemaVersjon: SKJEMA, revisjon: 0, tekst: "", oppdatert: null });
 export const tomtBrev = id => ({ skjemaVersjon: SKJEMA, revisjon: 0, jobbId: jobbId(id), annonse: { tekst: "", url: "", hentet: null }, kontekst: "", sprak: "auto", leverandor: "anthropic", tekst: "", aktivVersjon: null, versjoner: [], kjoring: null, oppdatert: null });
 function tekst(v, maks, felt){
   if(typeof v !== "string" || v.length > maks || v.includes("\0")) throw new Brevfeil("ugyldig", `${felt} må være tekst på høyst ${maks.toLocaleString("nb-NO")} tegn.`);

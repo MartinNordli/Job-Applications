@@ -23,7 +23,7 @@
 import { STATUSER, ER_SENDT, FIKK_INTERVJU, validerHendelser } from "./felles.mjs";
 
 /* Statusene som betyr at arbeidsgiveren har svart. */
-export const SVARSTATUSER = ["interview", "rejected", "accepted"];
+const SVARSTATUSER = ["interview", "rejected", "accepted"];
 
 const to = n => String(n).padStart(2, "0");
 

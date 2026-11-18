@@ -20,7 +20,7 @@ import { sjekkSchema, sjekkKilder } from "./brevlogikk.mjs";
 import { normaliserMatch } from "./jobbdokument.mjs";
 
 export const MATCH_PROMPTVERSJON = "match-2";
-export const MATCH_GRENSER = Object.freeze({ oppsummering: 300, krav: 200, bevis: 400, sitat: 300, punkter: 4, kilder: 3 });
+const MATCH_GRENSER = Object.freeze({ oppsummering: 300, krav: 200, bevis: 400, sitat: 300, punkter: 4, kilder: 3 });
 
 const streng = { type: "string" };
 const liste = items => ({ type: "array", items });
@@ -65,7 +65,7 @@ Ta bare med det kildene sier. Ikke dikt opp erfaring, krav eller sitater.`;
 const OPPGAVE = "Vurder hvor godt stillingen passer CV-en etter skalaen. Gi prosent, oppsummering, styrker med ordrette sitater og mangler med alvor.";
 
 /* Samme grunnlag gir de samme bytene, så Anthropic kan gjenbruke kildene. */
-export function matchKilder({ cv, annonse, jobb }){
+function matchKilder({ cv, annonse, jobb }){
   return JSON.stringify({ kilder: { jobb: { selskap: jobb?.selskap ?? "", stilling: jobb?.stilling ?? "" }, cv, annonse } });
 }
 

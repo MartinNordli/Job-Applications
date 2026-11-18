@@ -34,7 +34,7 @@ export const MAKS_UTDRAGSTEKST = 300;
 const LEDD = /^[A-Za-z0-9_]{1,40}$/;
 const FARLIGE = new Set(["__proto__", "constructor", "prototype"]);
 
-export function gyldigSti(sti){
+function gyldigSti(sti){
   if(typeof sti !== "string") return false;
   const ledd = sti.split(".");
   return ledd.length >= 1 && ledd.length <= 4 && ledd.every(l => LEDD.test(l) && !FARLIGE.has(l));

@@ -7,7 +7,7 @@
 
 export const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-export const DAGER = ["søn.", "man.", "tir.", "ons.", "tor.", "fre.", "lør."];
+const DAGER = ["søn.", "man.", "tir.", "ons.", "tor.", "fre.", "lør."];
 export const MND   = ["januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"];
 export const MND_K = ["jan", "feb", "mar", "apr", "mai", "jun", "jul", "aug", "sep", "okt", "nov", "des"];
 

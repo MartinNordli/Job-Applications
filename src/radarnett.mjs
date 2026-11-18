@@ -30,7 +30,7 @@
    i src/radarlogikk.mjs ser bare { hentJson, hentSide }.
    ============================================================ */
 
-export const JSON_VERTER = Object.freeze({
+const JSON_VERTER = Object.freeze({
   nav: "pam-stilling-feed.nav.no",
   jobbnorge: "publicapi.jobbnorge.no",
   greenhouse: "boards-api.greenhouse.io",

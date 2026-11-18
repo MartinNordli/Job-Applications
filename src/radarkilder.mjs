@@ -42,9 +42,9 @@ import { normaliserIsoDato } from "./felles.mjs";
 import { RADAR } from "./jobbdokument.mjs";
 
 export const NAV_BASE = "https://pam-stilling-feed.nav.no";
-export const JOBBNORGE_BASE = "https://publicapi.jobbnorge.no";
-export const GREENHOUSE_BASE = "https://boards-api.greenhouse.io";
-export const LEVER_BASE = "https://api.lever.co";
+const JOBBNORGE_BASE = "https://publicapi.jobbnorge.no";
+const GREENHOUSE_BASE = "https://boards-api.greenhouse.io";
+const LEVER_BASE = "https://api.lever.co";
 
 /* Takene per kjøring, fra målingene i spiken. */
 export const GRENSER = Object.freeze({
@@ -108,7 +108,7 @@ export function kandidat(k){
   };
 }
 
-export class Kildefeil extends Error {}
+class Kildefeil extends Error {}
 const ukjentFormat = navn => new Kildefeil(`${navn} svarte i et format Radar ikke kjenner.`);
 const erObjekt = v => !!v && typeof v === "object" && !Array.isArray(v);
 const ID = /^[A-Za-z0-9_-]{1,80}$/;
@@ -152,7 +152,7 @@ function sjekkAvbrudd(signal){
    Annonser som var aktive da linjen ble skrevet, men er stoppet
    senere, sier detaljen fra om før noe går til modellen.
 */
-export function plussEttSekund(sistEndret){
+function plussEttSekund(sistEndret){
   const ms = Date.parse(String(sistEndret ?? ""));
   return Number.isFinite(ms) ? new Date(ms + 1000).toUTCString() : null;
 }
@@ -171,7 +171,7 @@ const gyldigSide = side => erObjekt(side) && Array.isArray(side.items) && typeof
 const harNeste = side => typeof side.next_id === "string" && ID.test(side.next_id) && !!side.next_url;
 
 /* Datoen søket starter fra, i formen NAV leser (RFC 1123). */
-export function navSokStart(nå, dager = GRENSER.navSokDager){
+function navSokStart(nå, dager = GRENSER.navSokDager){
   return new Date(new Date(nå).getTime() - dager * 86_400_000).toUTCString();
 }
 
@@ -343,7 +343,7 @@ export const nav = {
    fylker utledet av stedene: stedene sjekkes av forfilteret, som for
    de andre kildene. Fylkene brukeren har valgt, gjelder fortsatt.
 */
-export function jobbnorgeSøk({ side = 0, periode = "Day", fylker = [], resultater = GRENSER.jobbnorgeResultater } = {}){
+function jobbnorgeSøk({ side = 0, periode = "Day", fylker = [], resultater = GRENSER.jobbnorgeResultater } = {}){
   const p = new URLSearchParams({ orderby: "Published", period: periode, results: String(resultater), page: String(side) });
   for(const f of fylker) if(Number.isInteger(f) && f > 0) p.append("county", String(f));
   return `${JOBBNORGE_BASE}/v3/jobs?${p}`;
@@ -425,7 +425,7 @@ export const jobbnorge = {
   }
 };
 
-export function jobbnorgeTekst(d){
+function jobbnorgeTekst(d){
   const deler = (Array.isArray(d?.components) ? d.components : []).filter(erObjekt)
     .filter(c => c.type !== "Image")
     .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
@@ -568,7 +568,7 @@ function xmlFelt(blokk, navn){
   const cdata = m[1].match(/^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/);
   return cdata ? cdata[1] : avkod(m[1]);
 }
-export function tolkTeamtailorRss(xml, side = {}){
+function tolkTeamtailorRss(xml, side = {}){
   const s = String(xml ?? "");
   const kanal = s.replace(/<item\b[\s\S]*$/i, "");
   const selskap = side.navn || rensLinje(xmlFelt(kanal, "title"));

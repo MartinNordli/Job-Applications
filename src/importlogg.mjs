@@ -22,7 +22,7 @@ export const MAKS_LINJER = 500;
    100 000 tokens. Importen sender noen tusen tegn, så den høyere satsen
    for lengre prompter gjelder aldri her. Et øyeblikksbilde: endrer
    prisen seg, er det denne linjen som skal rettes. */
-export const PRIS = { inn: 0.1, ut: 0.5 };
+const PRIS = { inn: 0.1, ut: 0.5 };
 
 /* Omtrentlig, og med vilje ikke hentet fra nettet: tallet skal være
    det samme i morgen, og en valutakurs på fire desimaler ville gitt

@@ -34,13 +34,13 @@ import { erId } from "./dokumentnavn.mjs";
 
 export const SKJEMA = 1;
 export const RADAR_SKJEMA = 2;
-export const MAKS_JOBBDOKUMENT = 4 * 1024 * 1024;
-export const MAKS_RADAR = 4 * 1024 * 1024;
+const MAKS_JOBBDOKUMENT = 4 * 1024 * 1024;
+const MAKS_RADAR = 4 * 1024 * 1024;
 export const MAKS_ANNONSE = 100000;
 
 export const KILDER = ["import", "hentet", "limt", "radar", "brev"];
 export const ALVOR = ["hoy", "middels", "lav"];
-export const SITATKILDER = ["cv", "annonse", "brev"];
+const SITATKILDER = ["cv", "annonse", "brev"];
 export const LEVERANDORER = ["anthropic", "openai"];
 const BRUKSFELT = ["input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"];
 
@@ -118,7 +118,7 @@ function grunnlag(v){
 
 /* ---------- tomme dokumenter ---------- */
 
-export const tomAnnonse = () => ({ tekst: "", url: "", kilde: null, hentet: null, sjekksum: null });
+const tomAnnonse = () => ({ tekst: "", url: "", kilde: null, hentet: null, sjekksum: null });
 export function tomtJobbdokument(id){
   if(!erId(id)) throw new Brevfeil("ugyldig", "Ugyldig jobb.");
   return { skjemaVersjon: SKJEMA, revisjon: 0, jobbId: id, annonse: tomAnnonse(), match: null, forberedelser: {}, oppdatert: null };
@@ -254,9 +254,9 @@ export const RADAR = Object.freeze({
   feilRad: 5, kjoringsfeil: 10, kildelogg: 60, melding: 300,
   ko: 300, koTekst: 600
 });
-export const RADARKILDER = ["nav", "jobbnorge", "greenhouse", "lever", "teamtailor", "jsonld"];
-export const KARRIERETYPER = ["greenhouse", "lever", "teamtailor", "jsonld"];
-export const INNBOKSSTATUS = ["ny", "lagtTil"];
+const RADARKILDER = ["nav", "jobbnorge", "greenhouse", "lever", "teamtailor", "jsonld"];
+const KARRIERETYPER = ["greenhouse", "lever", "teamtailor", "jsonld"];
+const INNBOKSSTATUS = ["ny", "lagtTil"];
 
 const DATO = /^\d{4}-\d{2}-\d{2}$/;
 const dato = v => typeof v === "string" && DATO.test(v) && !Number.isNaN(Date.parse(v)) ? v : null;
@@ -333,7 +333,7 @@ function innstillinger(v, eldreSkjema = false){
    aktive stillinger sist ble gjort for, og når det ble ferdig. NAVs søk
    går over flere kjøringer, og sokSide er siden det fortsetter fra. Et
    eldre radar.json uten feltene får null, og da søker neste kjøring. */
-export const tomKildetilstand = () => ({
+const tomKildetilstand = () => ({
   nav: { side: null, etag: null, sistEndret: null, sist: null, feil: null, sokAvtrykk: null, sokSide: null, sokFerdig: null },
   jobbnorge: { sisteId: null, sist: null, feil: null, sokAvtrykk: null, sokFerdig: null }
 });
@@ -395,7 +395,7 @@ function avvistFingeravtrykk(r){
   return d && f ? { fingeravtrykk: f, dato: d } : null;
 }
 
-export const KJORINGSTELLERE = ["kandidater", "passet", "nye", "vurdert", "treff", "under", "utenVurdering", "venter"];
+const KJORINGSTELLERE = ["kandidater", "passet", "nye", "vurdert", "treff", "under", "utenVurdering", "venter"];
 const NYERE_TELLERE = new Set(["passet", "venter", "under"]);
 function kjoring(r){
   const start = tid(r.start);

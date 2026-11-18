@@ -17,8 +17,8 @@ import { SEKTORER, JOBBTYPER, MAKS, normaliserIsoDato, erIsoDato, sjekkLenke } f
    og lav: feltene står i teksten, de skal ikke resonneres fram. Modellen
    tar heller ikke imot temperature eller en forhåndsutfylt assistentrolle,
    så ingen av dem sendes. */
-export const MODELL     = "claude-haiku-5-5";
-export const INNSATS    = "low";
+const MODELL     = "claude-haiku-5-5";
+const INNSATS    = "low";
 export const MAKS_TEKST = 12_000;
 
 /* Feltene importen prøver å fylle. `lenke` står ikke her: den er

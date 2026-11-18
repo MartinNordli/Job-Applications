@@ -16,9 +16,9 @@ const logg = melding => invoke("radar_logg", { melding: String(melding) }).catch
 
 /* Åpen app og bakgrunn kjører hver sin time. Er forrige kjøring nylig, hoppes
    profilen over, så en forsinket launchd-kjøring ikke gir to rett etter hverandre. */
-export const MIN_AVSTAND = 30 * 60_000;
+const MIN_AVSTAND = 30 * 60_000;
 
-export function bør_hoppes_over(tilstand, nå = Date.now()){
+function bør_hoppes_over(tilstand, nå = Date.now()){
   const sist = Date.parse(tilstand.kjoringer[0]?.start) || 0;
   return nå - sist < MIN_AVSTAND;
 }

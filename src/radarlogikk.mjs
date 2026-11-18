@@ -56,17 +56,17 @@ import { KURS } from "./importlogg.mjs";
 import { KILDER, GRENSER, sov, rensLinje, oppdagType, oppdagTypeFraSide, karriereadresse, tolkJsonLd } from "./radarkilder.mjs";
 import { RADAR_PROMPTVERSJON, VURDERINGSSKJEMA, FORSLAGSSKJEMA, FORSLAG_GRENSER, radarForespørsel, forslagForespørsel } from "./radarprompt.mjs";
 
-export const KARRIEREINTERVALL = 6 * 3600_000;
-export const LEIETID = 15 * 60_000;
+const KARRIEREINTERVALL = 6 * 3600_000;
+const LEIETID = 15 * 60_000;
 export const BOLK = 8;
-export const MAKS_VURDERINGER_PER_KJORING = 40;
-export const SETT_DAGER = 200;
-export const AVVIST_DAGER = 365;
+const MAKS_VURDERINGER_PER_KJORING = 40;
+const SETT_DAGER = 200;
+const AVVIST_DAGER = 365;
 /* Det under terskelen gjemmes så lenge som en stilling typisk er ute. */
-export const UNDER_DAGER = 30;
-export const KO_DAGER = 30;
-export const KO_FORSOK = 3;
-export const TAK_FOR_LAGRING = 3.5 * 1024 * 1024;
+const UNDER_DAGER = 30;
+const KO_DAGER = 30;
+const KO_FORSOK = 3;
+const TAK_FOR_LAGRING = 3.5 * 1024 * 1024;
 export const MAKS_VARSEL = 240;
 
 const DAG = 86_400_000;
@@ -80,7 +80,7 @@ const kortTekst = (t, n = RADAR.tekst) => Array.from(String(t ?? "")).slice(0, n
    «Tromso» hverandre, og «Ålesund» treffer «Aalesund». Begge sider
    brettes likt, så det som går tapt, går tapt på begge.
 */
-export function brett(v){
+function brett(v){
   return String(v ?? "").normalize("NFKC").toLocaleLowerCase("nb")
     .replace(/æ/g, "ae").replace(/ø/g, "o").replace(/å/g, "a")
     .normalize("NFD").replace(/\p{M}/gu, "")
@@ -142,7 +142,7 @@ export function fingeravtrykk(selskap, stilling){
 /* Jobbnorge-id-en i en lenke, fra Jobbnorges egne sider eller fra
    NAVs sourceurl og applicationUrl. NAV har Jobbnorge-annonsene med,
    og id-en er det sikreste tegnet på at to kandidater er samme annonse. */
-export function jobbnorgeId(url){
+function jobbnorgeId(url){
   let u;
   try{ u = new URL(String(url ?? "")); }catch{ return null; }
   const vert = u.hostname.toLowerCase().replace(/^www\./, "");
@@ -372,7 +372,7 @@ export function innboksrad(k, v, nå){
 
 /* Raden under terskelen er en innboksrad; promptversjonen på den lar en
    ny prompt vurdere stillingen på nytt. Nyest først, og høyst RADAR.under. */
-export function slåInnIUnder(under, nye){
+function slåInnIUnder(under, nye){
   const ny = new Set(nye.map(r => r.id));
   return [...nye, ...under.filter(r => !ny.has(r.id))]
     .sort((a, b) => (a.funnet < b.funnet ? 1 : a.funnet > b.funnet ? -1 : 0)).slice(0, RADAR.under);
@@ -384,7 +384,7 @@ export function slåInnIUnder(under, nye){
    tilbake. Ingen modellkall og ingen varsel. Lagt til-rader står. Lavere
    enn RADAR.underMin gjemmes ikke (validerRadar fjerner dem).
 */
-export function flyttVedTerskel(radar, terskel){
+function flyttVedTerskel(radar, terskel){
   const opp = radar.under.filter(r => r.prosent >= terskel);
   const ned = radar.innboks.filter(r => r.status === "ny" && r.prosent < terskel);
   if(!opp.length && !ned.length) return radar;
@@ -397,7 +397,7 @@ export function flyttVedTerskel(radar, terskel){
 /* Nye rader først, en rad som alt finnes beholdes som den er (den kan
    være lagt til). Over taket går de eldste som er lagt til først, så
    de eldste nye. */
-export function slåInnIInnboks(innboks, nye){
+function slåInnIInnboks(innboks, nye){
   const finnes = new Set(innboks.map(r => r.id));
   let ut = [...nye.filter(r => !finnes.has(r.id)), ...innboks];
   ut = [...new Map(ut.map(r => [r.id, r])).values()];
@@ -410,7 +410,7 @@ export function slåInnIInnboks(innboks, nye){
 }
 
 /* NAV sier INACTIVE: vilkårene krever at annonsen fjernes. */
-export function fjernInaktive(innboks, nøkler){
+function fjernInaktive(innboks, nøkler){
   const n = new Set(nøkler);
   if(!n.size) return innboks;
   return innboks.filter(r => !n.has(r.id) && !(r.nokler ?? []).some(x => n.has(x)));
@@ -418,7 +418,7 @@ export function fjernInaktive(innboks, nøkler){
 
 /* «Ikke interessert»: ut av innboksen, og husket både på lenke og på
    selskap og stilling i ett år. */
-export function avvis(radar, id, nå){
+function avvis(radar, id, nå){
   const rad = radar.innboks.find(r => r.id === id) ?? radar.under.find(r => r.id === id);
   if(!rad) return radar;
   const dato = lokalDato(new Date(nå));
@@ -488,15 +488,15 @@ const utloper = (nå, varighet) => new Date(new Date(nå).getTime() + varighet).
    En utløpt leie kan tas over: prosessen som hadde den, er borte eller
    har brukt for lang tid, og skriver ikke over den nye (se lagringen i
    kjørRadar). */
-export function taLeie(dokumenter, { eier, nå, varighet = LEIETID }){
+function taLeie(dokumenter, { eier, nå, varighet = LEIETID }){
   return medNyeForsøk(dokumenter, d =>
     leieGyldig(d.leie, nå) && d.leie.eier !== eier ? null : { ...d, leie: { eier, utloper: utloper(nå, varighet) } });
 }
-export function fornyLeie(dokumenter, { eier, nå, varighet = LEIETID }){
+function fornyLeie(dokumenter, { eier, nå, varighet = LEIETID }){
   return medNyeForsøk(dokumenter, d =>
     d.leie?.eier !== eier ? null : { ...d, leie: { eier, utloper: utloper(nå, varighet) } });
 }
-export function slippLeie(dokumenter, { eier }){
+function slippLeie(dokumenter, { eier }){
   return medNyeForsøk(dokumenter, d => d.leie?.eier !== eier ? null : { ...d, leie: null });
 }
 
@@ -535,7 +535,7 @@ export function varseltekst(treff, maks = MAKS_VARSEL){
    store bokstaver ikke gir et nytt søk. SOK.versjon økes når søket
    endres slik at det bør gjøres på nytt hos alle.
 */
-export const SOK = Object.freeze({ versjon: 1, jobbnorgeIntervall: DAG, navForeldet: 3 * DAG });
+const SOK = Object.freeze({ versjon: 1, jobbnorgeIntervall: DAG, navForeldet: 3 * DAG });
 
 /* FNV-1a er nok: den skiller, den beskytter ingenting. */
 function fnv(tekst){
@@ -871,8 +871,8 @@ export async function leggTilKarriereside(dokumenter, { url, navn = "", nett }){
 
 /* ---------- det grensesnittet ser og gjør ---------- */
 
-export const SOK_NA_PAUSE = 60_000;
-export const ANTALL_KJORINGER_I_TILSTAND = 5;
+const SOK_NA_PAUSE = 60_000;
+const ANTALL_KJORINGER_I_TILSTAND = 5;
 
 /* Claude Haiku 5.5, dollar per million tokens, for prompter opp til
    100 000 tokens (en bolk er langt under). Et øyeblikksbilde fra

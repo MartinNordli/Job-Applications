@@ -28,7 +28,7 @@ export const LEVERANDORER = Object.freeze({
 });
 /* Øvre grense for svaret, med tenkningen, per formål. Et tak, ikke en
    pris: det som ikke brukes, koster ingenting. */
-export const MAKS_UT = Object.freeze({ brev: 16_000, vurdering: 8_000, radar: 8_000, annonse: 8_000 });
+const MAKS_UT = Object.freeze({ brev: 16_000, vurdering: 8_000, radar: 8_000, annonse: 8_000 });
 
 export function leverandorFor(navn){
   if(!Object.hasOwn(LEVERANDORER, navn)) throw new Error("Ukjent modellleverandør.");

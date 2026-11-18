@@ -61,7 +61,7 @@ const erSetning = l => /[.!?;]["»)]?$/.test(l);
    linjer på rad uten punktum er også en liste: det er slik <li> kommer
    ut av siden. En kort linje uten punktum foran mer tekst er en
    mellomtittel. Alt annet er avsnitt. */
-export function annonseHtml(tekst){
+function annonseHtml(tekst){
   const ut = [];
   const blokker = String(tekst).replace(/\r\n?/g, "\n").split(/\n{2,}/);
   for(const blokk of blokker){

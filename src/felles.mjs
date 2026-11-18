@@ -63,7 +63,7 @@ export const MAKS = { selskap: 200, stilling: 200, sted: 200, notat: 1000, lenke
 
 /* Hvem som la inn en hendelse. «lager» er sikkerhetsnettet i
    lagerlogikk.mjs, som merker statusskift klienten ikke loggførte. */
-export const HENDELSE_KILDER = ["bruker", "lager", "radar"];
+const HENDELSE_KILDER = ["bruker", "lager", "radar"];
 
 /* Hele listen skrives ved hver lagring, så taket holder raden liten.
    60 statusskift på én søknad er langt over det noen faktisk gjør. */
@@ -86,7 +86,7 @@ export function erIsoDato(v){
   return dt.getFullYear() === a && dt.getMonth() === m - 1 && dt.getDate() === d;
 }
 
-export function erIsoTid(v){
+function erIsoTid(v){
   return typeof v === "string" && v !== "" && !Number.isNaN(Date.parse(v));
 }
 
@@ -176,7 +176,7 @@ function renHendelse(h){
    hendelsen først den dagen. Sorteringen er stabil, så to like holder
    rekkefølgen de kom i. */
 const tidsverdi = h => (h.tid ? Date.parse(h.tid) : -Infinity);
-export function sorterHendelser(liste){
+function sorterHendelser(liste){
   return liste.slice().sort((a, b) =>
     a.dato < b.dato ? -1 : a.dato > b.dato ? 1 : tidsverdi(a) - tidsverdi(b));
 }

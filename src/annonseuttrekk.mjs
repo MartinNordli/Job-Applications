@@ -26,9 +26,9 @@
 import { Brevfeil } from "./brevdata.mjs";
 import { sjekkSchema } from "./brevlogikk.mjs";
 
-export const ANNONSE_PROMPTVERSJON = "annonse-1";
+const ANNONSE_PROMPTVERSJON = "annonse-1";
 /* Mer enn nok for en annonse. Linjer etter dette kan ikke velges. */
-export const MAKS_TEGN = 80_000;
+const MAKS_TEGN = 80_000;
 export const MAKS_LINJER = 2_000;
 /* Et utvalg kortere enn dette er ingen annonse, men et feilgrep. */
 const MINST = 200;

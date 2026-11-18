@@ -28,7 +28,7 @@ import { sjekkSchema, sjekkKilder } from "./brevlogikk.mjs";
 import { normaliserForberedelse } from "./jobbdokument.mjs";
 
 export const FORBEREDELSE_PROMPTVERSJON = "forberedelse-1";
-export const FORBEREDELSE_GRENSER = Object.freeze({
+const FORBEREDELSE_GRENSER = Object.freeze({
   sammendrag: 1200, sporsmal: 8, eksempler: 5, tilDem: 5, sjekkliste: 6,
   tittel: 300, hvorfor: 400, skisse: 1000, krav: 200, situasjon: 1000, sitat: 300, kilder: 3, punkt: 300
 });
@@ -66,7 +66,7 @@ Ta bare med det kildene sier om søkeren. Ikke dikt opp erfaring, prosjekter, ta
 const OPPGAVE = "Lag forberedelsen til dette intervjuet: sannsynlige spørsmål med svarskisser, eksempler fra egen erfaring med ordrette sitater, spørsmål til arbeidsgiveren og en sjekkliste.";
 
 /* Samme grunnlag gir de samme bytene, så Anthropic kan gjenbruke kildene. */
-export function forberedelseKilder({ cv, annonse, brev, jobb }){
+function forberedelseKilder({ cv, annonse, brev, jobb }){
   return JSON.stringify({ kilder: { jobb: { selskap: jobb?.selskap ?? "", stilling: jobb?.stilling ?? "" }, cv, annonse, brev: brev ?? "" } });
 }
 

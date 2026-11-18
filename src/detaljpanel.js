@@ -65,7 +65,7 @@ import { monterIntervju, intervjuMerke } from "./intervjuflate.js";
 /* ---------- fanene ---------- */
 
 const FANER = new Map();
-export function registrerFane(id, { navn, monter, merke = null }){
+function registrerFane(id, { navn, monter, merke = null }){
   if(!/^[a-z]{1,20}$/.test(id)) throw new Error("Fane-id-en må være små bokstaver.");
   FANER.set(id, { navn, monter, merke });
   aktivt?.fanerEndret();
