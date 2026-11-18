@@ -26,7 +26,7 @@ Trenger grensesnittet et nytt felt eller en ny rute, lag din del og skriv nøyak
 
 ## Reglene i prosjektet
 
-- Ingen rammeverk, ingen ORM, ingen nye avhengigheter. Node 18+, rene ES-moduler, `node:http`, `node:fs/promises`.
+- Ingen rammeverk, ingen ORM, ingen nye avhengigheter. Node 20+, rene ES-moduler, `node:http`, `node:fs/promises`.
 - Bokmål i navn, kommentarer og feilmeldinger. Feilmeldinger sier hva brukeren skal gjøre, og lekker aldri en sti eller noe som ligner nøkkelen.
 - **Én regel, ett sted.** Regler ligger i moduler uten I/O. I/O sprøytes inn (`lagServer({ katalog, nett, brevModellFor })`, `nett`, `dokumenter`, `kallModell`, `nå`), så det kan testes.
 - **Bare grensesnittet skriver `jobber.json`.** Alt som lages asynkront, går i egne dokumenter (`jobb-<id>.json`, `radar.json`) med revisjon, lås og `.forrige.json`, som brevlageret.
