@@ -55,7 +55,8 @@ Det finnes ingen linter eller formatter, så følg stilen i filen du endrer.
 
 ## Konvensjoner
 
-- Bokmål i navn, kommentarer, tekst i appen og commit-meldinger.
+- Bokmål i navn, tekst i appen og commit-meldinger.
+- Ikke lag kommentarer i koden.
 - Aldri tankestrek (U+2014), heller ikke i tekst i appen.
 - En setning per linje i lange Markdown-filer.
 - Små commits når en del er ferdig og prøvd.
