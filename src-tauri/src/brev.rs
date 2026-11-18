@@ -1,9 +1,3 @@
-//! Avgrensede fil-, nøkkel- og nettoperasjoner for skriveverkstedet.
-//! Samme mkdir-lås som Node; en gammel lås stjeles aldri på tid alene.
-//! Operasjonene gjelder alle profildokumentene (cv.json, stil.json,
-//! brev-<id>.json, jobb-<id>.json og radar.json), ikke bare brevene. Navneregelen og
-//! utdraget er speilet fra src/dokumenter/dokumentnavn.mjs og src/dokumenter/dokumentutdrag.mjs,
-//! og tester/data/dokumenter.json holder de to sidene like.
 use serde::Serialize;
 use serde_json::{Map, Value};
 use std::{
@@ -51,12 +45,9 @@ enum Dokumenttype {
     Radar,
 }
 
-/// Prefiksene med id. Faste navn står i `dokumenttype`.
 const MED_ID: [(&str, Dokumenttype); 2] =
     [("brev-", Dokumenttype::Brev), ("jobb-", Dokumenttype::Jobb)];
 
-/// Bare ASCII-bokstaver, sifre, bindestrek og understrek. Ingen punktum,
-/// så kopiene (`.forrige.json`, `.odelagt-*.json`) og «..» faller utenfor.
 fn gyldig_id(id: &str) -> bool {
     !id.is_empty()
         && id.len() <= 64
@@ -114,10 +105,6 @@ fn markor(dir: &Path, navn: &str) -> Result<u64, String> {
     }
 }
 
-/// Det tomme dokumentet etter en sletting, med revisjonen fra markøren.
-/// CV, stilreferanse og brev får hele formen. Jobbdokumentet og radar.json får
-/// bare skjema, revisjon og tidsstempel: valideringen i JavaScript fyller
-/// inn resten, så formen deres står ett sted.
 fn tomt_dokument(navn: &str, rev: u64) -> Result<String, String> {
     let mut v = serde_json::json!({"skjemaVersjon":1,"revisjon":rev,"oppdatert":null});
     match dokumenttype(navn).ok_or("ugyldig-filnavn")? {
@@ -243,7 +230,6 @@ fn skriv_dokument(dir: &Path, navn: &str, tekst: &str, forventet: u64) -> Result
     }
     let _las = laas(dir, navn)?;
     let gammel = les_dokument(dir, navn, false)?;
-    // Ikke overskriv en korrupt backup heller; brukeren må først ta stilling til den.
     if let Some(kopi) = les(&dir.join(backup(navn)))? {
         revisjon(&kopi)?;
     }
@@ -314,8 +300,6 @@ fn gjenopprett_dokument(dir: &Path, navn: &str) -> Result<String, String> {
         .checked_add(1)
         .ok_or("ugyldig-revisjon")?;
     dok["revisjon"] = n.into();
-    // Tidsstempel kommer fra klientens neste lagring. Selve gjenopprettingen
-    // får alltid et nytt revisjonsnummer, også om den samme kopien velges igjen.
     let ny = dok.to_string();
     atomisk(dir, &format!(".{navn}.revisjon"), &n.to_string())?;
     if dir.join(navn).exists() {
@@ -399,19 +383,9 @@ pub fn brev_liste(app: AppHandle, bruker: String) -> Result<Vec<String>, String>
     liste_i(&profil(&app, &bruker)?)
 }
 
-/* ---------- utdrag ----------
-Små verdier fra mange dokumenter, uten å sende dokumentene over IPC.
-Reglene er de samme som i src/dokumenter/dokumentutdrag.mjs: 1 til 4 ledd per
-sti, høyst 20 stier, bare egne nøkler, bare enkle verdier, tekst kortet
-til 300 kodepunkter, og et dokument som ikke kan leses hoppes over. */
-
 const MAKS_STIER: usize = 20;
-/// Taket på listen før duplikatene er fjernet, så en enorm liste aldri
-/// blir en kvadratisk løkke.
 const MAKS_RÅ_STIER: usize = 100;
 const MAKS_UTDRAGSTEKST: usize = 300;
-/// Alle samlingene utdraget går over har skjemaversjon 1, som i
-/// src/dokumenter/brevdata.mjs. Et dokument med et annet skjema forstår vi ikke.
 const SAMLINGSSKJEMA: u64 = 1;
 
 fn gyldig_sti(sti: &str) -> bool {
@@ -478,7 +452,6 @@ fn utdrag_i(dir: &Path, prefiks: &str, stier: &[String]) -> Result<Utdrag, Strin
     let felt = tolk_stier(stier)?;
     let mut ut = BTreeMap::new();
     for navn in liste_i(dir)?.into_iter().filter(|n| n.starts_with(prefiks)) {
-        // For stort, uleselig, ikke JSON eller ukjent skjema: hoppes over.
         let Ok(Some(tekst)) = les(&dir.join(&navn)) else {
             continue;
         };
@@ -496,8 +469,6 @@ fn utdrag_i(dir: &Path, prefiks: &str, stier: &[String]) -> Result<Utdrag, Strin
     Ok(ut)
 }
 
-/// Kjøres utenfor hovedtråden: å lese og tolke et par hundre filer skal
-/// ikke fryse vinduet mens listen tegnes.
 #[tauri::command]
 pub async fn dokument_utdrag(
     app: AppHandle,
@@ -511,11 +482,6 @@ pub async fn dokument_utdrag(
         .map_err(|_| "Fikk ikke lest dokumentene.".to_string())?
 }
 
-/// Modellene er knyttet til formålet (brev, vurdering, radar), og må være
-/// de samme som i src/modell/brev-provider.mjs. Frontenden velger modell i
-/// kroppen; her godtas bare de som er oppført for leverandøren.
-/// tester/data/modeller.json holder de to sidene like. En modell som er
-/// byttet ut, godtas ikke lenger: ingen lagrede data sender den på nytt.
 fn leverandor(navn: &str) -> Result<(&'static str, &'static str, &'static [&'static str]), String> {
     match navn {
         "anthropic" => Ok((
@@ -607,18 +573,11 @@ fn kall() -> &'static Mutex<Kall> {
     KALL.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-/// Én melding på kanalen: hele SSE-linjer, uten linjeskift. Frontenden legger
-/// linjeskiftet tilbake når rammene settes sammen. Rust kjenner ikke Anthropics
-/// eller OpenAIs hendelsesformat og skal ikke gjøre det: da måtte protokollen
-/// vedlikeholdes to steder for alltid.
 #[derive(Clone, Serialize)]
 pub struct Linjer {
     linjer: Vec<String>,
 }
 
-/// Deler en byte-strøm i hele linjer. `\n` og `\r\n` behandles likt, og
-/// linjeskiftet strippes. En komplett SSE-linje er per definisjon gyldig UTF-8,
-/// så byte-grensen mellom to biter kan aldri dele et tegn i to.
 struct Linjedeler {
     rest: Vec<u8>,
     lest: usize,
@@ -657,8 +616,6 @@ impl Linjedeler {
         self.rest.drain(..start);
         Ok(ut)
     }
-    /// En avsluttende linje uten linjeskift. SSE dispatcher den ikke, men den
-    /// hører med i kroppen vi gir tilbake.
     fn slutt(&mut self) -> Option<String> {
         if self.rest.is_empty() {
             return None;
@@ -671,8 +628,6 @@ impl Linjedeler {
     }
 }
 
-/// Kroppen frontenden sender inn. Strømming er eneste transportvei: et kall
-/// uten den ville gitt en annen feilsemantikk enn Node-siden har.
 fn sjekk_modellkropp(leverandor: &str, modeller: &[&str], kropp: &str) -> Result<(), String> {
     if kropp.len() > 1024 * 1024 {
         return Err("Grunnlaget er for stort.".into());
@@ -701,9 +656,6 @@ async fn modellkall(
     kropp: String,
     kanal: Option<Channel<Linjer>>,
 ) -> Result<String, String> {
-    /* Brevet tenker, skriver og leser gjennom i ett kall, og kan bruke
-    flere minutter. Grensen gjelder hele kallet, også strømmen, og er den
-    samme som i server/brev-modell.mjs. */
     let klient = reqwest::Client::builder()
         .timeout(Duration::from_secs(300))
         .redirect(reqwest::redirect::Policy::none())
@@ -733,9 +685,6 @@ async fn modellkall(
             ),
         });
     }
-    /* Linjene sendes videre med én gang, men samles også opp: svaret
-    frontenden tolker er den returnerte kroppen, aldri kanalen. En tapt
-    eller sen kanalmelding kan dermed ikke endre brevet. */
     let mut deler = Linjedeler::ny();
     let mut samlet = String::new();
     while let Some(bit) = svar
@@ -772,9 +721,6 @@ pub async fn brev_modell(
     kjoring_id: Option<String>,
     kanal: Option<JavaScriptChannelId>,
 ) -> Result<String, String> {
-    // Channel selv kan ikke deserialiseres; ID-en kobles til webviewet her.
-    // Uten kanal sendes ingen linjer, og et kall uten forhåndsvisning koster
-    // dermed ingen IPC-trafikk.
     let kanal: Option<Channel<Linjer>> = kanal.map(|id| id.channel_on(webview));
     let dir = profil(&app, &bruker)?;
     let (_, url, modeller) = self::leverandor(&leverandor)?;
@@ -840,8 +786,6 @@ pub fn brev_avbryt_modell(
     Ok(())
 }
 
-/// Filtypene brukeren kan lagre: brev (pdf, docx), sikkerhetskopi (json)
-/// og kalenderfiler for intervjuer (ics).
 fn eksport_tillatt(ext: &str) -> bool {
     ["pdf", "docx", "json", "ics"].contains(&ext)
 }
@@ -898,7 +842,6 @@ mod tester {
             assert!(profil_i(Path::new("/tmp"), id).is_err());
         }
         assert!(profil_i(Path::new("/tmp"), "0123456789abcdef").is_ok());
-        // Navnene selv dekkes av dokumentnavn_er_like_i_node_og_rust.
         assert!(dokumentnavn("cv.json").is_ok());
     }
     fn felles() -> Value {
@@ -938,8 +881,6 @@ mod tester {
         let brev: Value = serde_json::from_str(&tomt_dokument("brev-j1.json", 3).unwrap()).unwrap();
         assert_eq!(brev["jobbId"], "j1");
         assert_eq!(brev["revisjon"], 3);
-        // Før kuttet denne navn[5..len-5] for alt som ikke var CV: «jobb-»
-        // ga feil id, og radar.json fikk et snitt som ikke finnes.
         for navn in ["jobb-j1.json", "radar.json"] {
             let d: Value = serde_json::from_str(&tomt_dokument(navn, 4).unwrap()).unwrap();
             assert_eq!(
@@ -980,8 +921,6 @@ mod tester {
                 .unwrap()
                 .contains("først"));
             slett_dokument(d.path(), navn, 2).unwrap();
-            // Etter sletting lages det tomme dokumentet fra markøren. Det var
-            // her radar.json fikk appen til å panikke.
             let tom = les_dokument(d.path(), navn, false).unwrap().unwrap();
             assert_eq!(revisjon(&tom).unwrap(), 3);
             fs::write(d.path().join(navn), "ødelagt").unwrap();
@@ -1130,7 +1069,6 @@ mod tester {
                 "{prefiks}"
             );
         }
-        // En profil uten katalog ennå har ingen dokumenter, ikke en feil.
         assert!(
             utdrag_i(&p.join("finnes-ikke"), "jobb-", &["a".to_string()])
                 .unwrap()
@@ -1237,7 +1175,6 @@ mod tester {
     #[test]
     fn linjedeler_over_chunkgrenser_crlf_og_tak() {
         let mut d = Linjedeler::ny();
-        // En linje delt over to biter settes sammen.
         assert_eq!(
             d.ta(b"event: fase\ndata: {\"a\"").unwrap(),
             vec!["event: fase"]
@@ -1246,26 +1183,21 @@ mod tester {
             d.ta(b":1}\n\n").unwrap(),
             vec!["data: {\"a\":1}".to_string(), String::new()]
         );
-        // CRLF gir nøyaktig samme linjer som LF: linjeskiftet strippes alltid,
-        // og JS-siden legger på \n igjen. Uenighet her ville blitt en stille feil.
         assert_eq!(
             d.ta(b"event: x\r\ndata: y\r\n\r\n").unwrap(),
             vec!["event: x".to_string(), "data: y".to_string(), String::new()]
         );
         assert_eq!(d.slutt(), None);
 
-        // Et flerbytetegn delt mellom to biter tolkes ikke før linjen er hel.
         let mut d = Linjedeler::ny();
         let kilde = "data: årene\n".as_bytes();
         assert!(d.ta(&kilde[..7]).unwrap().is_empty());
         assert_eq!(d.ta(&kilde[7..]).unwrap(), vec!["data: årene"]);
 
-        // En avsluttende halv linje er ingen ramme, men går ikke tapt.
         let mut d = Linjedeler::ny();
         assert!(d.ta(b"data: halv").unwrap().is_empty());
         assert_eq!(d.slutt(), Some("data: halv".to_string()));
 
-        // Ugyldig UTF-8 i en hel linje er et formatavvik, ikke noe å gjette på.
         let mut d = Linjedeler::ny();
         assert_eq!(
             d.ta(b"\xff\xfe\n").unwrap_err(),
@@ -1319,7 +1251,6 @@ mod tester {
             r#"{"model":"claude-opus-5-5","stream":true}"#
         )
         .is_ok());
-        // Kroppen med hurtigbuffer: systemet og kildene er blokker med cache_control.
         assert!(sjekk_modellkropp(
             "anthropic",
             ANTHROPIC,
@@ -1333,8 +1264,6 @@ mod tester {
     }
     #[test]
     fn hvert_formal_har_sin_modell_hos_leverandoren() {
-        /* Samme tabell som src/modell/brev-provider.mjs testes mot. Rust godtar
-        nøyaktig modellene der, verken flere eller færre. */
         let felles: Value =
             serde_json::from_str(include_str!("../../tester/data/modeller.json")).unwrap();
         for navn in ["anthropic", "openai"] {
@@ -1359,7 +1288,6 @@ mod tester {
                 "{m}"
             );
         }
-        // Brevmodellen før byttet til Opus 5.5 godtas ikke lenger.
         assert_eq!(
             sjekk_modellkropp(
                 "anthropic",
@@ -1369,7 +1297,6 @@ mod tester {
             .unwrap_err(),
             "Ukjent modell."
         );
-        // En modell fra den andre leverandøren godtas ikke.
         assert_eq!(
             sjekk_modellkropp(
                 "anthropic",

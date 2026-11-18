@@ -21,10 +21,10 @@ MASTER = ROT / "src-tauri/icons/master.png"
 FANEIKON = ROT / "src/felles/ikon.png"
 
 STR = 1024
-FLATE = 824                 # Apples mal for macOS-ikoner
+FLATE = 824
 MARG = (STR - FLATE) // 2
-RADIUS = 185                # 22,5 % av flaten, som malen
-SKALA = 4                   # tegn masken stort og skaler ned for glatte kanter
+RADIUS = 185
+SKALA = 4
 
 
 def avrundet_maske(storrelse, radius):
@@ -48,7 +48,6 @@ def main():
     master.alpha_composite(kilde, (MARG, MARG))
     master.save(MASTER)
 
-    # Fanen er for liten til margen og skyggen: der brukes flaten alene.
     kilde.resize((32, 32), Image.LANCZOS).save(FANEIKON)
 
 
