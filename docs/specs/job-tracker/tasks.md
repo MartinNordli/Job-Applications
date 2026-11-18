@@ -5,7 +5,7 @@
 - [x] `src/felles/felles.mjs` — statuser, sektorer, validering
 - [x] `server/lager.mjs` — atomisk lesing/skriving, karantene, sikkerhetskopi
 - [x] `server/server.mjs` — statiske filer + `/api/jobber`
-- [x] `server/*.test.mjs` — 32 tester
+- [x] `server/*.test.mjs` (nå `tester/enhet/`) — 32 tester
 - [x] `package.json`
 - [x] `src/soknader/startliste.js` — startlisten ut av app.js
 - [x] `src/soknader/lagring.js` — hent, lagre med debounce, versjonssporing, tilstandsvarsler
