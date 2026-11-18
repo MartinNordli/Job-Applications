@@ -19,7 +19,7 @@ export const PRISER = Object.freeze({
   "claude-sonnet-5-5": Object.freeze({ inn: 2, ut: 10, skriv: 2.5, les: 0.2 })
 });
 /* Samme omtrentlige valutakurs som importloggen. */
-export { KURS } from "../src/importlogg.mjs";
+export { KURS } from "../src/import/importlogg.mjs";
 export const INNSATSER = Object.freeze(["low", "medium", "high", "xhigh", "max"]);
 
 /* Hos Anthropic er input_tokens bare det som ikke kom fra bufferen, så de

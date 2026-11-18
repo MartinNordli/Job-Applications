@@ -8,11 +8,11 @@
    Sjekken fører det den returnerer i varslet.json, den samme loggen
    Mac-appens bakgrunnsjobb bruker, så en frist varsles én gang selv
    om både nettleseren og jobben ser den. Reglene står i
-   src/fristvarsel.mjs.
+   src/soknader/fristvarsel.mjs.
    ============================================================ */
 
 import { INNSTILLINGSFIL, LOGGFIL, validerInnstilling, lesInnstilling,
-         lesLogg, runde, isoDato } from "../src/fristvarsel.mjs";
+         lesLogg, runde, isoDato } from "../src/soknader/fristvarsel.mjs";
 
 export const erVarselbane = bane => bane === "/api/varsel" || bane === "/api/varsel/sjekk";
 

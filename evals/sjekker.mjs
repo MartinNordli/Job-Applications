@@ -7,7 +7,7 @@
    sier ingenting om brevet er godt. Det avgjør den menneskelige
    vurderingen (se evals/README.md).
    ============================================================ */
-import { finnStilbrudd, finnStrukturbrudd, finnLånteFakta, innholdsavsnitt, ordtall, validerGrunnlag } from "../src/brevlogikk.mjs";
+import { finnStilbrudd, finnStrukturbrudd, finnLånteFakta, innholdsavsnitt, ordtall, validerGrunnlag } from "../src/brev/brevlogikk.mjs";
 
 const SPRÅK = { norsk: "nb", bokmål: "nb", nynorsk: "nn", engelsk: "en", english: "en" };
 const kode = s => SPRÅK[String(s).trim().toLowerCase()] || String(s).trim().toLowerCase();

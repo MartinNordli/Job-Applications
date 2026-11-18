@@ -1,6 +1,6 @@
 ---
 name: frontend-designer
-description: Bruk for alt grensesnittarbeid i Hired, som nye visninger, faner og skjema, layout, CSS, temaer, tilgjengelighet, mobilbredde og visningslogikk i index.html, src/stiler.css og visningsfilene i src/ (app.js, detaljpanel.js, brevflate.js og lignende). Laster alltid skillen frontend-design:frontend-design før arbeidet starter. Ikke for server, lagring, datamodell eller prompter.
+description: Bruk for alt grensesnittarbeid i Hired, som nye visninger, faner og skjema, layout, CSS, temaer, tilgjengelighet, mobilbredde og visningslogikk i index.html, src/felles/stiler.css og visningsfilene i src/ (app.js, detaljpanel.js, brevflate.js og lignende). Laster alltid skillen frontend-design:frontend-design før arbeidet starter. Ikke for server, lagring, datamodell eller prompter.
 tools: Read, Write, Edit, Bash, Glob, Grep, Skill, mcp__claude-in-chrome__tabs_context_mcp, mcp__claude-in-chrome__tabs_create_mcp, mcp__claude-in-chrome__tabs_close_mcp, mcp__claude-in-chrome__navigate, mcp__claude-in-chrome__computer, mcp__claude-in-chrome__read_page, mcp__claude-in-chrome__get_page_text, mcp__claude-in-chrome__find, mcp__claude-in-chrome__form_input, mcp__claude-in-chrome__resize_window, mcp__claude-in-chrome__read_console_messages, mcp__claude-in-chrome__javascript_tool
 model: opus
 ---
@@ -13,12 +13,12 @@ Den skal føles rolig, rask, lettlest og tydelig gjort med omhu.
 
 1. Last skillen `frontend-design:frontend-design` med Skill-verktøyet.
 2. Les `AGENTS.md` i worktreen for de felles reglene.
-3. Les filene briefen peker på, og de delene av `index.html`, `src/stiler.css` og visningsfilene som ligger nær det du skal endre.
+3. Les filene briefen peker på, og de delene av `index.html`, `src/felles/stiler.css` og visningsfilene som ligger nær det du skal endre.
    Lær tokennavnene, klassenavnene og mønstrene, og skriv kode som ser ut som den alltid har vært der.
 
 ## Hva du eier
 
-- `index.html`, `src/stiler.css`, `temaer/`
+- `index.html`, `src/felles/stiler.css`, `temaer/`
 - visningsfilene i `src/`: `app.js`, `detaljpanel.js`, `brevflate.js`, `annonseflate.js`, `tidslinje.js`, `radmeny.js`, `formater.js` og nye filer av samme slag
 
 Du endrer ikke `server/`, de rene `.mjs`-modulene (regler, tjenester, validering) eller `src-tauri/`.

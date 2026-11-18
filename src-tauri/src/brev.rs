@@ -2,8 +2,8 @@
 //! Samme mkdir-lås som Node; en gammel lås stjeles aldri på tid alene.
 //! Operasjonene gjelder alle profildokumentene (cv.json, stil.json,
 //! brev-<id>.json, jobb-<id>.json og radar.json), ikke bare brevene. Navneregelen og
-//! utdraget er speilet fra src/dokumentnavn.mjs og src/dokumentutdrag.mjs,
-//! og testdata/dokumenter.json holder de to sidene like.
+//! utdraget er speilet fra src/dokumenter/dokumentnavn.mjs og src/dokumenter/dokumentutdrag.mjs,
+//! og tester/data/dokumenter.json holder de to sidene like.
 use serde::Serialize;
 use serde_json::{Map, Value};
 use std::{
@@ -401,7 +401,7 @@ pub fn brev_liste(app: AppHandle, bruker: String) -> Result<Vec<String>, String>
 
 /* ---------- utdrag ----------
 Små verdier fra mange dokumenter, uten å sende dokumentene over IPC.
-Reglene er de samme som i src/dokumentutdrag.mjs: 1 til 4 ledd per
+Reglene er de samme som i src/dokumenter/dokumentutdrag.mjs: 1 til 4 ledd per
 sti, høyst 20 stier, bare egne nøkler, bare enkle verdier, tekst kortet
 til 300 kodepunkter, og et dokument som ikke kan leses hoppes over. */
 
@@ -411,7 +411,7 @@ const MAKS_STIER: usize = 20;
 const MAKS_RÅ_STIER: usize = 100;
 const MAKS_UTDRAGSTEKST: usize = 300;
 /// Alle samlingene utdraget går over har skjemaversjon 1, som i
-/// src/brevdata.mjs. Et dokument med et annet skjema forstår vi ikke.
+/// src/dokumenter/brevdata.mjs. Et dokument med et annet skjema forstår vi ikke.
 const SAMLINGSSKJEMA: u64 = 1;
 
 fn gyldig_sti(sti: &str) -> bool {
@@ -512,9 +512,9 @@ pub async fn dokument_utdrag(
 }
 
 /// Modellene er knyttet til formålet (brev, vurdering, radar), og må være
-/// de samme som i src/brev-provider.mjs. Frontenden velger modell i
+/// de samme som i src/modell/brev-provider.mjs. Frontenden velger modell i
 /// kroppen; her godtas bare de som er oppført for leverandøren.
-/// testdata/modeller.json holder de to sidene like. En modell som er
+/// tester/data/modeller.json holder de to sidene like. En modell som er
 /// byttet ut, godtas ikke lenger: ingen lagrede data sender den på nytt.
 fn leverandor(navn: &str) -> Result<(&'static str, &'static str, &'static [&'static str]), String> {
     match navn {
@@ -902,7 +902,7 @@ mod tester {
         assert!(dokumentnavn("cv.json").is_ok());
     }
     fn felles() -> Value {
-        serde_json::from_str(include_str!("../../testdata/dokumenter.json")).unwrap()
+        serde_json::from_str(include_str!("../../tester/data/dokumenter.json")).unwrap()
     }
     #[test]
     fn dokumentnavn_er_like_i_node_og_rust() {
@@ -1333,10 +1333,10 @@ mod tester {
     }
     #[test]
     fn hvert_formal_har_sin_modell_hos_leverandoren() {
-        /* Samme tabell som src/brev-provider.mjs testes mot. Rust godtar
+        /* Samme tabell som src/modell/brev-provider.mjs testes mot. Rust godtar
         nøyaktig modellene der, verken flere eller færre. */
         let felles: Value =
-            serde_json::from_str(include_str!("../../testdata/modeller.json")).unwrap();
+            serde_json::from_str(include_str!("../../tester/data/modeller.json")).unwrap();
         for navn in ["anthropic", "openai"] {
             let (_, _, modeller) = leverandor(navn).unwrap();
             let mut ventet: Vec<&str> = felles[navn]

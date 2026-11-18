@@ -13,9 +13,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { radartilfeller } from "./radar-tilfeller.mjs";
 import { sjekkVurdering, sjekkForslag, forespørslerFor } from "./radar-sjekker.mjs";
-import { RADAR_PROMPTVERSJON, FORSLAG_PROMPTVERSJON } from "../src/radarprompt.mjs";
-import { tolkVurdering, tolkForslag, RADARPRIS } from "../src/radarlogikk.mjs";
-import { byggModellkropp, LEVERANDORER, modellFor } from "../src/brev-provider.mjs";
+import { RADAR_PROMPTVERSJON, FORSLAG_PROMPTVERSJON } from "../src/radar/radarprompt.mjs";
+import { tolkVurdering, tolkForslag, RADARPRIS } from "../src/radar/radarlogikk.mjs";
+import { byggModellkropp, LEVERANDORER, modellFor } from "../src/modell/brev-provider.mjs";
 
 const args = process.argv.slice(2);
 const verdi = flagg => { const i = args.indexOf(flagg); return i === -1 ? null : args[i + 1]; };

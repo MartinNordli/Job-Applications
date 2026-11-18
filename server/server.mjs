@@ -36,12 +36,12 @@ import { lagBrukere, lagRatebegrenser, tolkCookies,
 import { validerNokkel, settNokkel, fjernNokkel, nokkelStatus,
          deltMiljønokkel } from "./nokkel.mjs";
 import { velgKatalog, sikreKatalog, beskjedOmGammelData } from "./katalog.mjs";
-import { offentligBruker } from "../src/brukerlogikk.mjs";
-import { SEKTOR_FOR } from "../src/felles.mjs";
+import { offentligBruker } from "../src/konto/brukerlogikk.mjs";
+import { SEKTOR_FOR } from "../src/felles/felles.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel,
-         tolkModellsvar, slåSammen, sektorForSelskap, manglendeFelt, finnesFraFor } from "../src/importlogikk.mjs";
-import { LOGGFIL, lagLinje, leggTil, sammendrag } from "../src/importlogg.mjs";
-import { trekkUtAnnonse } from "../src/annonsetekst.mjs";
+         tolkModellsvar, slåSammen, sektorForSelskap, manglendeFelt, finnesFraFor } from "../src/import/importlogikk.mjs";
+import { LOGGFIL, lagLinje, leggTil, sammendrag } from "../src/import/importlogg.mjs";
+import { trekkUtAnnonse } from "../src/stilling/annonsetekst.mjs";
 import { erBrevbane, lagBrevRuter } from "./brev-api.mjs";
 import { erVarselbane, lagVarselRuter } from "./varsel-api.mjs";
 import { erRadarbane, lagRadartjeneste, lagRadarRuter, startRadartimer } from "./radar-api.mjs";
@@ -481,12 +481,11 @@ async function apiNokkel(req, res, ktx){
   return ikkeTillatt(res, "GET, PUT, DELETE");
 }
 
-/* Bare index.html og de to mappene serveres. Sammenlikningen skjer på
+/* Bare index.html og src/ serveres. Sammenlikningen skjer på
    den oppløste stien, så «/src/../..» ikke kan skjule seg bak prefikset. */
 function lovligFil(full){
   return full === path.join(ROT, "index.html")
-      || full.startsWith(path.join(ROT, "src") + path.sep)
-      || full.startsWith(path.join(ROT, "temaer") + path.sep);
+      || full.startsWith(path.join(ROT, "src") + path.sep);
 }
 
 async function statisk(req, res, bane){

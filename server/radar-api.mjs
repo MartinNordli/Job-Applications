@@ -27,10 +27,10 @@
    ============================================================ */
 import { lagBrevlager } from "./brevlager.mjs";
 import { lagBrevModell, brevNokkelStatus } from "./brev-modell.mjs";
-import { lagRadarnett } from "../src/radarnett.mjs";
-import { Brevfeil } from "../src/dokumentfeil.mjs";
+import { lagRadarnett } from "../src/radar/radarnett.mjs";
+import { Brevfeil } from "../src/dokumenter/dokumentfeil.mjs";
 import { kjørRadar, søkNå, tilstandFra, lagreInnstillinger, ikkeInteressert, markerLagtTil,
-         leggTilKarriereside, fjernKarriereside, slåPåKarriereside, foreslåFraProfil } from "../src/radarlogikk.mjs";
+         leggTilKarriereside, fjernKarriereside, slåPåKarriereside, foreslåFraProfil } from "../src/radar/radarlogikk.mjs";
 import { deltMiljønokkel } from "./nokkel.mjs";
 import { offentligFeil, send, kropp, objekt, metode } from "./brev-api.mjs";
 

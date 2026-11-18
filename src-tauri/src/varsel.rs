@@ -2,11 +2,11 @@
    Fristvarsel: systemvarselet øverst til høyre, også når appen
    er lukket.
 
-   Regelen og ordene er en kopi av src/fristvarsel.mjs. Kopien finnes
+   Regelen og ordene er en kopi av src/soknader/fristvarsel.mjs. Kopien finnes
    fordi bakgrunnsjobben kjører uten et webview og dermed uten
    JavaScript. Endres noe der, endres det her; testene nederst bruker
-   de samme tilfellene som server/fristvarsel.test.mjs, lest fra
-   testdata/varseltilfeller.json, som JavaScript-testene også leser.
+   de samme tilfellene som tester/enhet/fristvarsel.test.mjs, lest fra
+   tester/data/varseltilfeller.json, som JavaScript-testene også leser.
    Det gjelder både fristene og intervjuvarslene (dagen før etter
    kl. 09, og 0 til 180 minutter før start).
 
@@ -197,7 +197,7 @@ fn sekunder_til(start: NaiveDateTime, nå: NaiveDateTime) -> i64 {
 }
 
 /// Intervjuene som skal varsles nå, tidligst først. Kopi av
-/// intervjuvarsler i src/fristvarsel.mjs: `nå` er lokal tid.
+/// intervjuvarsler i src/soknader/fristvarsel.mjs: `nå` er lokal tid.
 pub fn intervjuvarsler(jobber: &[Value], nå: NaiveDateTime, inn: &Innstilling, logg: &Logg) -> Vec<(String, Varsel)> {
     if !inn.på || !inn.intervju {
         return Vec::new();
@@ -400,12 +400,12 @@ impl Avsender for Varselsenter {
     }
 }
 
-/// Radar-varselet. Teksten er laget av kjernen (src/radarlogikk.mjs) og
+/// Radar-varselet. Teksten er laget av kjernen (src/radar/radarlogikk.mjs) og
 /// er alt renset der, men den kommer fra fremmede sider og går til
 /// systemet, så den renses en gang til her med samme regel som
 /// `rensLinje`: kontrolltegn og usynlige tegn blir mellomrom, mellomrom
 /// samles, og lengden kortes på tegn. Samme tilfeller leses av begge
-/// sider fra testdata/radarvarsel.json.
+/// sider fra tester/data/radarvarsel.json.
 pub const MAKS_RADARVARSEL: usize = 240;
 
 fn usynlig(c: char) -> bool {
@@ -570,7 +570,7 @@ mod tester {
     use serde_json::json;
     use std::cell::RefCell;
 
-    /* Samme tilfeller som server/fristvarsel.test.mjs. */
+    /* Samme tilfeller som tester/enhet/fristvarsel.test.mjs. */
     fn dag(t: &str) -> NaiveDate {
         iso(t).unwrap()
     }
@@ -642,11 +642,11 @@ mod tester {
         assert_eq!(les_innstilling(Some(r#"{"på":false,"dagerFør":2,"intervju":"ja"}"#)), Innstilling::default());
     }
 
-    /* Tilfellene i testdata/varseltilfeller.json er de samme som
-       server/fristvarsel.test.mjs kjører. Endres en regel, må filen og
+    /* Tilfellene i tester/data/varseltilfeller.json er de samme som
+       tester/enhet/fristvarsel.test.mjs kjører. Endres en regel, må filen og
        begge språkene følge med. */
     fn tilfeller() -> Value {
-        serde_json::from_str(include_str!("../../testdata/varseltilfeller.json")).unwrap()
+        serde_json::from_str(include_str!("../../tester/data/varseltilfeller.json")).unwrap()
     }
     fn innstilling_av(v: &Value) -> Innstilling {
         les_innstilling(Some(&v.to_string()))
@@ -708,7 +708,7 @@ mod tester {
     #[test]
     fn radarvarselet_renses_likt_i_js_og_rust() {
         let tilfeller: Value =
-            serde_json::from_str(include_str!("../../testdata/radarvarsel.json")).unwrap();
+            serde_json::from_str(include_str!("../../tester/data/radarvarsel.json")).unwrap();
         for t in tilfeller["tilfeller"].as_array().unwrap() {
             let inn = t["inn"].as_str().unwrap();
             let ut = t["ut"].as_str().map(String::from);

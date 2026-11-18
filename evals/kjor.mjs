@@ -16,8 +16,8 @@ import path from "node:path";
 import { tilfeller } from "./tilfeller.mjs";
 import { sjekkBrev } from "./sjekker.mjs";
 import { dollar, medModell, fordel, blindfil, KURS, INNSATSER } from "./sammenligning.mjs";
-import { skrivBrev, validerGrunnlag, BREVSKJEMA, LEVERANDORER, PROMPTVERSJON } from "../src/brevlogikk.mjs";
-import { leverandorFor } from "../src/brev-provider.mjs";
+import { skrivBrev, validerGrunnlag, BREVSKJEMA, LEVERANDORER, PROMPTVERSJON } from "../src/brev/brevlogikk.mjs";
+import { leverandorFor } from "../src/modell/brev-provider.mjs";
 
 const args = process.argv.slice(2);
 const verdi = flagg => { const i = args.indexOf(flagg); return i === -1 ? null : args[i+1]; };

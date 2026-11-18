@@ -7,7 +7,7 @@
 
    Hvert tilfelle er én CV og opptil åtte annonser, altså én bolk.
    forventet er båndet prosenten bør ligge i etter skalaen i
-   src/matchlogikk.mjs (SKALA), og er vidt med vilje: sjekken skal
+   src/stilling/matchlogikk.mjs (SKALA), og er vidt med vilje: sjekken skal
    fange en vurdering som er åpenbart feil, ikke jakte på ett tall.
    relevant sier om forslaget fra samme CV bør slippe annonsen gjennom
    forfilter (true), stenge den ute (false) eller ikke ha noe å si (null).

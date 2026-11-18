@@ -1,7 +1,7 @@
 /* ============================================================
    Lager (Node) — filsystemet under lagerlogikken.
 
-   Reglene for datafilen ligger i src/lagerlogikk.mjs, delt med
+   Reglene for datafilen ligger i src/soknader/lagerlogikk.mjs, delt med
    Tauri-appen. Her er bare de fire filoperasjonene, gjort med
    node:fs — og de gjøres nøye: uten fsync kan et strømbrudd gi
    en tom fil, og uten rename kan en leser treffe en halvskrevet.
@@ -10,7 +10,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { lagLager as lagLogikk, FILNAVN, FORRIGE } from "../src/lagerlogikk.mjs";
+import { lagLager as lagLogikk, FILNAVN, FORRIGE } from "../src/soknader/lagerlogikk.mjs";
 
 const tmpNavn = navn => "." + navn + ".tmp";
 

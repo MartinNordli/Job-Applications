@@ -7,10 +7,10 @@
 <meta name="description" content="Hired: personlig oversikt over jobbsøknader, frister, sendte søknader og status.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#EBE8E1" id="temafarge">
-<script src="src/tema-tidlig.js"></script>
-<link rel="icon" type="image/png" href="src/ikon.png">
-<link rel="stylesheet" href="src/skrifter.css">
-<link rel="stylesheet" href="src/stiler.css">
+<script src="src/felles/tema-tidlig.js"></script>
+<link rel="icon" type="image/png" href="src/felles/ikon.png">
+<link rel="stylesheet" href="src/felles/skrifter.css">
+<link rel="stylesheet" href="src/felles/stiler.css">
 </head>
 <body>
 <div class="skall">
@@ -106,7 +106,7 @@
     <div id="innhold"></div>
   </main>
 
-  <!-- Detaljpanelet. Fylles av src/detaljpanel.js når en søknad åpnes.
+  <!-- Detaljpanelet. Fylles av src/soknader/detaljpanel.js når en søknad åpnes.
        Fra 1100 px står det som en kolonne ved siden av listen, under
        det som et ark over den, med sitt eget slør. -->
   <aside class="detalj" id="detalj" tabindex="-1" hidden></aside>
@@ -116,7 +116,7 @@
 
 <div class="slor" id="slor"></div>
 
-<!-- Porten. Fylles av src/innlogging.js; står tom til den trengs. -->
+<!-- Porten. Fylles av src/konto/innlogging.js; står tom til den trengs. -->
 <div class="port" id="port" role="dialog" aria-modal="true" aria-labelledby="portTittel" hidden></div>
 
 <aside class="skuff" id="skuff" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="skuffTittel" tabindex="-1">
@@ -130,7 +130,7 @@
 
 <div class="varsel" id="varsel" role="status" inert></div>
 
-<script src="src/uten-server.js"></script>
-<script type="module" src="src/app.js"></script>
+<script src="src/felles/uten-server.js"></script>
+<script type="module" src="src/soknader/app.js"></script>
 </body>
 </html>

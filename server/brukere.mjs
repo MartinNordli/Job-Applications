@@ -1,7 +1,7 @@
 /* ============================================================
    Brukere (Node) — registeret, øktene og lagrene under dem.
 
-   Reglene ligger i src/brukerlogikk.mjs, delt med nettleseren og
+   Reglene ligger i src/konto/brukerlogikk.mjs, delt med nettleseren og
    appmodus. Her er det som trenger et filsystem og node:crypto:
    registerfilen med sin egen skrivekø, hemmeligheten øktene
    signeres med, PBKDF2, ratebegrenserne, migreringen av den gamle
@@ -35,8 +35,8 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import { lagFiler, lagLager as lagJobblager } from "./lager.mjs";
-import { FILNAVN, FORRIGE } from "../src/lagerlogikk.mjs";
-import { LOGGFIL } from "../src/importlogg.mjs";
+import { FILNAVN, FORRIGE } from "../src/soknader/lagerlogikk.mjs";
+import { LOGGFIL } from "../src/import/importlogg.mjs";
 import { NOKKELFIL } from "./nokkel.mjs";
 import {
   ITERASJONER, ALGORITME, SALT_BYTES, NOKKEL_BYTES, ID_BYTES, OKT_LEVETID,
@@ -45,14 +45,14 @@ import {
   migrerRegister, tomtRegister, tilBase64url, fraBase64url,
   lagNyttelast, kodNyttelast, tolkNyttelast, delToken, erUtløpt,
   REGISTERFIL, REGISTER_FORRIGE, BRUKERKATALOG, MAKS_BRUKERE
-} from "../src/brukerlogikk.mjs";
+} from "../src/konto/brukerlogikk.mjs";
 
 const pbkdf2 = promisify(crypto.pbkdf2);
 
-/* Filnavnene er delt med appmodus og ligger i src/brukerlogikk.mjs.
+/* Filnavnene er delt med appmodus og ligger i src/konto/brukerlogikk.mjs.
    Hemmeligheten er ikke: appmodus signerer ingen økt, fordi
    webviewet kunne lest hemmeligheten selv. */
-export { REGISTERFIL, REGISTER_FORRIGE, BRUKERKATALOG } from "../src/brukerlogikk.mjs";
+export { REGISTERFIL, REGISTER_FORRIGE, BRUKERKATALOG } from "../src/konto/brukerlogikk.mjs";
 export const HEMMELIGHETSFIL  = "okthemmelighet.txt";
 
 /* ASCII, fordi et cookienavn er et RFC 6265-token. Filnavn og
@@ -60,9 +60,9 @@ export const HEMMELIGHETSFIL  = "okthemmelighet.txt";
 export const COOKIE = "okt";
 
 /* Hardt tak på antall kontoer; taket binder også lagercachen under.
-   Tallet er en regel og ligger i src/brukerlogikk.mjs, der appmodus
+   Tallet er en regel og ligger i src/konto/brukerlogikk.mjs, der appmodus
    når det. */
-export { MAKS_BRUKERE } from "../src/brukerlogikk.mjs";
+export { MAKS_BRUKERE } from "../src/konto/brukerlogikk.mjs";
 
 /* ---------- cookier ---------- */
 

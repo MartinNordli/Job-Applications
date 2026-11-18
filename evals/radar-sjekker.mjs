@@ -5,8 +5,8 @@
    forslaget faktisk virker i forfilter. Resten avgjør en person med
    vurderingspunktene i tilfellene.
    ============================================================ */
-import { forfilter, BOLK } from "../src/radarlogikk.mjs";
-import { radarForespørsel, forslagForespørsel } from "../src/radarprompt.mjs";
+import { forfilter, BOLK } from "../src/radar/radarlogikk.mjs";
+import { radarForespørsel, forslagForespørsel } from "../src/radar/radarprompt.mjs";
 
 /* Forespørslene appen ville sendt for et tilfelle: én bolk og ett forslag. */
 export function forespørslerFor(t, leverandor = "anthropic"){

@@ -4,9 +4,9 @@
 
    Motstykket til server/nett.mjs: samme operasjoner, samme vern,
    men utført av Rust. Reglene over dette laget ligger i
-   src/importlogikk.mjs og src/radarnett.mjs og deles med
+   src/import/importlogikk.mjs og src/radar/radarnett.mjs og deles med
    nettleserversjonen. Reglene for hent_json står i begge språk, og
-   testdata/hentjson.json holder dem like.
+   tester/data/hentjson.json holder dem like.
 
    Nøkkelen og NAV-tokenet leses her og forlater aldri Rust. Adressene
    til modellen og til NAVs token står i koden, ikke i et argument.
@@ -245,7 +245,7 @@ pub async fn spor_modell(nokkel: String, kropp: String) -> Result<String, String
 
 /* ---------- hent JSON for Radar ---------- */
 /*
-   Samme regler som src/radarnett.mjs og lagHentJson i server/nett.mjs:
+   Samme regler som src/radar/radarnett.mjs og lagHentJson i server/nett.mjs:
    bare https og bare vertene under, ingen videresendinger, typen må
    være application/json, 304 er «ingenting nytt», og over 5 MiB er en
    feil, ikke et stille kutt. 30 s for NAV, 15 s ellers.
@@ -657,9 +657,9 @@ mod tester {
 
     /* ---------- hent_json ---------- */
 
-    /* Den samme filen leses av server/hentjson.test.mjs. */
+    /* Den samme filen leses av tester/enhet/hentjson.test.mjs. */
     fn felles() -> serde_json::Value {
-        serde_json::from_str(include_str!("../../testdata/hentjson.json")).expect("hentjson.json er gyldig")
+        serde_json::from_str(include_str!("../../tester/data/hentjson.json")).expect("hentjson.json er gyldig")
     }
 
     #[test]
@@ -684,7 +684,7 @@ mod tester {
             let tekst = t["tekst"].as_str().unwrap();
             assert_eq!(tolk_nav_token(tekst).as_deref(), t["token"].as_str(), "{tekst:?}");
         }
-        let lagret = include_str!("../../testdata/radar/nav/publicToken.txt");
+        let lagret = include_str!("../../tester/data/radar/nav/publicToken.txt");
         assert!(tolk_nav_token(lagret).is_some_and(|t| t.starts_with("eyJ")));
     }
 

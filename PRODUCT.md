@@ -47,7 +47,7 @@ Stemmen er nøktern og presis bokmål, som sier hva som skjedde og hva man kan g
 ## Evidence on Hand
 
 Ingen kunder, sitater eller tall om bruk; appen er personlig og skal ikke påstå noe slikt.
-Syntetiske testdata ligger i `testdata/`.
+Syntetiske testdata ligger i `tester/data/`.
 
 ## Product Principles
 

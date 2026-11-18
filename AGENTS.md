@@ -8,11 +8,11 @@ Oppbyggingen og filkartet står i README under Utvikling, og gjentas ikke her.
 
 ```sh
 npm test                                       # alle enhetstester, rundt 10 s
-node --test server/lager.test.mjs              # én fil
-node --test --test-name-pattern="karantene" server/lager.test.mjs
+node --test tester/enhet/lager.test.mjs              # én fil
+node --test --test-name-pattern="karantene" tester/enhet/lager.test.mjs
 
 npm run test:ui                                # alle nettlesertester, rundt 1 min
-node scripts/test-radar-browser.mjs            # én flyt, rundt 10 s
+node tester/nettleser/test-radar-browser.mjs            # én flyt, rundt 10 s
 
 PATH="/opt/homebrew/opt/rustup/bin:$PATH" npm run test:rust   # rundt 1 min, flere minutter første gang i en worktree
 cd src-tauri && cargo test <navn>              # et utvalg, når dist/ finnes
@@ -50,7 +50,7 @@ Det finnes ingen linter eller formatter, så følg stilen i filen du endrer.
   Ingenting fra `data/`, `examples/` (ekte brev med navn), nøkler eller ekte søknader havner i kode, tester, evals eller commits.
 - Ingen nye avhengigheter, ingen rammeverk og ikke noe byggesteg for frontenden.
 - En regel som endres i Node og ikke i Rust, er en feil.
-  Regler som finnes begge steder, låses av en felles fil i `testdata/`.
+  Regler som finnes begge steder, låses av en felles fil i `tester/data/`.
 - En agent jobber bare i worktreen den har fått, og bytter ikke branch, fletter ikke og pusher ikke.
 
 ## Konvensjoner

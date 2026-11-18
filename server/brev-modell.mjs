@@ -3,9 +3,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { validerNokkel, hale } from "../src/brukerlogikk.mjs";
-import { leverandorFor, byggModellkropp, tolkModellsvar } from "../src/brev-provider.mjs";
-import { delSse, lagSvarsamler, lagFeltstrøm } from "../src/brev-strom.mjs";
+import { validerNokkel, hale } from "../src/konto/brukerlogikk.mjs";
+import { leverandorFor, byggModellkropp, tolkModellsvar } from "../src/modell/brev-provider.mjs";
+import { delSse, lagSvarsamler, lagFeltstrøm } from "../src/modell/brev-strom.mjs";
 
 /* Brevet tenker, skriver og leser gjennom i ett kall, og kan bruke
    flere minutter. Tidsgrensen gjelder hele kallet, også strømmen. */

@@ -1180,7 +1180,7 @@
       }
     ],
     "provenance": {
-      "source": "Skrevet etter bygget, fra src/stiler.css, src/skrifter.css og src/radarflate.js på feat/radar-dagens-utvalg, og oppdatert fra koden som ble sendt på feat/radar-sveip, der «Dagens utvalg» ble et kort man sveiper i med en kortrekke under. Oppdatert igjen fra koden som ble sendt på feat/tall-radarfarger (commit a83a21f), der Tall fikk Radars farger.",
+      "source": "Skrevet etter bygget, fra src/felles/stiler.css, src/felles/skrifter.css og src/radar/radarflate.js på feat/radar-dagens-utvalg, og oppdatert fra koden som ble sendt på feat/radar-sveip, der «Dagens utvalg» ble et kort man sveiper i med en kortrekke under. Oppdatert igjen fra koden som ble sendt på feat/tall-radarfarger (commit a83a21f), der Tall fikk Radars farger.",
       "seed": "seed:3ab3da59f904a2e2, bekreftet på denne maskinen fra trekningsloggen i hovedrepoet. Hånden fra trekningen ble avvist av brukeren; retningen kom fra en idérunde på designflaten etterpå, og brukeren godkjente det finpussede forslaget «Dagens utvalg» og siden prototypen man sveiper i.",
       "rasters": "Ingen: bygget lagde ingen rasterbilder som sendes med appen. Skjermbildene i .impeccable/review/ er gjennomgangsbevis, ikke leveranse.",
       "review": "Sluttgjennomgang for «Dagens utvalg»: fix, med seed-linjen og ordlyden om første skjermbilde i kontrakten og grunnene fordelt over kolonner lagt inn. Sluttgjennomgang for sveipingen: fix, med nabokortene helt ut til kanten, det valgte minikortet merket med metall i de mørke temaene og datoene i brikkene på det store kortet i brikkens grotesk lagt inn.",

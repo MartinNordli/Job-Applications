@@ -3,7 +3,7 @@
    modellen, og JSON-en Radar henter fra kjente kilder.
 
    Speiles av src-tauri/src/nett.rs for appmodus. Alt over dette
-   laget er rene regler i src/importlogikk.mjs og src/radarnett.mjs;
+   laget er rene regler i src/import/importlogikk.mjs og src/radar/radarnett.mjs;
    her nede finnes bare henting, og vernet som må følge med den.
    ============================================================ */
 
@@ -11,9 +11,9 @@ import dns from "node:dns/promises";
 import fs from "node:fs/promises";
 import https from "node:https";
 import path from "node:path";
-import { sjekkLenke } from "../src/felles.mjs";
+import { sjekkLenke } from "../src/felles/felles.mjs";
 import { sjekkJsonAdresse, erJsonType, hodeverdi, tolkNavToken, tidsgrenseFor,
-         MAKS_JSON, MAKS_TOKEN, NAV_TOKENFIL, NAV_TOKENURL } from "../src/radarnett.mjs";
+         MAKS_JSON, MAKS_TOKEN, NAV_TOKENFIL, NAV_TOKENURL } from "../src/radar/radarnett.mjs";
 import { NOKKELFIL, lesEgenNokkel, miljønokkel } from "./nokkel.mjs";
 
 const MAKS_SIDE   = 2 * 1024 * 1024;
@@ -172,7 +172,7 @@ export async function lesNokkel({ katalog, tillatMiljø = false } = {}){
 
 /* ---------- hent JSON for Radar ---------- */
 /*
-   Reglene står i src/radarnett.mjs og gjelder både her og i Rust.
+   Reglene står i src/radar/radarnett.mjs og gjelder både her og i Rust.
    Her er bare det som må gjøres med en ekte tilkobling.
 
    DNS låses: vertsnavnet slås opp én gang, alle adressene sjekkes, og

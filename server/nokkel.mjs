@@ -3,7 +3,7 @@
    kommer inn over HTTP og går ut i et HTTP-hode.
 
    Kravene denne modulen holder, og som hver har en test i
-   server/nokkel.test.mjs:
+   tester/enhet/nokkel.test.mjs:
 
    1. validerNokkel er en sikkerhetsregel, ikke høflighet.
       Nøkkelen havner rett i x-api-key. Derfor: 20–500 tegn etter
@@ -39,12 +39,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-/* Filnavnet, formregelen og halen ligger i src/brukerlogikk.mjs:
+/* Filnavnet, formregelen og halen ligger i src/konto/brukerlogikk.mjs:
    appmodus skriver den samme filen selv, uten en server foran, og
    må holde nøyaktig samme krav. De reeksporteres herfra, der resten
    av nøkkelhåndteringen bor, så kallstedene slipper å vite det. */
 import { NOKKELFIL, MIN_NOKKEL, MAKS_NOKKEL, MIN_FOR_HALE,
-         validerNokkel, hale } from "../src/brukerlogikk.mjs";
+         validerNokkel, hale } from "../src/konto/brukerlogikk.mjs";
 export { NOKKELFIL, MIN_NOKKEL, MAKS_NOKKEL, MIN_FOR_HALE, validerNokkel, hale };
 
 /* Filen leses ved hvert kall. Én liten lesing per import, og til

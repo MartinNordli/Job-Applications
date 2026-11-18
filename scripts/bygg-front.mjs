@@ -2,7 +2,7 @@
    Samler frontenden i dist/ — det Tauri pakker inn i appen.
 
    Tauri vil ha én mappe å legge inn i binæret. Peker vi den rett
-   på prosjektroten, følger data/, temaer/, .git og alt annet med
+   på prosjektroten, følger data/, .git og alt annet med
    inn i appen. Derfor denne: bare det siden faktisk trenger.
    ============================================================ */
 
@@ -23,10 +23,10 @@ for(const navn of MED){
   await fs.cp(path.join(ROT, navn), path.join(DIST, navn), { recursive: true });
 }
 
-/* Testfiler og annet som bare hører hjemme i utviklingsmappa. */
-for(const rusk of await fs.readdir(path.join(DIST, "src"))){
-  if(rusk.endsWith(".test.mjs") || rusk.endsWith(".test.js") || rusk === "brev-dokumentmotor.mjs")
-    await fs.rm(path.join(DIST, "src", rusk));
+/* Testfiler og annet som bare hører hjemme i utviklingsmappa, i alle undermapper. */
+for(const rusk of await fs.readdir(path.join(DIST, "src"), { recursive: true })){
+  if(rusk.endsWith(".test.mjs") || rusk.endsWith(".test.js") || path.basename(rusk) === "brev-dokumentmotor.mjs")
+    await fs.rm(path.join(DIST, "src", rusk), { force: true });
 }
 
 console.log("dist/ er klar");

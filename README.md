@@ -349,7 +349,7 @@ Adresser på egen maskin eller eget nett hentes aldri: `localhost`, private nett
 
 Hver import føres i `importlogg.jsonl` i kontoens katalog, med én linje per import (høyst 500), vertsnavn, feltene modellen måtte fylle og ekte tokentall fra API-et.
 `GET /api/importlogg` i nettleserversjonen oppsummerer loggen: hva importen har kostet, hvor ofte modellen slapp å kjøre, og hvilke felt modellen oftest måtte fylle.
-Prisen står i `src/importlogg.mjs`.
+Prisen står i `src/import/importlogg.mjs`.
 
 ### Annonsen tas vare på
 
@@ -889,7 +889,7 @@ npm run test:rust # fil-, nett-, brev- og varseloperasjonene i Mac-appen
 ```
 
 `npm test` kjører alle `server/*.test.mjs` med `node:test`.
-`testdata/dokumenter.json` leses av både Node- og Rust-testene, så navnene på profildokumentene og utdraget for listen ikke glir fra hverandre.
+`tester/data/dokumenter.json` leses av både Node- og Rust-testene, så navnene på profildokumentene og utdraget for listen ikke glir fra hverandre.
 Testene bruker simulerte modellsvar og krever ingen API-nøkkel.
 
 Nettlesertesten bruker installert Chrome på macOS, ellers Playwright Chromium (`npx playwright install chromium`).
@@ -918,41 +918,41 @@ Kjøring mot betalte modeller og vurdering av skrivekvalitet er beskrevet i [`ev
 
 ```
 index.html               markup
-src/stiler.css           designsystemet og fargetemaene
-src/skrifter.css         Familjen Grotesk og Geist Mono, lagt inn lokalt
-src/tema-tidlig.js       temaene, og det valgte satt før første maling
-src/app.js               appen: visninger, skjema, eksport og hendelser
-src/felles.mjs           statuser, sektorer og validering, delt av alle lag
-src/startliste.js        søknadene appen starter med
+src/felles/stiler.css           designsystemet og fargetemaene
+src/felles/skrifter.css         Familjen Grotesk og Geist Mono, lagt inn lokalt
+src/felles/tema-tidlig.js       temaene, og det valgte satt før første maling
+src/soknader/app.js               appen: visninger, skjema, eksport og hendelser
+src/felles/felles.mjs           statuser, sektorer og validering, delt av alle lag
+src/soknader/startliste.js        søknadene appen starter med
 
-src/lagerlogikk.mjs      reglene for datafilen, uten filsystem
-src/lagring.js           henting og lagring, velger transport etter modus
-src/tauri-filer.mjs      filsystemet i appmodus, over Rust
+src/soknader/lagerlogikk.mjs      reglene for datafilen, uten filsystem
+src/soknader/lagring.js           henting og lagring, velger transport etter modus
+src/felles/tauri-filer.mjs      filsystemet i appmodus, over Rust
 
-src/importlogikk.mjs     reglene for å lese en utlysning, uten I/O
-src/importlogg.mjs       kostnadsloggen for importen
-src/import.js            importflyten, velger transport
-src/tauri-nett.mjs       henting og modellkall i appmodus, over Rust
+src/import/importlogikk.mjs     reglene for å lese en utlysning, uten I/O
+src/import/importlogg.mjs       kostnadsloggen for importen
+src/import/import.js            importflyten, velger transport
+src/felles/tauri-nett.mjs       henting og modellkall i appmodus, over Rust
 
-src/brukerlogikk.mjs     reglene for kontoer og økter, uten I/O
-src/okt.js               hvem som er logget inn, i begge modi
-src/okt-app.mjs          kontoene i appmodus, over Rust og crypto.subtle
-src/innlogging.js        innloggingen
+src/konto/brukerlogikk.mjs     reglene for kontoer og økter, uten I/O
+src/konto/okt.js               hvem som er logget inn, i begge modi
+src/konto/okt-app.mjs          kontoene i appmodus, over Rust og crypto.subtle
+src/konto/innlogging.js        innloggingen
 
-src/brevlogikk.mjs       prompt, stileksempler, skjemaer og kontrollene for brevet
-src/brevtjeneste.mjs     kjøringen som skriver brevet i ett kall, og stilreferansen
-src/annonseuttrekk.mjs   annonsens linjer ut av en hentet side, valgt av Haiku
-src/brev-provider.mjs    meldingsformatet for Anthropic og OpenAI
-src/brev-strom.mjs       strømmende modellsvar
-src/brevdata.mjs         formatet for CV-, stil- og brevdokumentene
-src/brev.js              brevets transport, velger modus
-src/brevflate.js         brevskriveren
-src/annonsetekst.mjs     annonseteksten ut av en hentet side
-src/brev-dokumenter.mjs  lesing av CV og eksport av brev
-src/brev-dokumentmotor.mjs  PDF og Word, pakkes til src/vendor/
+src/brev/brevlogikk.mjs       prompt, stileksempler, skjemaer og kontrollene for brevet
+src/brev/brevtjeneste.mjs     kjøringen som skriver brevet i ett kall, og stilreferansen
+src/stilling/annonseuttrekk.mjs   annonsens linjer ut av en hentet side, valgt av Haiku
+src/modell/brev-provider.mjs    meldingsformatet for Anthropic og OpenAI
+src/modell/brev-strom.mjs       strømmende modellsvar
+src/dokumenter/brevdata.mjs         formatet for CV-, stil- og brevdokumentene
+src/brev/brev.js              brevets transport, velger modus
+src/brev/brevflate.js         brevskriveren
+src/stilling/annonsetekst.mjs     annonseteksten ut av en hentet side
+src/brev/brev-dokumenter.mjs  lesing av CV og eksport av brev
+src/brev/brev-dokumentmotor.mjs  PDF og Word, pakkes til src/vendor/
 
-src/fristvarsel.mjs      når en frist varsles, og med hvilke ord
-src/varsling.js          fristvarselet i flaten, velger modus
+src/soknader/fristvarsel.mjs      når en frist varsles, og med hvilke ord
+src/soknader/varsling.js          fristvarselet i flaten, velger modus
 
 server/server.mjs        statiske filer og API-et
 server/brukere.mjs       registeret, PBKDF2, cookier og ett lager per konto
@@ -970,18 +970,18 @@ src-tauri/src/nett.rs    henting og modellkall for importen i appen
 src-tauri/src/brev.rs    brevfiler, nøkler, modellkall og nedlasting i appen
 src-tauri/src/varsel.rs  fristvarselet i macOS og bakgrunnsjobben
 src-tauri/src/radar_bakgrunn.rs  Radar i bakgrunnen: agent, valg av modus, skjult vindu, vakthund
-src/radar-bakgrunn.html  den skjulte siden Radar kjører i når appen er lukket
+src/radar/radar-bakgrunn.html  den skjulte siden Radar kjører i når appen er lukket
 
 scripts/bygg-front.mjs       samler frontenden i dist/ for Tauri
 scripts/bygg-dokumenter.mjs  pakker dokumentmotoren med esbuild
-scripts/test-brev-browser.mjs  nettlesertesten av brevflyten
-scripts/test-innstillinger-browser.mjs  nettlesertesten av temaene og fristvarselet
+tester/nettleser/test-brev-browser.mjs  nettlesertesten av brevflyten
+tester/nettleser/test-innstillinger-browser.mjs  nettlesertesten av temaene og fristvarselet
 scripts/lag-ikon.py      lager appikonet fra src-tauri/icons/kilde.png
 evals/                   evaluering av søknadsbrev
 temaer/                  fargestudier, ikke i bruk av appen
-specs/job-tracker/       filbasert lagring: hva som ble bygget og hvorfor
-specs/flerbruker/        kontoene, og hva innloggingen ikke er
+docs/specs/job-tracker/       filbasert lagring: hva som ble bygget og hvorfor
+docs/specs/flerbruker/        kontoene, og hva innloggingen ikke er
 ```
 
-Reglene for datafilen står ett sted, i `src/lagerlogikk.mjs`.
+Reglene for datafilen står ett sted, i `src/soknader/lagerlogikk.mjs`.
 Under den ligger to filsystemer, Node i nettlesermodus og Rust i appen, og de gjør nøyaktig det samme: kopi av forrige versjon, midlertidig fil, fsync og `rename`.

@@ -1,9 +1,9 @@
 /* ============================================================
    Radar i bakgrunnen: appen startet av launchd med `--radar`.
 
-   Kjernen (src/radarlogikk.mjs) er JavaScript og kjører i et webview.
+   Kjernen (src/radar/radarlogikk.mjs) er JavaScript og kjører i et webview.
    Derfor starter bakgrunnskjøringen samme binær som vanlig, men med et
-   skjult vindu som laster src/radar-bakgrunn.html, og ingen hovedvindu.
+   skjult vindu som laster src/radar/radar-bakgrunn.html, og ingen hovedvindu.
    Målingene bak valgene under ligger i spike/RAPPORT.md på branchen
    spike/radar-bakgrunn.
 
@@ -34,7 +34,7 @@ use crate::varsel;
 pub const ARGUMENT: &str = "--radar";
 pub const RADARVINDU: &str = "radar";
 pub const HOVEDVINDU: &str = "main";
-const SIDE: &str = "src/radar-bakgrunn.html";
+const SIDE: &str = "src/radar/radar-bakgrunn.html";
 const RADARFIL: &str = "radar.json";
 pub const VAKTHUNDTID: Duration = Duration::from_secs(10 * 60);
 const MAKS_LOGG: u64 = 200_000;

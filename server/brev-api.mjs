@@ -1,14 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { lagBrevlager } from "./brevlager.mjs";
-import { lagBrevtjeneste } from "../src/brevtjeneste.mjs";
-import { lagMatchtjeneste } from "../src/matchtjeneste.mjs";
-import { lagForberedelsetjeneste } from "../src/forberedelsetjeneste.mjs";
-import { lagJobbdokumenter } from "../src/jobbdokumenttjeneste.mjs";
-import { Brevfeil } from "../src/brevdata.mjs";
-import { FASE } from "../src/brevlogikk.mjs";
+import { lagBrevtjeneste } from "../src/brev/brevtjeneste.mjs";
+import { lagMatchtjeneste } from "../src/stilling/matchtjeneste.mjs";
+import { lagForberedelsetjeneste } from "../src/intervju/forberedelsetjeneste.mjs";
+import { lagJobbdokumenter } from "../src/stilling/jobbdokumenttjeneste.mjs";
+import { Brevfeil } from "../src/dokumenter/brevdata.mjs";
+import { FASE } from "../src/brev/brevlogikk.mjs";
 import { lagBrevModell, brevNokkelStatus, settBrevNokkel, fjernBrevNokkel } from "./brev-modell.mjs";
 import { lagRatebegrenser } from "./brukere.mjs";
-import { erId } from "../src/dokumentnavn.mjs";
+import { erId } from "../src/dokumenter/dokumentnavn.mjs";
 
 /* Henting av annonser går ut på nettet for brukeren. Samme tak som
    importen, 30 i timen per profil, men egen teller: å hente annonsene

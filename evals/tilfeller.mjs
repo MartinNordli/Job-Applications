@@ -5,7 +5,7 @@
    brev eller annonser, og ingenting fra brukerens egne eksempler.
    Tilfellene er også holdt atskilt fra promptens stileksempler:
    ingen av særordene deres står her, så et brev som bruker dem har
-   lånt dem (se server/evals.test.mjs).
+   lånt dem (se tester/enhet/evals.test.mjs).
 
    Hvert tilfelle har et grunnlag i samme form som brevtjenesten
    lager, forventet språk og egne krav til de automatiske sjekkene:

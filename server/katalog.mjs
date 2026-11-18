@@ -27,8 +27,8 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { FILNAVN } from "../src/lagerlogikk.mjs";
-import { REGISTERFIL } from "../src/brukerlogikk.mjs";
+import { FILNAVN } from "../src/soknader/lagerlogikk.mjs";
+import { REGISTERFIL } from "../src/konto/brukerlogikk.mjs";
 
 const HER = path.dirname(fileURLToPath(import.meta.url));
 const ROT = path.resolve(HER, "..");

@@ -19,9 +19,9 @@ Den skal være riktig når noe går galt, trygg som standard, og kjedelig å les
 - `server/` (serveren, rutene, `lager.mjs`, `nett.mjs`, `brevlager.mjs` og testene for dem)
 - de rene modulene i `src/`: `felles.mjs`, `lagerlogikk.mjs`, `jobbdokument.mjs`, `dokumentnavn.mjs`, `*logikk.mjs`, `*tjeneste.mjs`, `fristvarsel.mjs`, `intervjuer.mjs`, `ics.mjs`, `radar*.mjs` og lignende, og klientene som snakker med serveren eller Tauri (`jobbdokumenter.js`, `lagring.js`, `tauri-*.mjs`)
 - Rust-speilingen i `src-tauri/src/` av fil-, nett- og varseloperasjoner (`brev.rs`, `nett.rs`, `varsel.rs`, kommandoene i `lib.rs`)
-- `testdata/`
+- `tester/data/`
 
-Du endrer ikke `index.html`, `src/stiler.css` eller visningsfilene, ikke prompttekstene og modelltabellen, og ikke appens oppstart, vinduer og launchd-oppsett.
+Du endrer ikke `index.html`, `src/felles/stiler.css` eller visningsfilene, ikke prompttekstene og modelltabellen, og ikke appens oppstart, vinduer og launchd-oppsett.
 Trenger grensesnittet et nytt felt eller en ny rute, lag din del og skriv nøyaktig formen i rapporten.
 
 ## Reglene i prosjektet
@@ -31,8 +31,8 @@ Trenger grensesnittet et nytt felt eller en ny rute, lag din del og skriv nøyak
 - **Én regel, ett sted.** Regler ligger i moduler uten I/O. I/O sprøytes inn (`lagServer({ katalog, nett, brevModellFor })`, `nett`, `dokumenter`, `kallModell`, `nå`), så det kan testes.
 - **Bare grensesnittet skriver `jobber.json`.** Alt som lages asynkront, går i egne dokumenter (`jobb-<id>.json`, `radar.json`) med revisjon, lås og `.forrige.json`, som brevlageret.
 - **Stor tekst ligger aldri på søknadsraden.**
-- Nye felt på raden går inn i `validerSoknad` i `src/felles.mjs` og i `INNHOLD` i `src/lagerlogikk.mjs`.
-- **En endring på Node-siden som ikke speiles i Rust, er en feil.** Speil den, eller si tydelig at du ikke gjorde det. Regler som finnes begge steder, styres av en felles testfil i `testdata/`.
+- Nye felt på raden går inn i `validerSoknad` i `src/felles/felles.mjs` og i `INNHOLD` i `src/soknader/lagerlogikk.mjs`.
+- **En endring på Node-siden som ikke speiles i Rust, er en feil.** Speil den, eller si tydelig at du ikke gjorde det. Regler som finnes begge steder, styres av en felles testfil i `tester/data/`.
 - Hver skriving er atomisk og varig. En fil som ikke kan leses, settes i karantene og overskrives aldri.
 - Alt som kommer inn, er fiendtlig til det er validert: forespørsler, filer, hentede sider og modellsvar. Alt har tak på størrelse, tid og antall.
 - Utgående nett går alltid gjennom samme vern: bare https, vertsliste per kilde, sjekk mot interne adresser på den oppslåtte IP-en, låst DNS, tak og tidsgrense. Nøkler og tokens forlater aldri Node eller Rust.

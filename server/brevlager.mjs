@@ -1,13 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { Brevfeil, dokumentnavn, lesDokument, revisjon, skjemaFor, MAKS_DOKUMENT } from "../src/brevdata.mjs";
-import { dokumenttype, PREFIKSER } from "../src/dokumentnavn.mjs";
-import { tolkStier, utdragAv } from "../src/dokumentutdrag.mjs";
+import { Brevfeil, dokumentnavn, lesDokument, revisjon, skjemaFor, MAKS_DOKUMENT } from "../src/dokumenter/brevdata.mjs";
+import { dokumenttype, PREFIKSER } from "../src/dokumenter/dokumentnavn.mjs";
+import { tolkStier, utdragAv } from "../src/dokumenter/dokumentutdrag.mjs";
 
 /* Samme eksklusive låsekatalog som Rust. Ingen lås over nettverkskall.
    Lageret kjenner ikke dokumenttypene: navneregelen og valideringen
-   kommer fra src/dokumentnavn.mjs og src/brevdata.mjs, så CV, brev,
+   kommer fra src/dokumenter/dokumentnavn.mjs og src/dokumenter/brevdata.mjs, så CV, brev,
    jobbdokumenter og radar.json får nøyaktig samme mekanikk. */
 export function lagBrevlager(katalog){
   async function medLås(navn, fn){
@@ -103,7 +103,7 @@ export function lagBrevlager(katalog){
     catch(e){ if(e.code === "ENOENT") return []; throw e; }
   }
   /* Uten lås: hver fil byttes inn med rename, så en leser ser enten den
-     gamle eller den nye. Reglene står i src/dokumentutdrag.mjs. */
+     gamle eller den nye. Reglene står i src/dokumenter/dokumentutdrag.mjs. */
   async function utdrag(prefiks, stier){
     if(!PREFIKSER.includes(prefiks)) throw new Brevfeil("ugyldig","Ukjent dokumentsamling.");
     const felt = tolkStier(stier), ut = {};

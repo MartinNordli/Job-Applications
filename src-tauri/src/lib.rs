@@ -1,7 +1,7 @@
 /* ============================================================
    Filoperasjonene under lagerlogikken.
 
-   Reglene for datafilen ligger i src/lagerlogikk.mjs, delt med
+   Reglene for datafilen ligger i src/soknader/lagerlogikk.mjs, delt med
    Node-serveren. Her er bare de fire operasjonene JavaScript ikke
    kan gjøre selv — og de gjøres nøye: uten fsync kan et strømbrudd
    gi en tom fil, og uten rename kan en leser treffe en halvskrevet.
@@ -36,7 +36,7 @@ pub mod radar_bakgrunn;
 /// Merk at dette er disiplin, ikke en grense: webviewet har `les_tekst`
 /// og kan lese den samme filen selv. I nettlesermodus er «nøkkelen går
 /// aldri tilbake til klienten» en ekte grense, håndhevet av serveren.
-/// I appmodus ER webviewet klienten. Se kommentaren i src/tauri-filer.mjs.
+/// I appmodus ER webviewet klienten. Se kommentaren i src/felles/tauri-filer.mjs.
 const NOKKELFIL: &str = "nokkel.txt";
 
 /// Katalogen profilene ligger under. Samme form som i nettlesermodus,
@@ -69,7 +69,7 @@ fn katalog(app: &AppHandle) -> Result<PathBuf, String> {
 /// Id-en er 16 heksadesimale tegn og dermed allerede lovlig i
 /// trygt_navn(); den sjekkes likevel her, fordi det er her stien
 /// settes sammen. Formatet i seg selv er JavaScript sin regel og
-/// står i src/brukerlogikk.mjs — det som må stå her, er at ingenting
+/// står i src/konto/brukerlogikk.mjs — det som må stå her, er at ingenting
 /// slipper ut av datakatalogen. Feiler sjekken, blir det ingen sti.
 fn bruker_katalog_i(rot: &Path, bruker: Option<&str>) -> Result<PathBuf, String> {
     match bruker {

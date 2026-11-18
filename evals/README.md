@@ -2,7 +2,7 @@
 
 `node evals/kjor.mjs` viser de 23 syntetiske tilfellene og validerer grunnlagene, uten nettverk.
 Vanlige tester bruker modellstubber og kjører aldri den betalte evalueringen.
-`server/evals.test.mjs` sjekker at tilfellene er gyldige, at de automatiske sjekkene gjør det de sier, og at modellsammenligningen bare bytter modell og innsats.
+`tester/enhet/evals.test.mjs` sjekker at tilfellene er gyldige, at de automatiske sjekkene gjør det de sier, og at modellsammenligningen bare bytter modell og innsats.
 
 ## Betalt kjøring
 
@@ -93,14 +93,14 @@ Et godt opplegg bruker et rikt grunnlag fullt ut og holder igjen når det mangle
 
 Alle personer, selskaper og steder er oppdiktet.
 Ikke legg virkelige CV-er, brev, annonser eller API-nøkler i disse filene, og ikke noe hentet fra brukerens egne eksempelbrev.
-Promptens stileksempler (`STILEKSEMPLER` i `src/brevlogikk.mjs`) holdes atskilt fra tilfellene, og en test sørger for at ingen av særordene deres står her.
+Promptens stileksempler (`STILEKSEMPLER` i `src/brev/brevlogikk.mjs`) holdes atskilt fra tilfellene, og en test sørger for at ingen av særordene deres står her.
 Feiler et mønster, rett produktprompten og vurder hele settet på nytt.
 
 ## Radar
 
 `node evals/radar-kjor.mjs` viser de syntetiske Radar-tilfellene i `radar-tilfeller.mjs`, bygger forespørslene slik appen bygger dem og anslår størrelsen, uten nettverk.
 Tilfellene dekker en rik norsk CV (gulltilfellet r01), en annonse med injeksjonsforsøk (r02), en engelsk CV mot norske annonser (r03) en tynn CV uten sted (r04) og en student som blir ferdig innen et år, mot stillinger for nyutdannede, senior og postdoktor (r05), med en åpenbart feil bransje i hvert sett.
-`server/radarprompt.test.mjs` sjekker at tilfellene er gyldige, at forespørselen bygges og bufres riktig, at fiendtlige svar avvises og at sjekkene gjør det de sier.
+`tester/enhet/radarprompt.test.mjs` sjekker at tilfellene er gyldige, at forespørselen bygges og bufres riktig, at fiendtlige svar avvises og at sjekkene gjør det de sier.
 
 En betalt kjøring gjøres bare når brukeren har godkjent kostnaden:
 
