@@ -1,32 +1,3 @@
-/* ============================================================
-   Radarpromptene: teksten og svarformatet for vurderingen og for
-   «Foreslå fra CV», og ingenting annet.
-
-   Egen modul fordi teksten skal finpusses for seg (modell-og-prompt),
-   mens reglene rundt den, bolkene, takene og den strenge sjekken av
-   svaret, står i src/radar/radarlogikk.mjs. Endres teksten eller skjemaet
-   så svarene kan bli annerledes, skal versjonen økes.
-
-   Valg som ligger fast:
-
-   - Skalaen er den samme som i panelets vurdering (SKALA i
-     src/stilling/matchlogikk.mjs), så 75 i innboksen betyr det samme som 75
-     i panelet når søknaden er lagt til.
-   - Instruksen og CV-en står først og er like i alle bolkene i en
-     kjøring, så hurtigbufferen treffer fra og med bolk to. Annonsene
-     kommer til slutt. Haiku 5.5 bufrer fra 512 tokens. Instruksen
-     alene er under det, så merket på systemet gir ingen treff her;
-     det er merket på CV-blokken som bærer bufringen, og prefikset dit
-     (instruks og CV) er over 512 for alle CV-er utenom de aller
-     korteste. Målt i cache_read_input_tokens, som kjøringsloggen har.
-   - Alt er JSON. Da kan ikke en annonse lukke sin egen blokk og late
-     som om resten er instruksjoner: anførselstegn og klammer i teksten
-     blir tegn, ikke struktur.
-   - Kortnavnene a1..a8 er det eneste modellen skal gjenta. Den trenger
-     aldri å skrive en lenke eller en id fra en fremmed side.
-   - Lengdene kuttes her, også det kildene allerede har kortet, så
-     prompten aldri blir større enn det som er regnet på.
-   ============================================================ */
 import { SKALA, iDag } from "../stilling/matchlogikk.mjs";
 import { rensLinje } from "./radarkilder.mjs";
 import { RADAR } from "../stilling/jobbdokument.mjs";
@@ -34,15 +5,10 @@ import { RADAR } from "../stilling/jobbdokument.mjs";
 export const RADAR_PROMPTVERSJON = "radar-3";
 export const FORSLAG_PROMPTVERSJON = "radarforslag-1";
 
-/* Hvor mye av CV-en og annonsene modellen får. En CV på 40 000 tegn
-   er fem tettskrevne sider; de fleste er langt kortere. */
 export const PROMPTGRENSER = Object.freeze({ cv: 40_000, felt: 200, annonse: RADAR.tekst, grunn: 120 });
 
 const kort = (t, n) => Array.from(String(t ?? "").trim()).slice(0, n).join("");
 
-/* Toppnivået må være et objekt hos begge leverandørene. «prosent» er
-   number og ikke integer fordi sjekkSchema i brevlogikk.mjs bare kjenner
-   JSON-typene; heltall og 0 til 100 sjekkes i tolkVurdering. */
 export const VURDERINGSSKJEMA = Object.freeze({
   type: "object",
   properties: {
@@ -84,10 +50,6 @@ SVARET
 
 const OPPGAVE = "Vurder hver annonse etter skalaen. Gi id, prosent og høyst tre grunner på CV-ens språk.";
 
-/* Valgene src/radar/radarlogikk.mjs sender til kallModell. annonser er
-   [{ id, stilling, selskap, sted, frist, tekst }]. kilder er lik i alle
-   bolkene i en kjøring, så den kan bufres; bare innhold skifter, og
-   det har dagens dato, som skalaen leser nivået ut fra. */
 export function radarForespørsel({ cv, annonser, leverandor, dato = iDag() }){
   const P = PROMPTGRENSER;
   return { leverandor, formal: "radar", system: RADAR_SYSTEM,
@@ -98,11 +60,6 @@ export function radarForespørsel({ cv, annonser, leverandor, dato = iDag() }){
     skjema: VURDERINGSSKJEMA, trinn: "radar" };
 }
 
-/* ---------- «Foreslå fra CV» ---------- */
-
-/* Antallet per liste og formen på hvert ord. Kortere enn det brukeren
-   selv kan skrive (RADAR.ordlengde): et forslag skal være et søkeord,
-   ikke en setning. */
 export const FORSLAG_GRENSER = Object.freeze({ sokeord: 12, steder: 6, ekskluder: 6, tegn: 40, ord: 3 });
 
 const ordliste = { type: "array", items: { type: "string" } };
@@ -113,9 +70,6 @@ export const FORSLAGSSKJEMA = Object.freeze({
   additionalProperties: false
 });
 
-/* Reglene for treff står her slik forfilter og ordTreffer i
-   src/radar/radarlogikk.mjs faktisk gjør det. Endres de, skal teksten følge,
-   og versjonen økes. */
 export const FORSLAG_SYSTEM = `Du foreslår søkeord, steder og ekskluderte ord til et stillingsvarsel, ut fra én persons CV. Personen ser over forslaget og retter det før det brukes. Svaret er et JSON-objekt i det oppgitte formatet.
 
 KILDEN
@@ -144,7 +98,6 @@ Hvert ord er ett til ${FORSLAG_GRENSER.ord} ord og høyst ${FORSLAG_GRENSER.tegn
 
 const FORSLAGSOPPGAVE = "Foreslå søkeord, steder og ekskluderte ord ut fra CV-en.";
 
-/* Ett kall, med CV-en som kilde på samme måte som i vurderingen. */
 export function forslagForespørsel({ cv, leverandor }){
   return { leverandor, formal: "radar", system: FORSLAG_SYSTEM,
     kilder: JSON.stringify({ kilder: { cv: kort(cv, PROMPTGRENSER.cv) } }),

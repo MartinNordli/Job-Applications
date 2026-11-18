@@ -1,19 +1,3 @@
-/* ============================================================
-   Temaet må stå på <html> før første maling. Leses det først når
-   app.js kjører, blinker den lyse flaten fram i et mørkt vindu.
-   Derfor en vanlig, blokkerende <script src> høyt i <head>.
-
-   localStorage kan kaste — da faller vi tilbake på systemvalget,
-   som uansett er riktig standard. Nøkkelen er egen: dette er en
-   innstilling for denne maskinen, ikke data, og skal aldri innom
-   datafilen.
-   ============================================================ */
-
-/* Temaene som kan velges, i den rekkefølgen innstillingene viser dem.
-   Listen står bare her: app.js leser den fra window, siden dette
-   skriptet alltid har kjørt før appen. «lys» og «mork» er Lin og Sot,
-   og beholder de gamle verdiene så et lagret valg fortsatt gjelder.
-   Uten data-tema følger appen systemet, mellom Lin og Sot. */
 window.TEMAER = [
   { id: "system",  navn: "System",          om: "Lin eller Sot, som Macen",
     prøve: ["#EBE8E1", "#3D52D5", "#16130F", "#7391A8"] },

@@ -1,28 +1,3 @@
-/* ============================================================
-   Varsling: fristvarselet sett fra flaten.
-
-   To grener, ett grensesnitt, som src/konto/okt.js:
-
-   I appmodus leses og skrives varsel.json i profilens katalog over
-   Rust, og selve sjekken gjøres av Rust (src-tauri/src/varsel.rs),
-   som viser varselet i macOS sitt varselsenter. Det er den samme
-   koden bakgrunnsjobben kjører når appen er lukket.
-
-   I nettlesermodus går innstillingen og sjekken til serveren, og
-   varselet vises av nettleseren. Sjekken spørres bare når siden har
-   lov til å vise varsler: serveren fører alt den svarer med i loggen,
-   og et varsel som ikke kunne vises skal ikke regnes som sendt.
-
-   Ingen av funksjonene kaster.
-
-   hentInnstilling()  → { ok: true, på, dagerFør, intervju } | { ok: false, melding }
-   settInnstilling(i) → samme form
-   sjekk()            → antall varsler som ble vist (0 ved feil)
-   tillatelse()       → "app" | "granted" | "denied" | "default" | "ustøttet"
-   beOmTillatelse()   → det samme, etter at nettleseren har spurt
-   visRadarvarsel(t)  → true når et varsel ble vist (se nederst)
-   ============================================================ */
-
 import * as Økt from "../konto/okt.js";
 import { INNSTILLINGSFIL, VERSJON, validerInnstilling, lesInnstilling } from "./fristvarsel.mjs";
 
@@ -43,7 +18,7 @@ const feil = (melding) => ({ ok: false, melding });
 async function http(sti, valg){
   const svar = await fetch(sti, valg);
   let kropp = null;
-  try{ kropp = await svar.json(); }catch{ /* tomt svar */ }
+  try{ kropp = await svar.json(); }catch{}
   if(svar.status === 401 && kropp?.feil === "utlogget"){ Økt.meldUtlogget(); throw new Error("Du er logget ut."); }
   if(!svar.ok) throw new Error(kropp?.detaljer?.[0]?.melding || kropp?.melding || "Serveren svarte " + svar.status + ".");
   return kropp;
@@ -76,12 +51,10 @@ export function tillatelse(){
 
 export async function beOmTillatelse(){
   if(tillatelse() !== "default") return tillatelse();
-  try{ await Notification.requestPermission(); }catch{ /* eldre nettlesere: tilbakekall */ }
+  try{ await Notification.requestPermission(); }catch{}
   return tillatelse();
 }
 
-/* Én sjekk om gangen. Lagring, døgnskifte og timeren kan treffe
-   samtidig, og to sjekker på rad gir bare den andre ingenting å gjøre. */
 let pågår = null;
 export function sjekk(){
   if(!pågår) pågår = sjekkNå().finally(() => { pågår = null; });
@@ -99,13 +72,9 @@ async function sjekkNå(){
       new Notification(v.tittel, { body: v.tekst, icon: "src/felles/ikon.png", lang: "no",
         tag: v.art === "intervju" ? `intervju-${v.id}-${v.iid}-${v.type}` : "frist-" + v.id });
     return varsler.length;
-  }catch{ return 0; }   /* et varsel som uteblir er ikke verdt å forstyrre flaten for */
+  }catch{ return 0; }
 }
 
-/* Radar-varselet: teksten er laget av kjernen (varseltekst i
-   src/radar/radarlogikk.mjs). I appen viser Rust det i varselsenteret; i
-   nettleseren vises det bare når siden har lov, og et varsel som ikke
-   kunne vises, regnes ikke som vist. Kaster aldri. */
 export async function visRadarvarsel(tekst){
   if(typeof tekst !== "string" || !tekst.trim()) return false;
   try{

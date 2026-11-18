@@ -1,6 +1,3 @@
-/* ============================================================
-   1. Data
-   ============================================================ */
 import { STATUSER, SEKTORER, JOBBTYPER, ER_SENDT, ER_ARKIV, validerSoknad, sjekkLenke } from "../felles/felles.mjs";
 import { START } from "./startliste.js";
 import * as Lagring from "./lagring.js";
@@ -21,21 +18,13 @@ import { oppdaterFlyt } from "../felles/flyt.js";
 import { lagCvInnstilling } from "../brev/cvflate.js";
 
 const NOKKEL = "jobbsoknader-2027";
-window.__jobbsoknaderKjorer = true;   /* se fallback-skriptet i index.html */
+window.__jobbsoknaderKjorer = true;
 
-/* Midnatt i dag. Ikke const: en fane som blir stående over midnatt
-   må få ny dato, ellers viser den «i dag» om gårsdagen. Se seksjon 16. */
 let I_DAG = new Date(new Date().toDateString());
 
 
 
-/* ============================================================
-   2. Tilstand og lagring
-   ============================================================ */
 let data = [];
-/* Hvem listen tilhører. Settes av porten før noe hentes, og trengs to
-   steder etterpå: sidefoten skal vise navnet, og en gjeninnlogging må
-   kunne se om det er samme person som kom tilbake. */
 let brukeren = null, erFørste = false;
 let visning = "frister";
 let sok = "", filtSektor = "", filtSted = "";
@@ -52,9 +41,6 @@ function fraStart(){
     frist: r[4], status: r[5], sektor: r[6], notat: r[7], sendtDato: null
   }));
 }
-/* localStorage er ikke lager lenger — bare det gamle stedet dataene
-   kan flyttes fra én gang. Den tømmes aldri; den blir liggende som
-   sikkerhetskopi til brukeren selv rydder den bort. */
 function fraNettleser(){
   try{
     const raa = localStorage.getItem(NOKKEL);
@@ -63,13 +49,8 @@ function fraNettleser(){
   return null;
 }
 
-/* Alt som endrer data går gjennom denne ene funksjonen. Den samler
-   opp raske endringer og skriver hele dokumentet til kontoens jobber.json. */
 function lagre(){ Lagring.lagre(data); }
 
-/* Detaljpanelet og «⋯»-menyen eier sin egen DOM og sine egne taster.
-   Alt de trenger fra listen, får de her, så de aldri leser modultilstanden
-   direkte. Funksjonene er hoistet, så rekkefølgen i filen spiller ingen rolle. */
 let lastet = false;
 const panel = lagDetaljpanel({
   jobb: id => data.find(p => p.id === id) || null,
@@ -90,9 +71,6 @@ const panel = lagDetaljpanel({
   tilListen: () => $("#sidetittel")
 });
 const meny = lagMeny({ valg: id => menyvalg(id) });
-/* Radar eier sin egen DOM i #innhold mens visningen står. Søknaden
-   «Legg til» lager, går gjennom samme regler og samme lagring som
-   skjemaet: validerSoknad, så medStatus, så listen. */
 const radar = lagRadarflate({
   jobber: () => data,
   iDag: () => I_DAG,
@@ -106,11 +84,6 @@ const radar = lagRadarflate({
   },
   ventPåLagring: () => ventPåLagring(),
   åpneSøknad: (id, valg) => panel.åpne(id, valg),
-  /* CV-en er profilens, og legges inn under Innstillinger, også før
-     det finnes en søknad. Nøkkelen bor i Brev-fanen, som Intervju-fanen
-     sender til. Radar har ingen søknad selv, så den åpnes på den
-     panelet viser, ellers den neste med frist, ellers den første. Uten
-     søknader står Anthropic-nøkkelen også under Innstillinger. */
   tilCv: () => apneSkuff("innstillinger", null, { fokus: "cv" }),
   tilNøkkel: fra => nøkkelFor(fra),
   varsle: (tekst, angreFn) => varsle(tekst, angreFn),
@@ -126,17 +99,11 @@ function nøkkelFor(fra){
   apneSkuff("innstillinger");
 }
 
-/* ============================================================
-   3. Datohjelpere
-   ============================================================ */
-/* Hjelperne står i formater.js og tar dagen inn. Her bindes de til
-   appens egen klokke, som byttes ved midnatt. */
 const dagerTil = iso => F.dagerTil(iso, I_DAG);
 const hast     = iso => F.hast(iso, I_DAG);
 const omTekst  = iso => F.omTekst(iso, I_DAG);
 const ukedag   = F.ukedag;
 
-/* ISO-ukenummer, mandag som ukestart */
 function ukeStart(dt){ const d = new Date(dt); const v = (d.getDay() + 6) % 7; d.setDate(d.getDate() - v); return d; }
 function ukeNr(dt){
   const d = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
@@ -144,10 +111,6 @@ function ukeNr(dt){
   const a1 = new Date(d.getFullYear(), 0, 1);
   return Math.ceil(((d - a1) / 86400000 + 1) / 7);
 }
-
-/* ============================================================
-   4. Utvalg
-   ============================================================ */
 
 function passererFilter(p){
   if(filtSektor && p.sektor !== filtSektor) return false;
@@ -171,17 +134,6 @@ function sorterFrist(a, b){
   return a.selskap.localeCompare(b.selskap,"no");
 }
 
-/* ============================================================
-   5. Jobbraden — datokolonne, innhold, handlinger
-   ============================================================ */
-
-/* Kolonnen hver rad starter med viser det som faktisk skiller radene i
-   visningen du står i: fristen under Frister, selskapet under Sendt og
-   Arkiv — der har fristen gjort jobben sin.
-
-   Datoen står som en smal mono-kolonne, ikke som en fylt pastellflis:
-   samme opplysning, en brøkdel av vekten. Dagen nullpolstres og måneden
-   forkortes til tre tegn, så datoene står rett under hverandre. */
 function datoHtml(p){
   if(visning === "frister"){
     if(!p.frist) return '<div class="dato dato--lopende"><span class="dato__dag">–</span></div>';
@@ -190,26 +142,11 @@ function datoHtml(p){
          + '<span class="dato__ukedag">' + ukedag(p.frist).slice(0, 2) + '</span>'
          + '<span class="dato__dag">' + String(d.getDate()).padStart(2, "0") + " " + MND_K[d.getMonth()] + '</span></div>';
   }
-  /* Monogrammet er ren gjenkjenning. Statusen står i merkelappen til
-     høyre, og trenger ikke også en kulør her. */
   return '<div class="dato dato--merke" aria-hidden="true"><span class="monogram">'
        + esc(monogram(p.selskap)) + '</span></div>';
 }
 
-/* Hva nedtellingskolonnen sier under Sendt: hvor lenge du har ventet på
-   svar, eller hvor du står med intervjuet.
-
-   - Et kommende intervju går foran alt annet. Det er en avtale, og den
-     står med dato, «i dag» eller «i morgen». `kommer` gir teksten blekkets
-     egen farge i stedet for den dempede: den er viktigere enn en
-     teller, men den er ikke en frist, så den får ingen hastekulør.
-   - Ellers teller et intervju fra dagen det ble logget.
-   - En sendt søknad teller fra sendtdatoen.
-   - Eldre søknader uten dato får ingen tekst. Kolonnen står like bred
-     uansett, så raden flytter seg ikke, og et anslag ville vært gjetning. */
-
 function ventetekst(p){
-  /* Samme regel som Intervju-fanen: et intervju er kommende til det er over. */
   const kommende = kommendeIntervjuer(p)[0];
   if(kommende){
     const d = dagerTil(kommende.dato);
@@ -226,9 +163,6 @@ function ventetekst(p){
   return { tekst: d === 0 ? "sendt i dag" : "venter " + antall(d, "dag", "dager") };
 }
 
-/* Prosentmerkene på radene. Ett utdrag per liste, hentet etter første
-   tegning og på nytt når en vurdering eller en annonse er skrevet.
-   Profilen står med, så merkene til én bruker aldri vises for en annen. */
 let matchMerker = { profil: null, data: {}, henter: false }, matchSkitten = false;
 async function lastMatchMerker(){
   const profil = brukeren?.id;
@@ -240,7 +174,6 @@ async function lastMatchMerker(){
   if(matchSkitten) return lastMatchMerker();
   if(profil === brukeren?.id) tegn();
 }
-/* Skrives noe mens utdraget hentes, leses det om med en gang det er ferdig. */
 Jobbdokumenter.påMatchEndring(() => { matchSkitten = true; lastMatchMerker(); });
 const UTDATERT_GRUNN = { cvRevisjon: "CV-en er endret", annonseSjekksum: "annonsen er endret", promptversjon: "eldre vurderingsmetode" };
 function matchMerkeHtml(p){
@@ -258,9 +191,6 @@ function radHtml(p){
 
   const meta = [];
   if(p.sted) meta.push(esc(p.sted));
-  /* Sektoren er båndoverskriften under Sendt og Arkiv. Å gjenta den i
-     hver rad der sier ingenting nytt; sendtdatoen står alt i kolonnen
-     til høyre. Begge deler er tatt ut. */
   if(visning === "frister") meta.push(esc(SEKTORER[p.sektor] || SEKTORER.annet));
   const metaHtml = meta.length || p.notat
     ? '<span class="rad__meta">' + meta.join(" · ")
@@ -272,13 +202,8 @@ function radHtml(p){
   const merke = (p.status !== "todo" && !underforstatt)
     ? '<span class="merkelapp" data-s="' + p.status + '">' + STATUSER[p.status] + '</span>' : "";
 
-  /* Hastestripa på radens forkant leses av CSS. Den settes bare under
-     Frister — det er den eneste visningen der en frist ennå haster. */
   const radHast = (visning === "frister" && p.status === "todo") ? hast(p.frist) : "";
 
-  /* Nedtellingskolonnen tegnes alltid, også når den er tom. Bredden er
-     reservert i CSS, så selskapsnavnet står like langt ut i hver rad og
-     ingenting flytter seg mellom rader som har og ikke har tekst her. */
   let omTxt = "", omHast = "", omKommer = false;
   if(p.status === "todo" && p.frist){
     omTxt = omTekst(p.frist); omHast = hast(p.frist);
@@ -294,15 +219,8 @@ function radHtml(p){
   const hoved = '<button class="handling handling--hoved" data-gjor="' + HOVEDSTEG[p.status].til + '" data-id="' + p.id + '">'
               + HOVEDSTEG[p.status].tekst + '</button>';
 
-  /* Den valgte raden er den detaljpanelet viser. */
   const valgt = panel.valgtId() === p.id;
 
-  /* Selskapsnavnet er en ekte lenke til panelet, så Enter, midtklikk og
-     «åpne i ny fane» virker som venter. Resten av raden åpner det samme
-     med et vanlig klikk (se klikklytteren). Sidehandlingene ligger bak
-     «⋯»: de brukes sjelden, og en knapperad som dukker opp ved hover
-     flyttet både blikket og raden. Høyrekolonnen har faste bredder, så
-     knappene står i samme kolonne i alle rader og alle bånd. */
   return '<article class="rad' + (valgt ? ' er-valgt' : '') + '" data-id="' + p.id + '"'
     + (valgt ? ' aria-current="true"' : '')
     + (radHast ? ' data-hast="' + radHast + '"' : '') + '>'
@@ -319,7 +237,6 @@ function radHtml(p){
     + '</div></article>';
 }
 
-/* Hovedhandlingen følger statusen. */
 const HOVEDSTEG = {
   todo:      { til: "sent",      tekst: "Merk sendt" },
   sent:      { til: "interview", tekst: "Fikk intervju" },
@@ -333,8 +250,6 @@ const PRIKKER = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" ari
   + '<circle cx="3.5" cy="8" r="1.35" fill="currentColor"/><circle cx="8" cy="8" r="1.35" fill="currentColor"/>'
   + '<circle cx="12.5" cy="8" r="1.35" fill="currentColor"/></svg>';
 
-/* Valgene bak «⋯», i den rekkefølgen de står. Sideveiene ut av løpet
-   vises bare der de gir mening. */
 function menyvalg(id){
   const p = data.find(x => x.id === id);
   if(!p) return [];
@@ -350,8 +265,6 @@ function menyvalg(id){
 }
 
 
-/* «Løpende» betyr opptak uten frist. En frist som har gått ut er noe
-   helt annet, og skal ikke telles som løpende. */
 const erLopende = p => !p.frist;
 const erUtgatt  = p => !!p.frist && dagerTil(p.frist) < 0;
 
@@ -364,9 +277,6 @@ function fristOppdeling(apne){
   return { medFrist, lopende, utgatt, deler };
 }
 
-/* Båndoverskriften klistrer seg til toppen mens du blar. Antallet står
-   som et bart tall i tabulære siffer — hva det teller sier navnet
-   allerede — med den lange formen igjen som tilgjengelig navn. */
 function baandHtml(navn, rader, id){
   return '<section class="baandblokk"' + (id ? ' id="' + id + '"' : '') + '>'
     + '<div class="baand"><h3 class="merkelinje baand__navn">' + navn + '</h3>'
@@ -376,19 +286,6 @@ function baandHtml(navn, rader, id){
     + '<div class="stabel">' + rader.map(radHtml).join("") + '</div></section>';
 }
 
-/* ============================================================
-   6. Visningene
-   ============================================================ */
-/* Bånd i den rekkefølgen en person faktisk planlegger i: det som haster
-   denne uka først, så opptakene uten frist, som er de letteste å glemme,
-   og til slutt én bolk per kalendermåned.
-
-   Frister som har gått ut står ikke lenger i «Denne uka». Der skjøv de
-   den ene fristen som faktisk haster ut av synet. De har sitt eget,
-   sammenfoldede bånd nederst; se utgattHtml.
-
-   Grensen er med vilje: står det 30. august, holder «Denne uka» ut 6.
-   september, og SEPTEMBER-bolken begynner 7. september. */
 function mndNavn(d){
   const n = MND[d.getMonth()];
   return n[0].toUpperCase() + n.slice(1)
@@ -397,7 +294,6 @@ function mndNavn(d){
 
 function fristBaand(liste){
   const baand = [];
-  /* liste er sortert med sorterFrist og har ingen utgåtte frister. */
   const uka     = liste.filter(p => p.frist && dagerTil(p.frist) >= 0 && dagerTil(p.frist) <= 7);
   const lopende = liste.filter(p => !p.frist);
   const senere  = liste.filter(p => p.frist && dagerTil(p.frist) > 7);
@@ -415,24 +311,11 @@ function fristBaand(liste){
   return baand;
 }
 
-/* Søknadene i utløpsbåndet: de som vises nå, så filtrene gjelder også
-   for «Flytt alle til arkivet». Den som gikk ut sist, står først. */
 const synligeUtgatte = () => data.filter(p => p.status === "todo" && erUtgatt(p) && passererFilter(p))
   .sort((a, b) => sorterFrist(b, a));
 
-/* Om båndet står åpent. Listen tegnes på nytt ved hver endring, og uten
-   dette ville båndet klappet sammen hver gang en rad i det ble endret.
-   Tilstanden leses fra båndet som står der når listen tegnes: toggle
-   kommer først i en senere oppgave, og en omtegning rett etter et
-   klikk ville ellers tegnet båndet lukket. Lytteren under trengs for
-   at valget huskes når båndet har vært borte en stund. */
 let utgattApen = false;
 
-/* Utgåtte frister er sammenfoldet nederst: de trenger en avgjørelse,
-   men ikke i dag, og de skal ikke ta plass fra det som haster. Raden i
-   overskriften er samme klebende bånd som de andre, bare med en pil som
-   sier at det kan foldes ut. Kulør er tatt ut av radene her (se CSS):
-   en frist som har gått ut haster ikke lenger. */
 function utgattHtml(rader){
   const filtrert = sok || filtSektor || filtSted;
   return '<section class="baandblokk baandblokk--utgatt" id="baand-utgatt">'
@@ -459,8 +342,6 @@ function visFrister(){
   const utgatte = synligeUtgatte();
   if(!liste.length && !utgatte.length) return tomHtml();
   const filtrert = sok || filtSektor || filtSted;
-  /* Er alt som er igjen gått ut, sier listen det i stedet for å vise
-     bare et sammenfoldet bånd. */
   const over = liste.length
     ? fristBaand(liste).map(b => baandHtml(b.navn, b.rader, "baand-" + b.id)).join("")
     : '<div class="tomt tomt--lav"><p class="tomt__tittel">Ingen åpne frister</p>'
@@ -496,11 +377,6 @@ function tomHtml(tekst){
         : '<button class="knapp knapp--primar" data-gjor="nyFraTom">Legg til søknad</button>') + '</div>';
 }
 
-/* ============================================================
-   7. Tall
-   ============================================================ */
-/* Ingen diagramfarge står her. Kulørtrinnene (--graf-1…4) ligger i
-   CSS, så begge temaer får sine egne trinn uten at JS vet om dem. */
 function liggendeStolper(rader){
   const maks = Math.max(1, ...rader.map(r => r.verdi));
   return '<div class="stolper">' + rader.map(r =>
@@ -522,19 +398,13 @@ function delteStolper(rader){
     + '</div></div>').join("") + '</div>';
 }
 
-/* Én del av en underlinje, som ikke brytes inni seg selv. Uten den kunne
-   «18 gikk ut» bli delt, med «ut» alene på neste linje. */
 const del = tekst => '<span class="nokkel__del">' + tekst + '</span>';
 
-/* Høyst tre navn, så «og 2 til». Navnene får bryte som vanlig, men
-   halen holdes samlet. */
 function navneliste(navn){
   if(navn.length <= 3) return esc(navn.join(", "));
   return esc(navn.slice(0, 3).join(", ")) + " " + del("og " + (navn.length - 3) + " til");
 }
 
-/* `tom` er en flis uten tall ennå: streken står dempet, så den ikke
-   leses som en verdi. */
 function nokkel(merke, verdi, under, varsel, tom, klasse = ""){
   return '<div class="nokkel' + (klasse ? " " + klasse : "") + (varsel ? " nokkel--varsel" : "") + (tom ? " nokkel--tom" : "") + '">'
     + '<h3 class="nokkel__merke">' + merke + '</h3>'
@@ -546,9 +416,6 @@ function visTall(){
   const alle    = data.filter(passererFilter);
   const sendt   = alle.filter(p => ER_SENDT(p.status) || p.status === "accepted"
                                  || p.status === "rejected" || p.status === "trukket");
-  /* Intervjuet telles fra flagget, ikke fra statusen: et avslag etter
-     intervjuet er fortsatt et intervju. Begge er utvalg av det sendte,
-     så trakten aldri får et trinn som er større enn det over. */
   const intervju = sendt.filter(p => p.intervju);
   const svar     = sendt.filter(p => p.intervju || p.status === "rejected");
   const andel    = n => Math.round((n / sendt.length) * 100) + " %";
@@ -557,20 +424,12 @@ function visTall(){
   const denneUka = medFrist.filter(p => dagerTil(p.frist) <= 7);
   const neste = medFrist[0];
 
-  /* Svartiden regnes bare fra ekte hendelser, så eldre søknader uten
-     logg teller ikke. Står det ingen ennå, sier flisen hvordan den fylles
-     i stedet for å vise en null som ser ut som et svar. */
   const median = medianSvartid(sendt);
   const medSvartid = sendt.filter(p => svartidDager(p) !== null).length;
-  /* Den som har ventet lengst står først i navnelisten. */
   const venter = utenSvarOver(alle, 30, I_DAG)
     .sort((a, b) => dagerSidenSendt(b, I_DAG) - dagerSidenSendt(a, I_DAG) || a.selskap.localeCompare(b.selskap, "no"));
   const unike = liste => liste.map(p => p.selskap).filter((v, i, a) => a.indexOf(v) === i);
 
-  /* Rekkefølgen er to rader på bred skjerm: det som ligger foran deg
-     (neste frist går over to kolonner), så det du har sendt og hva det
-     har gitt. I to kolonner står neste frist alene øverst og resten
-     parvis, så rutenettet går opp ved hver bredde. */
   let h = '<div class="fliser">'
     + nokkel("Neste frist", neste ? omTekst(neste.frist).replace("om ", "") : "–",
         neste ? del('<b>' + esc(neste.selskap) + '</b>') + ' · ' + del(esc(langDato(neste.frist))) : "Ingen frister framover",
@@ -674,9 +533,6 @@ function visTall(){
   return h;
 }
 
-/* ============================================================
-   8. Tegn opp
-   ============================================================ */
 const SIDER = {
   frister: { tittel:"Frister",  ingen:"Ingenting å søke på akkurat nå." },
   sendt:   { tittel:"Sendt",    ingen:"Ingen søknader venter på svar ennå. Merk en som sendt fra Frister." },
@@ -697,8 +553,6 @@ function tegn(){
   const medFrist = apne.filter(p => p.frist && dagerTil(p.frist) >= 0).sort(sorterFrist);
   const neste = medFrist[0];
 
-  /* Blokken er en knapp: den hopper til raden og blinker den fram.
-     Uten en neste frist har den ingenting å hoppe til, og sperres. */
   const elNeste = $("#neste");
   elNeste.innerHTML = '<p class="merkelinje">Neste frist</p>' + (neste
     ? '<p class="neste__tall">' + esc(omTekst(neste.frist)) + '</p>'
@@ -725,9 +579,7 @@ function tegn(){
   $("#nullstill").hidden = !(sok || filtSektor || filtSted);
   $("#tallRadar").textContent = radar.tall();
 
-  /* Søket og filtrene gjelder søknadene, ikke Radar. */
   $(".sok").hidden = $(".filtre").hidden = visning === "radar";
-  /* Radar har sin egen, større tittel; stilen henger på visningen. */
   $(".hoved").dataset.side = visning;
   if(visning === "radar") radar.vis($("#innhold"));
   else{ radar.skjul(); $("#innhold").innerHTML =
@@ -741,8 +593,6 @@ function tegn(){
     .sort((a, b) => a.localeCompare(b, "no"));
   fyllVelg("#filtSted", steder.map(s => [s, s]), filtSted, "Alle steder");
 
-  /* Står panelet åpent, følger det søknaden: ny status, nytt notat eller
-     endringer fra skuffen. Er søknaden slettet, lukker det seg. */
   panel.oppdater();
   if(matchMerker.profil !== brukeren?.id) lastMatchMerker();
 }
@@ -756,21 +606,9 @@ function fyllVelg(sel, par, valgt, forste){
     + par.map(([v, t]) => '<option value="' + esc(v) + '"' + (v === valgt ? " selected" : "") + '>' + esc(t) + '</option>').join("");
 }
 
-/* ============================================================
-   9. Skuffen: skjema, lenkeimport, data og innstillinger
-   ============================================================ */
 let skuffModus = "lenke", redigerer = null;
-/* Hvilken vei inn en ny søknad sist tok. Lenken står først og er
-   standard; velger brukeren «For hånd», husker skuffen det til neste gang. */
 let nyModus = "lenke";
-/* Det importen leste ut av en utlysning. Det er ikke `redigerer`:
-   en rad som redigeres finnes allerede i listen, mens et utkast bare
-   er forslag til et tomt skjema. Ingenting herfra lagres før brukeren
-   trykker «Legg til søknad» selv. */
 let utkast = null;
-/* Teller, ikke et flagg: lukkes skuffen eller byttes modus mens et
-   importsvar er underveis, skal svaret falle på gulvet i stedet for å
-   fylle et skjema brukeren har gått bort fra. */
 let hentenr = 0;
 
 const SKUFFTITTEL = {
@@ -783,36 +621,19 @@ const SKUFFTITTEL = {
   bekreft: "Er du sikker?"
 };
 
-/* Hva skuffen skal gjøre når den lukkes, og hvor fokus skal tilbake. */
 let bekreftelse = null, fokusFor = null, fokusTid = null;
-/* CV-delen under Innstillinger lagrer selv, og må få gjøre det ferdig
-   før skuffen tegnes på nytt eller lukkes. */
 let cvInnst = null;
 function slippCv(){ cvInnst?.lukk(); cvInnst = null; }
 
 const FOKUSERBARE = 'a[href],summary,button:not([disabled]):not([tabindex="-1"]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
-/* Listen er kommaseparert, og «#skuff » foran hele strengen ville bare
-   bundet seg til det første leddet — resten hadde plukket opp knapper
-   ute i appen. Hvert ledd må få prefikset for seg. */
 const I_SKUFF = FOKUSERBARE.split(",").map(v => "#skuff " + v).join(",");
 function synligFokus(el){
   if(el.matches(":disabled") || !el.getClientRects().length) return false;
   const foldet = el.closest("details:not([open])");
-  /* Firefox kan gi skjulte details-barn en offsetParent. Bare selve
-     overskriften skal delta i fokusrekken før innholdet foldes ut. */
   if(foldet && !foldet.querySelector(":scope > summary")?.contains(el)) return false;
   return getComputedStyle(el).visibility !== "hidden";
 }
 
-/* Hva som er inert, regnes ut ett sted, fra to modale lag: skuffen
-   over alt, og detaljpanelet når det står som ark over listen. Lå
-   regelen hos hver av dem, ville skuffen som lukkes over arket ha
-   gjort listen bak arket levende igjen.
-
-   Mens skuffen står, er alt utenom den, sløret og varselet inert.
-   Varselet også: angreknappen i det kunne ellers stjele fokus ut av
-   dialogen. Står arket alene, er det sidepanelet og listen som sover,
-   mens arket, varselet og skuffen (lukket og usynlig) er utenfor. */
 function oppdaterInert(){
   const skuff = $("#skuff").classList.contains("er-apen");
   const ark = !skuff && panel.erModal();
@@ -848,8 +669,6 @@ function apneSkuff(hva, id, { fokus } = {}){
   $("#skuff").setAttribute("aria-hidden", "false");
   $("#slor").classList.add("er-apen");
   oppdaterInert();
-  /* Lukkes skuffen før dette rekker å kjøre, skal fokus bli der
-     brukeren satte det — ikke hoppe inn i en skjult dialog. */
   clearTimeout(fokusTid);
   fokusTid = setTimeout(() => {
     if(!$("#skuff").classList.contains("er-apen")) return;
@@ -862,8 +681,6 @@ function apneSkuff(hva, id, { fokus } = {}){
 function lukkSkuff(){
   if(!$("#skuff").classList.contains("er-apen")) return;
   clearTimeout(fokusTid);
-  /* Lukkes et valg uten at det ble tatt, står lagringen fortsatt sperret.
-     Da må det stå noe på skjermen — ellers ser en tom app helt normal ut. */
   if(skuffModus === "flytt" || skuffModus === "gjenopprett") minnOmValg();
   slippCv();
   $("#skuff").classList.remove("er-apen");
@@ -872,19 +689,14 @@ function lukkSkuff(){
   oppdaterInert();
   redigerer = null;
   utkast = null;
-  /* Et importsvar som kommer etter dette skal ikke fylle en lukket skuff. */
   hentenr++;
   bekreftelse = null;
-  /* Fokus tilbake dit brukeren kom fra. Ble det tegnet på nytt mens
-     skuffen sto, og står panelet åpent, er overskriften der det
-     naturlige stedet å lande. */
   if(fokusFor && document.contains(fokusFor)) fokusFor.focus();
   else if(panel.erÅpen()) panel.fokuser();
   else $("#sidetittel").focus();
   fokusFor = null;
 }
 
-/* Tab skal gå rundt inni dialogen, ikke ut av den. */
 function fokusfelle(e){
   if(e.key !== "Tab" || !$("#skuff").classList.contains("er-apen")) return;
   const f = $$(I_SKUFF).filter(synligFokus);
@@ -941,7 +753,6 @@ function tegnSkuff(){
     return;
   }
 
-  /* Engangsvalget når det finnes data i nettleseren, men ingen datafil. */
   if(skuffModus === "flytt"){
     const n = (fraNettleser() || []).length;
     k.innerHTML = '<p class="felt__hjelp" style="margin:0 0 6px">Fant</p>'
@@ -957,8 +768,6 @@ function tegnSkuff(){
     return;
   }
 
-  /* Hovedfilen er borte, men den forrige gode kopien finnes. Den skal
-     tilbys før startlisten — å seede over en sikkerhetskopi er tap. */
   if(skuffModus === "gjenopprett" && sisteKopi){
     const n = sisteKopi.jobber.length;
     k.innerHTML = '<p class="felt__hjelp" style="margin:0 0 6px">Sikkerhetskopien har</p>'
@@ -977,7 +786,6 @@ function tegnSkuff(){
     return;
   }
 
-  /* Appens egen bekreftelse i stedet for nettleserens confirm(). */
   if(skuffModus === "bekreft" && bekreftelse){
     k.innerHTML = '<p style="margin:0;color:var(--blekk-2);font-size:14px;line-height:1.55">'
       + esc(bekreftelse.tekst) + '</p>';
@@ -989,16 +797,11 @@ function tegnSkuff(){
   b.innerHTML = '<button class="knapp" data-gjor="lukk">Avbryt</button>'
     + '<button class="knapp knapp--primar" id="lagreSkjema">' + (redigerer ? "Lagre endringer" : "Legg til søknad") + '</button>';
 
-  /* To veier inn i det samme skjemaet. Lenken står først: den gjør mest
-     av jobben. Bryteren klistrer seg til toppen av skuffen, så den er
-     innen rekkevidde også når skjemaet er rullet ned. */
   const bytter = redigerer ? "" :
       '<div class="modusfeste"><div class="modus" role="tablist">'
     + '<button class="modus__knapp" role="tab" data-modus="lenke" aria-selected="' + (skuffModus === "lenke") + '">Fra lenke</button>'
     + '<button class="modus__knapp" role="tab" data-modus="skjema" aria-selected="' + (skuffModus === "skjema") + '">For hånd</button></div></div>';
 
-  /* Lenkeimporten. Foten har ingen «Legg til søknad» her: det finnes
-     ingenting å legge til før annonsen er lest. */
   if(skuffModus === "lenke"){
     b.innerHTML = '<button class="knapp" data-gjor="lukk">Avbryt</button>';
     k.innerHTML = bytter
@@ -1013,8 +816,6 @@ function tegnSkuff(){
   }
 
   const p = redigerer || utkast || {};
-  /* Løpende opptak: enten en lagret rad uten frist, eller en annonse
-     som selv sier at opptaket er løpende. */
   const utenFrist = redigerer ? !p.frist : !!(utkast && utkast.lopende);
   k.innerHTML = bytter
     + '<p class="feil" id="skjemaFeil" hidden></p>'
@@ -1023,8 +824,6 @@ function tegnSkuff(){
     + felt("lenke", "Lenke til utlysningen", p.lenke, "url", "https://…")
     + '<div class="felt__rad">' + felt("frist", "Søknadsfrist", p.frist, "date", "") + felt("sted", "Sted", p.sted, "text", "Oslo") + '</div>'
     + '<label class="avkrys"><input type="checkbox" id="ingenFrist"' + (utenFrist ? " checked" : "") + '> Løpende opptak, ingen frist</label>'
-    /* Sektor og jobbtype hører sammen — begge sier hva slags stilling
-       dette er. Status er brukerens egen, og står derfor for seg selv. */
     + '<div class="felt__rad" style="margin-top:15px">'
       + '<div class="felt"><label class="felt__merke" for="fSektor">Sektor</label><select class="felt__inn" id="fSektor">'
         + Object.entries(SEKTORER).map(([k2,v]) => '<option value="' + k2 + '"' + (p.sektor === k2 ? " selected" : "") + '>' + v + '</option>').join("") + '</select></div>'
@@ -1039,12 +838,8 @@ function tegnSkuff(){
           + felt("sendtDato", "Sendt", p.sendtDato, "date", "")
           + '<div class="felt"><p class="felt__hjelp" style="margin-top:26px">Settes av seg selv når du merker en søknad som sendt. Fyll den inn her for eldre søknader.</p></div>'
           + '</div>'
-          /* Blir stående når statusen senere går til avslag eller trukket,
-             så tallene husker at søknaden ga intervju. */
           + '<label class="avkrys avkrys--felt"><input type="checkbox" id="fintervju"' + (p.intervju ? " checked" : "") + '> Fikk intervju</label>'
         : "")
-    /* Flere linjer, som i detaljpanelet. Et vanlig tekstfelt ville
-       stille fjernet linjeskiftene derfra ved neste lagring. */
     + '<div class="felt"><label class="felt__merke" for="fnotat">Notat</label>'
       + '<textarea class="felt__inn felt__notat" id="fnotat" rows="3" maxlength="1000" placeholder="f.eks. frist kl. 12:00">'
       + esc(p.notat || "") + '</textarea></div>'
@@ -1056,14 +851,10 @@ function felt(id, merke, verdi, type, plass){
     + '<input class="felt__inn" id="f' + id + '" type="' + type + '" value="' + esc(verdi || "") + '" placeholder="' + esc(plass) + '"></div>';
 }
 
-/* ============================================================
-   11. Varsel med angremulighet
-   ============================================================ */
 function varsle(tekst, angreFn){
   const v = $("#varsel");
   v.innerHTML = '<span>' + esc(tekst) + '</span>' + (angreFn ? '<button class="varsel__angre" id="angreKnapp">Angre</button>' : "");
   v.classList.add("er-apen");
-  /* Usynlig varsel skal heller ikke kunne tabbes til. */
   if(!$("#skuff").classList.contains("er-apen")) v.removeAttribute("inert");
   const lukk = () => { v.classList.remove("er-apen"); v.setAttribute("inert", ""); };
   if(angreFn) $("#angreKnapp").onclick = () => { angreFn(); lukk(); };
@@ -1071,14 +862,9 @@ function varsle(tekst, angreFn){
   angreTid = setTimeout(lukk, angreFn ? 7000 : 3000);
 }
 
-/* ============================================================
-   12. Handlinger
-   ============================================================ */
 function settStatus(id, ny){
   const p = data.find(x => x.id === id);
   if(!p) return;
-  /* Hendelsene er med i øyeblikksbildet, så angre fjerner hendelsen igjen.
-     medStatus lager en ny liste, og den gamle står urørt her. */
   const fra = { status: p.status, sendtDato: p.sendtDato, intervju: p.intervju, hendelser: p.hendelser };
   Object.assign(p, medStatus(p, ny, { iDag: tilIso(I_DAG) }));
   lagre(); tegn();
@@ -1086,12 +872,6 @@ function settStatus(id, ny){
     Object.assign(p, fra); lagre(); tegn();
   });
 }
-/* Flytter alle utgåtte som vises nå til arkivet, med én lagring og én
-   angre. Hendelsen dateres i dag; fristen står fortsatt på søknaden.
-
-   Båndet forsvinner med knappen, så fokus flyttes til sideoverskriften
-   i stedet for å falle ut til <body>. Angres det, står båndet der igjen,
-   og fokus går til overskriften i det. */
 function arkiverUtgatte(){
   const rader = synligeUtgatte();
   if(!rader.length) return;
@@ -1114,8 +894,6 @@ function slett(id){
   lagre(); tegn();
   varsle("Slettet " + p.selskap + " · " + p.stilling, () => { data.splice(i, 0, p); lagre(); tegn(); });
 }
-/* Notatet fra detaljpanelet, gjennom samme regler og samme lagring som
-   skjemaet. Gir tilbake feilmeldingen når teksten ikke kan lagres. */
 function lagreNotat(id, tekst){
   const p = data.find(x => x.id === id);
   if(!p) return "Søknaden finnes ikke lenger.";
@@ -1127,13 +905,6 @@ function lagreNotat(id, tekst){
   return null;
 }
 
-/* Intervjuene fra detaljpanelet. `regel` er en av funksjonene i
-   intervjuer.mjs, bundet til det skjemaet sendte: den får søknaden og
-   klokken, og gir { ok, jobb, ... } eller { ok: false, feil }. Bare
-   feltene et intervju kan endre, kopieres over. Resultatet får med seg
-   angre(felt), som legger de feltene tilbake slik de var: Intervju-fanen
-   angrer statusbyttet uten å ta intervjuet bort, og en sletting uten å
-   røre statusen. */
 const INTERVJUFELT = ["intervjuer", "status", "sendtDato", "intervju", "hendelser"];
 function endreIntervjuer(id, regel){
   const p = data.find(x => x.id === id);
@@ -1150,9 +921,6 @@ function endreIntervjuer(id, regel){
     lagre(); tegn();
   } };
 }
-/* Løses når det som ligger i køen, er skrevet. Forberedelsen leser
-   intervjuet fra lageret, så et intervju som nettopp er lagt inn, må
-   være der først. Kan det ikke skrives, sier feilen hvorfor. */
 function ventPåLagring(){
   if(!Lagring.harUlagret()) return Promise.resolve();
   Lagring.nåMedEnGang();
@@ -1171,13 +939,6 @@ function ventPåLagring(){
   });
 }
 
-/* ---- annonsene som mangler ----
-
-   Én stille handling i «Dataene dine», ikke en knapp i listen: den
-   brukes en gang eller to, og den går ut på nettet for mange søknader
-   på én gang. Antallet hentes fra utdraget, så knappen sier hva den
-   vil gjøre før den gjør det. Plassen til tallet står avsatt, så
-   knappen ikke vokser når svaret kommer. */
 let annonsehenting = null;
 function annonserHtml(){
   return '<section class="innst" aria-labelledby="annonseTittel">'
@@ -1191,8 +952,6 @@ function annonserHtml(){
     + '<div class="oppsummering" id="manglendeSvar" hidden></div></section>';
 }
 
-/* Søknader uten lagret annonse. Utdraget har bare dokumentene som
-   finnes, så en søknad som ikke står der, mangler også. */
 async function manglendeAnnonser(){
   const utdrag = await Jobbdokumenter.utdrag(["annonse.sjekksum"]);
   return data.filter(p => !utdrag["jobb-" + p.id + ".json"]?.["annonse.sjekksum"]);
@@ -1264,7 +1023,6 @@ async function hentManglende(){
   el.hidden = false;
   tellManglendeAnnonser();
 }
-/* Hvilket felt en feilmelding hører til, så fokus havner riktig sted. */
 const FELT_TIL_INN = {
   selskap: "#fselskap", stilling: "#fstilling", lenke: "#flenke", sted: "#fsted",
   frist: "#ffrist", sendtDato: "#fsendtDato", notat: "#fnotat", jobbtype: "#fjobbtype",
@@ -1289,15 +1047,12 @@ function lagreSkjema(){
     status:    $("#fStatus").value,
     sendtDato: redigerer ? (v("sendtDato") || null) : null,
     intervju:  redigerer ? $("#fintervju").checked : false,
-    /* Skjemaet viser ikke listene, men må sende dem videre. Ellers ville
-       validatoren gitt tomme lister, og Object.assign under slettet dem. */
     hendelser:  redigerer ? redigerer.hendelser  : [],
     intervjuer: redigerer ? redigerer.intervjuer : [],
     opprettet: redigerer ? redigerer.opprettet : null,
     oppdatert: redigerer ? redigerer.oppdatert : null
   };
 
-  /* Samme regler som serveren kjører — én definisjon, ingen glidning. */
   const sjekk = validerSoknad(utkast);
   if(!sjekk.ok){
     feilEl.hidden = false;
@@ -1310,9 +1065,6 @@ function lagreSkjema(){
   }
   feilEl.hidden = true;
 
-  /* En ny søknad og et nytt statusvalg logges som hendelse. Ellers
-     holdes bare sendtDato og sendt-hendelsen i takt, så en rettet
-     sendtdato flytter hendelsen i stedet for å legge til en ny. */
   const klokke = { iDag: tilIso(I_DAG) };
   const verdi = !redigerer || redigerer.status !== sjekk.verdi.status
     ? medStatus(sjekk.verdi, sjekk.verdi.status, klokke)
@@ -1329,13 +1081,8 @@ function lagreSkjema(){
   lagre(); tegn(); lukkSkuff();
   if(annonse) lagreImportertAnnonse(verdi.id, annonse);
 }
-/* Utenfor lagreSkjema, der et lokalt `utkast` skygger for importens. */
 const importertAnnonse = () => (utkast && utkast.annonse) || null;
 
-/* Annonsen fra importen hører til jobbdokumentet, og det krever at
-   søknaden står i den lagrede listen. Derfor skrives den først når
-   lagringen er ferdig. Feiler det, er søknaden lagt til likevel, og
-   annonsen kan hentes eller limes inn senere. */
 async function lagreImportertAnnonse(id, annonse){
   const profil = brukeren?.id;
   try{
@@ -1353,18 +1100,12 @@ async function lagreImportertAnnonse(id, annonse){
     varsle("Søknaden er lagt til, men ikke annonsen. Hent den igjen senere.");
   }
 }
-/* ---- import fra lenke ---- */
 
-/* Husets språk for «noe skjer»: mono mikrotekst, to trinn, ingen
-   spinner. Teksten sier hvor i kjeden vi er, ikke hvor lenge det tar. */
 const VENTETEKST = {
   [TRINN.HENTER]: "Henter utlysningen…",
   [TRINN.LESER]:  "Leser annonsen…"
 };
 
-/* Andre linje under en feilmelding: hva brukeren kan gjøre nå. Strengene
-   er våre egne — det eneste som kommer utenfra er `.message`, og den blir
-   escapet. */
 const IMPORTHJELP = {
   "finnes":         'Åpne den fra listen hvis du vil endre noe. Vil du legge den inn på nytt likevel, velg «For hånd».',
   "mangler-nokkel": 'Importen trenger en API-nøkkel. Legg den inn under Innstillinger.',
@@ -1385,8 +1126,6 @@ async function hentFraLenke(){
   const url = inn.value.trim();
 
   if(!url){ visImportfeil("Lim inn lenken til utlysningen først."); inn.focus(); return; }
-  /* Samme lenkeregel som resten av appen — ingen grunn til å gå til
-     serveren med noe vi vet blir avvist. */
   const sl = sjekkLenke(url);
   if(!sl.ok){ visImportfeil(sl.melding); inn.focus(); return; }
 
@@ -1417,11 +1156,7 @@ async function hentFraLenke(){
       : "Fant lite i annonsen. Fyll inn resten selv");
   }catch(e){
     if(mitt !== hentenr) return;
-    /* Lenken skal aldri gå tapt. Den blir stående i feltet, og den følger
-       med over i skjemaet sammen med det importen rakk å lese. */
     utkast = Object.assign({}, (e && e.utkast) || null, { lenke: (e && e.utkast && e.utkast.lenke) || url });
-    /* Importfeil har en ferdig formulert norsk melding. Alt annet er en
-       feil i koden, og da er en rå JS-melding ikke til hjelp for noen. */
     const kjent = e && typeof e.navn === "string";
     if(!kjent) console.error("Uventet feil under import:", e);
     visImportfeil(kjent ? e.message : "Importen stoppet uventet.",
@@ -1435,28 +1170,12 @@ async function hentFraLenke(){
   }
 }
 
-/* ---- hva importen har kostet ---- */
-
-/* Tre tall, og ikke flere: hva den har kostet, hvor ofte modellen slapp
-   å kjøre, og hvilke felt modellen måtte fylle. Det siste er det eneste
-   som er handlingsrettet — står «selskap» øverst lenge, er et
-   selskapsuttrekk neste ting å skrive. */
-
 
 function siden(iso){
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "" : d.getDate() + ". " + MND[d.getMonth()];
 }
 
-/* ---- nøkkelen importen bruker ---- */
-
-/* Nøkkelen går inn og aldri ut. Feltet er tomt hver gang, står utenfor
-   noe <form> — nettleserens passordbehandler skal ikke tilby å huske en
-   API-nøkkel — og statuslinjen sier bare hvilken nøkkel som gjelder, i
-   samme mono-mikrotekst som lagringstilstanden.
-
-   Hele blokken tegnes med én gang og fylles etterpå, så ingenting
-   flytter seg når svaret kommer. */
 async function visNokkel(){
   const el = $("#apiNokkel");
   if(!el) return;
@@ -1488,8 +1207,6 @@ async function visNokkel(){
                             + (r.satt ? " · " + siden(r.satt) : "")
     : r.kilde === "miljø" ? "Serverens nøkkel brukes"
     :                       "Ingen nøkkel, importen er slått av";
-  /* Bare en nøkkel du har satt selv kan fjernes. Serverens egen tilhører
-     den som startet serveren. */
   const fjern = $("#fjernNokkel");
   if(fjern) fjern.hidden = r.kilde !== "egen";
 }
@@ -1514,7 +1231,7 @@ async function lagreNokkel(){
   if(knapp && knapp.isConnected) knapp.disabled = false;
 
   if(!r.ok){
-    if(r.feil === "utlogget") return;        /* porten tar over */
+    if(r.feil === "utlogget") return;
     visNokkelfeil(r.melding || "Nøkkelen ble ikke lagret.");
     inn.focus();
     return;
@@ -1532,15 +1249,11 @@ function fjernNokkel(){
       if(r.feil !== "utlogget") varsle(r.melding || "Nøkkelen ble ikke fjernet");
       return;
     }
-    /* Resultatet er bare synlig i skuffen, så den åpnes igjen. */
     apneSkuff("innstillinger");
     varsle("Nøkkelen er fjernet");
   });
 }
 
-/* Fristvarselet. Innstillingen ligger i profilens katalog, ikke i
-   nettleseren: bakgrunnsjobben i Mac-appen må kunne lese den når appen
-   er lukket. Hva som varsles, står i src/soknader/fristvarsel.mjs. */
 let varselnr = 0;
 async function visVarsel(){
   const nr = ++varselnr;
@@ -1548,7 +1261,6 @@ async function visVarsel(){
   const på = $("#varselPa"), dager = $("#varselDager");
   if(!på || skuffModus !== "innstillinger" || nr !== varselnr) return;
   if(!r.ok){ visVarselhjelp(r.melding); return; }
-  /* En verdi skrevet for hånd i filen, som 4, skal vises som den er. */
   if(!DAGVALG.includes(r.dagerFør))
     dager.insertAdjacentHTML("beforeend", '<option value="' + r.dagerFør + '">' + antall(r.dagerFør, "dag", "dager") + " før</option>");
   på.checked = r.på;
@@ -1570,8 +1282,6 @@ function visVarselhjelp(feil){
     : t === "ustøttet" ? "Denne nettleseren kan ikke vise varsler."
     :                    "Nettleseren må gi lov før den kan vise varsler.";
   el.textContent = tekst;
-  /* Lov må gis med et klikk: nettlesere avviser en forespørsel som
-     ikke kommer fra brukeren selv. */
   const tillat = $("#varselTillat");
   if(tillat) tillat.hidden = !!feil || !på.checked || t !== "default";
 }
@@ -1591,24 +1301,13 @@ async function lagreVarsel(){
   if(r.på) Varsling.sjekk();
 }
 
-/* Etter en lagring kan en ny frist ha kommet innenfor rekkevidde. Flere
-   lagringer på rad gir én sjekk. */
 let sjekkTid = null;
 function sjekkSnart(){
   clearTimeout(sjekkTid);
   sjekkTid = setTimeout(() => Varsling.sjekk(), 1500);
 }
-/* Står appen åpen over natten, fanger døgnskiftet det nye døgnet. En
-   sjekk i timen tar resten, som en Mac som har sovet. */
 setInterval(() => Varsling.sjekk(), 60 * 60 * 1000);
 
-/* ============================================================
-   13. Hendelser
-   ============================================================ */
-
-/* I appen finnes ingen «ny fane»: target="_blank" gjør ingen ting, og
-   utlysningslenkene ville vært døde. Systemets egen nettleser er dit de
-   hører hjemme uansett — appvinduet skal ikke navigere bort fra lista. */
 if(Lagring.I_APP){
   document.addEventListener("click", e => {
     const a = e.target.closest && e.target.closest('a[href^="http"]');
@@ -1618,11 +1317,6 @@ if(Lagring.I_APP){
   });
 }
 
-/* Raden åpner detaljpanelet. Knapper, lenker og menyen i raden gjør
-   sitt eget, og den som drar for å merke tekst, skal få merke den.
-   Selskapsnavnet er en ekte lenke: et vanlig klikk tas her, så panelet
-   får styre historikken selv, mens midtklikk og Cmd-klikk åpner en
-   direktelenke i ny fane som før. */
 document.addEventListener("click", e => {
   const rad = e.target.closest && e.target.closest("#innhold .rad");
   if(!rad || e.defaultPrevented) return;
@@ -1701,13 +1395,10 @@ document.addEventListener("click", e => {
 
 function settNav(){
   $$("#faner .nav__post").forEach(f => f.setAttribute("aria-selected", String(f.dataset.visning === visning)));
-  /* På smal skjerm ruller toppstripa sidelengs; den valgte fanen skal stå synlig. */
   $('#faner [aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
   oppdaterFlyt($(".side"));
 }
 
-/* Sørger for at raden til en søknad står i listen: bytter til visningen
-   den hører til, og tar bort filtrene bare hvis de skjuler den. */
 function visRad(id){
   const p = data.find(x => x.id === id);
   if(!p || $('#innhold .rad[data-id="' + id + '"]')) return;
@@ -1718,10 +1409,6 @@ function visRad(id){
   tegn();
 }
 
-/* «Neste frist» i sidepanelet regnes ut uten filtre — det er den
-   faktiske neste fristen din, ikke den neste blant det du ser på nå.
-   Ligger raden derfor utenfor det som vises, ryddes veien fram til
-   den før vi hopper. */
 function hoppTilSoknad(id){
   const finn = () => $('.rad[data-id="' + id + '"]');
   let mal = finn();
@@ -1737,7 +1424,6 @@ function hoppTilSoknad(id){
 }
 
 $("#slor").addEventListener("click", lukkSkuff);
-/* toggle bobler ikke, så den fanges på vei ned. */
 document.addEventListener("toggle", e => { if(e.target.id === "utgatt" && e.target.isConnected) utgattApen = e.target.open; }, true);
 $("#sok").addEventListener("input", e => { sok = e.target.value; tegn(); });
 $("#filtSektor").addEventListener("change", e => { filtSektor = e.target.value; tegn(); });
@@ -1749,11 +1435,7 @@ document.addEventListener("change", e => {
 
 document.addEventListener("keydown", fokusfelle);
 document.addEventListener("keydown", e => {
-  /* Porten eier tastaturet mens den står. Uten dette ville «n» åpnet
-     skuffen og «/» flyttet fokus ut i en app brukeren ikke er inne i. */
   if(portenStår()) return;
-  /* Esc lukker det øverste laget og bare det: menyen tar sin egen
-     (se radmeny.js), så skuffen, og til sist detaljpanelet. */
   if(e.key === "Escape"){
     if(e.defaultPrevented) return;
     if($("#skuff").classList.contains("er-apen")) lukkSkuff();
@@ -1762,8 +1444,6 @@ document.addEventListener("keydown", e => {
   }
   const iFelt = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
   if(iFelt){
-    /* Enter gjør det modusen handler om. Uten dette ville Enter i
-       lenkefeltet forsøkt å lagre et tomt skjema. */
     if(e.key === "Enter" && e.target.closest("#skuff") && e.target.tagName !== "TEXTAREA"){
       e.preventDefault();
       if(skuffModus === "lenke") hentFraLenke();
@@ -1772,24 +1452,14 @@ document.addEventListener("keydown", e => {
     return;
   }
   if(e.metaKey || e.ctrlKey || e.altKey) return;
-  if($("#skuff").classList.contains("er-apen")) return;   /* dialogen eier tastaturet */
+  if($("#skuff").classList.contains("er-apen")) return;
   if(e.key === "n"){ e.preventDefault(); apneSkuff("ny"); }
-  /* Søkefeltet ligger bak arket på smal skjerm. */
   if(e.key === "/" && !panel.erModal() && visning !== "radar"){ e.preventDefault(); $("#sok").focus(); }
 });
 
-/* ============================================================
-   14. Fargetema
-   ============================================================ */
-/* Temaet er en innstilling for denne nettleseren, ikke data. Det går
-   utenom Lagring og havner aldri i jobber.json. Selve
-   påføringen skjer allerede i <head> — se index.html — så det ikke
-   blinker lyst før app.js rekker å kjøre; her holdes bare valget,
-   knappene og nettleserflaten i takt. */
 const TEMA_NOKKEL = "jobbsoknader-tema";
 const morktSystem = matchMedia("(prefers-color-scheme:dark)");
 
-/* Listen over temaer står i src/felles/tema-tidlig.js, som har kjørt før dette. */
 const erTema = t => t !== "system" && window.TEMAER.some(v => v.id === t);
 
 function lestTema(){
@@ -1805,24 +1475,17 @@ function settTema(valg){
   try{
     if(valg === "system") localStorage.removeItem(TEMA_NOKKEL);
     else localStorage.setItem(TEMA_NOKKEL, valg);
-  }catch(e){}   /* privat vindu eller full lagring: temaet gjelder økta ut */
+  }catch(e){}
   $$('#skuff input[name="tema"]').forEach(r => { r.checked = r.value === valg; });
   følgTemafarge();
 }
 
-/* Nettleserens egen flate rundt siden. Leses av den beregnede
-   bakgrunnen, ikke av tokenet: light-dark() står uoppløst i en
-   egendefinert egenskap. */
 function følgTemafarge(){
   const f = getComputedStyle(document.body).backgroundColor;
   if(f) $("#temafarge").setAttribute("content", f);
 }
 morktSystem.addEventListener("change", () => { if(lestTema() === "system") følgTemafarge(); });
 settTema(lestTema());
-
-/* ============================================================
-   15. Oppstart, lagringstilstand og døgnskifte
-   ============================================================ */
 
 const elLagret = $("#lagringstilstand");
 const elStripe = $("#stripe");
@@ -1856,8 +1519,6 @@ Lagring.påTilstand(t => {
               "Prøv igjen", "prøvLagring");
   else if(t.navn === "ulagret")
     visStripe(t.melding || "Lagringen avviste endringen.", "Prøv igjen", "prøvLagring");
-  /* Ingen «Prøv igjen» her: et nytt forsøk ville feilet like sikkert.
-     Veien tilbake går gjennom porten, og den står allerede. */
   else if(t.navn === "utlogget")
     visStripe(t.melding || "Du er logget ut. Endringen ligger her til du er inne igjen.");
   else if(t.navn === "konflikt")
@@ -1874,19 +1535,14 @@ Lagring.påTilstand(t => {
     skjulStripe();
 });
 
-/* Bekreftelse i skuffen i stedet for nettleserens confirm(). */
 function spor(tekst, knapp, fare, gjor){
   bekreftelse = { tekst, knapp, fare, gjor };
   apneSkuff("bekreft");
 }
 
-/* Tar bare med rader som holder mål — resten ville uansett blitt
-   avvist av serveren, og da er det bedre å si fra med en gang. */
 function silt(rader){
   const gyldige = [], sett = new Set();
   (rader || []).forEach(rad => {
-    /* En usikker lenke skal ikke koste hele raden. Den fjernes, og
-       selskapet, fristen og statusen blir med videre. */
     const l = sjekkLenke(rad && rad.lenke);
     if(!l.ok) rad = Object.assign({}, rad, { lenke: "" });
     const r = validerSoknad(rad, { lagId: nyId });
@@ -1898,11 +1554,9 @@ function silt(rader){
 }
 
 let sisteKopi = null;
-let venterValg = null;        /* "flytt" | "gjenopprett" | null */
+let venterValg = null;
 let filErOdelagt = false;
 
-/* Brukeren har tatt valget: sperren løftes, og en ødelagt fil ryddes
-   til side i samme skriving — aldri overskrives. */
 function taValget(){
   venterValg = null;
   Lagring.settVersjon(0);
@@ -1924,8 +1578,6 @@ const kortTid = iso => {
 
 function gjenopprettKopi(){
   if(!sisteKopi) return;
-  /* Har brukeren rukket å legge inn noe mens valget sto åpent, blir det
-     med videre i stedet for å forsvinne. */
   data = silt(sisteKopi.jobber.concat(data));
   taValget();
   lagre(); tegn(); lukkSkuff();
@@ -1944,8 +1596,6 @@ function flyttHit(){
     + (tapt > 0 ? " · " + tapt + " kunne ikke leses" : ""));
 }
 
-/* En fane som blir stående over midnatt skal ikke fortsette å vise
-   gårsdagens «i dag». Datoen hentes på nytt, og bare da tegnes det om. */
 function sjekkDøgn(){
   const nå = new Date(new Date().toDateString());
   if(nå.getTime() === I_DAG.getTime()) return;
@@ -1957,13 +1607,6 @@ addEventListener("visibilitychange", () => { if(document.visibilityState === "vi
 addEventListener("focus", sjekkDøgn);
 setInterval(sjekkDøgn, 60000);
 
-/* ============================================================
-   17. Porten, brukeren og økten
-   ============================================================ */
-
-/* Porten avgjøres før noe hentes. Uten det ville en 401 kommet
-   forkledd som «Ingen kontakt med lagringen. Kjører serveren?» —
-   riktig stripe, feil forklaring, og ingen vei videre. */
 async function start(){
   skjulStripe();
   const økt = await krevØkt();
@@ -1986,8 +1629,6 @@ function visBruker(){
   const navn = brukeren.navn || brukeren.epost;
   $("#brukerTegn").textContent = monogram(navn);
   $("#brukerNavn").textContent = navn;
-  /* Knappen bærer bare et ikon. Navnet på handlingen — og hvem den
-     gjelder — må da stå i det tilgjengelige navnet. */
   $("#loggUt").setAttribute("aria-label", "Logg ut " + navn);
   el.title = brukeren.epost;
   el.hidden = false;
@@ -1996,8 +1637,6 @@ function visBruker(){
 function loggUt(){
   const gjør = async () => {
     await Økt.loggUt();
-    /* app.js har modultilstand overalt. Å nullstille den for hånd er
-       en feilkilde uten gevinst — siden lastes i stedet. */
     location.reload();
   };
   if(!Lagring.harUlagret()) return gjør();
@@ -2005,23 +1644,17 @@ function loggUt(){
        "Logg ut likevel", true, gjør);
 }
 
-/* Serveren har svart 401 på noe som krevde en økt. Kalles én gang per
-   bortfall, ikke én gang per kall — det er okt.js som passer på det. */
 Økt.påUtlogget(async melding => {
   if(portenStår()) return;
   radar.stopp();
   lukkSkuff();
   panel.lukk({ tvang: true });
-  /* Et varsel med «Angre» skal ikke bli stående bak låsen: knappen er
-     inert, og en handling du ikke kan ta er verre enn ingen. */
   clearTimeout(angreTid);
   $("#varsel").classList.remove("er-apen");
   $("#varsel").setAttribute("inert", "");
   const før = brukeren;
   const økt = await krevØktIgjen({ melding, forrigeBruker: før,
                                    ulagret: Lagring.harUlagret() });
-  /* En annen bruker er en annen liste. Da er det ingenting å ta med
-     videre, og en omlasting er både enklere og sikrere. */
   if(!før || økt.bruker.id !== før.id){ location.reload(); return; }
   brukeren = økt.bruker;
   erFørste = !!økt.erFørste;
@@ -2030,12 +1663,7 @@ function loggUt(){
   radar.start(brukeren?.id);
 });
 
-/* Samme bruker er tilbake. Lå det noe ulagret, skal det overleve
-   hentingen og skrives mot den ferske versjonen. */
 async function gjenoppta(){
-  /* Sto et engangsvalg — flytt hit, eller gjenopprett sikkerhetskopien —
-     ubesvart da økten røk, er tilstanden for sammensatt til å plukkes
-     opp midt i. Da lastes siden på nytt og valget stilles forfra. */
   if(venterValg || filErOdelagt){ location.reload(); return; }
   const ulagret = Lagring.harUlagret();
   try{
@@ -2046,7 +1674,7 @@ async function gjenoppta(){
     else skjulStripe();
     tegn();
   }catch(e){
-    if(e.utlogget) return;          /* porten kommer opp igjen av seg selv */
+    if(e.utlogget) return;
     await hentData();
   }
 }
@@ -2057,39 +1685,27 @@ async function hentData(){
     const svar = await Lagring.hent();
 
     if(svar.tom){
-      /* En sikkerhetskopi veier tyngre enn både nettleserkopien og
-         startlisten: den er det siste vi vet var riktig. */
       if(svar.sikkerhetskopi && svar.sikkerhetskopi.jobber.length){
         sisteKopi = svar.sikkerhetskopi;
         venterValg = "gjenopprett";
         Lagring.blokker();
         data = []; tegn(); apneSkuff("gjenopprett"); return;
       }
-      /* Ingen datafil ennå. Har nettleseren data fra før, skal brukeren
-         få velge — vi flytter ikke noe uten å spørre. */
       const gamle = erFørste ? fraNettleser() : null;
       if(gamle && gamle.length){
         venterValg = "flytt";
         Lagring.blokker();
         data = []; tegn(); apneSkuff("flytt"); return;
       }
-      /* Bare den første brukeren arver det som lå i datakatalogen fra
-         før. Alle andre starter tomt — en ny bruker skal ikke få en
-         annens jobbsøknader som «sine». Startlisten ligger fortsatt
-         under «Dataene dine» for den som vil ha den. */
       if(erFørste){ data = fraStart(); lagre(); }
       else data = [];
     }else{
       data = svar.jobber || [];
       if(svar.advarsel) varsle(svar.advarsel);
     }
-    /* Først nå vet panelet om en direktelenke peker på noe som finnes. */
     lastet = true;
   }catch(e){
     data = [];
-    /* I begge tilfellene vet vi ikke hva som ligger på disk. Da skal
-       ingenting skrives — ellers kunne en tom liste blitt lagret oppå
-       ekte data. Sperren løftes av et bevisst valg eller en ny henting. */
     if(e.ødelagt){
       sisteKopi = e.sikkerhetskopi || null;
       filErOdelagt = true;

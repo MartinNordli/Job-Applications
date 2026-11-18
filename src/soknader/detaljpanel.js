@@ -1,57 +1,3 @@
-/* ============================================================
-   Detaljpanelet: alt om én søknad på ett sted.
-
-   Fra 1100 px står panelet til høyre for listen, som en ny kortflate
-   speilvendt av sidepanelet, og listen smalner. Under det er det et
-   ark i full høyde over listen, med slør, og da er det modalt: fokus
-   holdes inni, og listen bak er inert (se oppdaterInert i app.js).
-
-   Adressen er #jobb/<id>/<fane>. Å åpne panelet legger én oppføring i
-   historikken, så tilbakeknappen lukker det. Å bytte søknad eller fane
-   mens det står åpent, erstatter oppføringen i stedet for å fylle
-   historikken. En direktelenke åpner panelet når listen er lastet.
-
-   Panelet leser søknaden fra listen hver gang listen tegnes (oppdater),
-   så en ny status, et notat eller en endring fra skuffen vises med en
-   gang, uten at fanen eller rulleposisjonen går tapt. Er søknaden
-   slettet, lukker panelet seg.
-
-   ---- Fanene ----
-
-   En fane er { navn, monter(flate, ktx, api), merke? } og registreres
-   med registrerFane(id, fane). Rekkefølgen er den første registreringen;
-   registreres en id på nytt, byttes innholdet og plassen beholdes.
-   merke(jobb, iDag) gir { tekst, sr } eller null: en kort mono-tekst
-   ved navnet i fanelisten, som Intervju bruker til datoen for det neste.
-
-   monter() fyller `flate` og gir tilbake et objekt med det fanen
-   trenger av livssyklus, alt valgfritt:
-
-     oppdater(ktx)   ny søknadstilstand eller nytt dokument. Skal ikke
-                     tegne om det brukeren holder på med.
-     lukk()          før fanen forlates. Gir false (eller et løfte om
-                     false) for å bli stående, som brevet gjør når det
-                     ikke fikk lagret.
-     rydd()          etter lukk, eller når panelet tvinges igjen.
-
-   ktx = { jobb, dok, dokFeil, iDag }. dok er jobb-<id>.json, eller null
-   mens det hentes. api gir varsle, melde (skjermleserstatus),
-   settDokument(id, dok), lastDokument(), rediger(), slett(),
-   lagreNotat(tekst), påLagring(fn), brukernavn(), bunn (foten under
-   flaten, skjult til en fane viser den), åpneFane(id, hensikt?),
-   etterSelvlukking() (for en fane som har ryddet seg selv),
-   endreIntervjuer(regel) og ventPåLagring() (se intervjuflate.js).
-
-   hensikt er det en annen fane ber den nye om å begynne med, som når
-   brevet sender brukeren til annonsen for å lime den inn. Den kommer
-   som ktx.hensikt til monter(), bare den ene gangen. Har fanen da en
-   fokuser(), får den fokuset i stedet for overskriften.
-
-   Utenfra: oppdaterDokument(id, dok?) når noe annet har skrevet
-   jobbdokumentet (vurderingen, forberedelsene, Radar). Med dok brukes
-   det som det er; uten hentes det på nytt.
-   ============================================================ */
-
 import * as Jobbdokumenter from "../stilling/jobbdokumenter.js";
 import { åpneBrevflate } from "../brev/brevflate.js";
 import { STATUSER, SEKTORER, JOBBTYPER } from "../felles/felles.mjs";
@@ -61,8 +7,6 @@ import { esc, monogram, omTekst, hast, datoMedÅr, ukedag, antall, tilIso } from
 import { tidslinjeHtml, stegdatoer, lengstKommet, datoTekst, LØP, UTGANGER } from "./tidslinje.js";
 import { monterAnnonse } from "../stilling/annonseflate.js";
 import { monterIntervju, intervjuMerke } from "../intervju/intervjuflate.js";
-
-/* ---------- fanene ---------- */
 
 const FANER = new Map();
 function registrerFane(id, { navn, monter, merke = null }){
@@ -74,15 +18,11 @@ function registrerFane(id, { navn, monter, merke = null }){
 let aktivt = null;
 export function oppdaterDokument(id, dok){ aktivt?.oppdaterDokument(id, dok); }
 
-/* ---------- Oversikt ---------- */
-
 const ALVOR = { hoy: "viktig", middels: "middels", lav: "lite viktig" };
 
 const UTDATERT_GRUNN = { cvRevisjon: "CV-en er endret siden vurderingen.", annonseSjekksum: "Annonsen er endret siden vurderingen.",
   promptversjon: "Vurderingen er gjort med en eldre metode." };
 
-/* tilst: laster (kallet går), feil (teksten fra siste forsøk) og utdatert
-   (feltene i vurderingen som ikke lenger stemmer med CV-en og annonsen). */
 function matchHtml(ktx, tilst = {}){
   if(!ktx.dok && !ktx.dokFeil) return '<p class="detalj__tomt detalj__tomt--venter">Henter vurderingen…</p>';
   const m = ktx.dok?.match;
@@ -125,9 +65,6 @@ function monterOversikt(flate, ktx, api){
   const notat = flate.querySelector("#detaljNotat");
   notat.value = k.jobb.notat || "";
 
-  /* Notatet lagres når man slutter å skrive, og med en gang feltet
-     forlates. Lagringstilstanden er listens egen: «Lagrer…», «Lagret»
-     eller «Ikke lagret», i samme mono som nede i sidepanelet. */
   let tid = null, venter = false, skrevetFor = k.jobb.id;
   const status = (tekst, feil) => { const s = del("notatstatus"); s.textContent = tekst; s.classList.toggle("er-feil", !!feil); };
   const teller = () => { const n = notat.value.length; del("teller").textContent = n > MAKS - 200 ? n + " / " + MAKS : ""; };
@@ -151,9 +88,6 @@ function monterOversikt(flate, ktx, api){
   });
   notat.addEventListener("blur", lagreNå);
 
-  /* Vurderingen. grunnlag er CV-revisjonen og promptversjonen nå, og
-     hentes når oversikten åpnes og etter hver vurdering. Før den er
-     hentet, regnes ingenting som utdatert. */
   let matchTilst = { laster: false, feil: null }, grunnlag = null, ryddet = false;
   const lastGrunnlag = () => Jobbdokumenter.matchGrunnlag().then(g => { if(!ryddet){ grunnlag = g; tegn(); } }).catch(() => {});
   async function vurder(){
@@ -177,7 +111,6 @@ function monterOversikt(flate, ktx, api){
   function tegn(){
     del("match").innerHTML = matchHtml(k, { ...matchTilst, utdatert: grunnlag ? matchUtdatert(k.dok, grunnlag) : [] });
     del("tid").innerHTML = tidslinjeHtml(k.jobb, k.iDag);
-    /* Et notat brukeren skriver i, overskrives aldri av en omtegning. */
     if(document.activeElement !== notat && notat.value !== (k.jobb.notat || "")) notat.value = k.jobb.notat || "";
     teller();
   }
@@ -192,12 +125,6 @@ function monterOversikt(flate, ktx, api){
   };
 }
 
-/* ---------- Brev ---------- */
-
-/* Brevflaten får panelets flate og fot, og jobbdokumentet, så den kan
-   vise om annonsen er lagret og sende til Annonse-fanen. Den lagrer
-   selv; lukk() venter på det, og gir false hvis lagringen feilet, så
-   panelet blir stående på brevet. */
 function monterBrev(flate, ktx, api){
   api.bunn.hidden = false;
   let ryddet = false;
@@ -220,13 +147,10 @@ registrerFane("annonse",  { navn: "Annonse",  monter: monterAnnonse });
 registrerFane("intervju", { navn: "Intervju", monter: monterIntervju, merke: intervjuMerke });
 registrerFane("brev",     { navn: "Brev",     monter: monterBrev });
 
-/* Pila skal aldri stå alene på en linje: siste ord og pila brytes ikke. */
 function medPil(tekst){
   const t = String(tekst).trim(), i = t.lastIndexOf(" ");
   return esc(t.slice(0, i + 1)) + '<span class="ubrutt">' + esc(t.slice(i + 1)) + '<span class="rad__pil" aria-hidden="true">↗</span></span>';
 }
-
-/* ---------- panelet ---------- */
 
 const RUTE = /^#jobb\/([A-Za-z0-9_-]{1,64})(?:\/([a-z]{1,20}))?$/;
 const LUKK_IKON = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
@@ -240,21 +164,17 @@ export function lagDetaljpanel(deps){
   let id = null, fane = "oversikt";
   let dok = null, dokFeil = null, dokNr = 0;
   const dokumenter = new Map();
-  let montert = null;           /* { id, fane, obj } */
-  let presset = false;          /* la vi selv oppføringen i historikken */
+  let montert = null;
+  let presset = false;
   let fokusFor = null;
-  let hensikt = null;           /* se åpneFane */
+  let hensikt = null;
   let kø = Promise.resolve();
   let skall = null;
 
-  /* Alt som endrer hva panelet viser, går i kø: å forlate brevet venter
-     på lagringen, og to raske klikk skal ikke flette seg i hverandre. */
   const iKø = fn => (kø = kø.then(fn, fn));
 
   const ktx = () => ({ jobb: deps.jobb(id), dok, dokFeil, iDag: deps.iDag() });
   const erÅpen = () => id !== null;
-
-  /* ---------- skallet ---------- */
 
   function byggSkall(){
     el.innerHTML = '<div class="detalj__topp" data-del="topp"></div>'
@@ -281,7 +201,6 @@ export function lagDetaljpanel(deps){
     tegnFanemerker();
   }
 
-  /* Merkene byttes uten å tegne fanene på nytt, så fokus blir stående. */
   function tegnFanemerker(){
     const j = id && deps.jobb(id);
     if(!j) return;
@@ -293,9 +212,6 @@ export function lagDetaljpanel(deps){
     });
   }
 
-  /* Hva søknaden står på nå, i én linje av fakta: fristen eller
-     statusen med dato, så sted, sektor og jobbtype. Kulør bare på en
-     frist som haster. */
   function faktaHtml(j, iDag){
     const fakta = [];
     const datoer = stegdatoer(j, iDag);
@@ -320,9 +236,6 @@ export function lagDetaljpanel(deps){
     return '<p class="detalj__fakta">' + fakta.join("") + '</p>';
   }
 
-  /* Stegraden. Hovedløpet står alltid; sideutgangene er stille knapper
-     under, eller merket med dato når søknaden har tatt en av dem. Hvert
-     steg er en knapp som setter statusen, med samme angre som raden. */
   function stegHtml(j, iDag){
     const datoer = stegdatoer(j, iDag);
     const her = LØP.indexOf(j.status);
@@ -360,8 +273,6 @@ export function lagDetaljpanel(deps){
     return '<div class="steg" role="group" aria-label="Status"><ol class="steg__lop">' + steg + '</ol>' + ut + '</div>';
   }
 
-  /* Tegner toppen på nytt og setter fokus tilbake på samme kontroll,
-     så et klikk i stegraden ikke sender fokus ut i ingenting. */
   function tegnTopp(){
     const j = deps.jobb(id);
     if(!j) return;
@@ -387,8 +298,6 @@ export function lagDetaljpanel(deps){
     }
   }
 
-  /* ---------- dokumentet ---------- */
-
   async function lastDokument(){
     const mitt = ++dokNr, hvem = id;
     dokFeil = null;
@@ -396,8 +305,6 @@ export function lagDetaljpanel(deps){
     oppdaterFane();
     try{
       let d = await Jobbdokumenter.hent(hvem);
-      /* Har dokumentet aldri hatt en annonse, ligger den kanskje i brevet
-         fra før jobbdokumentet fantes. annonseFor flytter den over én gang. */
       if(!d.annonse?.tekst && !d.annonse?.kilde){
         const a = await Jobbdokumenter.annonseFor(hvem);
         if(a?.tekst) d = { ...d, annonse: a };
@@ -424,8 +331,6 @@ export function lagDetaljpanel(deps){
   function oppdaterFane(){
     if(montert && montert.id === id && deps.jobb(id)) montert.obj.oppdater?.(ktx());
   }
-
-  /* ---------- fanen som står ---------- */
 
   const api = {
     varsle: (t, angre) => deps.varsle(t, angre),
@@ -471,8 +376,6 @@ export function lagDetaljpanel(deps){
     montert = { id, fane, obj: f.monter(skall.flate, h ? { ...ktx(), hensikt: h } : ktx(), api) || {} };
   }
 
-  /* Viser søknaden og fanen. Gir false når fanen som står, ikke kunne
-     forlates. */
   async function vis(nyId, nyFane, { erstatt = true, push = false } = {}){
     if(!FANER.has(nyFane)) nyFane = "oversikt";
     const sammeId = nyId === id;
@@ -505,7 +408,6 @@ export function lagDetaljpanel(deps){
     requestAnimationFrame(() => el.classList.add("er-apen"));
   }
 
-  /* Ark eller kolonne. Bare arket er en dialog. */
   function settModus(){
     const modal = erÅpen() && !bred.matches;
     if(modal){
@@ -533,23 +435,17 @@ export function lagDetaljpanel(deps){
     return rad;
   }
 
-  /* ---------- inn og ut ---------- */
-
   function åpne(nyId, { fane: ønsket, fra, hensikt: h = null } = {}){
     return iKø(async () => {
       if(!deps.jobb(nyId)) return;
       hensikt = h;
       const varÅpen = erÅpen();
-      /* Fanen blir stående når man går fra søknad til søknad, så man kan
-         lese annonsene eller tidslinjene etter hverandre. */
       const nyFane = ønsket || (varÅpen ? fane : "oversikt");
       if(!varÅpen) fokusFor = fra || document.activeElement;
       const ok = await vis(nyId, nyFane, { push: !varÅpen, erstatt: varÅpen });
       hensikt = null;
       if(!ok) return;
       if(!varÅpen) presset = true;
-      /* Raden skal stå synlig ved siden av panelet; listen kan ha flyttet
-         seg da den smalnet. */
       const rad = merkRad();
       if(rad && bred.matches) rad.scrollIntoView({ block: "nearest" });
       if(h && montert?.obj.fokuser) requestAnimationFrame(() => montert?.obj.fokuser?.());
@@ -561,8 +457,6 @@ export function lagDetaljpanel(deps){
     requestAnimationFrame(() => el.querySelector("#detaljTittel")?.focus({ preventScroll: true }));
   }
 
-  /* fraHistorikk: tilbakeknappen har allerede tatt adressen bort.
-     tvang: søknaden er borte, eller økten er det; ingen fane får nekte. */
   function lukk({ tvang = false, fraHistorikk = false, slettet = false } = {}){
     return iKø(async () => {
       if(!erÅpen()) return true;
@@ -582,8 +476,6 @@ export function lagDetaljpanel(deps){
         else history.replaceState(history.state, "", location.pathname + location.search);
       }
       presset = false;
-      /* Fokus tilbake til raden panelet ble åpnet fra, eller til en rad
-         for samme søknad hvis listen er tegnet på nytt siden. */
       const rad = !slettet && document.querySelector('#innhold .rad[data-id="' + CSS.escape(var_) + '"] .rad__selskap');
       const mål = fokusFor && fokusFor.isConnected && !el.contains(fokusFor) ? fokusFor : rad || deps.tilListen();
       fokusFor = null;
@@ -592,7 +484,6 @@ export function lagDetaljpanel(deps){
     });
   }
 
-  /* Adressen er sannheten om hva som skal stå. */
   function følgAdressen(){
     const m = location.hash.match(RUTE);
     if(!m){ if(erÅpen()) lukk({ fraHistorikk: true }); return; }
@@ -609,8 +500,6 @@ export function lagDetaljpanel(deps){
       const varÅpen = erÅpen();
       if(!varÅpen) fokusFor = document.activeElement;
       if(!(await vis(nyId, f || "oversikt", { erstatt: true }))) return;
-      /* En direktelenke kan peke på en søknad listen ikke viser nå. Da
-         byttes visningen, så den valgte raden står der ved siden av. */
       if(!varÅpen){
         deps.visRad(nyId);
         const rad = merkRad();
@@ -628,13 +517,9 @@ export function lagDetaljpanel(deps){
     });
   }
 
-  /* ---------- hendelser ---------- */
-
   el.addEventListener("click", e => {
     const t = e.target.closest("[data-panel],.detalj__fane");
     if(!t || !el.contains(t)) return;
-    /* Fanene eier sin egen flate. Brevflaten bruker både data-panel og
-       data-fane til sitt eget, så bare panelets slett-knapp tas her. */
     if(skall.flate.contains(t) && t.dataset.panel !== "slett") return;
     if(t.classList.contains("detalj__fane")){ velgFane(t.dataset.fane, false); return; }
     const hva = t.dataset.panel;
@@ -658,7 +543,6 @@ export function lagDetaljpanel(deps){
     }
   });
 
-  /* Arket holder fokus inni seg, som skuffen gjør. */
   document.addEventListener("keydown", e => {
     if(e.key !== "Tab" || !erÅpen() || bred.matches || deps.skuffErÅpen()) return;
     const f = Array.from(el.querySelectorAll(FOKUSERBARE)).filter(x => x.getClientRects().length && getComputedStyle(x).visibility !== "hidden");
@@ -689,7 +573,6 @@ export function lagDetaljpanel(deps){
     valgtId: () => id,
     fokuser: fokuserTittel,
     oppdaterDokument: (hvem, d) => aktivt.oppdaterDokument(hvem, d),
-    /* Kalles hver gang listen er tegnet. */
     oppdater(){
       if(!erÅpen()){ if(RUTE.test(location.hash)) følgAdressen(); return; }
       if(!deps.jobb(id)){ lukk({ tvang: true, slettet: true }); return; }

@@ -1,12 +1,3 @@
-/* ============================================================
-   Felles — delt mellom nettleseren og serveren.
-
-   Én definisjon av statuser, sektorer og validering. Klienten
-   validerer for rask tilbakemelding; serveren validerer på nytt
-   fordi den ikke kan stole på klienten. Ingen Node- eller
-   nettleser-spesifikke API-er her.
-   ============================================================ */
-
 export const STATUSER = {
   todo:      "Å søke på",
   sent:      "Sendt",
@@ -28,8 +19,6 @@ export const SEKTORER = {
   annet:      "Annet"
 };
 
-/* Hva slags stilling utlysningen gjelder. Myk som sektor, og valgfri:
-   de fleste radene i listen har den ikke, og skal ikke tvinges til å få den. */
 export const JOBBTYPER = {
   graduate:   "Graduate",
   internship: "Internship",
@@ -37,10 +26,6 @@ export const JOBBTYPER = {
   deltid:     "Deltid"
 };
 
-/* Selskaper vi allerede vet sektoren for. Limemodus har brukt denne
-   siden appen var én fil; importen fra lenke bruker den til å slippe
-   å be modellen klassifisere et selskap brukeren kjenner fra før.
-   Nøklene er små bokstaver — oppslaget er eksakt, ikke uklart. */
 export const SEKTOR_FOR = {
   "aker bp":"energi","equinor":"energi","statnett":"energi","dnv":"energi",
   "kongsberg":"energi","norconsult":"energi",
@@ -58,15 +43,10 @@ export const FIKK_INTERVJU = s => s === "interview" || s === "accepted";
 export const ER_ARKIV = s => s === "rejected" || s === "expired"
                           || s === "accepted" || s === "trukket";
 
-/* Feltgrenser — holder filen lesbar og stopper utilsiktet svær input. */
 export const MAKS = { selskap: 200, stilling: 200, sted: 200, notat: 1000, lenke: 2000, id: 64 };
 
-/* Hvem som la inn en hendelse. «lager» er sikkerhetsnettet i
-   lagerlogikk.mjs, som merker statusskift klienten ikke loggførte. */
 const HENDELSE_KILDER = ["bruker", "lager", "radar"];
 
-/* Hele listen skrives ved hver lagring, så taket holder raden liten.
-   60 statusskift på én søknad er langt over det noen faktisk gjør. */
 export const MAKS_HENDELSER = 60;
 
 export const INTERVJUTYPER = {
@@ -76,9 +56,6 @@ export const INTERVJUTYPER = {
 };
 export const MAKS_INTERVJU = { antall: 20, varighet: 600, sted: 200, runde: 80, notat: 1000 };
 
-/* ---------- små byggeklosser ---------- */
-
-/* Ekte kalenderdato, ikke bare rett form: 2026-02-31 skal falle. */
 export function erIsoDato(v){
   if(typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
   const [a, m, d] = v.split("-").map(Number);
@@ -90,15 +67,6 @@ function erIsoTid(v){
   return typeof v === "string" && v !== "" && !Number.isNaN(Date.parse(v));
 }
 
-/* Datoer kommer i tre former utenfra, og skal ut i én.
-
-   schema.org sender `validThrough` som fullt tidsstempel
-   («2026-09-13T23:59:00+02:00»), som erIsoDato forkaster. Norske
-   annonser skriver «13.09.2026», og notatlinjer bare «13.09». Alt
-   annet — «snarest», «løpende» — er ikke en dato og blir null.
-
-   Året gjettes bare når det mangler: en dag som ligger mer enn 60
-   dager bak oss hører til neste år. Samme regel som limemodus. */
 export function normaliserIsoDato(v, iDag = new Date()){
   const s = tekst(v);
   if(!s) return null;
@@ -128,8 +96,6 @@ export function normaliserIsoDato(v, iDag = new Date()){
   return null;
 }
 
-/* Lenker havner rett i href. Bare http og https slipper gjennom —
-   ellers ville en javascript:-lenke fra innlimt markdown kunne kjøre. */
 export function sjekkLenke(v){
   if(v == null) return { ok: true, verdi: "" };
   const s = String(v).trim();
@@ -140,24 +106,12 @@ export function sjekkLenke(v){
   catch{ return { ok: false, melding: "Lenken må være en full nettadresse, f.eks. https://…" }; }
   if(u.protocol !== "http:" && u.protocol !== "https:")
     return { ok: false, melding: "Bare http- og https-lenker er tillatt." };
-  return { ok: true, verdi: s };          /* lagrer originalen, ikke URL-normalisert form */
+  return { ok: true, verdi: s };
 }
 
 const tekst = v => (v == null ? "" : String(v)).trim();
 const erObjekt = v => !!v && typeof v === "object" && !Array.isArray(v);
 
-/* ---------- hendelser ---------- */
-/*
-   Statusloggen på en søknad: [{ til, dato, tid?, kilde? }].
-
-   Tilgivende som sektor, fordi loggen er historikk og ikke noe brukeren
-   skriver inn: en oppføring vi ikke forstår droppes, og resten av raden
-   lagres som før. Å avvise hele raden for én rar hendelse ville gjort
-   brukerens egne søknader ulagrelige.
-
-   `tid` sjekkes strengere enn erIsoTid, fordi Date.parse godtar «1» og
-   annet rusk. Er tiden ugyldig, mister hendelsen bare tiden, ikke datoen.
-*/
 const ISO_TIDSPUNKT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/;
 
 function renHendelse(h){
@@ -171,18 +125,12 @@ function renHendelse(h){
   return ut;
 }
 
-/* Sortert på dato og så tid. Tidene sammenlignes som tidspunkt, ikke
-   som tekst, fordi to klokker kan skrive med ulik sone. Uten tid står
-   hendelsen først den dagen. Sorteringen er stabil, så to like holder
-   rekkefølgen de kom i. */
 const tidsverdi = h => (h.tid ? Date.parse(h.tid) : -Infinity);
 function sorterHendelser(liste){
   return liste.slice().sort((a, b) =>
     a.dato < b.dato ? -1 : a.dato > b.dato ? 1 : tidsverdi(a) - tidsverdi(b));
 }
 
-/* Går listen over taket, beholdes den første hendelsen (da søknaden ble
-   lagt til) og de nyeste. Midten er den minst nyttige delen av loggen. */
 export function validerHendelser(inn){
   if(!Array.isArray(inn)) return [];
   const rene = sorterHendelser(inn.map(renHendelse).filter(Boolean));
@@ -190,13 +138,6 @@ export function validerHendelser(inn){
   return [rene[0], ...rene.slice(rene.length - (MAKS_HENDELSER - 1))];
 }
 
-/* ---------- intervjuer ---------- */
-/*
-   Ett intervju: { id, dato, tid, varighet, sted, type, lenke, runde, notat }.
-   validerIntervju er streng og gir meldinger, til skjemaet som legger
-   inn et intervju. validerIntervjuer er listeversjonen på raden, og den
-   er tilgivende: et intervju som ikke består droppes, resten blir med.
-*/
 export function validerIntervju(inn){
   const feil = [];
   if(!erObjekt(inn))
@@ -230,7 +171,6 @@ export function validerIntervju(inn){
   const l = sjekkLenke(inn.lenke);
   if(!l.ok) feil.push({ felt: "lenke", melding: l.melding });
 
-  /* Mild som jobbtype: ukjent type blir tom, ikke en feil. */
   const type = Object.hasOwn(INTERVJUTYPER, tekst(inn.type)) ? tekst(inn.type) : "";
 
   if(feil.length) return { ok: false, feil, verdi: null };
@@ -238,8 +178,6 @@ export function validerIntervju(inn){
            verdi: { id, dato: inn.dato, tid, varighet, sted, type, lenke: l.verdi, runde, notat } };
 }
 
-/* Sortert på dato og klokkeslett. Over taket beholdes de 20 seneste,
-   fordi det er de kommende intervjuene varslene trenger. */
 export function validerIntervjuer(inn){
   if(!Array.isArray(inn)) return [];
   const sett = new Set(), rene = [];
@@ -254,16 +192,6 @@ export function validerIntervjuer(inn){
   return rene.slice(Math.max(0, rene.length - MAKS_INTERVJU.antall));
 }
 
-/* ---------- én søknad ---------- */
-/*
-   Returnerer { ok, feil: [{felt, melding}], verdi }.
-   `verdi` er en normalisert kopi med bare kjente felt — ukjente
-   felt faller bort, så filen ikke fylles opp med rusk over tid.
-
-   Merk: `sted` og `lenke` får være tomme. Ekte oppføringer i denne
-   listen mangler begge (åpne/uoppgitte steder, verv uten utlysning),
-   og å avvise dem ville gjort brukerens egne data ugyldige.
-*/
 export function validerSoknad(inn, valg = {}){
   const feil = [];
   const o = (inn && typeof inn === "object" && !Array.isArray(inn)) ? inn : null;
@@ -271,8 +199,6 @@ export function validerSoknad(inn, valg = {}){
     return { ok: false, feil: [{ felt: null, melding: "Søknaden må være et objekt." }], verdi: null };
   }
 
-  /* Id-en havner rett inn i data-id="…" i en mengde maler. Å begrense
-     tegnsettet her er sikrere enn å escape den ti steder. */
   const id = tekst(o.id);
   if(!id && !valg.lagId) feil.push({ felt: "id", melding: "Mangler id." });
   else if(id && !/^[A-Za-z0-9_-]{1,64}$/.test(id))
@@ -309,20 +235,12 @@ export function validerSoknad(inn, valg = {}){
   if(!Object.hasOwn(STATUSER, status))
     feil.push({ felt: "status", melding: `Ukjent status «${status}».` });
 
-  /* Sektor er en myk gruppering, ikke en livssyklustilstand:
-     ukjente verdier havner i «annet» i stedet for å avvise raden. */
   const sektor = Object.hasOwn(SEKTORER, tekst(o.sektor)) ? tekst(o.sektor) : "annet";
 
-  /* Samme mildhet, men med tomt som gyldig hvilested: en søknad uten
-     kjent jobbtype er helt vanlig, og «annet» ville løyet. */
   const jobbtype = Object.hasOwn(JOBBTYPER, tekst(o.jobbtype)) ? tekst(o.jobbtype) : "";
 
-  /* Om søknaden noen gang ga intervju. Statusen sier bare hvor den står
-     nå, og et avslag etter intervjuet ville ellers slettet sporet av det.
-     Står den på intervju eller videre, har den åpenbart fått et. */
   const intervju = o.intervju === true || FIKK_INTERVJU(status);
 
-  /* Begge listene er tilgivende: rusk i dem koster oppføringen, ikke raden. */
   const hendelser  = validerHendelser(o.hendelser);
   const intervjuer = validerIntervjuer(o.intervjuer);
 
@@ -343,12 +261,6 @@ export function validerSoknad(inn, valg = {}){
   };
 }
 
-/* ---------- hele samlingen ---------- */
-/*
-   Beholder de gyldige radene og forkaster resten i stedet for å
-   avvise alt — én ødelagt rad skal ikke gjøre hele filen ubrukelig.
-   Duplikate id-er forkastes; den første vinner.
-*/
 export function validerSamling(liste, valg = {}){
   if(!Array.isArray(liste)){
     return { gyldige: [], forkastet: [{ indeks: null, feil: [{ felt: null, melding: "Forventet en liste med søknader." }] }] };

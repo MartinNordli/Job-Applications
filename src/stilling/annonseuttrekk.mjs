@@ -1,36 +1,9 @@
-/* ============================================================
-   Annonsen ut av en hentet side, med en modell som velger linjene.
-   Ingen nettverk, lagring eller skjulte forsøk.
-
-   Brukes når brevet skal skrives og søknaden ikke har noen annonse,
-   men har en lenke. Siden hentes av jobbdokumenttjenesten, og teksten
-   leses først ut uten modell (trekkUtAnnonse i src/stilling/annonsetekst.mjs).
-   Den teksten har ofte med meny, informasjonskapsler, andre stillinger
-   og bunntekst. Her får den rimeligste modellen (formålet «annonse»,
-   Claude Haiku 5.5) sidens linjer nummerert, og svarer med hvilke
-   linjer som hører til annonsen.
-
-   Modellen skriver aldri annonseteksten selv. Den velger bare linjer,
-   og koden setter sammen teksten av sidens egne linjer. Da kan modellen
-   ikke dikte opp noe om stillingen eller selskapet, og det brevet
-   siterer fra annonsen, står ordrett på siden. Svaret er derfor lite:
-   noen få linjeområder, uansett hvor lang annonsen er.
-
-   Kan modellen ikke brukes til noe (feil format, avslag eller et utvalg
-   som er for lite til å være en annonse), brukes hele den uttrukne
-   teksten, slik «Hent annonsen» alltid har gjort. Sier modellen at siden
-   ikke har noen annonse, stopper det med en feil brukeren kan gjøre noe
-   med: et brev skrevet fra en side der stillingen er tatt ned, er verre
-   enn ingen brev.
-   ============================================================ */
 import { Brevfeil } from "../dokumenter/brevdata.mjs";
 import { sjekkSchema } from "../brev/brevlogikk.mjs";
 
 const ANNONSE_PROMPTVERSJON = "annonse-1";
-/* Mer enn nok for en annonse. Linjer etter dette kan ikke velges. */
 const MAKS_TEGN = 80_000;
 export const MAKS_LINJER = 2_000;
-/* Et utvalg kortere enn dette er ingen annonse, men et feilgrep. */
 const MINST = 200;
 
 const objekt = properties => ({ type: "object", properties, required: Object.keys(properties), additionalProperties: false });
@@ -49,8 +22,6 @@ Svar med linjeområdene som skal beholdes, fra og til med begge linjene, i stige
 
 Promptversjon: ${ANNONSE_PROMPTVERSJON}`;
 
-/* Sidens ikke-tomme linjer, og om det sto en tom linje foran hver av
-   dem, så avsnittene kan settes sammen igjen slik de sto. */
 export function delILinjer(sidetekst){
   const linjer = [];
   let tom = false, tegn = 0;
@@ -64,19 +35,12 @@ export function delILinjer(sidetekst){
   return linjer;
 }
 
-/* Valgene til kallModell. Ingen kildeblokk: siden er ny hver gang, så
-   det er bare systemet som kan bufres, og det er for kort til at det
-   lønner seg. jobb er søknadsfeltene, som i brevets grunnlag. */
 export function annonseValg({ linjer, jobb = {}, leverandor = "anthropic" }){
   const side = linjer.map((l, i) => `[${i + 1}] ${l.tekst}`).join("\n");
   return { leverandor, formal: "annonse", trinn: "annonse", system: ANNONSE_SYSTEM, skjema: ANNONSESKJEMA,
     innhold: JSON.stringify({ stilling: String(jobb.stilling ?? ""), selskap: String(jobb.selskap ?? ""), side }) };
 }
 
-/* Setter sammen teksten av linjene modellen valgte. Områder utenfor
-   siden, baklengs eller overlappende, rettes eller hoppes over: et
-   tall fra modellen kan aldri gi tekst som ikke står på siden. null
-   betyr at utvalget ikke kan brukes. */
 export function settSammen(linjer, behold){
   const valgt = new Set();
   for(const { fra, til } of behold){
@@ -91,10 +55,6 @@ export function settSammen(linjer, behold){
   return ut.length >= MINST ? ut : null;
 }
 
-/* Velger annonsen ut av sideteksten. Gir { tekst, bruk, modell }, der
-   bruk og modell er null når modellen ikke ble spurt eller ikke kunne
-   brukes. Feil i nøkkel, nett, tak og avbrudd går videre: de ville
-   stoppet brevet like etterpå uansett. */
 export async function velgAnnonse(sidetekst, { kallModell, leverandor, jobb, signal } = {}){
   const hele = String(sidetekst ?? "").trim();
   const linjer = delILinjer(hele);

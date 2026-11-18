@@ -1,25 +1,3 @@
-/* ============================================================
-   Intervju-fanen i detaljpanelet.
-
-   Intervjuene står som rader i samme form som listen: en smal
-   datokolonne i mono, klokkeslettet, og hva slags intervju det er.
-   Kommende står først, tidligst først, og de tidligere under dem,
-   nyeste først og dempet. Én rad er åpen om gangen; den åpne står på
-   et innfelt spor og bærer detaljene, handlingene og forberedelsen.
-   Uten valg er det neste intervju som står åpent.
-
-   Skjemaet for å legge inn og endre tar hele flaten mens det står, som
-   innlimingen i Annonse-fanen. Reglene er intervjuer.mjs sine:
-   skjemaet sender feltene inn og viser meldingene som kommer tilbake.
-   Raden lagres av app.js (api.endreIntervjuer), som også gir angre.
-
-   Forberedelsen er et modellkall som tar tid og koster penger. Den
-   startes bare av knappen, og en lagret forberedelse vises fra
-   jobbdokumentet uten nytt kall. Kallet hører til modulen, ikke til
-   flaten: bytter man fane eller søknad mens det går, står fremdriften
-   der igjen når man kommer tilbake, og svaret lagres uansett.
-   ============================================================ */
-
 import * as Jobbdokumenter from "../stilling/jobbdokumenter.js";
 import * as Brev from "../brev/brev.js";
 import * as Økt from "../konto/okt.js";
@@ -45,20 +23,14 @@ const STEDHINT = {
   "": "Adresse eller plattform"
 };
 
-/* Kallene som går, og feilene fra siste forsøk, per «søknad:intervju». */
-const PÅGÅR = new Map();      /* nøkkel -> { start, løfte } */
-const FEIL = new Map();       /* nøkkel -> feilen */
-/* Hvilket intervju som sto åpent per søknad, så det står åpent igjen når
-   man kommer tilbake til fanen, og et kall som går, ikke blir skjult. */
+const PÅGÅR = new Map();
+const FEIL = new Map();
 const ÅPEN = new Map();
 const nøkkel = (id, iid) => id + ":" + iid;
-
-/* ---------- små hjelpere ---------- */
 
 const pad = n => String(n).padStart(2, "0");
 const liste = jobb => validerIntervjuer(jobb?.intervjuer);
 
-/* Slutten som «HH:MM». Går den over midnatt, står klokkeslettet neste døgn. */
 function slutt(i){
   if(!i.tid) return null;
   const [t, m] = i.tid.split(":").map(Number);
@@ -74,14 +46,9 @@ const pågårNå = (i, nå) => {
   const s = starttid(i);
   return !!s && s <= nå && s.getTime() + (i.varighet ?? STANDARD_VARIGHET) * 60000 > nå.getTime();
 };
-/* Det som står til høyre i raden. Et intervju som pågår, sier det. */
 const når = (i, iDag, nå) => (pågårNå(i, nå) ? "pågår" : omTekst(i.dato, iDag));
-/* «Video, andre runde» i raden; tomt når ingen av delene er fylt ut. */
 const hva = i => [INTERVJUTYPER[i.type], i.runde].filter(Boolean).join(", ");
 
-/* Leverandøren brukeren sist valgte i brevskriveren. Samme nøkkel som
-   brevflaten og jobbdokumenter.js leser, så nøkkelsjekken her gjelder
-   den modellen kallet faktisk går til. */
 function valgtLeverandør(){
   try{
     const profil = Økt.nåværendeBruker()?.id;
@@ -89,7 +56,6 @@ function valgtLeverandør(){
   }catch{ return "anthropic"; }
 }
 
-/* Merket i fanelisten: når neste intervju er, eller ingenting. */
 export function intervjuMerke(jobb, iDag){
   const i = kommende(jobb)[0];
   if(!i) return null;
@@ -98,19 +64,15 @@ export function intervjuMerke(jobb, iDag){
   return { tekst, sr: "neste " + tekst };
 }
 
-/* ---------- fanen ---------- */
-
 export function monterIntervju(flate, ktx, api){
   let k = ktx;
   let ryddet = false;
-  /* null, { ny: true } eller { iid } mens skjemaet står */
   let skjema = ktx.hensikt === "ny" ? { ny: true } : null;
   let skjemaFeil = [];
-  /* id-en som står åpen, null for ingen, undefined for det neste */
   let åpen = ÅPEN.get(ktx.jobb.id);
-  let bekrefter = null;         /* intervjuet som venter på bekreftet sletting */
-  let manglerFor = null;        /* intervjuet der «Lag på nytt» ble trykket mens noe manglet */
-  let grunnlag = null;          /* { harCv, cvRevisjon, harNøkkel, brevVersjonId } */
+  let bekrefter = null;
+  let manglerFor = null;
+  let grunnlag = null;
   const åpneSpørsmål = new Set();
   let klokke = null;
 
@@ -121,9 +83,6 @@ export function monterIntervju(flate, ktx, api){
   const harAnnonse = () => !!k.dok?.annonse?.tekst?.trim();
   const forberedelse = iid => (Object.hasOwn(k.dok?.forberedelser ?? {}, iid) ? k.dok.forberedelser[iid] : null);
 
-  /* Det forberedelsen bygger på, hentet én gang per montering. Feiler et
-     oppslag, er svaret ukjent (null), og knappen står som vanlig: kallet
-     sier selv fra om noe mangler. */
   async function lastGrunnlag(){
     const hvem = id();
     const [cv, nøkkelen, brev] = await Promise.allSettled([Brev.hentCv(), Brev.nokkelStatus(valgtLeverandør()), Brev.hentBrev(hvem)]);
@@ -139,8 +98,6 @@ export function monterIntervju(flate, ktx, api){
     tegn();
   }
 
-  /* Hvilket intervju som står åpent: valget, ellers det neste, ellers
-     det siste som har vært. */
   function åpentIntervju(){
     const ivs = alle();
     if(åpen === null) return null;
@@ -148,8 +105,6 @@ export function monterIntervju(flate, ktx, api){
     const neste = kommende(k.jobb)[0];
     return neste ? neste.id : ivs.length ? ivs[ivs.length - 1].id : null;
   }
-
-  /* ---------- tegning ---------- */
 
   function radHtml(i, { tidligere, erÅpen }){
     const nå = new Date();
@@ -202,8 +157,6 @@ export function monterIntervju(flate, ktx, api){
       + forberedelseHtml(i);
   }
 
-  /* ---------- forberedelsen ---------- */
-
   function forberedelseHtml(i){
     const n = nøkkel(id(), i.id);
     const går = PÅGÅR.get(n);
@@ -235,8 +188,6 @@ export function monterIntervju(flate, ktx, api){
           + '<button class="knapp knapp--liten knapp--stille forb__igjen" type="button" data-iv="forbered-igjen" data-iid="' + esc(i.id) + '">Lag på nytt</button>'
         + '</div>'
         + feilHtml
-        /* En forberedelse som finnes, står i fred. Hva som mangler for å
-           lage en ny, vises først når brukeren ber om en. */
         + (mangler() && !feil && manglerFor === i.id ? manglerHtml() : "")
         + innholdHtml(i, f)
         + '</section>';
@@ -252,8 +203,6 @@ export function monterIntervju(flate, ktx, api){
       + '</section>';
   }
 
-  /* Det som må på plass før kallet kan gå, i den rekkefølgen brukeren
-     må ordne det. Ukjent regnes ikke som mangel. */
   function mangler(){
     if(!k.dok) return null;
     if(!harAnnonse()) return "annonse";
@@ -343,8 +292,6 @@ export function monterIntervju(flate, ktx, api){
     }, 1000);
   }
 
-  /* ---------- skjemaet ---------- */
-
   function skjemaHtml(){
     const i = skjema.iid ? finn(skjema.iid) : null;
     const v = i || { dato: "", tid: null, varighet: null, type: "", sted: "", lenke: "", runde: "", notat: "" };
@@ -398,7 +345,6 @@ export function monterIntervju(flate, ktx, api){
       : api.endreIntervjuer((j, klokka) => nyttIntervju(j, felt, klokka));
     if(!r.ok){
       skjemaFeil = r.feil || [];
-      /* Det brukeren skrev, blir stående. Bare meldingene tegnes inn. */
       tegn();
       const første = skjemaFeil.find(x => x.felt && flate.querySelector("#iv" + x.felt));
       (første ? flate.querySelector("#iv" + første.felt) : flate.querySelector("#ivSkjemaTittel"))?.focus();
@@ -432,12 +378,9 @@ export function monterIntervju(flate, ktx, api){
     else flate.querySelector('[data-iv="ny"]')?.focus();
   }
 
-  /* ---------- tegn ---------- */
-
   function tegn(){
     if(ryddet) return;
     if(skjema){
-      /* Står skjemaet alt, tegnes det med det brukeren har skrevet. */
       const verdier = flate.querySelector("#ivSkjema") ? lesSkjema() : null;
       flate.innerHTML = '<div class="intervjuer">' + skjemaHtml() + '</div>';
       if(verdier) fyllSkjema(verdier);
@@ -476,7 +419,6 @@ export function monterIntervju(flate, ktx, api){
     if([...PÅGÅR.keys()].some(n => n.startsWith(id() + ":"))) startKlokke();
   }
 
-  /* En omtegning skal ikke sende fokus ut i ingenting. */
   function huskFokus(){
     const a = document.activeElement;
     if(!a || !flate.contains(a) || a === flate) return null;
@@ -500,16 +442,12 @@ export function monterIntervju(flate, ktx, api){
     });
   }
 
-  /* ---------- handlinger ---------- */
-
   async function lagForberedelse(iid, tving){
     const hvem = id();
     const n = nøkkel(hvem, iid);
     if(PÅGÅR.has(n)) return;
     FEIL.delete(n);
     const løfte = (async () => {
-      /* Kallet leser intervjuet fra lageret. Et intervju som nettopp er
-         lagt inn, må være skrevet før det går. */
       await api.ventPåLagring();
       return Jobbdokumenter.lagForberedelse(hvem, iid, { tving });
     })();
@@ -526,7 +464,6 @@ export function monterIntervju(flate, ktx, api){
     }finally{
       PÅGÅR.delete(n);
     }
-    /* Var fanen lukket underveis, viser neste montering resultatet. */
     if(!ryddet && hvem === id()){
       if(FEIL.has(n)) lastGrunnlag();
       tegn();
@@ -594,7 +531,6 @@ export function monterIntervju(flate, ktx, api){
         flate.querySelector('[data-forb="' + CSS.escape(iid) + '"] .forb__mangler button')?.focus();
       }else lagForberedelse(iid, true);
     }
-    /* Annonsen hentes fra lenken når søknaden har en; ellers limes den inn. */
     else if(hva === "til-annonse") api.åpneFane("annonse", (k.jobb.lenke || "").trim() ? undefined : "lim");
     else if(hva === "til-cv") api.åpneFane("brev", "cv");
     else if(hva === "til-nokkel") api.åpneFane("brev", "nokkel");
@@ -612,28 +548,23 @@ export function monterIntervju(flate, ktx, api){
     e.preventDefault();
     lagreSkjema();
   }, { signal: lytt.signal });
-  /* Typen styrer hva stedsfeltet foreslår. */
   flate.addEventListener("change", e => {
     if(e.target.id === "ivtype"){
       const sted = flate.querySelector("#ivsted");
       if(sted) sted.placeholder = STEDHINT[e.target.value] || STEDHINT[""];
     }
   }, { signal: lytt.signal });
-  /* Åpne spørsmål blir stående åpne gjennom en omtegning. */
   flate.addEventListener("toggle", e => {
     const d = e.target;
     if(!(d instanceof HTMLDetailsElement) || !d.dataset.sporsmal) return;
     if(d.open) åpneSpørsmål.add(d.dataset.sporsmal); else åpneSpørsmål.delete(d.dataset.sporsmal);
   }, { capture: true, signal: lytt.signal });
-  /* Esc i skjemaet eller i en bekreftelse avbryter den, i stedet for å
-     lukke hele panelet. */
   flate.addEventListener("keydown", e => {
     if(e.key !== "Escape" || e.defaultPrevented) return;
     if(skjema){ e.preventDefault(); lukkSkjema(); }
     else if(bekrefter){ e.preventDefault(); handling("avbryt-slett", bekrefter); }
   }, { signal: lytt.signal });
 
-  /* Et kall som gikk da fanen sist sto, tegnes ferdig når det er ferdig. */
   for(const [n, g] of PÅGÅR) if(n.startsWith(id() + ":")) g.løfte.catch(() => {}).finally(() => { if(!ryddet) setTimeout(tegn); });
 
   tegn();
@@ -652,7 +583,6 @@ export function monterIntervju(flate, ktx, api){
         lastGrunnlag();
       }else if(sist.intervjuer === ny.jobb.intervjuer && sist.status === ny.jobb.status && sist.dok === ny.dok && sist.dokFeil === ny.dokFeil) return;
       sist = { intervjuer: ny.jobb.intervjuer, status: ny.jobb.status, dok: ny.dok, dokFeil: ny.dokFeil };
-      /* Et intervju som er slettet et annet sted, kan ikke endres videre. */
       if(skjema?.iid && !finn(skjema.iid)) skjema = null;
       if(skjema) return;
       tegn();

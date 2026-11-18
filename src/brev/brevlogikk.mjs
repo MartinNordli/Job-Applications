@@ -1,42 +1,9 @@
-/* ============================================================
-   Søknadsbrevets regler: prompt, skjema og kontroller.
-   Ingen nettverk, lagring eller skjulte forsøk.
-
-   Brevet blir til i ett modellkall. Modellen tenker før den svarer,
-   og analysen skjer der: kravene i annonsen, erfaringene som viser at
-   søkeren oppfyller dem, og det annonsen sier om selskapet. Så skriver
-   den brevet og leser det gjennom mot reglene. Kontrollen etterpå gjøres
-   av koden, ikke av et nytt kall: kildehenvisningene sjekkes ordrett mot
-   grunnlaget, og språk, form, stil og lånte fakta mot reglene. Et brev
-   som bryter dem, avvises. Det finnes ingen avklaringsdialog. Mangler
-   noe vesentlig, stopper kjøringen med en forklaring (ma-avklares), og
-   brukeren retter grunnlaget selv.
-
-   Kallet er bygd for hurtigbufferen, med det som endres sjeldnest først:
-
-     1. system: RAMME og STILEKSEMPLER. Helt statisk, samme bytes for
-        alle søknader og alle brukere.
-     2. profil: CV og stilreferanse. Lik for alle søknadene til brukeren.
-     3. søknad: språkvalget, søknadsfeltene og annonsen. Lik for alle
-        versjoner av ett brev.
-     4. innhold: oppgaven, historikken, og ved en ny versjon brukerens
-        nåværende tekst og instruks.
-
-   (1) til (3) får hvert sitt hurtigbuffermerke (se byggModellkropp i
-   src/modell/brev-provider.mjs).
-
-   Stileksemplene er syntetiske, med oppdiktede personer og selskaper.
-   De viser form og tone og er aldri kilde. finnLånteFakta stopper et
-   brev som bruker særord fra dem, eller fra brukerens egen
-   stilreferanse, uten at ordet står i grunnlaget.
-   ============================================================ */
 import { modellFor } from "../modell/brev-provider.mjs";
 
 export const PROMPTVERSJON = "brev-5";
 export const GRENSER = Object.freeze({ cv: 100_000, annonse: 100_000, instruks: 4_000, tekst: 16_000,
   historikk: 20_000, stilreferanse: 16_000, jobbfelt: 300 });
 export const LEVERANDORER = Object.freeze({
-  // Modellen hentes fra tabellen i brev-provider.mjs, så den står ett sted.
   anthropic: Object.freeze({ navn: "Anthropic", modell: modellFor("anthropic", "brev") }),
   openai: Object.freeze({ navn: "OpenAI", modell: modellFor("openai", "brev") })
 });
@@ -53,10 +20,6 @@ function tekst(v, felt, maks, paakrevd = false){
   return t;
 }
 
-/* Grunnlag fra brev-3 hadde selskap og stilling på toppnivå og en
-   kontekst ved siden av. Slike grunnlag står fortsatt i gamle versjoner
-   og kjøringer, så den gamle formen leses her. Konteksten brukes ikke
-   lenger. */
 function jobbfelt(g){
   const j = g.jobb ?? { selskap: g.selskap, stilling: g.stilling };
   if(!j || typeof j !== "object" || Array.isArray(j)) feil("ugyldig-grunnlag", "Søknaden mangler.");
@@ -74,7 +37,6 @@ export function validerGrunnlag(g){
   const tidligere = historikk.map(h => tekst(h, "Tidligere revisjonsinstruks", GRENSER.instruks));
   if(tidligere.join("\n").length > GRENSER.historikk)
     feil("ugyldig-grunnlag", "Revisjonshistorikken er for lang (maks 20 000 tegn).");
-  // Feltrekkefølgen er fast, så kildeblokken blir de samme bytene hver gang.
   return { cv: tekst(g.cv, "CV", GRENSER.cv, true), annonse: tekst(g.annonse, "Annonse", GRENSER.annonse, true),
     jobb: jobbfelt(g), sprak: tekst(g.sprak ?? "auto", "Språk", 80, true), leverandor, historikk: tidligere,
     stilreferanse: tekst(g.stilreferanse, "Stilreferanse", GRENSER.stilreferanse) };
@@ -83,22 +45,13 @@ export function validerGrunnlag(g){
 const streng = { type: "string" };
 const liste = items => ({ type: "array", items });
 const objekt = properties => ({ type: "object", properties, required: Object.keys(properties), additionalProperties: false });
-/* Stilreferansen er med vilje ikke en kilde. Den kan ikke siteres. */
 const kilde = objekt({ kilde: { type: "string", enum: ["cv", "annonse", "jobb", "historikk"] }, sitat: streng });
 const bevis = objekt({ tekst: streng, kilder: liste(kilde) });
-/* Rekkefølgen er rekkefølgen modellen skriver feltene i. Språket først,
-   så brevet, som strømmes til brukeren mens det skrives, og så
-   kildehenvisningene koden kontrollerer. */
 export const BREVSKJEMA = objekt({
   sprak: streng, tekst: streng, pastander: liste(bevis), merknader: liste(streng),
   maAvklares: { type: "boolean" }
 });
 
-/* ---------- stileksempler ---------- */
-
-/* Oppdiktede personer, selskaper, steder og tall. særord er det som
-   gjør eksemplet til et bestemt menneskes historie. Dukker et av dem
-   opp i et brev uten å stå i grunnlaget, er det lånt. */
 export const STILEKSEMPLER = Object.freeze([
   Object.freeze({ sprak: "nb", tekst: `Til rekrutteringsteamet i Strandvik Logistikk,
 
@@ -174,25 +127,17 @@ Returner bare avtalt JSON. sprak er brevets språk. tekst er det ferdige brevet.
 
 Promptversjon: ${PROMPTVERSJON}`;
 
-/* Hele systemprompten. Den samme for alle brev og alle søknader, så
-   leverandøren kan bufre den på tvers av brev. */
 export const SYSTEM = `${RAMME}
 
 STILEKSEMPLER
 Eksemplene viser form, lengde og tone. Personene, selskapene, stedene, tallene og erfaringene i dem er oppdiktet og gjelder ikke søkeren. Ta aldri med noe av innholdet deres i brevet.
 ${STILEKSEMPLER.map((e, i) => `\nEksempel ${i + 1} (${e.sprak}):\n<<<\n${e.tekst}\n>>>`).join("\n")}`;
 
-/* Kildeblokkene, profilen først og søknaden etter. Samme grunnlag gir
-   de samme bytene, siden validerGrunnlag alltid lager feltene i samme
-   rekkefølge. Profilen er lik for alle søknadene til brukeren, og
-   søknaden for alle versjoner av ett brev. */
 export function kildeblokker(grunnlag){
   const g = validerGrunnlag(grunnlag);
   return [JSON.stringify({ profil: { cv: g.cv, stilreferanse: g.stilreferanse } }),
     JSON.stringify({ soknad: { sprakvalg: g.sprak, jobb: g.jobb, annonse: g.annonse } })];
 }
-
-/* ---------- kontroller uten modell ---------- */
 
 function normalisert(t){ return t.normalize("NFKC").replace(/\s+/gu, " ").trim(); }
 function sprakKode(t){
@@ -234,14 +179,11 @@ function sjekkSprak(g, d){
   if(!d.sprak.trim() || d.sprak.length > 80) feil("modellformat", "Modellen oppga ikke et gyldig språk.");
   if(g.sprak !== "auto" && sprakKode(d.sprak) !== sprakKode(g.sprak)) feil("kvalitetsfeil", "Brevet følger ikke det valgte språket.");
 }
-/* Modellens egen forklaring, kort nok til å stå i en feilmelding. */
 function avklaring(merknader){
   const t = merknader.map(m => m.trim()).filter(Boolean).join(" ");
   return t ? Array.from(t).slice(0, 600).join("") : "Grunnlaget må avklares før brevet kan skrives.";
 }
 
-/* Fraser som sier at søkeren er engasjert i stedet for å vise det.
-   Hele ord og uavhengig av store og små bokstaver. */
 const TOMME_FRASER = ["brenner for", "unik kombinasjon", "perfekt kandidat", "ideell kandidat", "spennende mulighet",
   "drømmejobb", "drømmejobben", "perfekt match", "perfect candidate", "ideal candidate", "unique blend", "esteemed",
   "resonates with", "resonate with", "excited to apply", "eager to contribute", "honed my", "showcasing",
@@ -262,8 +204,6 @@ export function finnStilbrudd(t){
   return funn;
 }
 
-/* Hilsen og avslutning per språk. Bare språkene prompten gir en fast
-   form for kontrolleres. Et brev på tysk har ingen fasit her. */
 const STRUKTUR = {
   nb: { hilsen: /^(?:Til rekrutteringsteamet i |Hei )\S.*,$/u, avslutning: /^Med vennlig hilsen,?$/u,
     hilsenTekst: "«Til rekrutteringsteamet i …,» eller «Hei …,»", avslutningTekst: "Med vennlig hilsen" },
@@ -279,12 +219,10 @@ export function finnStrukturbrudd(t, sprak){
   const l = linjer(t), funn = [];
   if(!regel.hilsen.test(l[0] || "")) funn.push(`Brevet åpner ikke med en hilsen som ${regel.hilsenTekst}.`);
   const i = l.findLastIndex(x => regel.avslutning.test(x));
-  // Etter avslutningshilsenen kan bare navnet stå.
   if(i === -1 || l.slice(i + 1).filter(Boolean).length > 1)
     funn.push(`Brevet slutter ikke med «${regel.avslutningTekst}» og navnet.`);
   return funn;
 }
-/* Innholdsavsnittene: alt mellom hilsenen og avslutningen. */
 export function innholdsavsnitt(t){
   const avsnitt = String(t).trim().split(/\r?\n\s*\r?\n/u).map(a => a.trim()).filter(Boolean);
   const slutt = avsnitt.findLastIndex(a => Object.values(STRUKTUR).some(r => r.avslutning.test(linjer(a)[0])));
@@ -292,16 +230,10 @@ export function innholdsavsnitt(t){
 }
 export const ordtall = t => String(t).trim().split(/\s+/u).filter(Boolean).length;
 
-/* ---------- lånte fakta ---------- */
-
-/* Ord med stor forbokstav som ikke er særord, selv midt i en setning. */
 const VANLIGE = new Set(["I", "Dear", "Hiring", "Manager", "Sincerely", "Yours", "Regards", "Kind", "Best", "Thank",
   "Mr", "Ms", "Mrs", "Dr", "CV", "Hei", "Til", "Med", "Takk",
   "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December",
   "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "English", "Norwegian"]);
-/* Særordene i en tekst vi ikke har kuratert, som brukerens egen
-   stilreferanse: egennavn midt i en setning og tall med minst to
-   sifre. Ord først i en setning er oftest vanlige ord og telles ikke. */
 export function særordI(t){
   const ut = new Set();
   for(const linje of String(t ?? "").split(/\r?\n/u)){
@@ -314,18 +246,10 @@ export function særordI(t){
   }
   return [...ut];
 }
-/* Står ordet i brevet? Hele ord, store og små bokstaver som skrevet,
-   og med genitiv: «Strandviks» er det samme selskapet. */
 function iBrevet(tekst, ord){
   const genitiv = /\p{N}$/u.test(ord) ? "" : "(?:s|'s|’s)?";
   return new RegExp(`(?<![\\p{L}\\p{N}])${escape(ord)}${genitiv}(?![\\p{L}\\p{N}])`, "u").test(tekst);
 }
-/* Særord fra stileksemplene og stilreferansen som står i brevet, men
-   ikke i kildene. kilder er grunnlaget: cv, annonse, jobb, historikk
-   og stilreferanse. Stilreferansen er stedet ordene kommer fra, og
-   teller derfor aldri som kilde. Kildesjekken er raus med vilje (uten
-   ordgrenser og uten store bokstaver), så et ord som faktisk står i
-   grunnlaget aldri stopper et brev. */
 export function finnLånteFakta(tekst, kilder = {}){
   const kjente = [...STILEKSEMPLER.flatMap(e => e.særord), ...særordI(kilder.stilreferanse)];
   const grunnlag = normalisert(["cv", "annonse", "jobb", "historikk"].map(k => kildetekst(kilder[k])).join("\n")).toLowerCase();
@@ -336,14 +260,11 @@ export function finnLånteFakta(tekst, kilder = {}){
   return [...funn];
 }
 
-/* Bare uttrykkelige, enkle øvre grenser. Ikke gjett fra «omtrent» eller CV-en.
-   Revisjonsinstruksen går foran annonsen. */
 export function finnOrdgrense(annonse, instruks = ""){
   for(const kilde of [instruks, annonse]){
     const t = String(kilde || "");
     const treff = [...t.matchAll(/(?:maks(?:imalt)?\.?|maximum(?:\s+of)?|max\.?|no more than|up to|høyst)\s+(\d{1,4})\s*(?:ord|words)\b/giu)].filter(m => {
       const foran = t.slice(0,m.index).split(/[.!?\n:]/u).at(-1).trim();
-      // «Jeg skrev tekster på maks 100 ord» er erfaring, ikke et lengdekrav.
       return !foran || /^(?:(?:please|vennligst)\s+)?(?:skriv|hold|write|keep|brevet|søknaden|søknadsbrevet|(?:the|your)\s+(?:cover\s+)?(?:letter|application))\b/iu.test(foran);
     });
     if(treff.length){
@@ -354,17 +275,9 @@ export function finnOrdgrense(annonse, instruks = ""){
   return null;
 }
 
-/* Feltet som strømmes til brukeren mens brevet skrives. Skjemaet bor
-   her, så valget hører hjemme her og ikke i transporten. */
 export const FELT = Object.freeze({ skriv: "tekst" });
-/* Fasenavnet trinnet har mens det pågår. Det er med vilje nøyaktig det
-   samme som kjoring.status blir, så flaten kan lese en pågående kjøring
-   fra et lagret dokument og fra strømmen på samme måte. */
 export const FASE = Object.freeze({ skriv: "skriver" });
 
-/* Ett kall: modellen analyserer, skriver og leser gjennom, og koden
-   kontrollerer svaret. Uten instruks er det et nytt utkast, med instruks
-   en ny versjon av teksten som står nå (valg.tekst). */
 export async function skrivBrev(grunnlag, valg = {}){
   const g = validerGrunnlag(grunnlag);
   const instruks = tekst(valg.instruks, "Revisjonsønske", GRENSER.instruks);
@@ -374,15 +287,12 @@ export async function skrivBrev(grunnlag, valg = {}){
   const innhold = instruks
     ? { oppgave: "Lag en ny versjon av brevet.", historikk: g.historikk, tidligereBrev: forrige, revisjonsinstruks: instruks }
     : { oppgave: "Skriv søknadsbrevet.", historikk: g.historikk };
-  // Uten påDelta sendes verken felt eller tilbakekalling videre, slik at
-  // kall uten forhåndsvisning ser nøyaktig ut som før.
   const strøm = typeof valg.påDelta === "function" ? { felt: FELT.skriv, påDelta: valg.påDelta } : null;
   const svar = await valg.kallModell({ leverandor: g.leverandor, formal: "brev", system: SYSTEM, kilder: kildeblokker(g),
     innhold: JSON.stringify(innhold), skjema: BREVSKJEMA, trinn: "skriv", signal: valg.signal, ...strøm });
   valg.signal?.throwIfAborted();
   sjekkSchema(svar?.data, BREVSKJEMA);
   const r = svar.data;
-  // Den gjeldende revisjonsinstruksen kan gi fakta, på linje med historikken.
   const kilder = { ...g, historikk: [...g.historikk, ...(instruks ? [instruks] : [])] };
   if(r.maAvklares) feil("ma-avklares", avklaring(r.merknader));
   if(!r.tekst.trim()) feil("kvalitetsfeil", "Modellen returnerte et tomt brev.");

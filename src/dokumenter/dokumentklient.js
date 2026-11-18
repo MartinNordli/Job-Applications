@@ -1,13 +1,3 @@
-/* ============================================================
-   Transporten under brev.js og jobbdokumenter.js.
-
-   I appen går profildokumentene til Rust (brev_les, brev_skriv, ...),
-   i nettleseren til serveren over HTTP. Begge klientene velger vei på
-   samme måte og tolker feil på samme måte, så det står her én gang.
-   Lageret over Rust har samme form som server/brevlager.mjs, slik at
-   tjenestene i src/ kan bruke det ene eller det andre uten å vite
-   hvilket.
-   ============================================================ */
 import * as Økt from "../konto/okt.js";
 import { Brevfeil, lesDokument, dokumentnavn, skjemaFor } from "./brevdata.mjs";
 
@@ -36,9 +26,6 @@ export async function http(sti,{method="GET",body,signal}={}){
   return j;
 }
 
-/* Lageret og søknadsoppslaget for én profil i appen. sjekk() kaster
-   når profilen er byttet underveis, så et svar til den forrige aldri
-   havner hos den neste. */
 export function lokaltLager(id){
   const sjekk=()=>{if(bruker()!==id)throw new Brevfeil("utlogget","Profilen er byttet.",401);};
   const lager={
@@ -55,9 +42,6 @@ export function lokaltLager(id){
   };
   const hentJobber=async()=>{sjekk();const rå=await invoke("les_tekst",{bruker:id,navn:"jobber.json"});sjekk();const j=JSON.parse(rå||"{}").jobber;return Array.isArray(j)?j:[];};
   const hentJobb=async jobbId=>(await hentJobber()).find(j=>j.id===jobbId);
-  /* Siden hentes av Rust med samme vern som importen. Profilen sjekkes
-     på begge sider av kallet, så en side hentet for én profil aldri
-     skrives til den neste. */
   const hentSide=async url=>{sjekk();const s=await invoke("hent_side",{url});sjekk();return s;};
   return {lager,hentJobb,hentJobber,hentSide,sjekk};
 }

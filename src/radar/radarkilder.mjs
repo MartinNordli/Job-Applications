@@ -1,42 +1,3 @@
-/* ============================================================
-   Radarkildene: én adapter per kilde, alle med samme form.
-
-     { id, maksDetaljer, hent(ktx) → { kandidater, tilstand, kall },
-       søk?(ktx) → { kandidater, tilstand, kall, feil? },
-       detalj?(kandidat, ktx) → kandidat }
-
-   hent følger med på det som er nytt siden sist. søk, som bare NAV og
-   Jobbnorge har, går gjennom alle aktive stillinger hos kilden, og
-   brukes når søkeordene, stedene eller fylkene er nye (se skalSøke i
-   src/radar/radarlogikk.mjs). ktx.avtrykk er fingeravtrykket av de
-   innstillingene søket gjøres for, og det lagres i tilstanden.
-
-   ktx er { nett, tilstand, side, innstillinger, nå, vent, signal }.
-   nett er { hentJson, hentSide } fra src/radar/radarnett.mjs, så samme kode
-   kjører i Node og i appen. vent(ms) er pausen mellom kall, injisert
-   så testene går uten å vente. Ingen adapter skriver noe: tilstanden
-   de gir tilbake, lagres av src/radar/radarlogikk.mjs.
-
-   Alle kildene gir kandidater med samme form:
-
-     { kilde, kildeId, url, lenker[], selskap, stilling, sted,
-       frist, publisert, tekst, status: "aktiv"|"inaktiv", detaljert }
-
-   `detaljert` sier om teksten er hele annonsen. Er den ikke det, og
-   kandidaten passer forfilteret, henter kjernen detaljen, innenfor
-   kildens tak. Det er listene som er billige; detaljene koster.
-
-   Alt som kommer herfra er data fra fremmede sider. Det kortes, renses
-   for kontrolltegn og går gjennom samme tekstrensing som en hentet
-   side. Kontaktpersonene i NAVs detaljer leses aldri ut: de er ekte
-   personer og skal verken lagres eller til modellen.
-
-   Endepunktene, takene og særhetene (NAVs overlappende sider, 304 som
-   bare kommer med ett sekund ekstra, Greenhouse-innhold som er
-   entitetskodet) er målt i spiken på branchen spike/radar-bakgrunn, og
-   står forklart ved hver kilde under.
-   ============================================================ */
-
 import { avkod, renskTekst } from "../import/importlogikk.mjs";
 import { normaliserIsoDato } from "../felles/felles.mjs";
 import { RADAR } from "../stilling/jobbdokument.mjs";
@@ -46,7 +7,6 @@ const JOBBNORGE_BASE = "https://publicapi.jobbnorge.no";
 const GREENHOUSE_BASE = "https://boards-api.greenhouse.io";
 const LEVER_BASE = "https://api.lever.co";
 
-/* Takene per kjøring, fra målingene i spiken. */
 export const GRENSER = Object.freeze({
   navSider: 20, navSidestorrelse: 200, navDetaljer: 60,
   navSokDager: 90, navSokSider: 60, navSokSidestorrelse: 4000,
@@ -55,10 +15,6 @@ export const GRENSER = Object.freeze({
   karriereDetaljer: 10, pause: 1000, tekst: 12_000
 });
 
-/* ---------- felles byggeklosser ---------- */
-
-/* Kontrolltegn og retningsmerker ut, mellomrom samlet, kortet på
-   kodepunkter. Linjeskift beholdes bare i brødteksten. */
 const KONTROLL = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
 export function rensLinje(v, maks = RADAR.navn){
   if(typeof v !== "string" && typeof v !== "number") return "";
@@ -70,7 +26,6 @@ function rensTekst(v, maks = GRENSER.tekst){
     .replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, c => c === "\n" ? "\n" : " ").replace(/ *\n */g, "\n").replace(/\n{3,}/g, "\n\n").trim();
   return Array.from(t).slice(0, maks).join("");
 }
-/* HTML fra en kilde blir lesbar tekst, med samme rensing som en hentet side. */
 const fraHtml = html => rensTekst(renskTekst(String(html ?? "")));
 
 function lenke(v){
@@ -78,9 +33,6 @@ function lenke(v){
   try{ const u = new URL(v.trim()); return ["http:", "https:"].includes(u.protocol) ? u.href : null; }
   catch{ return null; }
 }
-/* Et ISO-tidspunkt med sone beholdes som kilden skrev det, så
-   «2026-10-09T00:00:00+02:00» ikke blir 8. oktober i UTC. Alt annet
-   (RFC 822 fra RSS, millisekunder fra Lever) blir ISO i UTC. */
 const ISO_MED_SONE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:?\d{2})$/;
 const tidspunkt = v => {
   if(typeof v === "string" && v.length <= 40 && ISO_MED_SONE.test(v.trim()) && !Number.isNaN(Date.parse(v))) return v.trim();
@@ -89,11 +41,8 @@ const tidspunkt = v => {
 };
 const frist = v => normaliserIsoDato(typeof v === "string" ? v.trim() : "");
 
-/* «VESTVÅGØY» → «Vestvågøy», «NORD-AURDAL» → «Nord-Aurdal». */
 const tittelform = v => rensLinje(v).toLocaleLowerCase("nb").replace(/(^|[\s\-/(])(\p{L})/gu, (_, f, b) => f + b.toLocaleUpperCase("nb"));
 
-/* Én kandidat i fellesformen, eller null hvis den mangler det som må
-   til: en id og en lenke man kan åpne. */
 export function kandidat(k){
   const url = lenke(k.url);
   const kildeId = rensLinje(k.kildeId, 160);
@@ -117,49 +66,11 @@ function sjekkAvbrudd(signal){
   if(signal?.aborted) throw new Kildefeil("Kjøringen ble avbrutt.");
 }
 
-/* ---------- NAV ---------- */
-/*
-   Første kjøring henter ?last, den nyeste siden, og lagrer side-id-en.
-   Å gå dager tilbake med If-Modified-Since er så tregt hos NAV at det
-   ga 504; Jobbnorge dekker de siste dagene i stedet.
-
-   Senere kjøringer følger next_url fra den lagrede siden. Sidene
-   overlapper med ett innslag, og samme annonse står der én gang per
-   endring, så bare den siste linjen per id beholdes.
-
-   På den siste siden (next_id er null) lagres ETag og Last-Modified.
-   304 kommer bare når If-Modified-Since er etter sidens siste endring,
-   og tjeneren sammenlikner med millisekunder mens hodet er rundet ned
-   til hele sekunder. Derfor ett sekund til.
-
-   Søket gjennom alle aktive stillinger. Feeden er NAVs eneste
-   offisielle vei til annonsene, og den har ikke søk: vilkårene og
-   dokumentasjonen sier at filtreringen gjøres hos den som henter, og at
-   den som vil ha alle aktive annonser, går feeden fra et punkt bakover
-   i tid (en annonse er aktiv i høyst seks måneder). Det som var tregt i
-   spiken, var store sider sammen med If-Modified-Since. Med pageSize=2
-   tar oppslaget av startpunktet halvannet sekund også 180 dager
-   tilbake, og sidene etter det hentes med side-id uten hodet, 4000
-   linjer (rundt 2 MB) på et par tidels sekund.
-
-   Søket går 90 dager tilbake. Målt 17. oktober 2026 var 98 % av de
-   aktive annonsene sist endret innenfor det, og alle som passet et
-   søk med «data engineer», «machine learning» og lignende. 90 dager
-   er rundt 180 000 linjer og 90 MB. Én kjøring tar høyst 60 sider;
-   resten tas i neste, fra sokSide. Når søket når enden av feeden, blir
-   den siste siden pekeren videre, så den timevise oppfølgingen
-   fortsetter der søket slapp, og ingenting mellom faller bort.
-   Annonser som var aktive da linjen ble skrevet, men er stoppet
-   senere, sier detaljen fra om før noe går til modellen.
-*/
 function plussEttSekund(sistEndret){
   const ms = Date.parse(String(sistEndret ?? ""));
   return Number.isFinite(ms) ? new Date(ms + 1000).toUTCString() : null;
 }
 
-/* next_url er relativ. Den settes sammen med NAVs vert og må bli
-   værende der; hentJson ville avvist en annen vert uansett, men her
-   blir feilen forståelig. */
 function navSide(rel, størrelse = GRENSER.navSidestorrelse){
   let u;
   try{ u = new URL(String(rel ?? ""), NAV_BASE); }catch{ throw ukjentFormat("NAV"); }
@@ -170,20 +81,16 @@ function navSide(rel, størrelse = GRENSER.navSidestorrelse){
 const gyldigSide = side => erObjekt(side) && Array.isArray(side.items) && typeof side.id === "string" && ID.test(side.id);
 const harNeste = side => typeof side.next_id === "string" && ID.test(side.next_id) && !!side.next_url;
 
-/* Datoen søket starter fra, i formen NAV leser (RFC 1123). */
 function navSokStart(nå, dager = GRENSER.navSokDager){
   return new Date(new Date(nå).getTime() - dager * 86_400_000).toUTCString();
 }
 
-/* Linjene fra feeden, én per annonse, den siste vinner. */
 export function navLinjer(items){
   const per = new Map();
   for(const it of Array.isArray(items) ? items : []){
     const fe = erObjekt(it?._feed_entry) ? it._feed_entry : {};
     const id = typeof it?.id === "string" && ID.test(it.id) ? it.id : null;
     if(!id) continue;
-    /* En ukjent status hoppes over: INACTIVE fjerner annonsen fra
-       innboksen, og det skal bare skje når NAV faktisk sier det. */
     const status = fe.status === "ACTIVE" ? "aktiv" : fe.status === "INACTIVE" ? "inaktiv" : null;
     if(!status) continue;
     per.delete(id);
@@ -223,10 +130,6 @@ export const nav = {
       try{
         svar = await nett.hentJson(url, { kilde: "nav", etag, sistEndret });
       }catch(feil){
-        /* En lagret side NAV ikke lenger svarer på, ville stått fast for
-           alltid. Feiler den første siden, begynner vi på nytt fra den
-           nyeste, én gang. Er det nettet som er nede, feiler den også,
-           og den lagrede siden står urørt til neste kjøring. */
         if(!fraLagret || kall || signal?.aborted) throw feil;
         fraLagret = false;
         url = `${NAV_BASE}/api/v1/feed?last`;
@@ -251,13 +154,6 @@ export const nav = {
     return { kandidater: navKandidater(items), tilstand: ny, kall };
   },
 
-  /* Søket gjennom alle aktive stillinger, se over. Fortsetter fra
-     sokSide når et søk for de samme innstillingene er påbegynt, og
-     starter ellers 90 dager tilbake. Feiler en side etter at noe er
-     hentet, gis det som kom, med pekeren der det stoppet og feilen, så
-     neste kjøring fortsetter derfra i stedet for å begynne på nytt.
-     Feiler første side av et påbegynt søk, startes det på nytt én gang,
-     som for oppfølgingen. */
   async søk({ nett, tilstand = {}, avtrykk = null, nå = new Date(), vent = sov, signal } = {}){
     const start = () => ({ url: `${NAV_BASE}/api/v1/feed?pageSize=2`, sistEndret: navSokStart(nå) });
     const fortsett = tilstand?.sokAvtrykk === avtrykk && !tilstand?.sokFerdig && ID.test(tilstand?.sokSide ?? "");
@@ -294,7 +190,6 @@ export const nav = {
         url = navSide(side.next_url, GRENSER.navSokSidestorrelse);
         ny = { ...ny, sokSide: side.next_id };
       }else{
-        /* Enden av feeden: søket er ferdig, og oppfølgingen tar over herfra. */
         ny = { sokAvtrykk: avtrykk, sokSide: null, sokFerdig: new Date(nå).toISOString(),
           side: side.id, etag: svar.etag ?? null, sistEndret: svar.sistEndret ?? null };
         url = null;
@@ -303,8 +198,6 @@ export const nav = {
     return { kandidater: navKandidater(items), tilstand: ny, kall, ...(feil ? { feil } : {}) };
   },
 
-  /* Detaljen har hele teksten, frist og lenkene. Kontaktlisten leses
-     ikke ut. En inaktiv annonse har ingen ad_content i det hele tatt. */
   async detalj(k, { nett } = {}){
     const svar = await nett.hentJson(`${NAV_BASE}/api/v1/feedentry/${encodeURIComponent(k.kildeId)}`, { kilde: "nav" });
     const d = svar?.json;
@@ -326,23 +219,6 @@ export const nav = {
   }
 };
 
-/* ---------- Jobbnorge ---------- */
-/*
-   Det åpne API-et nettsiden selv bruker, med Swagger på
-   publicapi.jobbnorge.no. Nyeste først, 0-basert sidevisning, uten
-   søkeord: «term» treffer bare hele ord, og norske sammensetninger
-   («dataingeniør») ville falt bort. Forfilteret gjør jobben i stedet.
-
-   Oppfølgingen henter ett døgn tilbake (en uke hvis det aldri er søkt).
-   Neste side hentes bare når hele siden var nyere enn den høyeste
-   id-en vi har sett.
-
-   Søket gjennom alle aktive stillinger er period=All i sider på 1000.
-   Jobbnorge hadde 1189 aktive stillinger 17. oktober 2026, rundt 1,2 MB
-   per side, så hele listen er to kall. Derfor trengs verken term eller
-   fylker utledet av stedene: stedene sjekkes av forfilteret, som for
-   de andre kildene. Fylkene brukeren har valgt, gjelder fortsatt.
-*/
 function jobbnorgeSøk({ side = 0, periode = "Day", fylker = [], resultater = GRENSER.jobbnorgeResultater } = {}){
   const p = new URLSearchParams({ orderby: "Published", period: periode, results: String(resultater), page: String(side) });
   for(const f of fylker) if(Number.isInteger(f) && f > 0) p.append("county", String(f));
@@ -390,9 +266,6 @@ export const jobbnorge = {
     return { kandidater, tilstand: { sisteId: høyeste }, kall };
   },
 
-  /* Alle aktive, se over. Høyeste id flyttes, så oppfølgingen etterpå
-     ikke henter det samme. En feil stopper søket uten at noe lagres,
-     og neste kjøring prøver igjen: hele søket er bare et par kall. */
   async søk({ nett, tilstand = {}, innstillinger, avtrykk = null, nå = new Date(), vent = sov, signal } = {}){
     const fylker = innstillinger?.kilder?.jobbnorge?.fylker ?? [];
     const R = GRENSER.jobbnorgeSokResultater;
@@ -416,9 +289,6 @@ export const jobbnorge = {
     return { kandidater, tilstand: { sisteId: høyeste, sokAvtrykk: avtrykk, sokFerdig: new Date(nå).toISOString() }, kall };
   },
 
-  /* Annonseteksten er overskriftene og tekstene i komponentene, i
-     sortOrder-rekkefølge og uten bildene. Frist, arbeidsgiver og sted
-     står ikke her; de kom fra søket. */
   async detalj(k, { nett } = {}){
     const svar = await nett.hentJson(`${JOBBNORGE_BASE}/v2/joblisting?jobId=${encodeURIComponent(k.kildeId)}&languageId=1`, { kilde: "jobbnorge" });
     return { ...k, tekst: jobbnorgeTekst(svar?.json) || k.tekst, detaljert: true };
@@ -434,15 +304,6 @@ function jobbnorgeTekst(d){
   return fraHtml(deler.join("\n"));
 }
 
-/* ---------- karrieresider ---------- */
-/*
-   Typen gjenkjennes fra adressen når siden legges til, og ellers fra
-   siden selv (oppdagTypeFraSide). Greenhouse og Lever har åpne
-   JSON-API-er, Teamtailor har jobs.rss, og ellers leses JobPosting i
-   JSON-LD på siden. Workday krever POST og Webcruiter forbyr alt annet
-   enn Googlebot i robots.txt; de støttes ikke, og brukeren får vite
-   hvorfor.
-*/
 const IKKE_STØTTET = [
   [/(^|\.)myworkdayjobs\.com$/i, "Workday-sider krever POST og støttes ikke av Radar."],
   [/(^|\.)webcruiter\.(com|no)$/i, "Webcruiter tillater ikke automatisk henting (robots.txt) og støttes ikke av Radar."]
@@ -468,8 +329,6 @@ export function oppdagType(url){
   return { type: "jsonld" };
 }
 
-/* En karriereside på eget domene kan likevel være Greenhouse, Lever
-   eller Teamtailor under. Lenkene og ressursene på siden sier det. */
 export function oppdagTypeFraSide(html, url){
   const fra = oppdagType(url);
   if(fra.type !== "jsonld") return fra;
@@ -479,16 +338,11 @@ export function oppdagTypeFraSide(html, url){
   const lever = h.match(/https?:\/\/jobs\.lever\.co\/([A-Za-z0-9_-]{1,80})/);
   if(lever) return { type: "lever", nokkel: lever[1] };
   if(/teamtailor-cdn\.com|teamtailor\.com\/(?:assets|careersite)/i.test(h)){
-    try{ return { type: "teamtailor", nokkel: new URL(url).origin }; }catch{ /* faller til jsonld */ }
+    try{ return { type: "teamtailor", nokkel: new URL(url).origin }; }catch{}
   }
   return fra;
 }
 
-/* Adressen som lagres for siden. Er typen funnet på selve siden (et
-   eget domene med Greenhouse eller Lever under), lagres den kjente
-   adressen til tavlen i stedet, så nøkkelen kan leses ut av adressen
-   hver gang uten at siden hentes på nytt. Teamtailor kan ligge på eget
-   domene, og der er det domenet som er nøkkelen. */
 export function karriereadresse({ type, nokkel }, url){
   if(type === "greenhouse") return `https://job-boards.greenhouse.io/${nokkel}`;
   if(type === "lever") return `https://jobs.lever.co/${nokkel}`;
@@ -505,9 +359,6 @@ function nøkkelFor(side, type){
 }
 const manglerNøkkel = type => new Kildefeil(`Fant ikke ${type}-navnet i adressen til karrieresiden.`);
 
-/* Greenhouse: listen uten content (den kan gå over 5 MiB), og detaljen
-   bare for nye stillinger som passer forfilteret. content er HTML som
-   er entitetskodet én gang ekstra. */
 export const greenhouse = {
   id: "greenhouse",
   maksDetaljer: GRENSER.karriereDetaljer,
@@ -535,8 +386,6 @@ export const greenhouse = {
   }
 };
 
-/* Lever: én liste med hele teksten, uten omslag. Tomme beskrivelser
-   finnes («Åpen søknad») og må tåles. */
 export const lever = {
   id: "lever",
   maksDetaljer: 0,
@@ -560,8 +409,6 @@ export const lever = {
   }
 };
 
-/* Teamtailor: jobs.rss på sidens eget domene, gjennom hentSide som
-   godtar xml. Beskrivelsen er HTML entitetskodet i XML-en. */
 function xmlFelt(blokk, navn){
   const m = blokk.match(new RegExp(`<${navn}(?:\\s[^>]*)?>([\\s\\S]*?)</${navn}>`, "i"));
   if(!m) return "";
@@ -592,10 +439,6 @@ export const teamtailor = {
   }
 };
 
-/* JSON-LD: alle JobPosting på siden, også i @graph og ItemList. En
-   side uten noen er en feil, ikke en tom liste: da har brukeren lagt
-   inn en side Radar ikke kan lese, og etter fem forsøk slås den av med
-   den forklaringen. */
 function jobPostinger(node, ut = [], dybde = 0){
   if(!node || typeof node !== "object" || dybde > 8 || ut.length >= 200) return ut;
   if(Array.isArray(node)){ for(const n of node) jobPostinger(n, ut, dybde + 1); return ut; }
@@ -605,13 +448,11 @@ function jobPostinger(node, ut = [], dybde = 0){
   return ut;
 }
 const plukk = v => Array.isArray(v) ? plukk(v[0]) : erObjekt(v) ? (v.name ?? v.value ?? v["@value"] ?? "") : (v ?? "");
-/* identifier er ofte en PropertyValue der name er arbeidsgiveren og
-   value er id-en. */
 const plukkId = v => Array.isArray(v) ? plukkId(v[0]) : erObjekt(v) ? (v.value ?? v["@value"] ?? v.name ?? "") : (v ?? "");
 export function tolkJsonLd(html, side = {}){
   const noder = [];
   for(const m of String(html ?? "").matchAll(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script\s*>/gi)){
-    try{ jobPostinger(JSON.parse(m[1].trim()), noder); }catch{ /* én ødelagt blokk velter ikke de andre */ }
+    try{ jobPostinger(JSON.parse(m[1].trim()), noder); }catch{}
   }
   return noder.map(jp => {
     const steder = [].concat(jp.jobLocation ?? []).map(l => rensLinje(plukk(l?.address?.addressLocality) || plukk(l?.address?.addressRegion) || plukk(l?.name)))

@@ -1,8 +1,3 @@
-/* Brevdata har eget lager. Jobblisten og dens format forblir små.
-   Lageret har fem dokumenttyper (se src/dokumenter/dokumentnavn.mjs), og hver har
-   sitt skjema, sitt tomme dokument og sin validator. Det er her typen
-   velges, så lageret, sikkerhetskopien og begge transportene får samme
-   regel uten å kjenne typene selv. */
 import { Brevfeil, revisjon } from "./dokumentfeil.mjs";
 import { dokumenttype, dokumentId, erId, navnFor } from "./dokumentnavn.mjs";
 import { SKJEMA as JOBB_SKJEMA, RADAR_SKJEMA, tomtJobbdokument, tomRadar, validerJobbdokument, validerRadar,
@@ -21,11 +16,6 @@ export function dokumentnavn(navn){
   return navn;
 }
 export const tomCv = () => ({ skjemaVersjon: SKJEMA, revisjon: 0, tekst: "", navn: "", format: "tekst", oppdatert: null });
-/* Stilreferansen er et brev brukeren selv har skrevet og godkjent.
-   Den brukes bare for tone og form i nye brev. Den ligger i eget
-   dokument og ikke i cv.json: en ny CV skal ikke slette den, og en
-   endret stilreferanse skal ikke gi CV-en ny revisjon og dermed gjøre
-   alle vurderinger som bygger på CV-en utdatert. */
 export const MAKS_STIL = 16000;
 const tomStil = () => ({ skjemaVersjon: SKJEMA, revisjon: 0, tekst: "", oppdatert: null });
 export const tomtBrev = id => ({ skjemaVersjon: SKJEMA, revisjon: 0, jobbId: jobbId(id), annonse: { tekst: "", url: "", hentet: null }, kontekst: "", sprak: "auto", leverandor: "anthropic", tekst: "", aktivVersjon: null, versjoner: [], kjoring: null, oppdatert: null });
@@ -71,8 +61,6 @@ export function validerBrev(id, inn){
   return d;
 }
 
-/* harInnhold svarer på om en gjenoppretting fra sikkerhetskopi ville
-   skrevet over noe. Et tømt dokument har revisjon, men ikke innhold. */
 const TYPER = {
   cv: { skjema: SKJEMA, tom: () => tomCv(), valider: (navn, d) => validerCv(d), harInnhold: d => !!(d.tekst || d.navn) },
   stil: { skjema: SKJEMA, tom: () => tomStil(), valider: (navn, d) => validerStil(d), harInnhold: d => !!d.tekst },
@@ -91,7 +79,6 @@ export function lesDokument(navn, rå){
   if(rå == null) return t.tom(navn);
   let d;
   try{ d = JSON.parse(rå); }catch{ throw new Brevfeil("odelagt", "Dokumentet kunne ikke leses. Originalen er bevart. Gjenopprett fra sikkerhetskopi.", 503); }
-  /* eldre: versjoner som valideringen selv løfter til gjeldende (radar.json 1 til 2). */
   if(d?.skjemaVersjon !== t.skjema && !(t.eldre ?? []).includes(d?.skjemaVersjon)) throw new Brevfeil("versjon", "Dokumentformatet støttes ikke av denne appversjonen.", 409);
   return t.valider(navn, d);
 }

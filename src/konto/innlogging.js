@@ -1,26 +1,3 @@
-/* ============================================================
-   Porten — låsen foran appen.
-
-   Ikke skuffen. Skuffen er et panel inne i appen, med en app rundt
-   seg; porten står i stedet for appen. Derfor er den en egen flate
-   — men bygget av de samme delene: ordmerket fra sidepanelet,
-   .modus som veksler, felt-mønsteret fra skjemaet, .feil med
-   fokushopp, .henter for «noe pågår», .knapp--primar.
-
-   To grunner til at den står:
-     "oppstart" — vi vet ennå ikke hvem dette er. Ugjennomsiktig:
-                  det finnes ingen app bak å se på ennå.
-     "utlogget" — økten røk mens appen sto åpen. Halvgjennomsiktig,
-                  som sløret foran skuffen, så listen bak synes.
-                  Det er halve beskjeden: arbeidet ditt er der ennå.
-
-   Ingenting herfra rører data. Modulen kan én ting: skaffe en økt.
-   Den svarer med { bruker, erFørste } når den har det, og gir seg
-   ikke før. app.js avgjør hva som skjer etterpå.
-
-   Alle kall går gjennom okt.js, som aldri kaster. Feilnavnene er
-   dens, ikke serverens.
-   ============================================================ */
 import * as Økt from "./okt.js";
 
 const $ = (s, r) => (r || document).querySelector(s);
@@ -28,22 +5,16 @@ const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 let el = null;
-let modus = "inn";              /* "inn" | "ny" */
-let grunn = "oppstart";         /* "oppstart" | "utlogget" */
-let status = null;              /* siste svar fra hentØkt() */
-let ingress = "";               /* linjen over skjemaet, når det er noe å si */
+let modus = "inn";
+let grunn = "oppstart";
+let status = null;
+let ingress = "";
 let ulagret = false;
-let løs = null;                 /* resolve for den som ventet på en økt */
-let hentenr = 0;                /* kappløpsvern: PBKDF2 tar 200–400 ms */
-let sperretTil = 0, ur = null;  /* for-mange: når slipper vi inn igjen */
-let feil = null;                /* { melding, hjelp?, felt?, teller? } */
+let løs = null;
+let hentenr = 0;
+let sperretTil = 0, ur = null;
+let feil = null;
 
-/* ------------------------------------------------------------
-   Det utadvendte
-   ------------------------------------------------------------ */
-
-/* Kalles av app.js før alt annet. Er økten i orden, faller porten
-   aldri på skjermen — den vises og skjules innenfor samme tegning. */
 export async function krevØkt(){
   reisPorten("oppstart");
   const inne = await sjekk();
@@ -51,7 +22,6 @@ export async function krevØkt(){
   return new Promise(r => { løs = r; });
 }
 
-/* Økten røk mens appen sto åpen. Porten kommer opp over listen. */
 export function krevØktIgjen({ melding, forrigeBruker, ulagret: u } = {}){
   ulagret = !!u;
   ingress = melding || "Du er logget ut. Logg inn på nytt.";
@@ -66,10 +36,6 @@ export function krevØktIgjen({ melding, forrigeBruker, ulagret: u } = {}){
 }
 
 export const portenStår = () => !!el && !el.hidden;
-
-/* ------------------------------------------------------------
-   Flaten
-   ------------------------------------------------------------ */
 
 function reisPorten(hvorfor){
   grunn = hvorfor;
@@ -86,10 +52,6 @@ function senkPorten(){
   baksiden(false);
 }
 
-/* Alt utenom porten settes inert mens den står. Da trengs ingen
-   fokusfelle: det finnes ikke noe annet å tabbe til. Varselet får
-   beholde sin egen inert når det er lukket — ellers kunne en
-   usynlig angreknapp stjålet fokus. */
 function baksiden(på){
   Array.from(document.body.children).forEach(e => {
     if(e.id === "port") return;
@@ -116,8 +78,6 @@ function kroppen(verdier){
   const merke = '<div class="merke merke--port">'
     + '<h2 class="merke__navn" id="portTittel">Hired</h2></div>';
 
-  /* Registeret finnes, men kan ikke leses. Da skal flaten ikke tilby
-     å opprette den første kontoen over noe som allerede står der. */
   if(status && status.ødelagt)
     return '<div class="port__kort">' + merke
       + '<p class="port__ingress">' + esc(status.melding
@@ -172,8 +132,6 @@ function kroppen(verdier){
     + '</form>' + foten();
 }
 
-/* Den ene linjen som handler om dette produktet og ikke om
-   innlogging: hvor tingene ligger. */
 function foten(){
   return '<p class="port__fot">Kontoen og søknadene ligger på denne maskinen.</p>';
 }
@@ -188,8 +146,6 @@ function feilInnmat(f){
     + (f.teller ? '<span class="feil__felt">Prøv igjen om '
                   + '<span class="port__ur" id="portUr">–</span></span>' : "");
 }
-
-/* ---- feltene overlever en ny tegning ---- */
 
 function lesFeltene(){
   if(!$("#portEpost")) return null;
@@ -211,15 +167,9 @@ function settVerdi(id, verdi){
 
 function fokusFørste(){
   const e = $("#portEpost"), p = $("#portPassord");
-  /* Er e-posten allerede fylt ut — den kommer forhåndsutfylt når økten
-     røk — er passordet det eneste som mangler. */
   const mål = (e && !e.value) ? e : (p || e || $("[data-port='påNytt']"));
   if(mål) mål.focus();
 }
-
-/* ------------------------------------------------------------
-   Tilstandene
-   ------------------------------------------------------------ */
 
 async function sjekk(){
   const mitt = ++hentenr;
@@ -238,17 +188,12 @@ async function sjekk(){
   }
 
   status = st;
-  /* Finnes det ingen konto ennå, er «Opprett konto» den eneste
-     handlingen som kan lykkes — så den står valgt. */
   modus = st.harBrukere ? "inn" : "ny";
   tegn();
   fokusFørste();
   return null;
 }
 
-/* Bare feilblokken byttes ut, ikke hele kortet: et helt nytt kort ved
-   hver feil ville blinket og kastet skrivemerket. Feltene og knappen
-   peker på den med aria-describedby, så fokushoppet leser den opp. */
 function visFeil(f){
   feil = f;
   const e = $("#portFeil");
@@ -270,11 +215,6 @@ function tømFeil(){
   if(e){ e.hidden = true; e.innerHTML = ""; }
 }
 
-/* ---- for-mange: klokka teller ned, knappen står låst ---- */
-
-/* Klokka står i mono og er aria-hidden: den teller hvert sekund, og
-   en opplesning i sekundet er ingen hjelp. Meldingen over den er lest
-   opp én gang allerede, da fokus hoppet hit. */
 function startUret(){ stoppUret(); ur = setInterval(tegnUret, 1000); }
 function stoppUret(){ if(ur){ clearInterval(ur); ur = null; } }
 function tegnUret(){
@@ -288,18 +228,12 @@ function tegnUret(){
 
 const erSperret = () => sperretTil > Date.now();
 
-/* ------------------------------------------------------------
-   Innsendingen
-   ------------------------------------------------------------ */
-
 async function send(){
   if(erSperret()) return;
   const v = lesFeltene();
   if(!v) return;
   const ny = nyKonto();
 
-  /* Tomme felt stoppes her. Ikke for høflighetens skyld: et tomt
-     forsøk teller like mye i ratebegrenseren som et ekte. */
   if(!v.epost.trim()) return visFeil({ melding: "Skriv inn e-postadressen din.", felt: "epost" });
   if(!v.passord)      return visFeil({ melding: "Skriv inn et passord.", felt: "passord" });
 
@@ -313,7 +247,6 @@ async function send(){
     ? await Økt.registrer({ epost: v.epost, navn: v.navn, passord: v.passord })
     : await Økt.loggInn({ epost: v.epost, passord: v.passord });
 
-  /* Dobbeltklikk sender to kall. Bare det siste får svare. */
   if(mitt !== hentenr) return;
   if($("#portVenter")) $("#portVenter").textContent = "";
   if($("#portSend")) $("#portSend").disabled = false;
@@ -328,15 +261,12 @@ async function send(){
     return;
   }
 
-  /* Sperretiden settes før meldingen tegnes, ellers ville klokka blitt
-     lest som utløpt i samme øyeblikk den kom på skjermen. */
   if(svar.feil === "for-mange")
     sperretTil = Date.now() + Math.max(1, svar.retryEtter || 60) * 1000;
   visFeil(tolkFeil(svar, ny));
   if(svar.feil === "for-mange") startUret();
 }
 
-/* Ett sted for hva hver feil betyr for den som står foran skjemaet. */
 function tolkFeil(svar, ny){
   if(svar.feil === "ugyldig" && svar.detaljer && svar.detaljer.length){
     const f = svar.detaljer[0];
@@ -366,19 +296,12 @@ function tolkFeil(svar, ny){
            hjelp: "Prøv igjen." };
 }
 
-/* ------------------------------------------------------------
-   Hendelser — én lytter, delegert, som i resten av appen
-   ------------------------------------------------------------ */
-
 document.addEventListener("click", e => {
   if(!portenStår()) return;
   const t = e.target.closest("[data-port]");
   if(!t || !t.closest("#port")) return;
   const hva = t.dataset.port;
 
-  /* Kortet blir stående mens vi spør på nytt — å tegne et tomt skjema
-     i mellomtiden ville blinket. Tar spørringen tid, bytter sjekk()
-     selv innholdet mot «Sjekker innlogging…». */
   if(hva === "påNytt"){
     feil = null;
     t.disabled = true;

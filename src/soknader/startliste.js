@@ -1,13 +1,4 @@
-/* ============================================================
-   Startlisten — de 55 søknadene appen ble født med.
-
-   Brukes bare når det verken finnes en datafil eller noe i
-   localStorage, og av «Tilbakestill til startlisten».
-   Rekkefølge: [selskap, stilling, lenke, sted, frist, status, sektor, notat]
-   ============================================================ */
-
 export const START = [
-  // ---- å søke på, med frist ----
   ["Aker BP","Graduate: Life Cycle Data Services","https://akerbp.com/en/available-positions/graduate-2027-life-cycle-data-services-2/","Oslo / Trondheim","2026-08-28","todo","energi",""],
   ["Kongsberg","Software Engineer, Signal Processing","https://www.kongsberg.com/careers/vacancies/software-engineer---signal-processing/","Horten","2026-08-30","todo","energi",""],
   ["Bouvet","Data- og analyseplattformer","https://www.bouvet.no/bli-en-av-oss/ledige-stillinger/arkitekter-radgivere-og-utviklere-for-moderne-data-og-analyseplattformer-708","Oslo","2026-08-31","todo","konsulent",""],
@@ -30,7 +21,6 @@ export const START = [
   ["DNB","Greenhouse: Arkitektur og utvikling","https://jobb.dnb.no/job/Bj%C3%B8rvika-%28N001%29-DNB-Greenhouse-Graduate-program-Arkitektur-og-utvikling-2027-0191/1426583933/","Oslo","2026-10-01","todo","finans",""],
   ["DNB","Greenhouse: Cyber security","https://jobb.dnb.no/job/Bj%C3%B8rvika-%28N001%29-DNB-Greenhouse-Graduate-program-Cyber-security-0191/1426584133/","Oslo","2026-10-01","todo","finans",""],
   ["Equinor","Summer internship","https://www.equinor.com/careers/summer-interns","","2026-10-15","todo","energi","åpner 25.09"],
-  // ---- løpende ----
   ["Cognite","Data Scientist","https://job-boards.eu.greenhouse.io/cognite/jobs/4943678101","Oslo",null,"todo","teknologi",""],
   ["Cognite","Data Engineer","https://job-boards.eu.greenhouse.io/cognite/jobs/4873575101","Oslo",null,"todo","teknologi",""],
   ["Autodesk","Graduate Software Engineer","https://autodesk.wd1.myworkdayjobs.com/en-US/Ext/details/Graduate-Software-Engineer_26WD100002-1?locationCountry=d07f8ca8625e4345b98a91d0558b872a","Oslo",null,"todo","teknologi",""],
@@ -39,7 +29,6 @@ export const START = [
   ["McKinsey","Associate","https://www.mckinsey.com/careers/search-jobs/jobs/associate-15178","Oslo",null,"todo","konsulent",""],
   ["Bain","Consultant","https://www.bain.com/careers/find-a-role/position/?jobid=10409","Oslo",null,"todo","konsulent",""],
   ["Bain","Associate Consultant","https://www.bain.com/careers/find-a-role/position/?jobid=10397","Oslo",null,"todo","konsulent",""],
-  // ---- sendt ----
   ["Aker BP","Graduate: Data Engineer / Digital","https://akerbp.com/en/available-positions/graduate-2027-data-engineer-digital-2/","Trondheim / Fornebu",null,"sent","energi",""],
   ["Equinor","Graduate: IT & Cybernetics","https://equinor.wd3.myworkdayjobs.com/en-US/EQNR/details/Job-Posting-Title-Graduate-Programme-2027-Norway---IT---Cybernetics_JR107220?q=graduate","Trondheim / Oslo",null,"sent","energi",""],
   ["Statnett","Data Scientist","https://903000.webcruiter.no/Main2/recruit/public/5150514100?&language=&use_position_site_header=0&url_org=903000","Oslo",null,"sent","energi",""],
@@ -60,7 +49,6 @@ export const START = [
   ["Revolve NTNU","Autonomous systems","","Trondheim",null,"sent","studentorg",""],
   ["Njord NTNU","Software","https://www.njordchallenge.com/positions/software","Trondheim",null,"sent","studentorg",""],
   ["Jr Consulting","Opptak","","Trondheim",null,"sent","studentorg",""],
-  // ---- avgjort / arkiv ----
   ["NTNUI Tennis","Styreverv","","Trondheim",null,"accepted","studentorg","tatt opp"],
   ["Sopra Steria","AI Engineer","https://careers.soprasteria.no/job/ai-engineer-in-oslo-norway-jid-7491","Oslo",null,"rejected","konsulent",""],
   ["Norconsult","AI Engineer","https://norconsult.com/career/job-vacancies/req-6215/","","2026-08-20","expired","energi","rakk ikke fristen"],

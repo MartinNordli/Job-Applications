@@ -1,26 +1,3 @@
-/* ============================================================
-   Intervjuer på en søknad, uten I/O.
-
-   Intervjuene ligger på selve raden (`jobb.intervjuer`), fordi de er
-   små og fordi bakgrunnsjobben i Rust må lese dem for å varsle. Denne
-   modulen er det eneste stedet reglene for å legge inn, endre og slette
-   ett intervju står, så skjemaet og alt som kommer senere gjør det likt.
-
-   Alle funksjonene er rene: de tar en søknad og gir en ny, og skriver
-   ingenting. Flaten lagrer resultatet på vanlig måte.
-
-   Å legge inn et intervju på en søknad som står på «todo» eller «sent»
-   flytter den til «interview», via medStatus, så hendelsesloggen får
-   sitt steg. Resultatet bærer med seg søknaden slik den var (`før`), så
-   flaten kan tilby angre uten å regne seg tilbake. En søknad som alt er
-   på «interview», eller som er avgjort, beholder statusen sin.
-
-   Klokken sendes inn (`iDag`, `nå`) som i hendelser.mjs, så testene
-   styrer den. «Kommende» regnes i lokal tid: et intervju er kommende til
-   det er slutt (start pluss varighet, 60 minutter om varigheten mangler),
-   og et intervju uten klokkeslett til dagen er omme.
-   ============================================================ */
-
 import { validerIntervju, validerIntervjuer, MAKS_INTERVJU } from "../felles/felles.mjs";
 import { medStatus, lokalDato } from "../soknader/hendelser.mjs";
 
@@ -31,8 +8,6 @@ const nyId = () => crypto.randomUUID().replace(/-/g, "").slice(0, 16);
 const liste = jobb => validerIntervjuer(jobb?.intervjuer);
 const somDate = nå => (nå instanceof Date ? nå : new Date(nå ?? Date.now()));
 
-/* Bare de feltene skjemaet eier. Ukjente felt og en annen id slipper
-   ikke gjennom, så et intervju aldri skifter identitet. */
 const skjemafelt = inn => {
   const ut = {};
   if(inn && typeof inn === "object" && !Array.isArray(inn))
@@ -40,7 +15,6 @@ const skjemafelt = inn => {
   return ut;
 };
 
-/* { ok: true, jobb, intervju, før, statusEndret } | { ok: false, feil } */
 export function nyttIntervju(jobb, inn, valg = {}){
   const eksisterende = liste(jobb);
   if(eksisterende.length >= MAKS_INTERVJU.antall)
@@ -56,7 +30,6 @@ export function nyttIntervju(jobb, inn, valg = {}){
   return { ok: true, jobb: ny, intervju: r.verdi, før: jobb, statusEndret: flytt };
 }
 
-/* { ok: true, jobb, intervju } | { ok: false, feil }. Statusen røres ikke. */
 export function endreIntervju(jobb, iid, endringer){
   const eksisterende = liste(jobb);
   const nå = eksisterende.find(i => i.id === iid);
@@ -69,8 +42,6 @@ export function endreIntervju(jobb, iid, endringer){
   };
 }
 
-/* { ok: true, jobb, intervju } | { ok: false, feil }. Forberedelsen
-   hører til jobbdokumentet og slettes derfra (slettForberedelse). */
 export function slettIntervju(jobb, iid){
   const eksisterende = liste(jobb);
   const intervju = eksisterende.find(i => i.id === iid);
@@ -78,7 +49,6 @@ export function slettIntervju(jobb, iid){
   return { ok: true, intervju, jobb: { ...jobb, intervjuer: eksisterende.filter(i => i.id !== iid) } };
 }
 
-/* Starttidspunktet i lokal tid; null for et intervju uten klokkeslett. */
 export function starttid(intervju){
   if(!intervju?.tid) return null;
   const [å, m, d] = intervju.dato.split("-").map(Number);
@@ -92,7 +62,6 @@ function erKommende(intervju, nå){
   return start.getTime() + (intervju.varighet ?? STANDARD_VARIGHET) * 60000 > nå.getTime();
 }
 
-/* Intervjuene som ikke er over, tidligst først. */
 export function kommende(jobb, nå = new Date()){
   const t = somDate(nå);
   return liste(jobb).filter(i => erKommende(i, t));

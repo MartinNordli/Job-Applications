@@ -1,52 +1,3 @@
-/* ============================================================
-   Radarlogikken: én kjøring fra kildene til innboksen, uten egen I/O.
-
-   Alt som rører verden kommer inn som argumenter: nett ({ hentJson,
-   hentSide } fra src/radar/radarnett.mjs), dokumenter (profilens lager, med
-   les og skriv som server/brevlager.mjs), kallModell (samme kontrakt
-   som brevet og vurderingen), nå og vent. Samme kode kjører derfor i
-   Node, i appen og i bakgrunnen, og testene kjører den med falske
-   kilder og en falsk modell.
-
-   Søknadslisten leses, men skrives aldri herfra. Bare grensesnittet
-   skriver jobber.json; kjernen skriver bare radar.json.
-
-   Flyten i én kjøring:
-
-     1. Leie. Bare én prosess kjører Radar om gangen. Leien er et felt
-        i radar.json, og revisjonen er låsen: lagerets 409 betyr at noen
-        andre skrev først, og da leses dokumentet på nytt.
-     2. Hent fra kildene som er på. NAV og Jobbnorge søker gjennom alle
-        aktive stillinger når søket ikke er gjort for innstillingene som
-        gjelder nå (skalSøke), og følger ellers med på det som er nytt.
-        Karrieresider høyst hver 6. time, og en side som feiler 5 ganger
-        på rad slås av med forklaring. Køen fra forrige kjøring går først.
-     3. Forfilter: aktiv, fristen ikke passert, søkeord treffer, ingen
-        ekskluderte ord, stedet passer. Billig, så det går før alt.
-     4. Duplikater mot søknadslisten, mot hukommelsen i radar.json (sett,
-        avvist, innboksen) og mellom kildene i samme kjøring.
-     5. Detaljer for det som er igjen, innenfor kildens tak, og så
-        forfilter og duplikatsjekk én gang til med hele teksten. Det er
-        her NAV-kopien av en Jobbnorge-annonse kjennes igjen: først
-        detaljen har Jobbnorge-lenken.
-     6. Vurdering i bolker på høyst 8, innenfor tak per kjøring og per
-        døgn, med svaret sjekket strengt.
-     7. Lagring oppå siste versjon, i samme skriving som slipper leien.
-     8. Ett varsel per kjøring, renset og kortet.
-
-   Det som består forfilteret, men ikke blir vurdert, skal ikke glemmes.
-   En stilling fra NAV eller Jobbnorge som ikke rakk det (taket på
-   detaljer, taket på vurderinger, en modell som ikke kan nås eller en
-   detalj som feilet), legges i køen i radar.json og går først neste
-   gang. Derfor flyttes NAV- og Jobbnorge-pekerne også når modellen ikke
-   svarer: å hente samme søk gjennom 90 dager med NAV hver time mens
-   nøkkelen mangler, ville kostet mye og gitt det samme. En karriereside
-   med noe som ikke ble vurdert, regnes ikke som hentet, så hele siden
-   hentes igjen neste gang. Det som ble vurdert før en feil, huskes
-   likevel, så det ikke betales for to ganger. Bare når kjøringen selv
-   stopper (avbrutt, leien tatt), står alt som før.
-   ============================================================ */
-
 import { normaliserLenke } from "../import/importlogikk.mjs";
 import { sjekkSchema } from "../brev/brevlogikk.mjs";
 import { lokalDato, lagHendelse } from "../soknader/hendelser.mjs";
@@ -62,7 +13,6 @@ export const BOLK = 8;
 const MAKS_VURDERINGER_PER_KJORING = 40;
 const SETT_DAGER = 200;
 const AVVIST_DAGER = 365;
-/* Det under terskelen gjemmes så lenge som en stilling typisk er ute. */
 const UNDER_DAGER = 30;
 const KO_DAGER = 30;
 const KO_FORSOK = 3;
@@ -73,13 +23,6 @@ const DAG = 86_400_000;
 const RADARFIL = "radar.json";
 const kortTekst = (t, n = RADAR.tekst) => Array.from(String(t ?? "")).slice(0, n).join("");
 
-/* ---------- tekst som sammenliknes ---------- */
-/*
-   Norsk bretting: små bokstaver, æ/ø/å skrevet ut (ae/o/a), andre
-   aksenter fjernet og «aa» som «a». Da treffer «Tromsø», «TROMSO» og
-   «Tromso» hverandre, og «Ålesund» treffer «Aalesund». Begge sider
-   brettes likt, så det som går tapt, går tapt på begge.
-*/
 function brett(v){
   return String(v ?? "").normalize("NFKC").toLocaleLowerCase("nb")
     .replace(/æ/g, "ae").replace(/ø/g, "o").replace(/å/g, "a")
@@ -88,9 +31,6 @@ function brett(v){
     .replace(/\s+/gu, " ").trim();
 }
 
-/* Et ord treffer som delstreng, fordi norske sammensetninger ellers
-   faller bort: «data» skal treffe «Dataingeniør». Korte ord (tre tegn
-   eller færre) må stå som egne ord: «KI» skal ikke treffe «kinesisk». */
 function trefferBrettet(t, o){
   if(!o) return false;
   if(o.length > 3) return t.includes(o);
@@ -98,21 +38,8 @@ function trefferBrettet(t, o){
   return m.test(t);
 }
 export const ordTreffer = (tekst, ord) => trefferBrettet(brett(tekst), brett(ord));
-/* Teksten brettes én gang: søket gjennom alle aktive stillinger sender
-   titusener av linjer gjennom forfilteret. */
 const noenTreffer = (tekst, ord) => { const t = brett(tekst); return ord.some(o => trefferBrettet(t, brett(o))); };
 
-/* ---------- forfilter ---------- */
-/*
-   null betyr at kandidaten slipper gjennom, ellers grunnen.
-   - Søkeord treffer tittel eller tekst. Før detaljen kjenner NAV bare
-     tittelen, så en NAV-annonse må ha søkeordet i tittelen for å komme
-     videre. Det er prisen for å holde seg under 60 detaljoppslag.
-   - Ekskluderte ord gjelder tittel og selskap, ikke brødteksten: en
-     annonse som nevner «seniorkolleger», er ikke en seniorstilling.
-   - Sted: tomt sted slipper gjennom, for kilden vet det ikke, og da
-     skal ikke Radar late som om den vet det.
-*/
 export function forfilter(k, innstillinger, iDag){
   if(k.status !== "aktiv") return "inaktiv";
   if(k.frist && k.frist < iDag) return "frist";
@@ -123,15 +50,9 @@ export function forfilter(k, innstillinger, iDag){
   return null;
 }
 
-/* ---------- fingeravtrykk og nøkler ---------- */
-
 const SELSKAPSFORM = new Set(["as", "asa", "ab", "gmbh", "sa", "ltd", "inc", "plc", "llc", "ans", "da", "hf", "iks", "kf"]);
 const TEGN = /[\p{P}\p{S}]+/gu;
 
-/* «Equinor ASA» og «EQUINOR» er samme selskap; «Data Scientist –
-   Oslo» og «Data scientist, Oslo» er samme tittel. Selskapsform tas
-   bare bort i selskapsnavnet. null når en av delene mangler: et
-   avtrykk av halve annonsen ville truffet altfor mye. */
 export function fingeravtrykk(selskap, stilling){
   const s = brett(selskap).replace(TEGN, " ").split(" ").filter(o => o && !SELSKAPSFORM.has(o)).join(" ");
   const t = brett(stilling).replace(TEGN, " ").replace(/\s+/g, " ").trim();
@@ -139,9 +60,6 @@ export function fingeravtrykk(selskap, stilling){
   return `${s}|${t}`.slice(0, RADAR.fingeravtrykk);
 }
 
-/* Jobbnorge-id-en i en lenke, fra Jobbnorges egne sider eller fra
-   NAVs sourceurl og applicationUrl. NAV har Jobbnorge-annonsene med,
-   og id-en er det sikreste tegnet på at to kandidater er samme annonse. */
 function jobbnorgeId(url){
   let u;
   try{ u = new URL(String(url ?? "")); }catch{ return null; }
@@ -151,9 +69,6 @@ function jobbnorgeId(url){
   return m ? m[1] : null;
 }
 
-/* Nøklene en kandidat kjennes igjen på: Jobbnorge-id-en først, så
-   kildens egen id, så de normaliserte lenkene. Den første blir id-en
-   i innboksen, så en Jobbnorge-annonse har samme id uansett vei inn. */
 export function nøklerFor(k){
   const jn = k.kilde === "jobbnorge" ? k.kildeId : (k.lenker ?? []).map(jobbnorgeId).find(Boolean);
   const ut = [];
@@ -164,7 +79,6 @@ export function nøklerFor(k){
 }
 const lagringsnøkler = k => nøklerFor(k).slice(0, RADAR.nokler);
 
-/* Alt Radar allerede vet om: søknadene, hukommelsen og innboksen. */
 export function hukommelse(radar, jobber = []){
   const nøkler = new Set(), avtrykk = new Set();
   for(const j of Array.isArray(jobber) ? jobber : []){
@@ -175,9 +89,6 @@ export function hukommelse(radar, jobber = []){
     const f = fingeravtrykk(j?.selskap, j?.stilling);
     if(f) avtrykk.add(f);
   }
-  /* Det som ble vurdert med en annen prompt (sett og under), teller ikke:
-     en ny prompt skal få vurdere stillingen på nytt. Avvist og innboksen
-     gjelder uansett, for brukeren har tatt stilling til dem. */
   const nåværende = r => r.promptversjon === RADAR_PROMPTVERSJON;
   for(const r of [...(radar?.sett ?? []).filter(nåværende), ...(radar?.under ?? []).filter(nåværende),
     ...(radar?.avvist ?? []), ...(radar?.innboks ?? [])]){
@@ -200,21 +111,12 @@ export function hukommelse(radar, jobber = []){
   };
 }
 
-/* ---------- vurderingen ---------- */
-
 function formatfeil(melding){
   const e = new Error(melding); e.code = "modellformat"; e.navn = "modellformat"; e.melding = melding; e.status = 502; return e;
 }
 
-/* En lenke eller e-postadresse i en grunn kommer fra en annonse, ikke
-   fra vurderingen, og er det et injeksjonsforsøk vil ha fram i flaten. */
 const LENKE = /https?:\/\/|\bwww\.|[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+\.[\p{L}]{2,}/iu;
 
-/* Modellsvaret er like fremmed som annonsene, og sjekkes strengt: bare
-   feltene i skjemaet, nøyaktig én vurdering per annonse i bolken, et
-   tall fra 0 til 100 og høyst tre grunner som ikke er tomme. Er noe
-   galt, avvises hele svaret. Et svar som har funnet på en id eller
-   hoppet over en annonse, kan ikke stoles på for de andre heller. */
 export function tolkVurdering(data, ids){
   sjekkSchema(data, VURDERINGSSKJEMA, "vurderingen");
   const lov = new Set(ids), per = new Map();
@@ -239,16 +141,6 @@ function leggTilBruk(sum, bruk){
   return Object.keys(ut).length ? ut : sum;
 }
 
-/*
-   Vurderer i bolker innenfor taket. To slags feil skilles:
-   - Svaret har feil form: bolken forkastes og loggføres, og resten går
-     videre. En annonse som får modellen til å svare tull, skal ikke
-     stoppe alle de andre.
-   - Kallet feiler (ingen nøkkel, nett, leverandøren nede): ingen flere
-     kall. `feil` settes, og kjøringen lar kildepekerne stå.
-   `sendt` er antallet annonser som er sendt til modellen, og det er det
-   døgntaket teller, fordi det er det som koster.
-*/
 export async function vurderAlle({ kandidater, cv, kallModell, leverandor = "anthropic", tak, signal }){
   const valgt = kandidater.slice(0, Math.max(0, tak));
   const vurdert = [], forkastet = [];
@@ -274,13 +166,6 @@ export async function vurderAlle({ kandidater, cv, kallModell, leverandor = "ant
   return { vurdert, forkastet, sendt, utenVurdering: kandidater.length - valgt.length, bruk, feil };
 }
 
-/* ---------- «Foreslå fra CV» ---------- */
-
-/* Ett ord slik forfilter kan bruke det: renset, uten omsluttende
-   anførselstegn og skilletegn, ett til tre ord, høyst 40 tegn, minst
-   to tegn etter brettingen og minst én bokstav. Tegnene er de som
-   står i titler («C#», «.NET», «Node.js», «HR-rådgiver»). En lenke
-   eller adresse er aldri et søkeord. null når ordet ikke kan brukes. */
 const FORSLAGSTEGN = /^[\p{L}\p{N}.][\p{L}\p{N} .+#&/-]*$/u;
 const STEDSTEGN = /^\p{L}[\p{L} -]*$/u;
 function forslagsord(v, tegn = FORSLAGSTEGN){
@@ -301,16 +186,6 @@ function unikeOrd(liste, tegn, maks){
   return ut.slice(0, maks);
 }
 
-/*
-   Forslaget er like fremmed som annonsene. Formen sjekkes strengt (bare
-   de tre listene, bare tekst), og hvert ord filtreres så det som blir
-   igjen, virker i forfilter:
-   - steder som ikke står i CV-en, tas bort: et sted modellen har gjettet,
-     er en påstand om personen som ikke har grunnlag
-   - ekskluderte ord som treffer et av søkeordene, tas bort, ellers ville
-     forslaget stengt ute de annonsene det selv ber om
-   Så kuttes listene til 12, 6 og 6. Tomme lister er et gyldig svar.
-*/
 export function tolkForslag(data, { cv }){
   try{ sjekkSchema(data, FORSLAGSSKJEMA, "forslaget"); }
   catch(e){ throw formatfeil(e?.melding || "Modellen svarte i feil format. Prøv igjen."); }
@@ -322,8 +197,6 @@ export function tolkForslag(data, { cv }){
   return { sokeord, steder, ekskluder };
 }
 
-/* Den rene delen: ett kall og den strenge tolkningen. Lagrer ingenting;
-   brukeren redigerer forslaget og lagrer selv med lagreInnstillinger. */
 export async function foreslåFraCv({ cv, kallModell, leverandor = "anthropic", signal }){
   const tekst = String(cv ?? "").trim();
   if(!tekst) throw new Brevfeil("mangler-cv", "Legg inn CV-en din, så kan Radar foreslå søkeord.", 409);
@@ -331,12 +204,6 @@ export async function foreslåFraCv({ cv, kallModell, leverandor = "anthropic", 
   return tolkForslag(svar?.data, { cv: tekst });
 }
 
-/*
-   Forslaget fra profilen, med taket: høyst 10 kall i timen per profil.
-   Taket henger på lagerobjektet, som «Søk nå»-grensen, så det gjelder
-   både i appen og på serveren. Et kall som stopper på at nøkkelen
-   mangler, har ikke kostet noe og teller ikke.
-*/
 export const FORSLAG_TAK = Object.freeze({ tak: 10, vindu: 3600_000 });
 const forslagskall = new WeakMap();
 export async function foreslåFraProfil({ dokumenter, kallModell, leverandor = "anthropic", nå = () => new Date(), signal }){
@@ -346,7 +213,6 @@ export async function foreslåFraProfil({ dokumenter, kallModell, leverandor = "
     const min = Math.max(1, Math.ceil((FORSLAG_TAK.vindu - (t - kall[0])) / 60_000));
     throw new Brevfeil("for-mange", `Du har bedt om mange forslag den siste timen. Prøv igjen om ${min} minutter.`, 429);
   }
-  /* Telles før første await, så to klikk i samme øyeblikk ikke slipper forbi. */
   kall.push(t);
   forslagskall.set(dokumenter, kall);
   try{
@@ -359,8 +225,6 @@ export async function foreslåFraProfil({ dokumenter, kallModell, leverandor = "
   }
 }
 
-/* ---------- innboks og hukommelse ---------- */
-
 export function innboksrad(k, v, nå){
   const n = lagringsnøkler(k);
   return { id: n[0], kilde: k.kilde, kildeId: k.kildeId, url: k.url, lenker: k.lenker, selskap: k.selskap,
@@ -370,20 +234,12 @@ export function innboksrad(k, v, nå){
     promptversjon: RADAR_PROMPTVERSJON };
 }
 
-/* Raden under terskelen er en innboksrad; promptversjonen på den lar en
-   ny prompt vurdere stillingen på nytt. Nyest først, og høyst RADAR.under. */
 function slåInnIUnder(under, nye){
   const ny = new Set(nye.map(r => r.id));
   return [...nye, ...under.filter(r => !ny.has(r.id))]
     .sort((a, b) => (a.funnet < b.funnet ? 1 : a.funnet > b.funnet ? -1 : 0)).slice(0, RADAR.under);
 }
 
-/*
-   Terskelen er endret: det som nå er over den, går fra «under» til
-   innboksen som nytt, og det nye i innboksen som nå er under, går
-   tilbake. Ingen modellkall og ingen varsel. Lagt til-rader står. Lavere
-   enn RADAR.underMin gjemmes ikke (validerRadar fjerner dem).
-*/
 function flyttVedTerskel(radar, terskel){
   const opp = radar.under.filter(r => r.prosent >= terskel);
   const ned = radar.innboks.filter(r => r.status === "ny" && r.prosent < terskel);
@@ -394,9 +250,6 @@ function flyttVedTerskel(radar, terskel){
     under: slåInnIUnder(radar.under.filter(r => !oppId.has(r.id)), ned.map(r => ({ ...r, status: "ny" }))) };
 }
 
-/* Nye rader først, en rad som alt finnes beholdes som den er (den kan
-   være lagt til). Over taket går de eldste som er lagt til først, så
-   de eldste nye. */
 function slåInnIInnboks(innboks, nye){
   const finnes = new Set(innboks.map(r => r.id));
   let ut = [...nye.filter(r => !finnes.has(r.id)), ...innboks];
@@ -409,15 +262,12 @@ function slåInnIInnboks(innboks, nye){
   return ut;
 }
 
-/* NAV sier INACTIVE: vilkårene krever at annonsen fjernes. */
 function fjernInaktive(innboks, nøkler){
   const n = new Set(nøkler);
   if(!n.size) return innboks;
   return innboks.filter(r => !n.has(r.id) && !(r.nokler ?? []).some(x => n.has(x)));
 }
 
-/* «Ikke interessert»: ut av innboksen, og husket både på lenke og på
-   selskap og stilling i ett år. */
 function avvis(radar, id, nå){
   const rad = radar.innboks.find(r => r.id === id) ?? radar.under.find(r => r.id === id);
   if(!rad) return radar;
@@ -430,7 +280,6 @@ function avvis(radar, id, nå){
       ? [{ fingeravtrykk: rad.fingeravtrykk, dato }, ...radar.avvistFingeravtrykk] : radar.avvistFingeravtrykk };
 }
 
-/* Sett i 200 dager, avvist i ett år, og antallstakene. Nyeste først. */
 export function rydd(radar, nå){
   const grense = dager => lokalDato(new Date(new Date(nå).getTime() - dager * DAG));
   const sett = grense(SETT_DAGER), avvist = grense(AVVIST_DAGER);
@@ -443,10 +292,6 @@ export function rydd(radar, nå){
     avvistFingeravtrykk: radar.avvistFingeravtrykk.filter(r => r.dato >= avvist).sort(nyestFørst).slice(0, RADAR.avvistFingeravtrykk) };
 }
 
-/* Dokumentet har et tak på 4 MiB, og en kjøring som ikke får lagret,
-   ville feilet på nytt hver time. Derfor kortes hukommelsen, eldste
-   først, til det er god plass; det under terskelen går først, for det
-   kan vurderes på nytt. Innboksen og innstillingene røres ikke. */
 const størrelse = d => new TextEncoder().encode(JSON.stringify(d, null, 2)).byteLength;
 export function holdUnderTak(radar, tak = TAK_FOR_LAGRING){
   let d = radar;
@@ -458,14 +303,6 @@ export function holdUnderTak(radar, tak = TAK_FOR_LAGRING){
   return d;
 }
 
-/* ---------- skriving med revisjon ---------- */
-/*
-   Hver endring av radar.json leser siste versjon, legger endringen
-   oppå og skriver med revisjonen den leste. Ved 409 leses dokumentet
-   på nytt; det kan like gjerne være brukeren som lagret en innstilling
-   som en annen Radar som tok leien. endre gir null når det ikke er noe
-   å skrive. Gir opp etter fem forsøk, og da med null.
-*/
 const erKonflikt = e => e?.code === "konflikt" || e?.status === 409;
 
 async function medNyeForsøk(dokumenter, endre, forsøk = 5){
@@ -479,15 +316,9 @@ async function medNyeForsøk(dokumenter, endre, forsøk = 5){
   return null;
 }
 
-/* ---------- leien ---------- */
-
 const leieGyldig = (leie, nå) => !!leie && Date.parse(leie.utloper) > new Date(nå).getTime();
 const utloper = (nå, varighet) => new Date(new Date(nå).getTime() + varighet).toISOString();
 
-/* Gir dokumentet med leien, eller null når en annen har en gyldig leie.
-   En utløpt leie kan tas over: prosessen som hadde den, er borte eller
-   har brukt for lang tid, og skriver ikke over den nye (se lagringen i
-   kjørRadar). */
 function taLeie(dokumenter, { eier, nå, varighet = LEIETID }){
   return medNyeForsøk(dokumenter, d =>
     leieGyldig(d.leie, nå) && d.leie.eier !== eier ? null : { ...d, leie: { eier, utloper: utloper(nå, varighet) } });
@@ -500,11 +331,6 @@ function slippLeie(dokumenter, { eier }){
   return medNyeForsøk(dokumenter, d => d.leie?.eier !== eier ? null : { ...d, leie: null });
 }
 
-/* ---------- varselet ---------- */
-
-/* Ett varsel per kjøring, med de beste treffene først. Teksten kommer
-   fra fremmede sider og går til systemvarselet, så kontrolltegn og
-   retningsmerker fjernes, og den kortes på kodepunkter. */
 export function varseltekst(treff, maks = MAKS_VARSEL){
   if(!treff?.length) return null;
   const sortert = [...treff].sort((a, b) => b.prosent - a.prosent);
@@ -515,29 +341,8 @@ export function varseltekst(treff, maks = MAKS_VARSEL){
   return tegn.length > maks ? tegn.slice(0, maks - 1).join("").trimEnd() + "…" : tekst;
 }
 
-/* ---------- søket gjennom alle aktive stillinger ---------- */
-/*
-   Oppfølgingen ser bare det som kommer etter at den startet. Det som
-   alt lå ute og passet, finnes bare ved å gå gjennom alle aktive
-   stillinger hos kilden. Det skjer når:
-   - søket aldri er gjort (også i et radar.json fra før søket fantes)
-   - søkeordene, de ekskluderte ordene, stedene eller fylkene er endret,
-     fordi det som før ble silt bort, nå kan passe
-   - for Jobbnorge: det er gått et døgn, siden hele søket er to kall
-   - for NAV: oppfølgingen har stått i tre døgn (Radar av, Macen
-     avslått), og et søk tar igjen det oppfølgingen ellers bruker mange
-     kjøringer på. Ellers ser oppfølgingen hver endring i feeden, så et
-     nytt søk hvert døgn ville bare funnet det samme på nytt.
-   Uten søkeord søkes det ikke: da slipper alt gjennom forfilteret, og
-   et søk ville fylt køen med tilfeldige stillinger.
-
-   Fingeravtrykket er de brettede, sorterte listene, så rekkefølge og
-   store bokstaver ikke gir et nytt søk. SOK.versjon økes når søket
-   endres slik at det bør gjøres på nytt hos alle.
-*/
 const SOK = Object.freeze({ versjon: 1, jobbnorgeIntervall: DAG, navForeldet: 3 * DAG });
 
-/* FNV-1a er nok: den skiller, den beskytter ingenting. */
 function fnv(tekst){
   let h = 0x811c9dc5;
   for(const b of new TextEncoder().encode(tekst)){ h ^= b; h = Math.imul(h, 0x01000193) >>> 0; }
@@ -559,13 +364,9 @@ export function skalSøke(kilde, tilstand, inn, nå){
   return !t.sist || n - Date.parse(t.sist) >= SOK.navForeldet;
 }
 
-/* ---------- køen ---------- */
-
 const KOKILDER = new Set(["nav", "jobbnorge"]);
 const koId = k => `${k.kilde}:${k.kildeId}`;
 
-/* Det listen ga, så forfilteret kan sjekke stillingen på nytt med de
-   innstillingene som gjelder da, og detaljen hentes igjen. */
 function korad(k, { dato, forsok = 0 }){
   return { kilde: k.kilde, kildeId: k.kildeId, url: k.url, lenker: k.lenker, selskap: k.selskap, stilling: k.stilling,
     sted: k.sted, frist: k.frist, publisert: k.publisert, tekst: kortTekst(k.tekst, RADAR.koTekst), dato, forsok };
@@ -573,14 +374,11 @@ function korad(k, { dato, forsok = 0 }){
 const fraKo = r => ({ kilde: r.kilde, kildeId: r.kildeId, url: r.url, lenker: r.lenker, selskap: r.selskap, stilling: r.stilling,
   sted: r.sted, frist: r.frist, publisert: r.publisert, tekst: r.tekst, status: "aktiv", detaljert: false });
 
-/* ---------- én kjøring ---------- */
-
 const melding = e => rensLinje(e?.melding || e?.message || String(e ?? "Ukjent feil."), RADAR.melding);
 const skalHentes = (side, nå) => side.pa && (!side.sist || new Date(nå).getTime() - Date.parse(side.sist) >= KARRIEREINTERVALL);
 const nyEier = () => `radar:${globalThis.crypto.randomUUID()}`;
 const avbrutt = signal => { if(signal?.aborted) throw new Error("Kjøringen ble avbrutt."); };
 
-/* Kildene som skal hentes nå, med det kjøringen trenger om hver. */
 const KILDENAVN = { nav: "NAV", jobbnorge: "Jobbnorge" };
 const kildejobb = (nøkkel, kilder) => ({ nøkkel, kilde: kilder[nøkkel], navn: KILDENAVN[nøkkel] });
 function kildejobber(radar, kilder, nå){
@@ -595,12 +393,6 @@ function kildejobber(radar, kilder, nå){
   return ut;
 }
 
-/* Hva kjøringen lærte om én kilde, lagt oppå det som står i dokumentet.
-   En feil telles alltid, og en karriereside som feilet, venter seks
-   timer som en som lyktes. Pekerne og «hentet» flyttes bare når alt
-   som ble hentet, er vurdert eller lagt i køen (gjelder). Et søk hos
-   NAV som stoppet halvveis, gir både en peker og en feil: da står
-   pekeren der det stoppet, og neste kjøring fortsetter derfra. */
 function nyKildetilstand(gammel, utfall, gjelder, stempel){
   if(!utfall) return gammel;
   if(!gjelder || !utfall.tilstand) return utfall.feil ? { ...gammel, sist: stempel, feil: utfall.feil } : gammel;
@@ -615,16 +407,6 @@ function nySide(side, utfall, pekereGjelder, stempel){
     : { ...side, sist: stempel, feilRad, grunn: utfall.feil };
 }
 
-/*
-   Én kjøring fra start til slutt. Gir { kjort, grunn?, lagret, kjoring,
-   nye, varsel }: kjort er false når Radar er av («av») eller en annen
-   kjøring har leien («opptatt»); nye er innboksradene kjøringen la til,
-   og varsel teksten til systemvarselet, eller null.
-
-   jobber er søknadslisten, som bare leses. kilder kan byttes ut i
-   tester. Kaster bare når lageret ikke kan leses i det hele tatt; alt
-   annet havner i kjøringsloggen.
-*/
 export async function kjørRadar({ dokumenter, jobber = [], nett, kallModell, leverandor = "anthropic",
   nå = () => new Date(), signal, vent = ms => sov(ms, signal), eier = nyEier(), kilder = KILDER, varighet = LEIETID } = {}){
   const start = nå(), stempel = start.toISOString(), iDag = lokalDato(start);
@@ -634,8 +416,6 @@ export async function kjørRadar({ dokumenter, jobber = [], nett, kallModell, le
   const leid = await taLeie(dokumenter, { eier, nå: start, varighet });
   if(!leid) return { kjort: false, grunn: "opptatt" };
 
-  /* Leien fornyes mellom kallene når halve tiden er gått, så en treg
-     kilde ikke gjør at en annen kjøring tar over midt i. */
   let fornyet = start.getTime();
   const hold = async () => {
     if(nå().getTime() - fornyet < varighet / 2) return;
@@ -647,8 +427,6 @@ export async function kjørRadar({ dokumenter, jobber = [], nett, kallModell, le
   const logg = { start: stempel, slutt: null, promptversjon: RADAR_PROMPTVERSJON, kandidater: 0, passet: 0, nye: 0, vurdert: 0, treff: 0, under: 0,
     utenVurdering: 0, venter: 0, kilder: [], bruk: null, feil: [] };
   const feil = new Set(), utfall = new Map(), inaktive = new Set();
-  /* tilKo er det fra NAV og Jobbnorge som ikke ble vurdert; igjen er
-     karrieresidene med noe som ikke ble vurdert. */
   const tilKo = [], igjen = new Set();
   let vurdert = [], sendt = 0, pekereGjelder = true, modellFeil = false;
   const leggIgjen = (h, forsok = h.forsok ?? 0) => {
@@ -660,7 +438,6 @@ export async function kjørRadar({ dokumenter, jobber = [], nett, kallModell, le
     const cv = String((await dokumenter.les("cv.json"))?.tekst ?? "").trim();
     if(!cv) throw new Error("Legg inn CV-en din, så kan Radar vurdere stillingene.");
 
-    /* 2. Hent. Én kilde som feiler, stopper ikke de andre. */
     const hentet = [];
     for(const [i, j] of kildejobber(leid, kilder, start).entries()){
       avbrutt(signal);
@@ -681,14 +458,11 @@ export async function kjørRadar({ dokumenter, jobber = [], nett, kallModell, le
     }
     logg.kandidater = hentet.filter(h => h.k.status === "aktiv").length;
 
-    /* Køen fra forrige gang går først, så den ikke blir stående bak nye
-       stillinger for alltid. Det kilden nå sier er inaktivt, går ut. */
     for(const h of hentet) if(h.k.status === "inaktiv") for(const n of nøklerFor(h.k)) inaktive.add(n);
     const eldst = lokalDato(new Date(start.getTime() - KO_DAGER * DAG));
     const fraKøen = leid.ko.filter(r => inn.kilder[r.kilde]?.pa && r.dato >= eldst)
       .map(r => ({ k: fraKo(r), j: kildejobb(r.kilde, kilder), dato: r.dato, forsok: r.forsok }));
 
-    /* 3 og 4. Forfilter og duplikater med det listene ga. */
     const før = hukommelse(leid, jobber), runde1 = [];
     for(const h of [...fraKøen, ...hentet]){
       if(h.k.status === "inaktiv" || nøklerFor(h.k).some(n => inaktive.has(n))) continue;
@@ -699,9 +473,6 @@ export async function kjørRadar({ dokumenter, jobber = [], nett, kallModell, le
       runde1.push(h);
     }
 
-    /* 5. Detaljer innenfor kildens tak, så samme sjekk med hele teksten.
-       En kandidat over taket vurderes ikke på bare tittelen, men venter.
-       En detalj som feiler, prøves igjen i høyst tre kjøringer. */
     const brukt = new Map(), etter = hukommelse(leid, jobber), klar = [];
     for(const h of runde1){
       let k = h.k;
@@ -728,8 +499,6 @@ export async function kjørRadar({ dokumenter, jobber = [], nett, kallModell, le
     }
     logg.nye = klar.length;
 
-    /* 6. Vurdering innenfor takene. Det som ikke ble sendt, over taket
-       eller fordi modellen ikke svarte, venter til neste kjøring. */
     if(klar.length){
       const igjenIDag = Math.max(0, inn.maksVurderingerPerDogn - (leid.forbruk.dato === iDag ? leid.forbruk.vurderinger : 0));
       await hold();
@@ -748,7 +517,6 @@ export async function kjørRadar({ dokumenter, jobber = [], nett, kallModell, le
     feil.add(melding(e));
   }
 
-  /* Køen etter kjøringen: det eldste først, og hver stilling én gang. */
   const kø = [...new Map(tilKo.map(h => [koId(h.k), korad(h.k, { dato: h.dato ?? iDag, forsok: h.forsok ?? 0 })])).values()]
     .sort((a, b) => (a.dato < b.dato ? -1 : a.dato > b.dato ? 1 : 0));
   if(kø.length > RADAR.ko) feil.add(`${kø.length - RADAR.ko} stillinger fikk ikke plass i køen og blir ikke vurdert.`);
@@ -759,19 +527,13 @@ export async function kjørRadar({ dokumenter, jobber = [], nett, kallModell, le
   logg.feil = [...feil].slice(0, RADAR.kjoringsfeil);
   let nye = [], gjemt = [];
 
-  /* 7. Legg kjøringen oppå siste versjon og slipp leien i samme skriving.
-     Har en annen kjøring tatt leien imens, skrives ingenting: da er det
-     den som eier dokumentet nå. */
   const lagret = await medNyeForsøk(dokumenter, d => {
     if(d.leie?.eier !== eier && leieGyldig(d.leie, nå())) return null;
-    /* Brukeren kan ha avvist eller lagt til noe mens kjøringen pågikk. */
     const sistKjent = hukommelse({ avvist: d.avvist, avvistFingeravtrykk: d.avvistFingeravtrykk, innboks: d.innboks }, jobber);
-    /* Terskelen kan være endret mens kjøringen pågikk: den siste gjelder. */
     const terskel = d.innstillinger.terskel;
     const ukjente = vurdert.filter(x => !sistKjent.kjenner(x.k));
     nye = ukjente.filter(x => x.v.prosent >= terskel).map(x => innboksrad(x.k, x.v, start));
     gjemt = ukjente.filter(x => x.v.prosent < terskel && x.v.prosent >= RADAR.underMin).map(x => innboksrad(x.k, x.v, start));
-    /* En stilling som kommer i innboksen nå, forlater «under». */
     const iInnboksen = new Set(nye.map(r => r.id));
     const underFør = d.under.filter(r => !iInnboksen.has(r.id));
     const kildetilstand = { ...d.kildetilstand };
@@ -798,19 +560,12 @@ export async function kjørRadar({ dokumenter, jobber = [], nett, kallModell, le
   return { kjort: true, lagret: !!lagret, kjoring: logg, nye: lagret ? nye : [], varsel: lagret ? varseltekst(nye) : null };
 }
 
-/* ---------- det brukeren gjør i innboksen ---------- */
-
-/* «Ikke interessert». Gir dokumentet etter endringen. */
 export async function ikkeInteressert(dokumenter, id, { nå = () => new Date() } = {}){
   const d = await medNyeForsøk(dokumenter, r => r.innboks.some(x => x.id === id) || r.under.some(x => x.id === id) ? avvis(r, id, nå()) : null);
   if(!d) throw new Brevfeil("finnes-ikke", "Stillingen er ikke i innboksen lenger.", 404);
   return d;
 }
 
-/* Søknaden «Legg til» skal lagre, før validerSoknad og uten id.
-   Grensesnittet lagrer den i jobber.json og kaller så markerLagtTil.
-   I den rekkefølgen: går det galt mellom de to, ligger søknaden i
-   listen, og neste kjøring kjenner den igjen på lenken. */
 export function soknadFraRad(rad, { nå = new Date() } = {}){
   return { selskap: rad.selskap, stilling: rad.stilling, sted: rad.sted, lenke: rad.url, frist: rad.frist ?? null,
     status: "todo", notat: "", hendelser: [lagHendelse("todo", { nå: new Date(nå), kilde: "radar" })] };
@@ -820,7 +575,6 @@ export async function markerLagtTil(dokumenter, id){
     const rad = r.innboks.find(x => x.id === id);
     if(rad?.status === "lagtTil") return null;
     if(rad) return { ...r, innboks: r.innboks.map(x => x.id === id ? { ...x, status: "lagtTil" } : x) };
-    /* Fra «under»: raden flyttes til innboksen som lagt til. */
     const under = r.under.find(x => x.id === id);
     if(!under) return null;
     return { ...r, under: r.under.filter(x => x.id !== id),
@@ -829,19 +583,8 @@ export async function markerLagtTil(dokumenter, id){
   return d ?? await dokumenter.les(RADARFIL);
 }
 
-/* ---------- karrieresidene ---------- */
-
-/* Id-en avledes av adressen, så samme side ikke kan legges inn to
-   ganger og id-en er stabil uten tilfeldighet. */
 const sideId = url => `side-${fnv(url)}`;
 
-/*
-   Legger til en karriereside. Typen gjenkjennes fra adressen, og ellers
-   fra selve siden, som da hentes én gang gjennom hentSide med samme
-   vern som importen. En side Radar ikke kan lese, avvises her med
-   grunnen, i stedet for å bli slått av etter fem stille feil.
-   Gir dokumentet etter endringen.
-*/
 export async function leggTilKarriereside(dokumenter, { url, navn = "", nett }){
   let funn = oppdagType(url);
   if(!funn.type) throw new Brevfeil("ugyldig", funn.grunn);
@@ -869,21 +612,11 @@ export async function leggTilKarriereside(dokumenter, { url, navn = "", nett }){
   return d;
 }
 
-/* ---------- det grensesnittet ser og gjør ---------- */
-
 const SOK_NA_PAUSE = 60_000;
 const ANTALL_KJORINGER_I_TILSTAND = 5;
 
-/* Claude Haiku 5.5, dollar per million tokens, for prompter opp til
-   100 000 tokens (en bolk er langt under). Et øyeblikksbilde fra
-   prissiden i oktober 2026; endrer prisen seg, er det denne linjen som
-   skal rettes. Bufrede tokens koster en tidel, og bufring en og en
-   kvart gang så mye som vanlige. */
 export const RADARPRIS = Object.freeze({ inn: 0.10, ut: 0.50, skriv: 0.125, les: 0.01 });
 
-/* Omtrentlig kostnad i kroner for én kjøring, regnet fra tokenene.
-   Radar bruker Haiku 5.5 hos Anthropic; hos OpenAI er tallet bare en
-   pekepinn. */
 export function kjoringskostnad(bruk){
   if(!bruk) return 0;
   const P = RADARPRIS;
@@ -893,11 +626,6 @@ export function kjoringskostnad(bruk){
   return Math.round(kr * 10000) / 10000;
 }
 
-/*
-   Alt flaten trenger i ett svar, uten hukommelsen (sett, avvist) og
-   uten teksten til hver kjøring. Nye først i innboksen, så de som er
-   lagt til. Leien sier om en kjøring pågår nå.
-*/
 export function tilstandFra(radar, nå = new Date()){
   const innboks = [...radar.innboks.filter(r => r.status === "ny"), ...radar.innboks.filter(r => r.status !== "ny")];
   const iDag = lokalDato(new Date(nå));
@@ -921,10 +649,6 @@ export function tilstandFra(radar, nå = new Date()){
   };
 }
 
-/* Innstillingene brukeren kan sette. Karrieresidene har egne veier inn,
-   med status som bare kjøringene skal røre, så de tas fra dokumentet.
-   Alt går gjennom samme normalisering som ved lesing, så en verdi som
-   ikke passer, blir standardverdien i stedet for å havne i filen. */
 const INNSTILLINGSFELT = ["pa", "terskel", "maksVurderingerPerDogn", "sokeord", "ekskluder", "steder", "kilder"];
 export async function lagreInnstillinger(dokumenter, inn){
   if(!inn || typeof inn !== "object" || Array.isArray(inn)) throw new Brevfeil("ugyldig", "Innstillingene har feil form.");
@@ -945,9 +669,6 @@ export async function fjernKarriereside(dokumenter, id){
   return d;
 }
 
-/* En side som er slått av etter fem feil på rad, slås på igjen av
-   brukeren. Telleren nullstilles, og «sist» tømmes, så den hentes i
-   neste kjøring i stedet for om seks timer. */
 export async function slåPåKarriereside(dokumenter, id){
   const d = await medNyeForsøk(dokumenter, r => r.innstillinger.karrieresider.some(s => s.id === id)
     ? { ...r, innstillinger: { ...r.innstillinger, karrieresider: r.innstillinger.karrieresider.map(s => s.id === id
@@ -956,42 +677,22 @@ export async function slåPåKarriereside(dokumenter, id){
   return d;
 }
 
-/*
-   «Søk nå»: en vanlig kjøring, men høyst én i minuttet. Grensen er
-   både i minnet (to klikk i samme øyeblikk) og i kjøringsloggen i
-   radar.json (to prosesser, og en omlasting av siden). Den som venter
-   for kort, får vite hvor lenge.
-*/
 const sisteSøk = new WeakMap();
 export async function søkNå(args){
   const { dokumenter } = args, nå = (args.nå ?? (() => new Date()))().getTime();
   const for_mange = sist => new Brevfeil("for-mange",
     `Radar har nettopp kjørt. Prøv igjen om ${Math.ceil((SOK_NA_PAUSE - (nå - sist)) / 1000)} sekunder.`, 429);
-  /* Minnet sjekkes og settes før første await, ellers slipper to klikk gjennom. */
   const iMinnet = sisteSøk.get(dokumenter) ?? 0;
   if(nå - iMinnet < SOK_NA_PAUSE) throw for_mange(iMinnet);
   sisteSøk.set(dokumenter, nå);
-  /* Bare kjøringer som nådde kildene, teller. En som stoppet før, for
-     eksempel fordi CV-en manglet, har ikke spurt noen og skal ikke
-     sperre «Søk nå» når CV-en er lagt inn. */
   const sist = Date.parse((await dokumenter.les(RADARFIL)).kjoringer.find(k => k.kilder.length)?.start) || 0;
   if(nå - sist < SOK_NA_PAUSE) throw for_mange(sist);
   return kjørRadar(args);
 }
 
-/*
-   «Legg til»: søknaden er lagret av grensesnittet. Her kommer annonsen
-   på dokumentet til søknaden, raden merkes, og så vurderes den på
-   vanlig måte, som for enhver annonse som lagres. Annonsen først: går
-   noe galt, står raden som ny og kan legges til igjen uten tap.
-   lagreAnnonse og vurder kommer utenfra (jobbdokumenttjenesten, og
-   matchen, som aldri skal stoppe resten eller holde tilbake svaret). marker er markerLagtTil over
-   den veien klienten har til radar.json.
-*/
 export async function leggTilFraRad({ rad, jobbId, lagreAnnonse, marker, vurder }){
   await lagreAnnonse(jobbId, { tekst: rad.tekst, url: rad.url, kilde: "radar" });
   const d = await marker(rad.id);
-  /* Ikke avventet: vurderingen tar noen sekunder, og «Vurder» i panelet prøver igjen om den feiler. */
-  try{ Promise.resolve(vurder?.(jobbId)).catch(() => {}); }catch{ /* som over */ }
+  try{ Promise.resolve(vurder?.(jobbId)).catch(() => {}); }catch{}
   return d;
 }

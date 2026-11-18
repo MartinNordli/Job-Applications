@@ -1,20 +1,3 @@
-/* ============================================================
-   Annonse-fanen i detaljpanelet.
-
-   Annonsen er den lagrede teksten fra jobb-<id>.json, ikke siden slik
-   den ser ut nå. Den står igjen når utlysningen er tatt ned, og den er
-   grunnlaget brevet og vurderingen bygger på. Derfor står kilden og
-   datoen øverst, og originalen er én lenke unna.
-
-   Teksten kommer som ren tekst med linjeskift (se annonsetekst.mjs).
-   Avsnitt, punktlister og korte mellomtitler gjenskapes av formen på
-   linjene, ikke av HTML, så ingenting fra siden kan sette inn markup.
-
-   Hver vei inn som kan erstatte en lagret tekst («Hent på nytt» og
-   «Lim inn»), kan angres fra varselet: den forrige annonsen skrives
-   tilbake med sin egen kilde og dato.
-   ============================================================ */
-
 import * as Jobbdokumenter from "./jobbdokumenter.js";
 import { esc, tilIso, datoMedÅr, vert } from "../felles/formater.js";
 
@@ -26,9 +9,6 @@ const KILDE = {
   radar:  "Funnet av Radar"
 };
 
-/* Hva hver feil fra hentingen betyr, og hva man kan gjøre i stedet.
-   `rediger` gir en vei til skjemaet der lenken står. Meldingen fra tjenesten brukes der den er
-   mer presis enn vår (statuskoden, ventetiden ved taket). */
 const FEIL = {
   "mangler-lenke": { tittel: "Søknaden har ingen lenke.", hjelp: "Legg inn lenken under Rediger, eller lim inn annonsen.", rediger: true },
   "dod-lenke":     { tittel: "Annonsen ligger ikke lenger på adressen.", hjelp: "Den er antakelig tatt ned. Har du teksten et annet sted, kan du lime den inn." },
@@ -51,16 +31,9 @@ export function feilmelding(e){
   };
 }
 
-/* ---------- teksten ---------- */
-
 const PUNKT = /^\s*(?:[-*•·–▪◦]|\d{1,2}[.)])\s+/;
 const erSetning = l => /[.!?;]["»)]?$/.test(l);
 
-/* Én blokk (tekst mellom tomme linjer) blir avsnitt, liste eller
-   mellomtittel. En linje med punkttegn er et listepunkt. Flere korte
-   linjer på rad uten punktum er også en liste: det er slik <li> kommer
-   ut av siden. En kort linje uten punktum foran mer tekst er en
-   mellomtittel. Alt annet er avsnitt. */
 function annonseHtml(tekst){
   const ut = [];
   const blokker = String(tekst).replace(/\r\n?/g, "\n").split(/\n{2,}/);
@@ -80,7 +53,6 @@ function annonseHtml(tekst){
       while(j < linjer.length && kort(linjer[j]) && !PUNKT.test(linjer[j])) j++;
       const løp = j - i;
       if(løp >= 2){
-        /* En første linje som slutter med kolon, er overskriften til listen. */
         if(/:$/.test(linjer[i])){ ut.push(tittel(linjer[i])); i++; }
         ut.push(liste(linjer.slice(i, j)));
         i = j;
@@ -97,14 +69,10 @@ function annonseHtml(tekst){
 const liste = punkter => '<ul>' + punkter.map(p => '<li>' + esc(p) + '</li>').join("") + '</ul>';
 const tittel = t => '<h4>' + esc(t.replace(/:$/, "")) + '</h4>';
 
-/* ---------- fanen ---------- */
-
 export function monterAnnonse(flate, ktx, api){
-  /* Brevet sender hit med hensikten «lim» når annonsen mangler, så man
-     lander rett i innlimingen i stedet for å lete etter knappen. */
-  let modus = ktx.hensikt === "lim" ? "lim" : "les";   /* "les" | "lim" */
-  let opptatt = null;         /* tekst som sier hva som pågår, eller null */
-  let feil = null;            /* { tittel, hjelp, lim, rediger } */
+  let modus = ktx.hensikt === "lim" ? "lim" : "les";
+  let opptatt = null;
+  let feil = null;
   let utkast = "";
   let aktiv = true;
   let k = ktx;
@@ -128,8 +96,6 @@ export function monterAnnonse(flate, ktx, api){
     if(!feil) return "";
     return '<div class="detalj__feil" role="alert"><p class="detalj__feiltittel">' + esc(feil.tittel) + '</p>'
       + (feil.hjelp ? '<p>' + esc(feil.hjelp) + '</p>' : "")
-      /* «Lim inn» står alltid ved siden av, så meldingen gjentar den ikke.
-         Lenken rettes bare i skjemaet, og dit går det en vei herfra. */
       + (feil.rediger ? '<div class="detalj__handlinger"><button class="knapp knapp--liten" type="button" data-annonse="rediger">Rediger søknaden</button></div>' : "")
       + '</div>';
   }
@@ -142,8 +108,6 @@ export function monterAnnonse(flate, ktx, api){
 
   function tegn(){
     if(!aktiv) return;
-    /* Synlig tilstand. Skjermlesere får den samme beskjeden gjennom
-       panelets egen statuslinje, som ikke tegnes om. */
     const status = '<p class="henter annonse__status">' + esc(opptatt || "") + '</p>';
 
     if(modus === "lim"){
@@ -195,8 +159,6 @@ export function monterAnnonse(flate, ktx, api){
       + '<article class="annonse__tekst" aria-label="Annonsen">' + annonseHtml(a.tekst) + '</article></div>';
   }
 
-  /* Skriver den forrige annonsen tilbake med sin egen kilde og dato.
-     Går gjennom lagre(), som tar alle kilder, mot ferskeste revisjon. */
   function angreTil(forrige){
     return async () => {
       try{
@@ -261,7 +223,6 @@ export function monterAnnonse(flate, ktx, api){
     const b = e.target.closest("[data-annonse]");
     if(b && !b.disabled) handling(b.dataset.annonse);
   }, { signal: lytt.signal });
-  /* Esc i innlimingen avbryter den, i stedet for å lukke hele panelet. */
   flate.addEventListener("keydown", e => {
     if(e.key === "Escape" && modus === "lim" && !opptatt){ e.preventDefault(); handling("avbryt"); }
     if(e.key === "Enter" && (e.metaKey || e.ctrlKey) && e.target.id === "annonseLim"){ e.preventDefault(); handling("lagre"); }
@@ -273,8 +234,6 @@ export function monterAnnonse(flate, ktx, api){
     fokuser(){
       (flate.querySelector("#annonseLim") || flate.querySelector("[data-annonse]"))?.focus({ preventScroll: true });
     },
-    /* Ny søknadstilstand eller nytt dokument. Innlimingen tegnes ikke
-       om, så teksten som limes inn, står. */
     oppdater(ny){
       const byttet = ny.jobb.id !== k.jobb.id;
       k = ny;

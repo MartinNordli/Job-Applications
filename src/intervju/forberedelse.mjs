@@ -1,29 +1,3 @@
-/* ============================================================
-   Intervjuforberedelse: reglene, uten nett og uten filer.
-
-   Ett kall til brevmodellen (formål «brev», det beste vi har) gir
-   sannsynlige spørsmål med svarskisser, eksempler fra egen erfaring,
-   spørsmål søkeren kan stille og en sjekkliste. Fire valg:
-
-   - Kildene er CV-en, annonsen og det aktive brevet, og de er data,
-     ikke instruksjoner. Står det «ignorer reglene» i en annonse, skal
-     det ikke følges. Samme valg som i match og brev.
-   - Alt som påstår noe om søkerens erfaring (eksemplene, og
-     spørsmål som viser til kilder) må ha ordrette sitater som finnes
-     i kildene. Sjekken er sjekkKilder fra brevlogikk.mjs, den samme
-     som brev og match bruker, så en erfaring modellen har funnet på
-     aldri havner i panelet. Spørsmål uten kilder er lov: «hvorfor
-     vil du hit?» trenger ikke et sitat.
-   - Språket følger annonsen, og brevet hvis det er på et annet språk
-     enn annonsen. Svarskissene er stikkord, ikke ferdige svar.
-   - Kildene ligger i `kilder` og intervjuet i `innhold`. Da er
-     kildene byte for byte like mellom intervjuene til samme søknad,
-     og Anthropic kan gjenbruke dem.
-
-   Formen på svaret er den normaliserForberedelse i jobbdokument.mjs
-   leser. Endres promptversjonen, regnes alle lagrede forberedelser
-   som utdaterte (forberedelseUtdatert).
-   ============================================================ */
 import { sjekkSchema, sjekkKilder } from "../brev/brevlogikk.mjs";
 import { normaliserForberedelse } from "../stilling/jobbdokument.mjs";
 
@@ -65,7 +39,6 @@ Ta bare med det kildene sier om søkeren. Ikke dikt opp erfaring, prosjekter, ta
 
 const OPPGAVE = "Lag forberedelsen til dette intervjuet: sannsynlige spørsmål med svarskisser, eksempler fra egen erfaring med ordrette sitater, spørsmål til arbeidsgiveren og en sjekkliste.";
 
-/* Samme grunnlag gir de samme bytene, så Anthropic kan gjenbruke kildene. */
 function forberedelseKilder({ cv, annonse, brev, jobb }){
   return JSON.stringify({ kilder: { jobb: { selskap: jobb?.selskap ?? "", stilling: jobb?.stilling ?? "" }, cv, annonse, brev: brev ?? "" } });
 }
@@ -76,10 +49,6 @@ function formatfeil(melding){
 }
 const kilderRenset = ks => ks.slice(0, G.kilder).map(k => ({ kilde: k.kilde, sitat: avkort(k.sitat, G.sitat) }));
 
-/* Gjør modellens svar til det som lagres, eller kaster med kode:
-   modellformat når formen er feil, kildefeil når et sitat ikke finnes i
-   kilden eller et eksempel mangler sitat. Ingenting lagres uten at begge
-   er i orden. `brev` er teksten til det aktive brevet, eller tom. */
 export function tolkForberedelse(data, { cv, annonse, brev = "" }){
   sjekkSchema(data, FORBEREDELSESKJEMA, "forberedelsen");
   const rensket = {
@@ -92,7 +61,6 @@ export function tolkForberedelse(data, { cv, annonse, brev = "" }){
     sjekkliste: data.sjekkliste.slice(0, G.sjekkliste).map(t => avkort(t, G.punkt)).filter(Boolean)
   };
   if(!rensket.sporsmal.some(s => s.sporsmal)) throw formatfeil("Modellen ga ingen spørsmål. Prøv igjen.");
-  /* Eksemplene må ha sitater. Spørsmålene bare der de har oppgitt noen. */
   sjekkKilder(
     [...rensket.eksempler.map(e => ({ tekst: e.krav || e.situasjon, kilder: e.kilder })),
      ...rensket.sporsmal.filter(s => s.kilder.length).map(s => ({ tekst: s.sporsmal, kilder: s.kilder }))],
@@ -102,7 +70,6 @@ export function tolkForberedelse(data, { cv, annonse, brev = "" }){
   return f;
 }
 
-/* Valgene tjenesten sender til kallModell. Samme modell som brevet. */
 export function forberedelseForesporsel({ cv, annonse, brev, jobb, intervju, leverandor }){
   const iv = intervju ?? {};
   return { leverandor, formal: "brev", system: FORBEREDELSE_SYSTEM, kilder: forberedelseKilder({ cv, annonse, brev, jobb }),

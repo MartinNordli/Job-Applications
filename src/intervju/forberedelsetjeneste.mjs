@@ -1,22 +1,3 @@
-/* ============================================================
-   Intervjuforberedelsen som tjeneste.
-
-   Samme kjede i Node og i appen som matchtjenesten, med det som
-   berører verden sendt inn: lager for CV-en og brevet, jobbdokumentene
-   for annonsen og skrivingen, kallModell for modellen og foranKall for
-   taket (30 i timen per profil i Node). Resultatet skrives med
-   jobbdokumentets endre() i forberedelser[<intervju-id>], så en
-   samtidig lagring av annonsen eller en vurdering ikke går tapt.
-
-   Grunnlaget (CV-revisjon, annonsens sjekksum, aktiv brevversjon,
-   promptversjon) lagres sammen med svaret. En forberedelse som
-   allerede bygger på nøyaktig det som ligger der nå, brukes om igjen
-   uten nytt kall, med mindre brukeren ber om det (tving). To kall for
-   samme intervju samtidig deler ett modellkall.
-
-   Brevet er en valgfri kilde: bare den aktive versjonen brukes, og
-   har søknaden ikke noe aktivt brev, forberedes det uten.
-   ============================================================ */
 import { Brevfeil, brevfil } from "../dokumenter/brevdata.mjs";
 import { FORBEREDELSE_PROMPTVERSJON, forberedelseForesporsel, tolkForberedelse } from "./forberedelse.mjs";
 import { LEVERANDORER, forberedelseUtdatert } from "../stilling/jobbdokument.mjs";
@@ -26,8 +7,6 @@ import { validerIntervjuer } from "../felles/felles.mjs";
 export function lagForberedelsetjeneste({ lager, jobbdokumenter, kallModell, hentJobb, foranKall, nå = () => new Date() }){
   const pagar = new Map();
 
-  /* Teksten og id-en til den aktive brevversjonen, eller tomt. Et brev
-     som ikke kan leses, hindrer ikke forberedelsen. */
   async function aktivtBrev(jobbId){
     try{
       const b = await lager.les(brevfil(jobbId));
@@ -58,8 +37,6 @@ export function lagForberedelsetjeneste({ lager, jobbdokumenter, kallModell, hen
     const tekster = { cv: cv.tekst.trim(), annonse: annonse.tekst.trim(), brev: brev.tekst };
     const svar = await kallModell({ ...forberedelseForesporsel({ ...tekster, jobb, intervju, leverandor }), signal });
     const resultat = tolkForberedelse(svar?.data, tekster);
-    /* En forberedelse til et intervju som ikke finnes lenger (slettingen
-       av den feilet etter at intervjuet var borte), ryddes bort her. */
     const finnes = new Set(validerIntervjuer(jobb.intervjuer).map(i => i.id));
     const beholdte = d => Object.fromEntries(Object.entries(d.forberedelser ?? {}).filter(([id]) => finnes.has(id)));
     return jobbdokumenter.endre(jobbId, d => ({ ...d, forberedelser: { ...beholdte(d), [iid]: {
@@ -68,7 +45,6 @@ export function lagForberedelsetjeneste({ lager, jobbdokumenter, kallModell, hen
       laget: nå().toISOString() } } }));
   }
 
-  /* Gir hele jobbdokumentet med den nye forberedelsen. */
   async function lag(jobbId, iid, { tving = false, leverandor = "anthropic", signal } = {}){
     if(!LEVERANDORER.includes(leverandor)) throw new Brevfeil("ugyldig", "Velg en støttet leverandør.");
     if(!erId(iid)) throw new Brevfeil("ugyldig", "Ugyldig intervju.");

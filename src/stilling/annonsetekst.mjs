@@ -1,9 +1,3 @@
-/* ============================================================
-   Annonseteksten ut av en hentet side. Ren tekstbehandling uten
-   I/O, så importen, «Hent annonsen» og brevet bruker samme uttrekk i
-   Node og i webviewet. JobPosting i JSON-LD går foran <main> og
-   <article>, og hele siden er siste utvei.
-   ============================================================ */
 import { Brevfeil } from "../dokumenter/brevdata.mjs";
 
 function ren(html){
@@ -34,12 +28,6 @@ export function trekkUtAnnonse(html){
   return tekst;
 }
 
-/* Hentefeilene, slik brukeren trenger å skille dem. Node og Rust sier
-   det samme med samme ord («Siden svarte 404.», «Adressen peker ikke
-   til en nettside.»), og over invoke kommer Rust-feilen som en streng.
-   Derfor tolkes teksten, ikke en type: én regel for begge transporter.
-   Resten av meldingene er skrevet for brukeren i server/nett.mjs og
-   src-tauri/src/nett.rs, og går videre som de er. */
 export function hentefeil(e){
   const m = (typeof e === "string" ? e : String(e?.melding || e?.message || "")).trim();
   const status = Number(m.match(/^Siden svarte (\d{3})\.$/)?.[1]);
@@ -52,10 +40,6 @@ export function hentefeil(e){
   return new Brevfeil("henting", m && m.length <= 200 ? m : "Fikk ikke hentet siden.", 502);
 }
 
-/* Det samme uttrekket som trekkUtAnnonse, men med meldinger for den som
-   har bedt om å hente annonsen til en søknad, ikke for brevets
-   tekstfelt. For lite tekst betyr nesten alltid en side som bygges med
-   JavaScript, og da hjelper bare innliming. */
 export function annonseFraSide(html){
   try{ return trekkUtAnnonse(String(html ?? "")); }
   catch(e){

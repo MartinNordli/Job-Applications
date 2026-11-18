@@ -1,10 +1,5 @@
-/* All protokollkunnskap om strømmende modellsvar, ett sted. Node-serveren,
-   nettleseren og Tauri-frontenden leser samme strøm gjennom denne filen, slik
-   at leverandørformatet aldri finnes i to implementasjoner som må holdes i takt.
-   Ingen nettverk, ingen nøkler, ingen DOM. */
 import { leverandorFor } from "./brev-provider.mjs";
 
-/* Forhåndsvisningen er provisorisk og skal ikke kunne vokse uten tak. */
 const MAKS_FELT = 100_000;
 const MAKS_NØKKEL = 200;
 
@@ -12,9 +7,6 @@ function formatfeil(melding){
   const e = new Error(melding); e.navn = "modellformat"; return e;
 }
 
-/* Inkrementell SSE-rammeleser. Mat den dekodet tekst; den gir ut ferdige
-   rammer. Byte-taket hører hjemme hos den som leser sokkelen, ikke her,
-   så de to leserne har hver sin grense mot hver sin motpart. */
 export function delSse(){
   let rest = "", hendelse = "", data = [], harData = false;
   return function del(bit){
@@ -26,19 +18,17 @@ export function delSse(){
       if(linje.endsWith("\r")) linje = linje.slice(0, -1);
       start = i + 1;
       if(!linje){
-        // En ramme uten data-linjer sendes ikke videre, slik SSE foreskriver.
         if(harData) rammer.push({ hendelse, data: data.join("\n") });
         hendelse = ""; data = []; harData = false;
         continue;
       }
-      if(linje.startsWith(":")) continue; // kommentar, blant annet hjerteslag
+      if(linje.startsWith(":")) continue;
       const skille = linje.indexOf(":");
       const felt = skille === -1 ? linje : linje.slice(0, skille);
       let verdi = skille === -1 ? "" : linje.slice(skille + 1);
       if(verdi.startsWith(" ")) verdi = verdi.slice(1);
       if(felt === "event") hendelse = verdi;
       else if(felt === "data"){ data.push(verdi); harData = true; }
-      // id, retry og ukjente felt er uten betydning for oss.
     }
     rest = rest.slice(start);
     return rammer;
@@ -53,7 +43,6 @@ function tolkRamme(ramme){
 }
 
 function erFeil(ramme, h){
-  // Leverandørens egen feiltekst kan inneholde grunnlaget vårt og slippes aldri ut.
   return ramme.hendelse === "error" || h?.type === "error";
 }
 
@@ -79,13 +68,11 @@ function anthropicSamler(){
       }else if(h.type === "message_delta"){
         if(melding){
           if(h.delta && typeof h.delta === "object" && !Array.isArray(h.delta)) Object.assign(melding, h.delta);
-          // Anthropics tellinger er kumulative totaler. Summering ville doblet dem.
           if(h.usage && typeof h.usage === "object" && !Array.isArray(h.usage)){
             melding.usage = { ...melding.usage, ...h.usage };
           }
         }
       }else if(h.type === "message_stop") komplett = true;
-      // ping, content_block_stop og ukjente typer er uten betydning.
       return "";
     },
     svar(){ return komplett ? melding : null; }
@@ -99,8 +86,6 @@ function openaiSamler(){
       const h = tolkRamme(ramme);
       if(erFeil(ramme, h)) throw formatfeil("Modelltjenesten avbrøt svaret. Prøv igjen.");
       if(h.type === "response.output_text.delta") return typeof h.delta === "string" ? h.delta : "";
-      // response-objektet er allerede nøyaktig formen tolkModellsvar tar imot,
-      // også når det er mislykket: da avviser tolkningen det på vanlig vis.
       if(h.type === "response.completed" || h.type === "response.failed" || h.type === "response.incomplete"){
         if(h.response && typeof h.response === "object" && !Array.isArray(h.response)) ferdig = h.response;
       }
@@ -110,9 +95,6 @@ function openaiSamler(){
   };
 }
 
-/* Setter hendelsene sammen til nøyaktig samme svarform et ikke-strømmet kall
-   gir, slik at tolkModellsvar og all validering står uendret. `ta` gir ut
-   tekstbiten rammen bar, eller tom streng. */
 export function lagSvarsamler(leverandor){
   leverandorFor(leverandor);
   return leverandor === "anthropic" ? anthropicSamler() : openaiSamler();
@@ -129,11 +111,6 @@ function lesEscape(s, i){
   return { tekst: String.fromCharCode(parseInt(hex, 16)), neste: i + 6 };
 }
 
-/* Dekoder ett toppnivåfelt ut av en JSON-streng som fortsatt strømmer inn.
-   Rekkefølgeuavhengig, fordi ingen leverandør garanterer feltrekkefølge, og
-   den hopper over nøstede objekter så pastander[].tekst aldri forveksles med
-   toppnivåets tekst. Den kaster aldri: en halv strøm er ikke en feil her,
-   bare en forhåndsvisning som ikke ble ferdig. */
 export function lagFeltstrøm(felt){
   const navn = typeof felt === "string" ? felt : "";
   const stabel = [];
@@ -145,8 +122,6 @@ export function lagFeltstrøm(felt){
     if(!tekst) return "";
     let t = høyt + tekst; høyt = "";
     const siste = t.charCodeAt(t.length - 1);
-    // Et ensomt høyt surrogat holdes tilbake til partneren kommer; ellers
-    // ville forhåndsvisningen vist et erstatningstegn som aldri forsvant.
     if(siste >= 0xd800 && siste <= 0xdbff){ høyt = t.slice(-1); t = t.slice(0, -1); }
     if(sendt >= MAKS_FELT) return "";
     if(sendt + t.length > MAKS_FELT) t = t.slice(0, MAKS_FELT - sendt);

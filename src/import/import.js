@@ -1,17 +1,3 @@
-/* ============================================================
-   Import — å fylle skjemaet fra en utlysningslenke.
-
-   Én kjede, to transporter. I nettlesermodus gjør serveren hele
-   jobben bak /api/importer; i appmodus kjøres de samme reglene fra
-   src/import/importlogikk.mjs her, over Rust. Reglene er de samme filene
-   i begge tilfeller — det er bare hentingen som skifter.
-
-   Ingenting herfra lagres. Svaret er et utkast skjemaet fylles med,
-   og brukeren trykker selv. Annonseteksten følger med som `annonse`
-   (eller null), og skrives til jobbdokumentet først når søknaden
-   er lagt til.
-   ============================================================ */
-
 import * as Lagring from "../soknader/lagring.js";
 import * as Økt from "../konto/okt.js";
 import { SEKTOR_FOR } from "../felles/felles.mjs";
@@ -20,7 +6,6 @@ import { trekkUtAnnonse } from "../stilling/annonsetekst.mjs";
 import { tolkStrukturert, renskTekst, byggForespørsel,
          tolkModellsvar, slåSammen, sektorForSelskap, manglendeFelt, finnesFraFor } from "./importlogikk.mjs";
 
-/* Feilene flaten skiller på. `navn` er til kode, `message` til folk. */
 export class Importfeil extends Error {
   constructor(navn, melding, utkast = null){
     super(melding);
@@ -29,16 +14,12 @@ export class Importfeil extends Error {
   }
 }
 
-/* Så flaten kan si «Henter utlysningen…» og «Leser annonsen…»
-   uten å vite noe om hvordan kjeden er satt sammen. */
 export const TRINN = { HENTER: "henter", LESER: "leser" };
 
 export async function importerFraLenke(url, valg = {}){
   const si = valg.påTrinn || (() => {});
   return Lagring.I_APP ? iApp(url, valg, si) : overHttp(url, si);
 }
-
-/* ---------- nettlesermodus: serveren gjør jobben ---------- */
 
 async function overHttp(url, si){
   si(TRINN.HENTER);
@@ -54,12 +35,10 @@ async function overHttp(url, si){
   }
 
   let j = null;
-  try{ j = await r.json(); }catch{ /* faller gjennom til feilen under */ }
+  try{ j = await r.json(); }catch{}
 
   if(r.ok && j?.ok) return { utkast: j.utkast, kilder: j.kilder, annonse: j.annonse ?? null };
 
-  /* Økten er borte. Flaten skal vise porten, ikke «importen feilet» —
-     og adressen brukeren limte inn står fortsatt i feltet. */
   if(r.status === 401){
     Økt.meldUtlogget(j?.melding);
     throw new Importfeil("utlogget", "Du er logget ut. Logg inn på nytt og prøv igjen.");
@@ -69,8 +48,6 @@ async function overHttp(url, si){
                        j?.melding || `Importen feilet (${r.status}).`,
                        j?.utkast || null);
 }
-
-/* ---------- appmodus: samme kjede, over Rust ---------- */
 
 async function iApp(url, valg, si){
   const { tauriNett } = await import("../felles/tauri-nett.mjs");
@@ -97,9 +74,6 @@ async function iApp(url, valg, si){
   if(manglende.length && tekst.length > 40){
     si(TRINN.LESER);
     try{
-      /* Nøkkelen hentes av Rust fra profilens egen katalog. Uten
-         `bruker` ville den blitt lett etter i rota, som ingen
-         profil eier. */
       const raa = await tauriNett.spørModell(byggForespørsel(tekst, manglende),
                                              { bruker: minId() });
       bruk   = raa?.usage ?? null;
@@ -121,30 +95,17 @@ async function iApp(url, valg, si){
     throw new Importfeil("tomt",
       "Fant ingenting å lese på den siden. Den er kanskje bygget med JavaScript.", utkast);
 
-  /* Loggen er en bekvemmelighet — en import som lyktes skal ikke feile
-     fordi en linje ikke lot seg skrive. */
   skrivLogg(lagLinje({ url, felt: bruk ? manglende : [], bruk })).catch(() => {});
 
   return { utkast, kilder, annonse: annonseFra(side, url) };
 }
 
-/* Samme regel som serveren: annonseteksten følger utkastet når den
-   kan leses ut, og en side med for lite tekst gjør bare at den mangler. */
 function annonseFra(side, url){
   try{
     return { tekst: trekkUtAnnonse(side.html), url: side.sluttUrl || url, hentet: new Date().toISOString() };
   }catch{ return null; }
 }
 
-/* ---------- importloggen ---------- */
-
-/* Samme fire filoperasjoner som lagringen bruker, i profilens katalog.
-   Loggen er liten nok til at les-endre-skriv er greit; alternativet er
-   en ny Rust-kommando for én linje tekst.
-
-   Uten en innlogget profil skrives ingen logg. Loggen sier hva
-   importen har kostet, og det er et spørsmål som bare gir mening per
-   profil — rotas katalog er ingens. */
 const minId = () => Økt.nåværendeBruker()?.id ?? null;
 
 async function filer(){
@@ -157,10 +118,9 @@ async function filer(){
 async function skrivLogg(linje){
   const f = await filer();
   let fra = "";
-  try{ fra = (await f.lesTekst(LOGGFIL)) ?? ""; }catch{ /* første gang */ }
+  try{ fra = (await f.lesTekst(LOGGFIL)) ?? ""; }catch{}
   await f.skrivAtomisk(LOGGFIL, leggTil(fra, linje));
 }
 
-/* Rust sender feil som strenger over invoke. */
 const tekstFra = (e, reserve) =>
   typeof e === "string" ? e : String(e?.message || e || reserve);

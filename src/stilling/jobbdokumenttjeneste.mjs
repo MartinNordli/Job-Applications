@@ -1,41 +1,9 @@
-/* ============================================================
-   Jobbdokumentene over brevlageret. HTTP-rutene og appen bruker
-   denne, med hvert sitt lager under: server/brevlager.mjs i Node,
-   brev_les/brev_skriv/dokument_utdrag i Rust.
-
-   lagre() er grensesnittets vei inn, og den skriver annonsen. match
-   og forberedelser beholdes fra det lagrede dokumentet, som kjoring
-   i brevtjenesten: modellsvarene skrives bare gjennom endre(), av
-   tjenestene som lager dem. Da kan en åpen fane med en eldre kopi
-   aldri viske ut en vurdering som har kostet penger, og grensesnittet
-   kan ikke lagre en vurdering ingen modell har gjort.
-
-   Forberedelsene til intervjuer fjernes én og én med slettForberedelse().
-
-   endre() er mønsteret de tjenestene skal bruke: les, endre, skriv
-   med forventet revisjon, og prøv igjen ved konflikt.
-
-   Annonsen har egne veier inn, alle gjennom endre(): importen og
-   innlimingen (settAnnonse), henting fra søknadens lenke
-   (hentAnnonse, også når brevet skal skrives og annonsen mangler) og
-   flyttingen fra brevdokumentet (annonseFor). De
-   skriver bare annonsen, så en vurdering som lages samtidig, står.
-   Siden hentes før dokumentet leses: ingen lås holdes over et
-   nettverkskall.
-
-   Det som rører verden, kommer inn som argumenter: hentSide (Node
-   eller Rust), hentJobber (listen), foranHenting (Nodes tak per
-   profil, kaster når det er nådd) og nå.
-   ============================================================ */
-
 import { Brevfeil, jobbfil, brevfil } from "../dokumenter/brevdata.mjs";
 import { validerJobbdokument, validerAnnonse, normaliserAnnonse } from "./jobbdokument.mjs";
 import { tolkStier } from "../dokumenter/dokumentutdrag.mjs";
 import { erId } from "../dokumenter/dokumentnavn.mjs";
 import { annonseFraSide, hentefeil } from "./annonsetekst.mjs";
 
-/* Kildene klienten selv kan oppgi. «hentet» settes av hentAnnonse og
-   «brev» av flyttingen. «radar» er «Legg til» fra innboksen. */
 const KLIENTKILDER = ["import", "limt", "radar"];
 
 const harTekst = a => !!normaliserAnnonse(a?.tekst);
@@ -60,9 +28,6 @@ export function lagJobbdokumenter({ lager, hentJobb, hentJobber, hentSide, foran
     return lager.skriv(jobbfil(id), d, d.revisjon);
   }
 
-  /* fn får en kopi og gir tilbake det som skal skrives. Gir den
-     undefined, skrives ingenting, og dokumentet som ble lest returneres:
-     da har fn sett at endringen allerede er gjort. */
   async function endre(id, fn){
     for(let i = 0; i < 4; i++){
       const d = await les(id);
@@ -75,22 +40,14 @@ export function lagJobbdokumenter({ lager, hentJobb, hentJobber, hentSide, foran
 
   async function gjenopprett(id){ return lager.gjenopprett(jobbfil(id)); }
 
-  /* Ingen jobbsjekk: utdraget gjelder hele profilen, også dokumenter
-     til søknader som er fjernet. Listen viser bare de den har. */
   async function utdrag(stier){ return lager.utdrag("jobb-", tolkStier(stier)); }
 
-  /* ---------- annonsen ---------- */
-
-  /* Skriver annonsen og lar resten av dokumentet stå. Valideres strengt
-     før noe leses, og en tom tekst er ingen annonse. */
   async function skrivAnnonse(id, inn){
     const annonse = validerAnnonse(inn);
     if(!harTekst(annonse)) throw new Brevfeil("tom-annonse", "Lim inn teksten fra annonsen.");
     return endre(id, d => ({ ...d, annonse }));
   }
 
-  /* Importen og innlimingen. kilde er «import» eller «limt». Uten egen
-     lenke får annonsen søknadens, så «Åpne originalen» har noe å åpne. */
   async function settAnnonse(id, inn = {}){
     const j = await sjekkJobb(id);
     const kilde = inn?.kilde ?? "limt";
@@ -100,11 +57,6 @@ export function lagJobbdokumenter({ lager, hentJobb, hentJobber, hentSide, foran
   }
   const limInn = (id, tekst) => settAnnonse(id, { tekst, kilde: "limt" });
 
-  /* Henter annonsen fra søknadens lenke. Taket telles først når vi
-     faktisk skal ut på nettet, og feilene sier hva brukeren kan gjøre
-     i stedet. velg(tekst, jobb) kan snevre inn teksten som ble lest ut
-     av siden, og gir teksten som skal lagres. Brevet bruker den til å la
-     en modell velge annonsens linjer (src/stilling/annonseuttrekk.mjs). */
   async function hentAnnonse(id, { velg } = {}){
     const j = await sjekkJobb(id);
     if(!hentSide) throw new Brevfeil("ugyldig", "Henting er ikke satt opp her.", 500);
@@ -123,14 +75,6 @@ export function lagJobbdokumenter({ lager, hentJobb, hentJobber, hentSide, foran
     return skrivAnnonse(id, { tekst, url, kilde: "hentet", hentet: nå().toISOString() });
   }
 
-  /* Annonsen til en søknad, slik brevet og panelet skal lese den.
-
-     Før jobbdokumentet fantes, lå annonsen i brev-<id>.json. Har
-     jobbdokumentet aldri hatt en annonse (ingen tekst og ingen kilde),
-     og brevet har en, kopieres den over med kilde «brev». Det skjer én
-     gang: etterpå har jobbdokumentet en kilde, også om teksten senere
-     tømmes. Brevdokumentet endres ikke. Et brevdokument som ikke kan
-     leses, hindrer ikke svaret: da finnes det ingen annonse å flytte. */
   async function flyttFraBrev(id){
     const d = await hent(id);
     if(harTekst(d.annonse) || d.annonse.kilde) return { annonse: d.annonse, flyttet: false };
@@ -150,10 +94,6 @@ export function lagJobbdokumenter({ lager, hentJobb, hentJobber, hentSide, foran
   }
   async function annonseFor(id){ return (await flyttFraBrev(id)).annonse; }
 
-  /* Henter annonsene som mangler, én søknad om gangen. Først flyttes det
-     som ligger i brevet, så hentes resten fra lenken. Søknader uten
-     lenke hoppes over. Stopper ved taket eller når den som spurte går,
-     og sier hva som gjenstår. ider avgrenser til bestemte søknader. */
   async function hentManglende({ ider, signal } = {}){
     if(!hentJobber) throw new Brevfeil("ugyldig", "Listen er ikke satt opp her.", 500);
     const ønsket = ider ? new Set(ider) : null;
@@ -180,9 +120,6 @@ export function lagJobbdokumenter({ lager, hentJobb, hentJobber, hentSide, foran
     return ut;
   }
 
-  /* Fjerner én intervjuforberedelse, og bare den. lagre() rører ikke
-     forberedelsene, så dette er den eneste veien ut for en forberedelse
-     brukeren ikke vil ha. Finnes den ikke, skrives ingenting. */
   async function slettForberedelse(id, iid){
     await sjekkJobb(id);
     if(!erId(iid)) throw new Brevfeil("ugyldig", "Ugyldig intervju.");

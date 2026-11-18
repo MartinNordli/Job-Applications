@@ -1,23 +1,3 @@
-/* ============================================================
-   «⋯»-menyen på radene.
-
-   Én meny for hele listen, ikke én per rad: listen tegnes på nytt ved
-   hver endring, og en meny som bodde i raden, ville forsvunnet under
-   musa. Denne ligger utenfor listen og plasseres ved knappen som
-   åpnet den. Utløserne er knapper med data-meny="<id>",
-   aria-haspopup="menu" og aria-expanded.
-
-   Valgene er knapper med data-gjor og data-id, så den samme
-   klikklytteren i app.js som tar radknappene, utfører dem. Menyen
-   lukker seg og gir fokus tilbake til utløseren før klikket bobler
-   videre dit, så en skuff som åpnes husker riktig sted å gå tilbake.
-
-   Tastaturet følger WAI-ARIA-mønsteret for menyknapper: Enter,
-   mellomrom og pil ned åpner på første valg, pil opp på siste. Inne
-   i menyen går pilene rundt, Home og End til endene, en bokstav til
-   neste valg som begynner med den, og Esc og Tab lukker.
-   ============================================================ */
-
 import { esc } from "../felles/formater.js";
 
 export function lagMeny({ valg }){
@@ -53,8 +33,6 @@ export function lagMeny({ valg }){
     (fokus === "siste" ? p[p.length - 1] : p[0]).focus();
   }
 
-  /* Under knappen, høyrekanten mot høyrekanten. Er det ikke plass under,
-     legger den seg over. */
   function plasser(){
     const k = utløser.getBoundingClientRect();
     const b = el.offsetWidth, h = el.offsetHeight, marg = 8;
@@ -83,7 +61,6 @@ export function lagMeny({ valg }){
     }
     if(!el.hidden && !el.contains(e.target)) lukk({ fokus: false });
   });
-  /* Valget lukker menyen først. Klikket bobler så videre til app.js. */
   el.addEventListener("click", e => { if(e.target.closest('[role="menuitem"]')) lukk(); });
 
   document.addEventListener("keydown", e => {
@@ -109,8 +86,6 @@ export function lagMeny({ valg }){
     }
   });
 
-  /* En meny som henger igjen når listen ruller eller vinduet endres,
-     peker på feil rad. Den lukkes heller enn å flyttes etter. */
   addEventListener("scroll", () => lukk({ fokus: false }), { passive: true, capture: true });
   addEventListener("resize", () => lukk({ fokus: false }));
 

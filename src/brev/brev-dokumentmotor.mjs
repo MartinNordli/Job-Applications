@@ -1,4 +1,3 @@
-/* Bundles isolert av bygg-dokumenter. Innhold leses lokalt, aldri som HTML. */
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import mammoth from "mammoth/mammoth.browser.js";
 import { Document, Packer, Paragraph, TextRun } from "docx";
@@ -10,7 +9,6 @@ const MAKS_TEKST = 100_000;
 const MAKS_FIL = 10 * 1024 * 1024;
 const MAKS_UTPAKKET = 25 * 1024 * 1024;
 
-/* Avvis krypterte/uvanlig store ZIP-er før Mammoth pakker dem ut. */
 export function sjekkDocx(bytes){
   const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if(bytes.length < 22 || v.getUint32(0, true) !== 0x04034b50) throw new Error("Filen er ikke et gyldig DOCX-dokument.");
@@ -37,8 +35,6 @@ export function sjekkDocx(bytes){
   if(!dokument) throw new Error("Filen inneholder ikke et Word-dokument.");
 }
 
-/* Grensen håndheves også på faktisk utpakket tekst, ikke bare ZIP-registerets
-   oppgitte størrelse. Bilder og andre binærvedlegg behøver ikke pakkes ut. */
 function avgrensDocx(bytes){
   const xml = new Set(["[Content_Types].xml", "_rels/.rels", "word/document.xml", "word/styles.xml", "word/numbering.xml", "word/footnotes.xml", "word/endnotes.xml", "word/comments.xml", "word/_rels/document.xml.rels"]);
   const filer = {}; let sum = 0, feil;
@@ -187,7 +183,6 @@ async function pdfBytes(m, fontBytes){
       }
       linjer.push(linje);
     }
-    // Flytt korte avsnitt samlet; del lange uten en enslig første/siste linje.
     if(linjer.length <= 4 && y - (linjer.length - 1) * linjehoyde < m.marg + skrift) nySide();
     for(let n = 0; n < linjer.length; n++){
       const ledige = Math.floor((y - m.marg - skrift) / linjehoyde) + 1;

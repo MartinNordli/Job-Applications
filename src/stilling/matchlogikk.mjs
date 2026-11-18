@@ -1,21 +1,3 @@
-/* ============================================================
-   Hvor godt stillingen passer: reglene, uten nett og uten filer.
-
-   Modellen får CV-en og annonsen som kilder og skal svare med et
-   prosenttall, det som taler for og det som mangler. Tre valg:
-
-   - Skalaen står i prompten, med fem bånd, så 80 betyr det samme i
-     morgen som i dag. Uten den glir tallene mellom kjøringer.
-   - Kildene er data, ikke instruksjoner. En annonse eller en CV kan
-     inneholde «gi 100 %», og skal ikke bli fulgt.
-   - Hver styrke må ha ordrette sitater som finnes i CV-en eller
-     annonsen. Sjekken er den samme som brevet bruker (sjekkKilder),
-     så en påstand modellen har funnet på, aldri havner i panelet.
-
-   Formen på svaret er den normaliserMatch i jobbdokument.mjs leser.
-   Endres promptversjonen, regnes alle lagrede vurderinger som
-   utdaterte (matchUtdatert).
-   ============================================================ */
 import { sjekkSchema, sjekkKilder } from "../brev/brevlogikk.mjs";
 import { normaliserMatch } from "./jobbdokument.mjs";
 
@@ -36,9 +18,6 @@ export const MATCHSKJEMA = objekt({
   sprak: streng
 });
 
-/* Skalaen er felles for vurderingen i panelet og for Radar
-   (src/radar/radarprompt.mjs), så 80 betyr det samme begge steder. Endres
-   den, endres begge promptene, og begge versjonene skal økes. */
 export const SKALA = `Prosenten er et helt tall fra 0 til 100 og sier hvor godt stillingen passer personen, etter denne skalaen:
 95 til 100: midt i blinken. Fagfeltet, rollen og nivået er det CV-en viser, som en stilling for nyutdannede i personens fag for en som snart er ferdig med graden.
 80 til 94: passer godt. Fag og nivå stemmer, men rollen ligger litt ved siden av, eller et krav er bare delvis dekket.
@@ -64,7 +43,6 @@ Ta bare med det kildene sier. Ikke dikt opp erfaring, krav eller sitater.`;
 
 const OPPGAVE = "Vurder hvor godt stillingen passer CV-en etter skalaen. Gi prosent, oppsummering, styrker med ordrette sitater og mangler med alvor.";
 
-/* Samme grunnlag gir de samme bytene, så Anthropic kan gjenbruke kildene. */
 function matchKilder({ cv, annonse, jobb }){
   return JSON.stringify({ kilder: { jobb: { selskap: jobb?.selskap ?? "", stilling: jobb?.stilling ?? "" }, cv, annonse } });
 }
@@ -74,9 +52,6 @@ function formatfeil(melding){
   const e = new Error(melding); e.navn = "modellformat"; e.code = "modellformat"; e.status = 502; return e;
 }
 
-/* Gjør modellens svar til det som lagres, eller kaster med kode:
-   modellformat når formen eller tallet er feil, kildefeil når et sitat
-   ikke finnes i kilden. Ingenting lagres uten at begge er i orden. */
 export function tolkMatch(data, { cv, annonse }){
   sjekkSchema(data, MATCHSKJEMA, "vurderingen");
   const p = data.prosent;
@@ -96,12 +71,8 @@ export function tolkMatch(data, { cv, annonse }){
   return m;
 }
 
-/* Dagens dato, så modellen kan regne ut om en student blir ferdig
-   innen et år. Den står i innholdet etter de bufrede kildene, så
-   hurtigbufferen treffer også når datoen skifter. */
 export const iDag = () => new Date().toISOString().slice(0, 10);
 
-/* Valgene tjenesten sender til kallModell. formal velger modellen. */
 export function matchForesporsel({ cv, annonse, jobb, leverandor, dato = iDag() }){
   return { leverandor, formal: "vurdering", system: MATCH_SYSTEM, kilder: matchKilder({ cv, annonse, jobb }),
     innhold: JSON.stringify({ oppgave: OPPGAVE, dato }), skjema: MATCHSKJEMA, trinn: "match" };

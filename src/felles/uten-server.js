@@ -1,11 +1,3 @@
-/* ============================================================
-   Åpnes index.html rett fra disk i stedet for gjennom serveren,
-   blokkerer nettleseren ES-moduler, og siden blir stående tom
-   uten å si hvorfor. Denne sier hvorfor.
-
-   Gjelder bare nettlesermodus. I appen leverer Tauri selv filene,
-   og modulene lastes alltid.
-   ============================================================ */
 addEventListener("DOMContentLoaded", () => setTimeout(() => {
   if(window.__jobbsoknaderKjorer || window.__TAURI__) return;
   const el = document.getElementById("innhold");

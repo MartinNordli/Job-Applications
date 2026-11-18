@@ -1,49 +1,15 @@
-/* ============================================================
-   Fristvarsel: når en søknadsfrist skal varsles, og med hvilke ord.
-
-   Uten filsystem og uten klokke: den som kaller sender inn dagens
-   dato, søknadene, innstillingen og loggen over det som alt er
-   varslet. Serveren og front-enden deler denne modulen. Rust har sin
-   egen kopi av regelen i src-tauri/src/varsel.rs, fordi bakgrunns-
-   jobben kjører uten JavaScript. Endres regelen eller ordene her,
-   må de endres der også; testene på begge sider holder dem like.
-
-   Intervjuvarsel (samme fil, samme loggen): ett dagen før, ved første
-   sjekk etter kl. 09 lokal tid, og ett når det er mellom 0 og 180
-   minutter til start. Et intervju uten klokkeslett («heldag») får bare
-   det første. Loggnøkkelen ender på intervjudatoen, så ryddLogg
-   fjerner den når dagen er forbi, akkurat som for frister. Klokken
-   sendes inn som en Date i lokal tid, og testene deler
-   tester/data/varseltilfeller.json med Rust.
-
-   Regelen: en søknad som ikke er sendt, og som har frist om mellom
-   0 og `dagerFør` dager, varsles én gang. Dag 0 er med, så en Mac
-   som var slått av i går likevel sier fra i dag. Loggen er nøklet
-   på søknad og frist, så en flyttet frist kan varsle på nytt.
-
-   To filer per profil, ved siden av jobber.json:
-     varsel.json   innstillingen, { versjon, på, dagerFør }
-     varslet.json  loggen, { "<id>|<frist>": "<tidspunkt>" }
-   Innstillingen ligger på disk og ikke i nettleseren, fordi
-   bakgrunnsjobben må kunne lese den når appen er lukket.
-   ============================================================ */
-
 import { ER_ARKIV, INTERVJUTYPER } from "../felles/felles.mjs";
 
 export const INNSTILLINGSFIL = "varsel.json";
 export const LOGGFIL = "varslet.json";
-/* Versjon 2 la til `intervju`. Versjon 1 leses som intervju: true. */
 export const VERSJON = 2;
 
 export const MIN_DAGER = 1;
 export const MAKS_DAGER = 14;
-/* Valgene flaten tilbyr. Alt mellom MIN og MAKS er gyldig på disk. */
 export const DAGVALG = [1, 2, 3, 5, 7, 14];
 
 export const standardInnstilling = () => ({ versjon: VERSJON, på: true, dagerFør: 1, intervju: true });
 
-/* Det brukeren sender inn. Streng: en ugyldig verdi skal avvises
-   med en melding, ikke stille bli noe annet. */
 export function validerInnstilling(inn){
   const feil = [];
   if(!inn || typeof inn !== "object" || Array.isArray(inn))
@@ -52,7 +18,6 @@ export function validerInnstilling(inn){
     feil.push({ felt: "på", melding: "«på» må være true eller false." });
   if(!Number.isInteger(inn.dagerFør) || inn.dagerFør < MIN_DAGER || inn.dagerFør > MAKS_DAGER)
     feil.push({ felt: "dagerFør", melding: `Velg mellom ${MIN_DAGER} og ${MAKS_DAGER} dager.` });
-  /* Mangler feltet (versjon 1, eldre klient), er intervjuvarsel på. */
   if(inn.intervju !== undefined && typeof inn.intervju !== "boolean")
     feil.push({ felt: "intervju", melding: "«intervju» må være true eller false." });
   if(feil.length) return { ok: false, feil };
@@ -60,9 +25,6 @@ export function validerInnstilling(inn){
                               intervju: inn.intervju ?? true } };
 }
 
-/* Det som ligger på disk. Raus: en fil som mangler eller ikke kan
-   leses, gir standarden. Å slutte å varsle fordi en fil er rar, ville
-   vært den verste måten å feile på. */
 export function lesInnstilling(rå){
   if(rå == null || rå === "") return standardInnstilling();
   try{
@@ -86,7 +48,6 @@ const dagnummer = iso => {
   return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000 : null;
 };
 
-/* Lokal dato som ÅÅÅÅ-MM-DD. «I dag» er brukerens dag, ikke UTC sin. */
 export function isoDato(d){
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0")
     + "-" + String(d.getDate()).padStart(2, "0");
@@ -99,7 +60,6 @@ export function dagerMellom(fraIso, tilIso){
 
 export const loggnøkkel = j => j.id + "|" + j.frist;
 
-/* Søknadene som skal varsles nå, nærmeste frist først. */
 export function forfalne(jobber, iDag, innstilling, logg = {}){
   if(!innstilling?.på || !Array.isArray(jobber)) return [];
   return jobber
@@ -109,8 +69,6 @@ export function forfalne(jobber, iDag, innstilling, logg = {}){
                  && !Object.hasOwn(logg, f.nøkkel))
     .sort((a, b) => a.dager - b.dager || String(a.jobb.selskap).localeCompare(String(b.jobb.selskap), "no"));
 }
-
-/* ---------- intervjuer ---------- */
 
 const MIN_FØR_TIMER = 180;
 const FØRSTE_TIME = 9;
@@ -127,11 +85,6 @@ function omTid(min){
   return r ? `om ${t} t ${r} min` : t === 1 ? "om 1 time" : `om ${t} timer`;
 }
 
-/* Intervjuene som skal varsles nå, tidligst først. `nå` er en Date;
-   dag og klokkeslett leses i lokal tid, fordi «kl. 09» og «i morgen»
-   er det brukeren ser på klokken. Et intervju på en arkivert søknad
-   varsles ikke, men status ellers er likegyldig: et intervju er et
-   intervju også om søknaden står på «sendt». */
 export function intervjuvarsler(jobber, nå, innstilling, logg = {}){
   if(!innstilling?.på || innstilling.intervju === false || !Array.isArray(jobber)) return [];
   const iDag = isoDato(nå);
@@ -165,7 +118,6 @@ export function intervjuvarsler(jobber, nå, innstilling, logg = {}){
            .map(({ start, ...v }) => v);
 }
 
-/* Rader for frister som er passert, trengs ikke lenger. */
 export function ryddLogg(logg, iDag){
   return Object.fromEntries(Object.entries(logg).filter(([n]) => {
     const d = dagerMellom(iDag, n.slice(n.lastIndexOf("|") + 1));
@@ -189,10 +141,6 @@ export function varseltekst(jobb, dager){
   };
 }
 
-/* Hele runden for én profil, uten I/O: hva som skal varsles, og
-   loggen slik den skal skrives etterpå. `nå` er en Date (lokal tid
-   avgjør dag og klokkeslett) eller et ISO-tidspunkt; `iDag` utledes
-   av den hvis den ikke er gitt. */
 export function runde({ jobber, iDag, innstilling, logg, nå }){
   const tid = nå instanceof Date ? nå : new Date(nå ?? Date.now());
   const dag = iDag ?? isoDato(tid);

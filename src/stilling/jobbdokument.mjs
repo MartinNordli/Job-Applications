@@ -1,34 +1,3 @@
-/* ============================================================
-   jobb-<id>.json: det som hører til én søknad, men ikke til listen.
-
-   Annonsen, vurderingen av hvor godt stillingen passer og
-   intervjuforberedelsene er store eller lages i bakgrunnen. Listen
-   PUT-es hel ved hver lagring, og bare grensesnittet skriver den, så
-   slikt får eget dokument med brevlagerets mekanikk: revisjon,
-   mkdir-lås og .forrige.json. Det er ikke brev-<id>.json, for
-   brevdokumentet kan vokse mot 32 MiB, og «Slett brevet» skal ikke
-   ta annonsen med seg.
-
-   Valideringen er delt i to med vilje:
-
-     - Annonsen er brukerens egen tekst. Er den for lang eller har
-       feil form, avvises lagringen, for et stille kutt ville endret
-       det brukeren limte inn.
-     - match og forberedelser er modellsvar, og de koster penger.
-       De normaliseres tilgivende: ukjente felt faller bort, for lang
-       tekst kortes, ugyldige oppføringer droppes, og en vurdering
-       uten gyldig prosent blir null. Et skadet modellsvar skal ikke
-       låse dokumentet så annonsen ikke kan lagres.
-
-   Hele dokumentet har et tak på 4 MiB. Sjekksummen på annonsen
-   regnes alltid ut her, aldri tatt imot, så den kan ikke gli fra
-   teksten den beskriver.
-
-   «Utdatert» lagres ikke. Det utledes ved å sammenlikne det en
-   vurdering bygde på (CV-revisjon, annonsens sjekksum, promptversjon,
-   brevversjon) med det som gjelder nå.
-   ============================================================ */
-
 import { Brevfeil, revisjon } from "../dokumenter/dokumentfeil.mjs";
 import { erId } from "../dokumenter/dokumentnavn.mjs";
 
@@ -44,21 +13,10 @@ const SITATKILDER = ["cv", "annonse", "brev"];
 export const LEVERANDORER = ["anthropic", "openai"];
 const BRUKSFELT = ["input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"];
 
-/* Grensene for modellsvarene. Romslige nok til at et godt svar aldri
-   kortes, stramme nok til at tjue forberedelser ikke sprenger taket. */
 const G = { oppsummering: 1200, krav: 400, bevis: 800, sitat: 600, kilder: 6, sprak: 80,
   sammendrag: 2000, sporsmal: 600, hvorfor: 800, svarskisse: 2000, situasjon: 2000, punkt: 400,
   versjon: 60, modell: 120, forberedelser: 40 };
 
-/* ---------- sjekksum ---------- */
-
-/* FNV-1a, 32 bit, over UTF-8-bytene i normalisert tekst. Formålet er å
-   merke at annonsen er en annen enn den en vurdering bygde på, ikke å
-   stå imot noen som prøver: én kollisjon i fire milliarder endringer
-   gir én vurdering som ikke merkes utdatert. NFKC og sammenslått
-   mellomrom gjør at en annonse som limes inn på nytt med andre
-   linjeskift eller harde mellomrom regnes som den samme. Synkron og
-   uten avhengigheter, så Node og webviewet regner likt. */
 export function normaliserAnnonse(tekst){
   return String(tekst ?? "").normalize("NFKC").replace(/\s+/gu, " ").trim();
 }
@@ -72,12 +30,9 @@ export function sjekksum(tekst){
 }
 const erSjekksum = v => typeof v === "string" && /^[0-9a-f]{8}$/.test(v);
 
-/* ---------- små byggeklosser ---------- */
-
 const erObjekt = v => !!v && typeof v === "object" && !Array.isArray(v);
 const bytes = d => new TextEncoder().encode(JSON.stringify(d, null, 2)).byteLength;
 
-/* Kortes på kodepunkter, så et tegn utenfor BMP aldri deles i to. */
 function kort(v, maks){
   if(typeof v !== "string") return "";
   const t = v.replaceAll("\0", "");
@@ -103,8 +58,6 @@ function kilder(v){
     .filter(k => k.kilde && k.sitat).slice(0, G.kilder);
 }
 
-/* Det en vurdering bygde på. Felles for match og forberedelse, så
-   utdatert() kan sammenlikne begge på samme måte. */
 function grunnlag(v){
   return {
     cvRevisjon: heltall(v.cvRevisjon),
@@ -116,15 +69,11 @@ function grunnlag(v){
   };
 }
 
-/* ---------- tomme dokumenter ---------- */
-
 const tomAnnonse = () => ({ tekst: "", url: "", kilde: null, hentet: null, sjekksum: null });
 export function tomtJobbdokument(id){
   if(!erId(id)) throw new Brevfeil("ugyldig", "Ugyldig jobb.");
   return { skjemaVersjon: SKJEMA, revisjon: 0, jobbId: id, annonse: tomAnnonse(), match: null, forberedelser: {}, oppdatert: null };
 }
-
-/* ---------- annonsen: streng ---------- */
 
 export function validerAnnonse(inn){
   if(inn == null) return tomAnnonse();
@@ -144,9 +93,6 @@ export function validerAnnonse(inn){
   return { tekst, url, kilde, hentet: tid(inn.hentet), sjekksum: har ? sjekksum(tekst) : null };
 }
 
-/* ---------- match og forberedelser: tilgivende ---------- */
-
-/* null når det ikke finnes noen brukbar vurdering. */
 export function normaliserMatch(inn){
   if(!erObjekt(inn)) return null;
   const p = inn.prosent;
@@ -185,8 +131,6 @@ export function normaliserForberedelse(inn){
   };
 }
 
-/* Nøklene er intervju-id-er. «__proto__» passerer id-regelen, men skal
-   aldri bli en nøkkel i et objekt noen senere slår opp i. */
 function forberedelser(inn){
   const ut = {};
   if(!erObjekt(inn)) return ut;
@@ -197,8 +141,6 @@ function forberedelser(inn){
   }
   return ut;
 }
-
-/* ---------- hele dokumentet ---------- */
 
 export function validerJobbdokument(id, inn){
   if(!erObjekt(inn)) throw new Brevfeil("ugyldig", "Jobbdokumentet mangler.");
@@ -215,37 +157,6 @@ export function validerJobbdokument(id, inn){
   return d;
 }
 
-/* ---------- radar.json ---------- */
-/*
-   Radar skriver dette dokumentet selv, også fra bakgrunnen, og det
-   meste i det er maskinlaget: innboksen, hukommelsen og kjøringsloggen.
-   Derfor normaliseres alt tilgivende, som modellsvarene over: ukjente
-   felt faller bort, ugyldige oppføringer droppes, lister kortes til
-   taket, og det som mangler får standardverdien. Et eldre radar.json
-   med en annen form blir dermed et gyldig dokument med
-   standardinnstillinger, uten ny skjemaversjon. Prototypenøkler kan
-   ikke slippe gjennom, fordi bare kjente felt kopieres.
-
-   Nøklene er ASCII som i resten av dataformatet (sporsmal, sprak,
-   leverandor), så Rust-jobben kan lese dem uten omveier.
-
-   Hukommelsen har tak i både tid og antall: «sett» i 200 dager og
-   «avvist» i ett år. «ko» er stillingene fra NAV og Jobbnorge som
-   besto forfilteret, men ikke rakk å bli vurdert (et tak, eller en
-   modell som ikke svarte). De ligger der uten annonseteksten, og
-   detaljen hentes på nytt når de vurderes. Antallstakene her er det siste vernet; selve
-   rydderegelen står i src/radar/radarlogikk.mjs, som også holder dokumentet
-   under 4 MiB før det skrives.
-
-   «under» er stillinger som ble vurdert, men havnet under terskelen.
-   De har samme form som innboksrader, og ligger der fra underMin
-   (glideren går fra 40) til terskelen senkes, så de kan flyttes til
-   innboksen uten nytt modellkall. Lavere enn underMin er feil fagfelt.
-
-   Skjemaversjon 2: standardterskelen gikk fra 70 til 50. En terskel på
-   70 i et dokument med eldre versjon er den gamle standarden, ikke et
-   valg, og blir 50 én gang. Verdien brukeren setter etterpå, står.
-*/
 export const RADAR = Object.freeze({
   terskel: 50, underMin: 40, maksVurderingerPerDogn: 150,
   innboks: 200, under: 150, sett: 4000, avvist: 5000, avvistFingeravtrykk: 5000, kjoringer: 20,
@@ -260,8 +171,6 @@ const INNBOKSSTATUS = ["ny", "lagtTil"];
 
 const DATO = /^\d{4}-\d{2}-\d{2}$/;
 const dato = v => typeof v === "string" && DATO.test(v) && !Number.isNaN(Date.parse(v)) ? v : null;
-/* Brukerens egne ord. Et for langt ord droppes i stedet for å kortes:
-   et kuttet søkeord treffer noe annet enn det brukeren skrev. */
 const ord = v => [...new Set((Array.isArray(v) ? v : [])
   .map(t => typeof t === "string" ? t.replaceAll("\0", "").replace(/\s+/gu, " ").trim() : "")
   .filter(t => t && t.length <= RADAR.ordlengde))].slice(0, RADAR.ord);
@@ -276,8 +185,6 @@ const prosent = v => Number.isInteger(v) && v >= 0 && v <= 100 ? v : null;
 const bool = (v, ellers) => typeof v === "boolean" ? v : ellers;
 const navn = v => kort(v, RADAR.navn).trim();
 
-/* Bare objekter i lister, og hver nøkkel bare én gang. Den første
-   vinner, så rekkefølgen dokumentet ble skrevet i, avgjør. */
 function unike(v, maks, lag, nøkkel){
   const sett = new Set(), ut = [];
   for(const x of Array.isArray(v) ? v : []){
@@ -329,10 +236,6 @@ function innstillinger(v, eldreSkjema = false){
   };
 }
 
-/* sokAvtrykk og sokFerdig sier hvilke innstillinger søket gjennom alle
-   aktive stillinger sist ble gjort for, og når det ble ferdig. NAVs søk
-   går over flere kjøringer, og sokSide er siden det fortsetter fra. Et
-   eldre radar.json uten feltene får null, og da søker neste kjøring. */
 const tomKildetilstand = () => ({
   nav: { side: null, etag: null, sistEndret: null, sist: null, feil: null, sokAvtrykk: null, sokSide: null, sokFerdig: null },
   jobbnorge: { sisteId: null, sist: null, feil: null, sokAvtrykk: null, sokFerdig: null }
@@ -364,13 +267,11 @@ function innboksrad(r){
   };
 }
 
-/* Under terskelen: samme rad, men aldri lavere enn underMin. */
 function underrad(r){
   const rad = innboksrad(r);
   return rad && rad.prosent >= RADAR.underMin ? { ...rad, status: "ny" } : null;
 }
 
-/* En stilling i køen: det listen ga, uten detaljen. */
 const KOKILDER = ["nav", "jobbnorge"];
 function korad(r){
   const kilde = blantt(r.kilde, KOKILDER), kildeId = valgfriTekst(r.kildeId, 160), url = lenke(r.url), d = dato(r.dato);
@@ -401,8 +302,6 @@ function kjoring(r){
   const start = tid(r.start);
   if(!start) return null;
   const ut = { start, slutt: tid(r.slutt), promptversjon: valgfriTekst(r.promptversjon, 40) };
-  /* passet, venter og under kom senere. En kjøring fra før har dem ikke, og
-     skal vise «ukjent», ikke «ingen passet». */
   for(const k of KJORINGSTELLERE) ut[k] = heltall(r[k]) ?? (NYERE_TELLERE.has(k) ? null : 0);
   ut.kilder = unike(r.kilder, RADAR.kildelogg, k => {
     const kilde = blantt(k.kilde, RADARKILDER);
@@ -446,11 +345,7 @@ export function validerRadar(inn){
 }
 export const tomRadar = () => validerRadar({ revisjon: 0 });
 
-/* Om et dokument har noe en gjenoppretting ville skrevet over. */
 export const harJobbinnhold = d => !!(d?.annonse?.tekst || d?.annonse?.url || d?.match || Object.keys(d?.forberedelser ?? {}).length);
-/* Et radar.json med bare standardverdier er tomt, selv om alle feltene
-   står der. Leien og forbruket teller ikke: de beskriver kjøringer,
-   ikke noe brukeren har laget eller valgt. */
 export function harRadarinnhold(d){
   if(!erObjekt(d)) return false;
   const tom = tomRadar();
@@ -458,21 +353,13 @@ export function harRadarinnhold(d){
     .some(k => d[k] !== undefined && JSON.stringify(d[k]) !== JSON.stringify(tom[k]));
 }
 
-/* ---------- utdatert ---------- */
-
 const SPOR = ["cvRevisjon", "annonseSjekksum", "promptversjon", "brevVersjonId"];
 
-/* Feltene i `nå` som ikke stemmer med det vurderingen bygde på. Bare
-   felt som er oppgitt sammenliknes: den som ikke vet CV-revisjonen,
-   kan ikke si at den har endret seg. Tom liste betyr oppdatert, og en
-   vurdering som ikke finnes er heller ikke utdatert. */
 export function utdatert(vurdering, nå = {}){
   if(!vurdering) return [];
   return SPOR.filter(k => nå[k] !== undefined && (vurdering[k] ?? null) !== (nå[k] ?? null));
 }
 
-/* Annonsens sjekksum tas fra dokumentet selv, så den som spør bare
-   trenger det dokumentet ikke vet: CV-revisjonen og promptversjonen. */
 export function matchUtdatert(dok, { cvRevisjon, promptversjon } = {}){
   return utdatert(dok?.match, { cvRevisjon, promptversjon, annonseSjekksum: dok?.annonse?.sjekksum ?? null });
 }

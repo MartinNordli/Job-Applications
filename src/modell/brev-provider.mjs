@@ -1,33 +1,10 @@
-/* Samme meldingsformat i Node og Tauri. Ingen nøkler eller nettverk her.
-   Feil brukeren kan gjøre noe med, er Brevfeil, så de når fram til
-   flaten. De andre er programmeringsfeil, og blir en generell melding
-   med en referanse i serverloggen (offentligFeil i server/brev-api.mjs). */
 import { Brevfeil } from "../dokumenter/dokumentfeil.mjs";
-/* Modellen følger formålet. Brevet er det brukeren leser og står inne
-   for, så det beholder den beste modellen. Vurderingen av hvor godt en
-   stilling passer, og radaren, er mange og korte kall, og får hver sin
-   rimeligere. annonse er uttrekket av annonsen fra en hentet side når
-   brevet skal skrives og annonsen mangler: modellen velger bare hvilke
-   linjer av siden som hører til annonsen, og det er den billigste
-   modellens jobb. OpenAI har ingen billigere modell i prosjektet ennå,
-   så alle formålene bruker den samme der.
-
-   Hos Anthropic tenker alle modellene alltid (adaptiv tenkning), og
-   innsatsen (output_config.effort) styrer hvor mye. Den står eksplisitt
-   per formål, for standarden er ikke lik mellom modellene: Opus 5.5 og
-   Haiku 5.5 har medium, Sonnet 5.5 high. Brevet gjør analysen, skrivingen
-   og gjennomlesingen i ett kall, og tenkningen er der analysen skjer.
-   Tenkningen teller med i max_tokens, så brevet får mer plass enn de
-   andre: tenkning, brev og kildehenvisninger skal få plass uten at
-   svaret kuttes. */
 export const FORMAL = Object.freeze(["brev", "vurdering", "radar", "annonse"]);
 export const LEVERANDORER = Object.freeze({
   anthropic: { modell: "claude-opus-5-5", modeller: Object.freeze({ brev: "claude-opus-5-5", vurdering: "claude-sonnet-5-5", radar: "claude-haiku-5-5", annonse: "claude-haiku-5-5" }),
     innsats: Object.freeze({ brev: "medium", vurdering: "high", radar: "medium", annonse: "low" }), url: "https://api.anthropic.com/v1/messages", nokkelfil: "nokkel.txt", miljo: "ANTHROPIC_API_KEY" },
   openai: { modell: "gpt-6-astra", modeller: Object.freeze({ brev: "gpt-6-astra", vurdering: "gpt-6-astra", radar: "gpt-6-astra", annonse: "gpt-6-astra" }), url: "https://api.openai.com/v1/responses", nokkelfil: "nokkel-openai.txt", miljo: "OPENAI_API_KEY" }
 });
-/* Øvre grense for svaret, med tenkningen, per formål. Et tak, ikke en
-   pris: det som ikke brukes, koster ingenting. */
 const MAKS_UT = Object.freeze({ brev: 16_000, vurdering: 8_000, radar: 8_000, annonse: 8_000 });
 
 export function leverandorFor(navn){
@@ -40,18 +17,6 @@ export function modellFor(navn, formal = "brev"){
   return leverandorFor(navn).modeller[formal];
 }
 
-/* Kroppen er bygd for hurtigbufferen. Rekkefølgen er system, så
-   kildeblokkene, så det som er nytt for dette kallet. kilder er én tekst
-   eller en liste med tekster, ordnet fra det som endres sjeldnest til
-   det som endres oftest (for brevet: CV og stilreferanse, så søknaden).
-   Anthropic bufrer bare det som står foran et cache_control-merke, så
-   systemet og hver kildeblokk får hvert sitt merke. Systemet kan da
-   gjenbrukes mellom alle brev, CV-blokken mellom søknader, og søknaden
-   mellom versjoner av samme brev. Det er høyst fire merker per kall, og
-   systemet bruker ett, så høyst tre kildeblokker. OpenAI bufrer en lik
-   begynnelse av seg selv, og får samme rekkefølge uten merker. kilder
-   er valgfri, så et kall uten kildeblokk (evalenes sammenligning)
-   fortsatt er ett enkelt brukerinnhold. */
 export function byggModellkropp({ leverandor, system, kilder, innhold, skjema, trinn, formal = "brev" }){
   const modell = modellFor(leverandor, formal);
   const innsats = leverandorFor(leverandor).innsats?.[formal];
@@ -64,7 +29,6 @@ export function byggModellkropp({ leverandor, system, kilder, innhold, skjema, t
   if(tekst.length + blokker.join("").length > 500_000 || system.length > 40_000)
     throw new Brevfeil("for-stort", "Grunnlaget er for stort. Kort ned CV-en, annonsen eller stilreferansen.", 413);
   const maks = MAKS_UT[formal];
-  // Begge leverandørene strømmer alltid. Én transportvei betyr én feilsemantikk.
   if(leverandor === "anthropic") return {
     model: modell,
     max_tokens: maks,
@@ -112,10 +76,6 @@ export function tolkModellsvar(leverandor, raa){
   try{ data = JSON.parse(tekst); }
   catch{ throw formatfeil("Modellen svarte i feil format. Prøv igjen."); }
   if(!data || typeof data !== "object" || Array.isArray(data)) throw formatfeil("Modellen svarte i feil format. Prøv igjen.");
-  /* Bufringen telles med, så kostnaden kan regnes ut og måles. Hos
-     Anthropic er input_tokens bare det som ikke kom fra bufferen. Hos
-     OpenAI er de bufrede tokenene en del av input_tokens, og står i
-     cache_read_input_tokens i tillegg. */
   const u = raa?.usage ?? {};
   const bruk = {
     input_tokens: Number(u.input_tokens) || 0,

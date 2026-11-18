@@ -1,4 +1,3 @@
-/* Små innganger; parserne og eksportbibliotekene lastes bare når de trengs. */
 const MAKS_FIL = 10 * 1024 * 1024;
 let motor;
 const hentMotor = () => motor ||= import("../vendor/brev-dokumentmotor.js");
@@ -46,8 +45,6 @@ export async function eksporterBrev(inn, format){
     mime: format === "pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
 }
 
-/* Én intervju-fil til kalenderen. Samme lagring som brevene: dialogen
-   i appen, nedlasting i nettleseren. `post` er { jobb, intervju }. */
 export async function eksporterIcs(post){
   const { lagIcs, icsFilnavn } = await import("../intervju/ics.mjs");
   return lagreFil({ navn: icsFilnavn(post), bytes: lagIcs([post]), mime: "text/calendar;charset=utf-8" });
